@@ -1,1 +1,5 @@
 .DS_Store
+
+# Machine-specific agent context.
+.local/*
+!.local/README.md
