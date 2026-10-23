@@ -95,8 +95,7 @@ The one committed list of sensitive paths and their floors, held in the governan
 A PR-level AI reviewer that isn't a governed role session, such as Bugbot or the Codex review bot.
 
 **Codex review bot**:
-The PR reviewer that answers only habit's request comment and posts as `chatgpt-codex-connector[bot]`.
-_Avoid_: Codex, alone
+The PR reviewer that answers only habit's request comment and posts as `chatgpt-codex-connector[bot]`. It is distinct from the Codex harness.
 
 **Self-verification**:
 The Builder's check before its PR opens. It runs the ticket's verification commands, then a context-free subagent reviews the committed diff and classifies the tier independently.
@@ -152,8 +151,7 @@ The committed script that habit runs as the maintainer account to apply a govern
 A file that only one harness or review bot reads. It translates the canonical policy into that tool's mechanics and adds no rule.
 
 **Codex harness**:
-Local Codex sessions in the ChatGPT app or its bundled CLI.
-_Avoid_: Codex, alone
+Local Codex sessions in the ChatGPT app or its bundled CLI. It is distinct from the Codex review bot.
 
 ## Repository governance and the generator
 
