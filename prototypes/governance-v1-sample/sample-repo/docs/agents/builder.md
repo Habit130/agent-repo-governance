@@ -77,8 +77,8 @@ Stop, tell habit in Chinese, leave the "Waiting on habit" line (`AGENTS.md`):
 
 ## Pure reverts
 
-- A PR that exactly undoes one merged squash commit. Its body adds `Reverts: <sha>` in the
-  template's slot; the gate recomputes the revert and, if identical, accepts `Risk: low`
+- A PR that exactly undoes one merged squash commit. Its body adds a `Reverts: <sha>` line
+  where the template's comment says; the gate recomputes the revert and, if identical, accepts `Risk: low`
   even on sensitive paths.
 - Reverting a one-way door (a migration that has run): escalate instead.
 
