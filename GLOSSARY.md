@@ -1,4 +1,4 @@
-# Repository governance
+# Governance model
 
 The language of the governance model that this repository builds: how habit and agents govern habit's GitHub repositories, and how the generator instantiates that model in each one. Every process term here describes governed repositories. This repository runs under its own operating contract, `AGENTS.md` and `docs/agents/`, until its first Initialize moves it onto the model, and until then that contract wins wherever the two differ.
 
@@ -6,7 +6,7 @@ The language of the governance model that this repository builds: how habit and 
 
 **Maintainer**:
 habit, the one human in every governed repository. habit decides scope, starts every session, answers escalations and holds every merge.
-_Avoid_: user
+_Avoid_: the user
 
 **Maintainer account**:
 habit's own GitHub account, which owns every governed repository and is used only by habit.
@@ -24,10 +24,10 @@ habit or the agent account: an author whose PRs are reviewed in place rather tha
 One agent context in a harness. It holds exactly one role, and its subagents act in that role.
 
 **Role**:
-What a session is authorized to do: Planner, Builder or Reviewer. A session started without one is read-only.
+What a session is authorized to do: Planner, Builder or Reviewer.
 
 **Planner**:
-The role that turns ideas, incoming issues and maps into specs and tickets with habit. It writes the repository only for the glossary and ADRs.
+The role that turns ideas, incoming issues and maps into specs and tickets with habit.
 
 **Builder**:
 The role that takes one ticket, implements and self-verifies it, and carries its PR to the point where habit can merge.
@@ -51,7 +51,7 @@ A session stopping for habit's decision. Examples: a blocked Builder, a scope ch
 habit asking a session for a change with no ticket. It makes the session a Builder, which records the request verbatim as an issue.
 
 **Delivery**:
-One ticket built by one fresh Builder session on one branch into one PR. A whole-spec delivery builds a spec's tickets in one PR.
+By default, one ticket built by one fresh Builder session on one branch into one PR. A whole-spec delivery builds a spec's tickets in one PR.
 
 **Delivery shape**:
 Ticket by ticket or whole spec, chosen by the Planner and approved by habit.
@@ -233,7 +233,7 @@ _Avoid_: incident
 A governance rule that wasn't followed, and that nothing caught before the merge.
 
 **Miss record**:
-The issue labelled `miss` that records one miss. Its `retro` handles it, not triage.
+The issue labelled `miss` that records one miss.
 
 **Merge watch**:
 The fixed workflow that runs after every merge and, without blocking anything, records misses: a red default-branch CI run, a merged pure revert, and a review missing from the merged head.
@@ -242,7 +242,6 @@ The fixed workflow that runs after every merge and, without blocking anything, r
 
 **Credential**:
 A value that grants access, such as a token, a key or a password.
-_Avoid_: secret, alone
 
 **Actions secret**:
 A credential stored in GitHub for workflows, including environment and Dependabot secrets.

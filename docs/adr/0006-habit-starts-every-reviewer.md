@@ -11,6 +11,6 @@ That trades one paste per PR for three things:
 The alternatives fall short:
 
 - A background session the Builder starts has nobody to answer its prompts.
-- An Actions-based reviewer needs API-key secrets, posts as a bot and has no terminal.
+- An Actions-based reviewer needs API keys stored as Actions secrets, posts as a bot and has no terminal.
 
 Decided in [What the review system is](https://github.com/Habit130/agent-repo-governance/issues/13).
