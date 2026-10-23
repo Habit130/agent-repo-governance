@@ -19,7 +19,9 @@ name: governance-gate
 # 3. Author: the PR author is habit or the agent account, else fail
 #    ("outside PRs are re-landed").
 # 4. Risk line: exactly one body line `Risk: low|medium|high — <reason>`, else fail.
-# 5. Pure revert: if the body has `Reverts: <sha>`, fetch the PR head and merge-base as git
+# 5. Pure revert: if the body has a `Reverts:` line whose value isn't a full commit SHA on
+#    the default branch, fail with the fix ("name the squash commit you revert, or delete
+#    the line"). Otherwise fetch the PR head and merge-base as git
 #    objects, recompute the revert of <sha> on the merge-base, and compare trees with the
 #    head. Identical: pass at any declared tier and skip step 6. Different: continue.
 # 6. Floor: list the PR's changed files; match each against the default and confirmed

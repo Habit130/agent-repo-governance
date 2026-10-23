@@ -88,8 +88,9 @@ protocol, `GLOSSARY.md`, ADRs.
 **Generated notice.** Every F file carries the one-line notice on line 1, or line 2 under
 the owner script's shebang. Mixed files say which part it covers: the markers in `AGENTS.md`
 and `.claude/CLAUDE.md`, "except `confirmed`" in the record. The PR template's notice is an
-HTML comment; the gate reads only lines starting `Risk:` or `Reverts:`, so a body built from
-the template still parses. `build.md` carries no notice (R).
+HTML comment that rides into a body built from the template; the gate reads only lines
+starting `Risk:` or `Reverts:`, and no comment line in the template starts that way.
+`build.md` carries no notice (R).
 
 **Codex's 32 KiB cap.** The cap counts every project `AGENTS.md` on the path combined; the
 global file has its own budget. The sample has one, estimated 8–10 KB final, about 30% of the
@@ -138,7 +139,9 @@ Not decided by any ticket; mechanical, open to habit's objection:
   `.github/governance/owner.sh`, `.github/workflows/governance-gate.yml`; check name
   `governance-gate`.
 - Markers `<!-- governance:begin v1 -->` and `<!-- governance:end -->`.
-- The pure-revert body line `Reverts: <sha>`, as a slot in the PR template.
+- The pure-revert body line `Reverts: <sha>`, opt-in: the template only describes it in a
+  comment, so a forgotten placeholder can't reach the gate; a malformed value fails the gate
+  with the fix.
 - `.cursor/**` as a default sensitive path, covering Bugbot's rule file wherever it sits and
   its config.
 - "Run as habit" written out as habit's account alias: the pinned merge command and the
