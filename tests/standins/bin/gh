@@ -1,0 +1,3 @@
+#!/bin/bash
+# Stand-in gh for suites and scenarios: it replays a recording and never reaches the real one.
+exec "${STANDIN_PYTHON:-python3}" "$(dirname "$0")/../replay.py" gh "$@"

@@ -15,8 +15,9 @@ REAL_STORE = os.path.join(REPO, "generator", "govern-repository", "store")
 RUN = os.path.join(REPO, "tests", "run.py")
 FIXTURES = os.path.join(REPO, "tests", "fixtures")
 
-if SCRIPTS not in sys.path:
-    sys.path.insert(0, SCRIPTS)
+for _path in (SCRIPTS, os.path.join(REPO, "tests")):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
 
 def isolated_env(extra=None):

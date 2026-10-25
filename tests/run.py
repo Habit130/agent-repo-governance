@@ -40,6 +40,7 @@ SUITES = (
     ("compare", "test_compare", "linux"),
     ("materialized-version", "test_materialized_version", "linux"),
     ("release-check", "test_release_check", "linux"),
+    ("standins", "test_standins", "macos"),
 )
 
 

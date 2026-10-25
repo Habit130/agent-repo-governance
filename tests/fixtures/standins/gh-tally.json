@@ -1,0 +1,79 @@
+{
+  "description": "Recorded GitHub state for the tally sample repository, served by the stand-in gh in the stand-ins' self-tests. Synthetic: written in the shape gh prints, not captured from GitHub.",
+  "tool": "gh",
+  "calls": [
+    {
+      "args": [
+        "repo",
+        "view",
+        "Habit130/tally",
+        "--json",
+        "visibility,defaultBranchRef,owner"
+      ],
+      "stdout": "{\"defaultBranchRef\":{\"name\":\"main\"},\"owner\":{\"login\":\"Habit130\"},\"visibility\":\"PUBLIC\"}\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "api",
+        "repos/Habit130/tally/collaborators/Habit098/permission",
+        "--jq",
+        ".permission"
+      ],
+      "stdout": "write\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "api",
+        "repos/Habit130/tally/rulesets"
+      ],
+      "stdout": "[]\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "api",
+        "repos/Habit130/tally/branches/main/protection"
+      ],
+      "stdout": "{\"message\":\"Branch not protected\",\"status\":\"404\"}\n",
+      "stderr": "gh: Branch not protected (HTTP 404)\n",
+      "exit": 1
+    },
+    {
+      "args": [
+        "label",
+        "create",
+        "miss",
+        "--repo",
+        "Habit130/tally",
+        "--color",
+        "B60205",
+        "--description",
+        "Miss record: something governance should have stopped got through"
+      ],
+      "stdout": "",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "issue",
+        "create",
+        "--repo",
+        "Habit130/tally",
+        "--title",
+        "Initialize governance",
+        "--body-file",
+        "-"
+      ],
+      "stdin": "habit's invocation, quoted verbatim.\n",
+      "stdout": "https://github.com/Habit130/tally/issues/1\n",
+      "stderr": "",
+      "exit": 0
+    }
+  ]
+}
