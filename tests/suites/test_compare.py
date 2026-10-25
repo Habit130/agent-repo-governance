@@ -103,6 +103,20 @@ class ExactComparison(RenderCase):
             ],
         )
 
+    def test_names_a_fixed_file_reached_through_a_symlinked_parent(self):
+        worktree = self.rendered()
+        outside = self.path("outside-github")
+        os.rename(os.path.join(worktree, ".github"), outside)
+        os.symlink(outside, os.path.join(worktree, ".github"))
+        code, facts = self.compare(worktree)
+        self.assertEqual(code, 1, facts)
+        self.assertEqual(
+            [(d["path"], d["kind"]) for d in facts["differences"]],
+            [(".github/governance/owner.sh", "not a file"), (".github/governance/record.yml", "not a file")],
+        )
+        for difference in facts["differences"]:
+            self.assertIn("symlink", difference["detail"])
+
     def test_ignores_the_records_confirmed_values_and_skeletons(self):
         worktree = self.rendered()
         self.edit(worktree, ".github/governance/record.yml", '"test"', '"lint"')

@@ -154,6 +154,11 @@ def stored_files(source_dir):
     found = []
     for root, dirs, files in os.walk(source_dir):
         dirs.sort()
+        for name in dirs:
+            full = os.path.join(root, name)
+            if os.path.islink(full):
+                rel = os.path.relpath(full, source_dir).replace(os.sep, "/")
+                raise StoredFormError("stored tree holds %r, a symlinked directory" % rel)
         for name in sorted(files):
             if name in IGNORED_NAMES:
                 continue

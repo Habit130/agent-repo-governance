@@ -75,16 +75,18 @@ def compare(store, worktree, repository, default_branch, version=None, allow_unr
         checked.append(path)
         expected_text = render.template_text(store, version, entry, values)
         expected = expected_text.encode("utf-8")
-        found_path = os.path.join(root, *path.split("/"))
-
         def differ(what, detail=None):
             difference = {"path": path, "class": kind, "kind": what}
             if detail:
                 difference["detail"] = detail
             differences.append(difference)
 
-        if os.path.islink(found_path) or (os.path.lexists(found_path) and not os.path.isfile(found_path)):
-            differ("not a file", "a fixed file must be a regular file")
+        # A symlinked parent would compare a file outside the worktree, which a fresh
+        # checkout wouldn't carry; the same check refuses such a target when rendering.
+        try:
+            found_path = storedform.check_target(root, path)
+        except storedform.StoredFormError as error:
+            differ("not a file", str(error))
             continue
         if not os.path.exists(found_path):
             differ("missing")

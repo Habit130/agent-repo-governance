@@ -130,6 +130,16 @@ class Materializing(support.TempDirCase):
         self.assertEqual(os.listdir(outside), [])
         self.assertFalse(os.path.exists(os.path.join(dest, "AGENTS.md")))
 
+    def test_refuses_a_stored_tree_holding_a_symlinked_directory(self):
+        source = self.make_stored_tree()
+        linked = self.path("linked")
+        support.write_tree(linked, {"extra.md": "x\n"})
+        os.symlink(linked, os.path.join(source, "docs"))
+        code, facts = support.govern(["materialize", "--source", source, "--dest", self.path("out")])
+        self.assertEqual(code, 2, facts)
+        self.assertIn("docs", facts["error"])
+        self.assertFalse(os.path.exists(self.path("out")))
+
     def test_refuses_a_stored_tree_holding_a_path_that_does_not_decode(self):
         source = self.path("stored")
         support.write_tree(source, {"dot-github/ok.yml": "x\n", "notes.txt.stored": "y\n"})
