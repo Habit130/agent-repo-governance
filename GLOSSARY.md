@@ -38,6 +38,9 @@ The role that reviews a medium or high PR from a context that didn't write it, a
 **Start instruction**:
 The text that starts a session, the same in every harness, naming its role, its target and its skills.
 
+**Start request**:
+A session's two-part request that habit start another session: one part for habit, and one start instruction to paste. The Reviewer handoff is one.
+
 **Role file**:
 The committed file holding one role's detailed workflow, which that role reads at session start.
 
@@ -100,8 +103,9 @@ The PR reviewer that answers only habit's request comment and posts as `chatgpt-
 **Self-verification**:
 The Builder's check before its PR opens. It runs the ticket's verification commands, then a context-free subagent reviews the committed diff and classifies the tier independently.
 
-**Self-verification evidence**:
+**Evidence comment**:
 The Builder's head-bound PR comment recording the commands run, their results and the before-and-after evidence.
+_Avoid_: Self-verification evidence
 
 **Reviewer handoff**:
 The Builder's two-part request that habit start a Reviewer: one part for habit, one to paste to the Reviewer.
@@ -119,11 +123,14 @@ Clear, flagged or unavailable, for one review on one head.
 Every required review has run on one head, and the Builder has responded.
 
 **Merge summary**:
-The plain-language summary of a PR that habit merges on, bound to one head. Its terminal copy ends in the pinned merge command.
+The plain-language summary of a PR that habit merges on, bound to one head. The Merge handoff follows its terminal copy.
 _Avoid_: PR summary
 
 **High-risk report**:
 The Merge summary of a high PR. It adds why the PR is high, the one-way-door rehearsal and the steps awaiting habit's go-ahead.
+
+**Merge handoff**:
+The terminal message that follows the Merge summary, holding the pinned merge command and the next steps the merge opens for habit.
 
 **Pinned merge command**:
 habit's merge command, bound to the head the Merge summary describes, so a later push makes it fail.
@@ -162,7 +169,7 @@ The one, versioned design of roles, rules and process that governed repositories
 One repository's committed governance, instantiated from one governance model version for that repository.
 
 **Governed repository**:
-A repository of habit's personal account with a governance record on its default branch, other than the sandbox repository.
+A repository of habit's personal account with a governance record on its default branch, other than the public and private sandbox repositories.
 
 **Generator**:
 The user-invoked skill, `govern-repository`, that turns the governance model plus a repository's current state into that repository's governance.
@@ -188,10 +195,19 @@ A value derived from a repository and confirmed by habit, kept in the governance
 **Repository-owned content**:
 Governance content written once at Initialize and maintained afterwards by the repository's own PRs.
 
+**Template store**:
+The generator's templates, version manifests and change notes, kept in one directory per governance model version.
+
+**Stored form**:
+The reversible encoding in which this repository keeps skill copies, templates and fixtures, so that no harness or review bot loads them.
+
 ## Versions
 
 **Governance model version**:
 An increasing integer naming one released state of what the governance model lands in a repository.
+
+**Installed version**:
+The highest released governance model version in the template store that the install put on the machine.
 
 **Change note**:
 A version's plain-Chinese note for habit: what changes, whether habit must act, and how urgent it is.
@@ -208,11 +224,17 @@ Any difference between a repository's governance and what its record's version p
 **Machine skill set**:
 The skills this repository installs and updates on a machine: the generator plus the skills governance relies on.
 
+**Skill copy**:
+A third-party skill that governance relies on, kept in this repository at one recorded upstream commit.
+
 **Personal skill**:
 Any other skill on the machine. The install never updates or removes it.
 
 **Install**:
 Bringing a machine to the latest state of this repository's default branch: the machine skill set, the machine rules and the links, then the machine check and the governed-repository list.
+
+**Account wizard**:
+The one-time setup of a new machine's accounts, which habit runs before its first install.
 
 **Installed state**:
 The machine's record of the commit it installed and the managed skills' content.
@@ -257,6 +279,9 @@ To revoke a credential and issue a replacement.
 **Fixture**:
 A prepared input state, such as a repository, recorded GitHub state or a machine home, together with its expected results.
 
+**Stand-in GitHub**:
+The recorded GitHub state that suites and scenarios run against in place of real GitHub.
+
 **Scenario**:
 A model's run of the generator over one fixture in one harness, checked against the fixture's expected results.
 
@@ -265,3 +290,6 @@ A standing repository of habit's personal account used only for live checks. It 
 
 **Live check**:
 Verification against real GitHub, in a sandbox repository.
+
+**Release check**:
+The CI check in this repository that freezes released governance model versions.
