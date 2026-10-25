@@ -1,0 +1,39 @@
+{
+  "base": {
+    "generator/govern-repository/store/1/change-note.md": "urgency: when convenient\nmust-act: yes\n\nversion 1 第一次发布：Initialize 会写入 governance。\n",
+    "generator/govern-repository/store/1/manifest.json": "{\"version\": 1}\n",
+    "generator/govern-repository/store/1/templates/docs/agents/review.md": "fixed text\n",
+    "generator/govern-repository/store/1/templates/dot-github/governance/owner.sh": {
+      "content": "#!/bin/bash\necho owner\n",
+      "mode": "100755"
+    },
+    "tests/fixtures/change-notes/valid/a.md": "urgency: urgent\nmust-act: no\n\n正文。\n",
+    "tests/fixtures/repositories/x/repo/README.md": "x\n"
+  },
+  "description": "Version 1 is released, and the head adds version 2's templates, manifest and note in one PR.",
+  "expect": {
+    "consecutive": "PASS",
+    "fixtures": "PASS",
+    "frozen": "PASS",
+    "note-fields": "PASS",
+    "notes": "PASS"
+  },
+  "head": {
+    "generator/govern-repository/store/1/change-note.md": "urgency: when convenient\nmust-act: yes\n\nversion 1 第一次发布：Initialize 会写入 governance。\n",
+    "generator/govern-repository/store/1/manifest.json": "{\"version\": 1}\n",
+    "generator/govern-repository/store/1/templates/docs/agents/review.md": "fixed text\n",
+    "generator/govern-repository/store/1/templates/dot-github/governance/owner.sh": {
+      "content": "#!/bin/bash\necho owner\n",
+      "mode": "100755"
+    },
+    "generator/govern-repository/store/2/change-note.md": "urgency: urgent\nmust-act: no\n\nversion 2 修补了一条 hard rule 的漏洞。\n",
+    "generator/govern-repository/store/2/manifest.json": "{\"version\": 2}\n",
+    "generator/govern-repository/store/2/templates/docs/agents/review.md": "v2 text\n",
+    "generator/govern-repository/store/2/templates/dot-github/governance/owner.sh": {
+      "content": "#!/bin/bash\necho owner\n",
+      "mode": "100755"
+    },
+    "tests/fixtures/change-notes/valid/a.md": "urgency: urgent\nmust-act: no\n\n正文。\n",
+    "tests/fixtures/repositories/x/repo/README.md": "x\n"
+  }
+}

@@ -2,6 +2,7 @@
 """This repository's checks and suites, as CI runs them (docs/agents/build.md).
 
   stored-form      fail on any stored path that has a dot segment or a loaded name
+  release-check    compare a PR's base and head trees, one line per rule
   py39             confirm this interpreter is Python 3.9 and every script parses as 3.9
   exact-comparison render version 1 into the tally sample repository and compare it exactly
   suites           run the suites: --job linux, --job macos, --all, or suites by name
@@ -38,6 +39,7 @@ SUITES = (
     ("render", "test_render", "linux"),
     ("compare", "test_compare", "linux"),
     ("materialized-version", "test_materialized_version", "linux"),
+    ("release-check", "test_release_check", "linux"),
 )
 
 
@@ -60,6 +62,15 @@ def cmd_stored_form(args):
         return 1
     print("PASS stored form: %d stored paths, none with a dot segment or a loaded name" % len(paths))
     return 0
+
+
+def cmd_release_check(args):
+    import release_check
+
+    passed, lines = release_check.check(args.repo, args.base, args.head)
+    for line in lines:
+        print(line)
+    return 0 if passed else 1
 
 
 def is_shell_entry(path):
@@ -149,6 +160,12 @@ def build_parser():
     stored = commands.add_parser("stored-form", help="check every stored path")
     stored.add_argument("--repo", default=REPO)
     stored.set_defaults(run=cmd_stored_form)
+
+    release = commands.add_parser("release-check", help="compare a PR's base and head trees")
+    release.add_argument("--repo", default=REPO)
+    release.add_argument("--base", required=True, help="the PR's base: HEAD^1 of the merge commit in CI")
+    release.add_argument("--head", required=True, help="the PR's head, or its merge commit in CI")
+    release.set_defaults(run=cmd_release_check)
 
     py39 = commands.add_parser("py39", help="check Python 3.9 and /bin/bash compatibility")
     py39.add_argument("--repo", default=REPO)

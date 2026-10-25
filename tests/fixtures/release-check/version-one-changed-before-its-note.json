@@ -1,0 +1,30 @@
+{
+  "base": {
+    "generator/govern-repository/store/1/manifest.json": "{\"version\": 1}\n",
+    "generator/govern-repository/store/1/templates/docs/agents/review.md": "fixed text\n",
+    "generator/govern-repository/store/1/templates/dot-github/governance/owner.sh": {
+      "content": "#!/bin/bash\necho owner\n",
+      "mode": "100755"
+    },
+    "tests/fixtures/change-notes/valid/a.md": "urgency: urgent\nmust-act: no\n\n正文。\n",
+    "tests/fixtures/repositories/x/repo/README.md": "x\n"
+  },
+  "description": "Version 1 has no note on the base, and the head edits its templates, still without a note.",
+  "expect": {
+    "consecutive": "PASS",
+    "fixtures": "PASS",
+    "frozen": "PASS",
+    "note-fields": "PASS",
+    "notes": "PASS"
+  },
+  "head": {
+    "generator/govern-repository/store/1/manifest.json": "{\"version\": 1}\n",
+    "generator/govern-repository/store/1/templates/docs/agents/review.md": "edited before the cut\n",
+    "generator/govern-repository/store/1/templates/dot-github/governance/owner.sh": {
+      "content": "#!/bin/bash\necho owner\n",
+      "mode": "100755"
+    },
+    "tests/fixtures/change-notes/valid/a.md": "urgency: urgent\nmust-act: no\n\n正文。\n",
+    "tests/fixtures/repositories/x/repo/README.md": "x\n"
+  }
+}
