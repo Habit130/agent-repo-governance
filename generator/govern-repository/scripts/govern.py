@@ -60,11 +60,8 @@ def cmd_render(args):
 
 
 def cmd_compare(args):
-    repository, default_branch = args.repository, args.default_branch
-    if repository is None or default_branch is None:
-        origin_repository, origin_branch = compare.values_from_origin(args.worktree)
-        repository = repository or origin_repository
-        default_branch = default_branch or origin_branch
+    repository = args.repository or compare.repository_from_origin(args.worktree)
+    default_branch = args.default_branch or compare.default_branch_from_origin(args.worktree)
     facts = compare.compare(
         store.Store(args.store),
         args.worktree,
@@ -97,9 +94,9 @@ def build_parser():
     commands = parser.add_subparsers(dest="command", metavar="command")
     commands.required = True
 
-    facts = commands.add_parser("store", help="list the store's versions, released versions and installed version")
-    facts.add_argument("--store", default=DEFAULT_STORE)
-    facts.set_defaults(run=cmd_store)
+    listing = commands.add_parser("store", help="list the store's versions, released versions and installed version")
+    listing.add_argument("--store", default=DEFAULT_STORE)
+    listing.set_defaults(run=cmd_store)
 
     note = commands.add_parser("change-note", help="read a change note's urgency and must-act fields")
     note.add_argument("file")
@@ -135,6 +132,8 @@ def main(argv=None):
         return args.run(args)
     except GovernError as error:
         return emit({"ok": False, "error": str(error)}, 2)
+    except OSError as error:
+        return emit({"ok": False, "error": "%s: %s" % (error.filename or "a file", error.strerror or error)}, 2)
 
 
 if __name__ == "__main__":

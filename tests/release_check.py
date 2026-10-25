@@ -28,9 +28,9 @@ def tree(repo, rev, prefix):
         if not record:
             continue
         meta, path = record.split("\t", 1)
-        mode, _, blob = meta.split(" ")
+        mode, _, sha = meta.split(" ")
         if path.startswith(prefix + "/"):
-            files[path[len(prefix) + 1:]] = (mode, blob)
+            files[path[len(prefix) + 1:]] = (mode, sha)
     return files
 
 
@@ -76,7 +76,7 @@ def rule_consecutive(head, strays):
     numbers = sorted(head)
     problems = []
     if strays:
-        problems.append("the store holds %s, which are not version directories" % ", ".join(strays))
+        problems.append("the store holds entries that aren't version directories: %s" % ", ".join(strays))
     if numbers != list(range(1, len(numbers) + 1)):
         problems.append("the head's versions are %s, not consecutive from 1" % ", ".join(str(v) for v in numbers))
     if problems:

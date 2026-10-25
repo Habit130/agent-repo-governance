@@ -117,6 +117,19 @@ class Materializing(support.TempDirCase):
         self.assertNotEqual(code, 0)
         self.assertIn("worktree", facts["error"])
 
+    def test_refuses_a_target_whose_parent_is_a_symlink_and_writes_nothing(self):
+        source = self.make_stored_tree()
+        outside = self.path("outside")
+        os.makedirs(outside)
+        dest = self.path("out")
+        os.makedirs(dest)
+        os.symlink(outside, os.path.join(dest, "scripts"))
+        code, facts = support.govern(["materialize", "--source", source, "--dest", dest])
+        self.assertEqual(code, 2, facts)
+        self.assertIn("symlink", facts["error"])
+        self.assertEqual(os.listdir(outside), [])
+        self.assertFalse(os.path.exists(os.path.join(dest, "AGENTS.md")))
+
     def test_refuses_a_stored_tree_holding_a_path_that_does_not_decode(self):
         source = self.path("stored")
         support.write_tree(source, {"dot-github/ok.yml": "x\n", "notes.txt.stored": "y\n"})

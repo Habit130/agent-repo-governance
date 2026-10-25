@@ -113,14 +113,34 @@ def mode_of(path):
     return "100755" if os.stat(path).st_mode & 0o111 else "100644"
 
 
+def check_target(dest_root, real_path):
+    """The absolute path a file takes under dest_root, refused unless every step stays inside it.
+
+    A parent that is a symlink or not a directory, or a target that is a symlink or a
+    directory, would send the write elsewhere or fail half-way, so it is refused up front.
+    """
+    current = dest_root
+    segments = real_path.split("/")
+    for segment in segments[:-1]:
+        current = os.path.join(current, segment)
+        if os.path.islink(current):
+            raise StoredFormError("%s can't be written: %s is a symlink" % (real_path, os.path.relpath(current, dest_root)))
+        if os.path.lexists(current) and not os.path.isdir(current):
+            raise StoredFormError(
+                "%s can't be written: %s is not a directory" % (real_path, os.path.relpath(current, dest_root))
+            )
+    full = os.path.join(current, segments[-1])
+    if os.path.islink(full) or (os.path.lexists(full) and not os.path.isfile(full)):
+        raise StoredFormError("%s exists but is not a regular file" % real_path)
+    return full
+
+
 def write_file(dest_root, real_path, data, mode):
-    """Write one materialized file under dest_root with the given git mode."""
-    full = os.path.join(dest_root, *real_path.split("/"))
+    """Write one file under dest_root with the given git mode, after check_target."""
+    full = check_target(dest_root, real_path)
     parent = os.path.dirname(full)
     if not os.path.isdir(parent):
         os.makedirs(parent)
-    if os.path.islink(full):
-        os.remove(full)
     with open(full, "wb") as handle:
         handle.write(data)
     os.chmod(full, 0o755 if mode == "100755" else 0o644)
@@ -177,10 +197,13 @@ def check_destination(dest):
 def materialize(source_dir, dest):
     """Decode every stored file under source_dir into dest, restoring executable bits.
 
-    Every path is decoded before anything is written, so a bad stored tree writes nothing.
+    Every path is decoded and every target checked before anything is written, so a refusal
+    writes nothing.
     """
     root = check_destination(dest)
     plan = [(decode(rel), full) for rel, full in stored_files(source_dir)]
+    for real_path, _ in plan:
+        check_target(root, real_path)
     written = []
     for real_path, full in plan:
         with open(full, "rb") as handle:

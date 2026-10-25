@@ -33,15 +33,15 @@ class ExactComparison(RenderCase):
         self.assertEqual(facts["differences"], [])
         self.assertEqual(
             sorted(facts["checked"]),
-            [".claude/CLAUDE.md", ".github/governance/owner.sh", "AGENTS.md", "docs/agents/review.md"],
+            [
+                ".claude/CLAUDE.md",
+                ".github/governance/owner.sh",
+                ".github/governance/record.yml",
+                "AGENTS.md",
+                "docs/agents/review.md",
+            ],
         )
-        self.assertEqual(
-            facts["not_compared"],
-            {
-                ".github/governance/record.yml": "record: its confirmed values are the repository's own",
-                "docs/agents/build.md": "skeleton: repository-owned content",
-            },
-        )
+        self.assertEqual(facts["not_compared"], {"docs/agents/build.md": "skeleton: repository-owned content"})
 
     def test_names_an_edited_fixed_file(self):
         worktree = self.rendered()
@@ -103,12 +103,33 @@ class ExactComparison(RenderCase):
             ],
         )
 
-    def test_ignores_the_record_and_skeletons(self):
+    def test_ignores_the_records_confirmed_values_and_skeletons(self):
         worktree = self.rendered()
         self.edit(worktree, ".github/governance/record.yml", '"test"', '"lint"')
         self.edit(worktree, "docs/agents/build.md", "# Build", "# Build and test")
         code, facts = self.compare(worktree)
         self.assertEqual((code, facts["differences"]), (0, []), facts)
+
+    def test_names_an_edit_to_the_records_fixed_part_and_its_mode(self):
+        worktree = self.rendered()
+        self.edit(worktree, ".github/governance/record.yml", '  - pattern: "**/AGENTS.md"\n    floor: medium\n', "")
+        os.chmod(os.path.join(worktree, ".github", "governance", "record.yml"), 0o755)
+        code, facts = self.compare(worktree)
+        self.assertEqual(code, 1, facts)
+        self.assertEqual(
+            facts["differences"],
+            [
+                {"path": ".github/governance/record.yml", "class": "record", "kind": "content", "detail": "first difference at line 5"},
+                {"path": ".github/governance/record.yml", "class": "record", "kind": "mode", "detail": "expected 100644, found 100755"},
+            ],
+        )
+
+    def test_names_a_record_without_its_confirmed_key(self):
+        worktree = self.rendered()
+        self.edit(worktree, ".github/governance/record.yml", "confirmed:\n", "confirmed_values:\n")
+        code, facts = self.compare(worktree)
+        self.assertEqual(code, 1, facts)
+        self.assertEqual([(d["path"], d["kind"]) for d in facts["differences"]], [(".github/governance/record.yml", "structure")])
 
     def test_runs_as_one_command_in_any_worktree_reading_values_from_origin(self):
         worktree = self.rendered()

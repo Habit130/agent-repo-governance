@@ -19,6 +19,9 @@ from govlib import GovernError, storedform
 from govlib.store import StoreError
 
 TOKEN = re.compile(r"@@([A-Za-z0-9_]*)@@")
+# What a malformed token leaves behind: `@@` against a name character. A bare `@@`, as in a
+# diff hunk header, is text.
+LEFTOVER = re.compile(r"@@[A-Za-z0-9_]|[A-Za-z0-9_]@@")
 NAMES = ("version", "repository", "default_branch")
 FLOORS = ("medium", "high")
 
@@ -93,9 +96,9 @@ def substitute(text, values, where):
         return values[name]
 
     rendered = TOKEN.sub(replace, text)
-    leftover = rendered.find("@@")
-    if leftover >= 0:
-        raise RenderError("%s line %d has a leftover token after rendering" % (where, _line_of(rendered, leftover)))
+    leftover = LEFTOVER.search(rendered)
+    if leftover:
+        raise RenderError("%s line %d has a leftover token after rendering" % (where, _line_of(rendered, leftover.start())))
     return rendered
 
 
@@ -161,15 +164,26 @@ def confirmed_lines(confirmed):
     return "".join(line + "\n" for line in lines)
 
 
-def fill_record(text, confirmed, where):
-    """Insert confirmed values under the record template's final `confirmed:` key."""
+def record_fixed_part(text, where, template=False):
+    """A record's fixed part: everything up to and including its one top-level `confirmed:` key.
+
+    A record template ends at that key; a rendered record holds its confirmed values below it.
+    """
     lines = text.splitlines(True)
     keys = [i for i, line in enumerate(lines) if line.rstrip("\n") == "confirmed:"]
-    if len(keys) != 1 or any(line.strip() for line in lines[keys[0] + 1:]):
+    if len(keys) != 1:
+        raise MarkerError("%s has %d top-level `confirmed:` keys; a record has exactly one" % (where, len(keys)))
+    if template and any(line.strip() for line in lines[keys[0] + 1:]):
         raise RenderError("%s must end with its one top-level `confirmed:` key" % where)
+    return "".join(lines[: keys[0]]) + "confirmed:\n"
+
+
+def fill_record(text, confirmed, where):
+    """Insert confirmed values under the record template's final `confirmed:` key."""
+    fixed = record_fixed_part(text, where, template=True)
     if confirmed is None:
         raise RenderError("%s is the record, and rendering it needs the record's confirmed values" % where)
-    return "".join(lines[: keys[0]]) + "confirmed:\n" + confirmed_lines(confirmed)
+    return fixed + confirmed_lines(confirmed)
 
 
 def _read_template(store, version, path):
@@ -181,26 +195,32 @@ def _read_template(store, version, path):
         raise RenderError("version %d's template for %s is not UTF-8" % (version, path))
 
 
-def rendered_template(store, version, entry, values, confirmed=None):
-    """One template's rendered text, before it meets any target file."""
+def template_text(store, version, entry, values):
+    """One template with its tokens substituted and its structure checked."""
     where = "version %d's template for %s" % (version, entry["path"])
     text = substitute(_read_template(store, version, entry["path"]), values, where)
     if entry["class"] == "fixed part":
         find_block(text, where)
     if entry["class"] == "record":
-        text = fill_record(text, confirmed, where)
+        record_fixed_part(text, where, template=True)
+    return text
+
+
+def rendered_template(store, version, entry, values, confirmed=None):
+    """One template's rendered text, before it meets any target file."""
+    text = template_text(store, version, entry, values)
+    if entry["class"] == "record":
+        text = fill_record(text, confirmed, "version %d's template for %s" % (version, entry["path"]))
     return text
 
 
 def _existing(root, path):
-    """A target file's bytes, or None when it is absent."""
-    full = os.path.join(root, *path.split("/"))
-    if os.path.isfile(full) and not os.path.islink(full):
-        with open(full, "rb") as handle:
-            return handle.read()
-    if os.path.lexists(full):
-        raise RenderError("%s exists but is not a regular file" % path)
-    return None
+    """A target file's bytes, or None when it is absent; refused unless it can be written safely."""
+    full = storedform.check_target(root, path)
+    if not os.path.exists(full):
+        return None
+    with open(full, "rb") as handle:
+        return handle.read()
 
 
 def render(store, dest, repository, default_branch, confirmed=None, version=None, allow_unreleased=False):

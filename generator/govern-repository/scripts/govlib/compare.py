@@ -1,45 +1,51 @@
 """Exact comparison (#44 §4, ADR 0015): a worktree's fixed content against a version's templates.
 
-It checks the content and mode of every fixed file, and of every fixed part between its
-markers, and names each difference. The record and skeletons are not compared: the record's
-confirmed values are the repository's own, and skeletons become repository-owned content.
+It checks the content and mode of every fixed file, of every fixed part between its markers,
+and of the record up to its `confirmed:` key, and names each difference. The record's
+confirmed values are the repository's own, and skeletons become repository-owned content, so
+neither is compared.
 """
 
 import os
 import re
 import subprocess
 
-from govlib import GovernError, render
+from govlib import GovernError, render, storedform
 
-NOT_COMPARED = {
-    "record": "record: its confirmed values are the repository's own",
-    "skeleton": "skeleton: repository-owned content",
-}
+NOT_COMPARED = {"skeleton": "skeleton: repository-owned content"}
 
 _GITHUB_REMOTE = re.compile(r"^(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([^/]+/[^/]+?)(?:\.git)?/?$")
 
 
 def _git(worktree, *args):
-    result = subprocess.run(
-        ["git", "-C", worktree] + list(args),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        universal_newlines=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", worktree] + list(args),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            universal_newlines=True,
+        )
+    except OSError:
+        return None
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def values_from_origin(worktree):
-    """The repository and default branch that a worktree's `origin` names."""
+def repository_from_origin(worktree):
+    """The owner/name a worktree's `origin` names on GitHub."""
     url = _git(worktree, "remote", "get-url", "origin")
     match = _GITHUB_REMOTE.match(url or "")
     if not match:
         raise GovernError("the worktree's origin %r isn't a GitHub repository; pass --repository" % (url,))
+    return match.group(1)
+
+
+def default_branch_from_origin(worktree):
+    """The branch `origin/HEAD` points at in a worktree."""
     head = _git(worktree, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
     prefix = "refs/remotes/origin/"
     if not head or not head.startswith(prefix):
         raise GovernError("the worktree doesn't know origin's default branch; pass --default-branch")
-    return match.group(1), head[len(prefix):]
+    return head[len(prefix):]
 
 
 def _first_difference(expected, found):
@@ -49,10 +55,6 @@ def _first_difference(expected, found):
     while index < limit and expected[index] == found[index]:
         index += 1
     return found.count(b"\n", 0, index) + 1
-
-
-def _mode(path):
-    return "100755" if os.stat(path).st_mode & 0o111 else "100644"
 
 
 def compare(store, worktree, repository, default_branch, version=None, allow_unreleased=False):
@@ -71,7 +73,7 @@ def compare(store, worktree, repository, default_branch, version=None, allow_unr
             not_compared[path] = NOT_COMPARED[kind]
             continue
         checked.append(path)
-        expected_text = render.rendered_template(store, version, entry, values)
+        expected_text = render.template_text(store, version, entry, values)
         expected = expected_text.encode("utf-8")
         found_path = os.path.join(root, *path.split("/"))
 
@@ -89,7 +91,19 @@ def compare(store, worktree, repository, default_branch, version=None, allow_unr
             continue
         with open(found_path, "rb") as handle:
             found = handle.read()
-        if kind == "fixed part":
+        if kind == "record":
+            expected = render.record_fixed_part(expected_text, path).encode("utf-8")
+            try:
+                found_fixed = render.record_fixed_part(found.decode("utf-8"), path).encode("utf-8")
+            except UnicodeDecodeError:
+                differ("structure", "the record is not UTF-8")
+                continue
+            except render.MarkerError as error:
+                differ("structure", str(error))
+                continue
+            if found_fixed != expected:
+                differ("content", "first difference at line %d" % _first_difference(expected, found_fixed))
+        elif kind == "fixed part":
             start, end = render.find_block(expected_text, path)
             expected = expected_text[start:end].encode("utf-8")
             try:
@@ -108,7 +122,7 @@ def compare(store, worktree, repository, default_branch, version=None, allow_unr
                 differ("content", "first difference at line %d" % line)
         elif found != expected:
             differ("content", "first difference at line %d" % _first_difference(expected, found))
-        actual_mode = _mode(found_path)
+        actual_mode = storedform.mode_of(found_path)
         if actual_mode != entry["mode"]:
             differ("mode", "expected %s, found %s" % (entry["mode"], actual_mode))
 

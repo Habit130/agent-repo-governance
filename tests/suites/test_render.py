@@ -179,12 +179,21 @@ class Tokens(RenderCase):
         self.assertFalse(os.path.exists(dest))
 
     def test_fails_on_a_leftover_token(self):
-        for text in ("# Review\n\nVersion @@version@ only\n", "# Review\n@@\n", "@@ version @@\n"):
+        for text in ("# Review\n\nVersion @@version@ only\n", "# Review\n\nVersion @version@@ only\n", "@@default_branch\n"):
             store = self.with_review_text(text)
             code, facts = self.render(store, self.path("out"))
             self.assertEqual(code, 2, text)
             self.assertIn("leftover", facts["error"], text)
             shutil.rmtree(self.path("store"))
+
+    def test_keeps_text_that_merely_contains_at_signs(self):
+        text = "# Review\n\n```diff\n@@ -1,2 +1,2 @@\n```\n\nMail habit@@example.invalid? No: @@ alone is text.\n"
+        store = self.with_review_text(text.replace("habit@@example", "habit@example"))
+        dest = self.path("out")
+        code, facts = self.render(store, dest)
+        self.assertEqual(code, 0, facts)
+        rendered = support.read_text(os.path.join(dest, "docs", "agents", "review.md"))
+        self.assertIn("@@ -1,2 +1,2 @@", rendered)
 
 
 class UnreleasedVersions(RenderCase):
@@ -263,6 +272,23 @@ class IntoAWorktree(RenderCase):
             self.assertIn("AGENTS.md", facts["error"])
             self.assertFalse(os.path.exists(os.path.join(target, "docs", "agents", "review.md")), text)
             self.assertEqual(support.read_text(os.path.join(target, "AGENTS.md")), text)
+            shutil.rmtree(target)
+            shutil.rmtree(self.path("store"))
+
+    def test_refuses_a_target_whose_parent_is_a_symlink_or_a_file_and_writes_nothing(self):
+        outside = self.path("outside")
+        os.makedirs(outside)
+        for plant in ("symlink", "file"):
+            target = support.init_repo(self.path("target"))
+            if plant == "symlink":
+                os.symlink(outside, os.path.join(target, "docs"))
+            else:
+                support.write_tree(target, {"docs": "a file where a directory goes\n"})
+            code, facts = self.render(self.store_copy(), target)
+            self.assertEqual(code, 2, (plant, facts))
+            self.assertIn("docs", facts["error"])
+            self.assertEqual(os.listdir(outside), [], plant)
+            self.assertFalse(os.path.exists(os.path.join(target, "AGENTS.md")), plant)
             shutil.rmtree(target)
             shutil.rmtree(self.path("store"))
 

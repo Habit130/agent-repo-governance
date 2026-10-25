@@ -6,8 +6,8 @@ change.
 
 ## Required order
 
-Run these in order. Steps 2 to 7 are the suites and checks, in CI's step order, and every
-one must pass.
+Run these in order, and every one must pass. Steps 2 to 6 are CI's steps in its order; step
+7 prints the exact comparison that the `materialized-version` suite asserts in CI.
 
 | Step | Command | Evidence / notes |
 | --- | --- | --- |
@@ -51,7 +51,8 @@ or the pre-merge check confirms both jobs are green on the head.
   there, beside `/bin/bash` 3.2.57.
 - Both use no model, credential, network, GitHub writes, third-party actions or package
   installs. The only token is the checkout's read-only `GITHUB_TOKEN`, not kept in the
-  checkout. Standard runners cost nothing on this public repository.
+  checkout. Standard runners are free on a public repository, per GitHub's
+  [runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
 ## The generator's command line
 
@@ -67,14 +68,18 @@ reason under `error`.
 - **Unreleased versions** are rendered or compared only with `--allow-unreleased`, which a
   test, scenario or live-check runner passes for its own run. The generator's procedure
   never passes it.
-- **Exact comparison covers fixed files and fixed parts only**, content and mode. The record
-  needs #46's parser to tell its confirmed values from drift, and skeletons become
+- **Exact comparison** checks content and mode of every fixed file, every fixed part between
+  its markers, and the record up to its one top-level `confirmed:` key. It leaves the
+  confirmed values, which are the repository's own, and skeletons, which become
   repository-owned content.
 - **Rendering a fixed part** writes the whole template when the target is absent, replaces
   the one well-formed marker block when there is one, and refuses anything else. A skeleton
   is written only when its target is absent. Repairing or rebuilding markers is #50's.
 - **One template per target path.** A mixed file's template holds its fixed part between the
-  markers and its skeleton text after them.
+  markers and its skeleton text after them. The record template ends at its `confirmed:`
+  key, and rendering writes the confirmed values below it.
+- **Writes stay inside the destination.** Rendering and materializing refuse a target whose
+  parent is a symlink or not a directory before writing anything.
 - **The change note** opens with `urgency: urgent` or `urgency: when convenient`, then
   `must-act: yes` or `must-act: no`, then a blank line and the plain-Chinese body. Its parser
   and fixtures: `govlib/store.py` and `tests/fixtures/change-notes/`.

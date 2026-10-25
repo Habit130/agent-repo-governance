@@ -53,7 +53,7 @@ class ChangeNoteParser(unittest.TestCase):
                 store.parse_change_note(data)
             self.assertIn(mentioned, str(caught.exception), name)
 
-    def test_rejects_line_endings_and_spaces_git_would_flag(self):
+    def test_rejects_variants_git_would_flag_as_whitespace(self):
         with open(os.path.join(NOTES, "valid", "urgent-must-act.md"), "rb") as handle:
             good = handle.read()
         variants = {
@@ -61,6 +61,8 @@ class ChangeNoteParser(unittest.TestCase):
             "trailing space": good.replace(b"urgency: urgent\n", b"urgency: urgent \n"),
             "byte order mark": b"\xef\xbb\xbf" + good,
             "not utf-8": good + b"\xff",
+            "empty body": b"urgency: urgent\nmust-act: yes\n\n",
+            "blank body": b"urgency: urgent\nmust-act: yes\n\n  \n\n",
         }
         for label, data in variants.items():
             with self.assertRaises(store.ChangeNoteError, msg=label):
@@ -72,6 +74,9 @@ class ChangeNoteParser(unittest.TestCase):
         code, facts = support.govern(["change-note", os.path.join(NOTES, "malformed", "unknown-urgency.md")])
         self.assertEqual(code, 2)
         self.assertIn("urgency", facts["error"])
+        code, facts = support.govern(["change-note", os.path.join(NOTES, "no-such-note.md")])
+        self.assertEqual(code, 2)
+        self.assertIn("no-such-note.md", facts["error"])
 
 
 class Versions(support.TempDirCase):

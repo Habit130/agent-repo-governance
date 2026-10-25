@@ -74,10 +74,13 @@ def cmd_release_check(args):
     return 0 if passed else 1
 
 
+SHELL_SHEBANGS = (b"#!/bin/bash", b"#!/bin/sh", b"#!/usr/bin/env bash", b"#!/usr/bin/env sh")
+
+
 def is_shell_entry(path):
     with open(path, "rb") as handle:
         first = handle.readline()
-    return first.startswith(b"#!/bin/bash") or first.startswith(b"#!/bin/sh")
+    return first.startswith(SHELL_SHEBANGS)
 
 
 def cmd_py39(args):
