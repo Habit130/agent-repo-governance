@@ -46,6 +46,36 @@ configuration.
 - habit squash-merges. Completion is recorded only after the result is verified on the
   default branch of `origin`.
 
+## Verification by change
+
+What a PR needs follows what it changes, not its tier (#44 §11). Each row binds once its tool
+exists: CI now, scenarios with the scenario runner, live checks with the live-check runner.
+Commands and CI jobs: `docs/agents/build.md`.
+
+| The PR changes | It needs |
+| --- | --- |
+| Anything | Green CI: the `linux` and `macos` jobs on the head |
+| The generator's skill text, templates or scripts, or the scenarios | Plus scenario results: each Claude Code scenario three times, plus the OpenCode smoke scenario |
+| The gate workflow, Merge watch, the owner script, the target state, or the record format the gate reads | Plus a live check in the sandbox repository |
+| Version 1's cut | All of the above, plus one end-to-end run in the sandbox repository |
+
+- Until this repository's Initialize, Execution carries the Builder's duty: it runs the
+  scenarios and live checks, posts results naming the commit they ran on, and reruns them
+  after a later push that touches the second or third row.
+- Acceptance, or the low-tier pre-merge check, carries the Reviewer's and the
+  merge-summary writer's duties: it confirms every required result names the head and
+  passed every assertion, judges each Chinese confirmation, and reruns only when results
+  look inconsistent.
+- The record habit reads (the high-tier report, the Acceptance record at medium, the
+  pre-merge check at low) carries a Chinese verification block: one line each for CI,
+  scenarios, and the live check or why none was needed; new fixtures with their miss
+  records; anything not run, with the reason.
+- A failing check never reaches habit: Execution repairs it before handing back, and a
+  review that finds one fails the delivery.
+- Fixtures are never removed or renamed; the release check enforces it. A PR that changes
+  an expected result says so in its change note when it cuts a version, otherwise in its
+  body. A miss that generator output or the install caused adds a fixture in its fix's PR.
+
 ## Code Review Rules
 
 - Rate each finding P0, P1, P2, P3 or Pre-existing, with `path:line` evidence, its trigger,

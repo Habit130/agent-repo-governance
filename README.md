@@ -4,7 +4,7 @@
 
 ## 运行
 
-运行方式尚未配置。
+Suites、检查和 CI 的命令见 `docs/agents/build.md`；generator、install 等程序仍在逐个 delivery 开发中。
 
 GitHub:https://github.com/habit130/agent-repo-governance
 
