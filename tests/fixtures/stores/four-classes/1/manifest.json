@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "templates": [
+    {"path": "AGENTS.md", "class": "fixed part", "mode": "100644"},
+    {"path": ".claude/CLAUDE.md", "class": "fixed part", "mode": "100644"},
+    {"path": "docs/agents/review.md", "class": "fixed", "mode": "100644"},
+    {"path": "docs/agents/build.md", "class": "skeleton", "mode": "100644"},
+    {"path": ".github/governance/owner.sh", "class": "fixed", "mode": "100755"},
+    {"path": ".github/governance/record.yml", "class": "record", "mode": "100644"}
+  ],
+  "relied_on_skills": ["code-review", "tdd"],
+  "labels": [
+    {"name": "needs-triage", "color": "D4C5F9", "description": "Maintainer needs to evaluate this issue"},
+    {"name": "miss", "color": "B60205", "description": "Miss record: something governance should have stopped got through"}
+  ]
+}

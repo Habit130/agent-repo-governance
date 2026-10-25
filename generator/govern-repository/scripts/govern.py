@@ -13,7 +13,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from govlib import GovernError, storedform  # noqa: E402
+from govlib import GovernError, store, storedform  # noqa: E402
 
 DEFAULT_STORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "store")
 
@@ -21,6 +21,19 @@ DEFAULT_STORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 def emit(facts, code=0):
     sys.stdout.write(json.dumps(facts, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
     return code
+
+
+def cmd_store(args):
+    facts = store.Store(args.store).facts()
+    facts["ok"] = True
+    return emit(facts)
+
+
+def cmd_change_note(args):
+    with open(args.file, "rb") as handle:
+        fields = store.parse_change_note(handle.read())
+    fields["ok"] = True
+    return emit(fields)
 
 
 def cmd_materialize(args):
@@ -32,6 +45,14 @@ def build_parser():
     parser = argparse.ArgumentParser(prog="govern.py", description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", metavar="command")
     commands.required = True
+
+    facts = commands.add_parser("store", help="list the store's versions, released versions and installed version")
+    facts.add_argument("--store", default=DEFAULT_STORE)
+    facts.set_defaults(run=cmd_store)
+
+    note = commands.add_parser("change-note", help="read a change note's urgency and must-act fields")
+    note.add_argument("file")
+    note.set_defaults(run=cmd_change_note)
 
     materialize = commands.add_parser(
         "materialize", help="decode a stored tree into a temporary directory or a worktree"
