@@ -13,7 +13,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from govlib import GovernError, store, storedform  # noqa: E402
+from govlib import GovernError, render, store, storedform  # noqa: E402
 
 DEFAULT_STORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "store")
 
@@ -36,6 +36,39 @@ def cmd_change_note(args):
     return emit(fields)
 
 
+def read_json(path):
+    try:
+        with open(path) as handle:
+            return json.load(handle)
+    except (OSError, ValueError) as error:
+        raise GovernError("%s can't be read as JSON: %s" % (path, error))
+
+
+def cmd_render(args):
+    confirmed = read_json(args.confirmed) if args.confirmed else None
+    facts = render.render(
+        store.Store(args.store),
+        args.dest,
+        args.repository,
+        args.default_branch,
+        confirmed=confirmed,
+        version=args.version,
+        allow_unreleased=args.allow_unreleased,
+    )
+    facts["ok"] = True
+    return emit(facts)
+
+
+def add_version_arguments(parser):
+    parser.add_argument("--store", default=DEFAULT_STORE)
+    parser.add_argument("--version", type=int, help="default: the installed version")
+    parser.add_argument(
+        "--allow-unreleased",
+        action="store_true",
+        help="for test, scenario and live-check runners only: allow a version that isn't released, for this run",
+    )
+
+
 def cmd_materialize(args):
     written = storedform.materialize(args.source, args.dest)
     return emit({"ok": True, "dest": os.path.realpath(args.dest), "written": written})
@@ -53,6 +86,14 @@ def build_parser():
     note = commands.add_parser("change-note", help="read a change note's urgency and must-act fields")
     note.add_argument("file")
     note.set_defaults(run=cmd_change_note)
+
+    rendering = commands.add_parser("render", help="render a version into a temporary directory or a worktree")
+    add_version_arguments(rendering)
+    rendering.add_argument("--dest", required=True, help="a temporary directory or a worktree's top level")
+    rendering.add_argument("--repository", required=True, help="owner/name")
+    rendering.add_argument("--default-branch", required=True)
+    rendering.add_argument("--confirmed", help="a JSON file of the record's confirmed values")
+    rendering.set_defaults(run=cmd_render)
 
     materialize = commands.add_parser(
         "materialize", help="decode a stored tree into a temporary directory or a worktree"

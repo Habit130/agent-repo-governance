@@ -31,6 +31,7 @@ AREAS = ("generator", "skill-copies", "machine", "tests")
 SUITES = (
     ("stored-form", "test_stored_form", "linux"),
     ("store", "test_store", "linux"),
+    ("render", "test_render", "linux"),
 )
 
 
