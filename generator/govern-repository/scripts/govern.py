@@ -13,7 +13,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from govlib import GovernError, render, store, storedform  # noqa: E402
+from govlib import GovernError, compare, render, store, storedform  # noqa: E402
 
 DEFAULT_STORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "store")
 
@@ -59,6 +59,24 @@ def cmd_render(args):
     return emit(facts)
 
 
+def cmd_compare(args):
+    repository, default_branch = args.repository, args.default_branch
+    if repository is None or default_branch is None:
+        origin_repository, origin_branch = compare.values_from_origin(args.worktree)
+        repository = repository or origin_repository
+        default_branch = default_branch or origin_branch
+    facts = compare.compare(
+        store.Store(args.store),
+        args.worktree,
+        repository,
+        default_branch,
+        version=args.version,
+        allow_unreleased=args.allow_unreleased,
+    )
+    facts["ok"] = not facts["differences"]
+    return emit(facts, 0 if facts["ok"] else 1)
+
+
 def add_version_arguments(parser):
     parser.add_argument("--store", default=DEFAULT_STORE)
     parser.add_argument("--version", type=int, help="default: the installed version")
@@ -94,6 +112,13 @@ def build_parser():
     rendering.add_argument("--default-branch", required=True)
     rendering.add_argument("--confirmed", help="a JSON file of the record's confirmed values")
     rendering.set_defaults(run=cmd_render)
+
+    comparing = commands.add_parser("compare", help="exact comparison of a worktree's fixed content with a version")
+    add_version_arguments(comparing)
+    comparing.add_argument("--worktree", default=".", help="default: the current directory")
+    comparing.add_argument("--repository", help="owner/name; default: from the worktree's origin")
+    comparing.add_argument("--default-branch", help="default: origin's HEAD in the worktree")
+    comparing.set_defaults(run=cmd_compare)
 
     materialize = commands.add_parser(
         "materialize", help="decode a stored tree into a temporary directory or a worktree"

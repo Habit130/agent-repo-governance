@@ -1,0 +1,17 @@
+{
+  "name": "tally",
+  "version": "0.4.0",
+  "description": "A small command-line time tracker with optional sync to a hosted API",
+  "bin": {
+    "tally": "dist/cli.js"
+  },
+  "scripts": {
+    "lint": "eslint src test",
+    "build": "tsc -p .",
+    "test": "node --test dist/test"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "typescript": "^5.6.0"
+  }
+}

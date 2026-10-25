@@ -3,14 +3,18 @@
 
   stored-form      fail on any stored path that has a dot segment or a loaded name
   py39             confirm this interpreter is Python 3.9 and every script parses as 3.9
+  exact-comparison render version 1 into the tally sample repository and compare it exactly
   suites           run the suites: --job linux, --job macos, --all, or suites by name
 """
 
 import argparse
 import ast
+import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 
 sys.dont_write_bytecode = True
@@ -32,6 +36,8 @@ SUITES = (
     ("stored-form", "test_stored_form", "linux"),
     ("store", "test_store", "linux"),
     ("render", "test_render", "linux"),
+    ("compare", "test_compare", "linux"),
+    ("materialized-version", "test_materialized_version", "linux"),
 )
 
 
@@ -97,6 +103,20 @@ def cmd_py39(args):
     return 0
 
 
+def cmd_exact_comparison(args):
+    import materialized
+
+    root = os.path.realpath(tempfile.mkdtemp(prefix="exact-comparison-"))
+    try:
+        worktree, rendered = materialized.render_version_one(root)
+        code, facts = materialized.compare_version_one(worktree)
+    finally:
+        shutil.rmtree(root, True)
+    facts["rendered"] = rendered["written"]
+    print(json.dumps(facts, indent=2, sort_keys=True))
+    return code
+
+
 def cmd_suites(args):
     names = [name for name, _, _ in SUITES]
     if args.all:
@@ -133,6 +153,9 @@ def build_parser():
     py39 = commands.add_parser("py39", help="check Python 3.9 and /bin/bash compatibility")
     py39.add_argument("--repo", default=REPO)
     py39.set_defaults(run=cmd_py39)
+
+    exact = commands.add_parser("exact-comparison", help="render version 1 into tally and compare it exactly")
+    exact.set_defaults(run=cmd_exact_comparison)
 
     suites = commands.add_parser("suites", help="run suites")
     suites.add_argument("names", nargs="*")
