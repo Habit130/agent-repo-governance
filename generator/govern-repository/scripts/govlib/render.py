@@ -167,14 +167,24 @@ def confirmed_lines(confirmed):
 def record_fixed_part(text, where, template=False):
     """A record's fixed part: everything up to and including its one top-level `confirmed:` key.
 
-    A record template ends at that key; a rendered record holds its confirmed values below it.
+    A record template ends at that key. A rendered record holds only its confirmed values
+    below it: indented lines, blank lines and comments, so no top-level field after the key
+    can redefine one of the fixed part's.
     """
     lines = text.splitlines(True)
     keys = [i for i, line in enumerate(lines) if line.rstrip("\n") == "confirmed:"]
     if len(keys) != 1:
         raise MarkerError("%s has %d top-level `confirmed:` keys; a record has exactly one" % (where, len(keys)))
-    if template and any(line.strip() for line in lines[keys[0] + 1:]):
-        raise RenderError("%s must end with its one top-level `confirmed:` key" % where)
+    for number, line in enumerate(lines[keys[0] + 1:], keys[0] + 2):
+        if not line.strip():
+            continue
+        if template:
+            raise RenderError("%s must end with its one top-level `confirmed:` key" % where)
+        if not line.startswith((" ", "#")):
+            raise MarkerError(
+                "%s line %d is top-level content after the `confirmed:` key, which holds only indented values"
+                % (where, number)
+            )
     return "".join(lines[: keys[0]]) + "confirmed:\n"
 
 

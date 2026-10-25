@@ -69,9 +69,9 @@ reason under `error`.
   test, scenario or live-check runner passes for its own run. The generator's procedure
   never passes it.
 - **Exact comparison** checks content and mode of every fixed file, every fixed part between
-  its markers, and the record up to its one top-level `confirmed:` key. It leaves the
-  confirmed values, which are the repository's own, and skeletons, which become
-  repository-owned content.
+  its markers, and the record up to its one top-level `confirmed:` key, after which only
+  indented values, blank lines and comments may follow. It leaves the confirmed values,
+  which are the repository's own, and skeletons, which become repository-owned content.
 - **Rendering a fixed part** writes the whole template when the target is absent, replaces
   the one well-formed marker block when there is one, and refuses anything else. A skeleton
   is written only when its target is absent. Repairing or rebuilding markers is #50's.

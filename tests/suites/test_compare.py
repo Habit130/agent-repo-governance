@@ -138,6 +138,20 @@ class ExactComparison(RenderCase):
             ],
         )
 
+    def test_names_top_level_fields_after_the_records_confirmed_part(self):
+        worktree = self.rendered()
+        record = os.path.join(worktree, ".github", "governance", "record.yml")
+        with open(record, "a") as handle:
+            handle.write("# a comment is fine\n\n")
+        code, facts = self.compare(worktree)
+        self.assertEqual((code, facts["differences"]), (0, []), facts)
+        with open(record, "a") as handle:
+            handle.write("agent_account: somebody-else\n")
+        code, facts = self.compare(worktree)
+        self.assertEqual(code, 1, facts)
+        self.assertEqual([(d["path"], d["kind"]) for d in facts["differences"]], [(".github/governance/record.yml", "structure")])
+        self.assertIn("line 17", facts["differences"][0]["detail"])
+
     def test_names_a_record_without_its_confirmed_key(self):
         worktree = self.rendered()
         self.edit(worktree, ".github/governance/record.yml", "confirmed:\n", "confirmed_values:\n")
