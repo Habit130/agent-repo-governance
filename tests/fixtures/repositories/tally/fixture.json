@@ -1,0 +1,13 @@
+{
+  "description": "The prototype's made-up sample repository (#35, prototype/governance-v1-sample at 8cd8b97): a small public TypeScript command-line time tracker with optional sync to a hosted API, before Initialize. repo/ holds its tree in stored form; confirmed holds habit's confirmed values for it from the prototype.",
+  "repository": "Habit130/tally",
+  "default_branch": "main",
+  "visibility": "public",
+  "confirmed": {
+    "sensitive_paths": [
+      {"pattern": "src/sync/auth.ts", "floor": "medium"},
+      {"pattern": "scripts/release.sh", "floor": "high"}
+    ],
+    "required_checks": ["test"]
+  }
+}

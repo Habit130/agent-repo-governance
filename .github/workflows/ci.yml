@@ -1,0 +1,42 @@
+name: CI
+
+# Every PR, with no path filter, so both jobs can become required checks at this
+# repository's Initialize. No model, credential, network, GitHub writes, third-party actions
+# or package installs; the job names stay stable. docs/agents/build.md lists what each runs.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: linux
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the PR's merge commit and its base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Stored-form check
+        run: python3 tests/run.py stored-form
+      - name: Release check
+        run: python3 tests/run.py release-check --base HEAD^1 --head HEAD
+      - name: Linux suites
+        run: python3 tests/run.py suites --job linux
+
+  macos:
+    name: macos
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Check out the PR's merge commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Python 3.9 and bash 3.2 compatibility
+        run: /usr/bin/python3 tests/run.py py39
+      - name: Every suite under Python 3.9
+        run: /usr/bin/python3 tests/run.py suites --all

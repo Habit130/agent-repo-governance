@@ -3,3 +3,6 @@
 # Machine-specific agent context.
 .local/*
 !.local/README.md
+
+# Python bytecode from running the suites.
+__pycache__/

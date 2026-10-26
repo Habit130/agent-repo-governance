@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "templates": [],
+  "relied_on_skills": [
+    "code-review",
+    "codebase-design",
+    "diagnosing-bugs",
+    "domain-modeling",
+    "grilling",
+    "implement-spec",
+    "pr",
+    "prototype",
+    "research",
+    "retro",
+    "tdd",
+    "to-spec",
+    "to-tickets",
+    "triage",
+    "wayfinder",
+    "writing-for-agents"
+  ],
+  "labels": [
+    {"name": "needs-triage", "color": "D4C5F9", "description": "Maintainer needs to evaluate this issue"},
+    {"name": "needs-info", "color": "D876E3", "description": "Waiting on reporter for more information"},
+    {"name": "ready-for-agent", "color": "0E8A16", "description": "Fully specified, ready for an AFK agent"},
+    {"name": "ready-for-human", "color": "FBCA04", "description": "Requires human implementation"},
+    {"name": "wontfix", "color": "FFFFFF", "description": "Will not be actioned"},
+    {"name": "wayfinder:map", "color": "5319E7", "description": "Wayfinder map: the index of a planning effort"},
+    {"name": "wayfinder:research", "color": "1D76DB", "description": "Wayfinder ticket: surface facts a decision waits on"},
+    {"name": "wayfinder:prototype", "color": "FBCA04", "description": "Wayfinder ticket: a rough artifact to react to"},
+    {"name": "wayfinder:grilling", "color": "D93F0B", "description": "Wayfinder ticket: a decision reached in conversation with habit"},
+    {"name": "wayfinder:task", "color": "0E8A16", "description": "Wayfinder ticket: work that must happen before a decision"},
+    {"name": "miss", "color": "B60205", "description": "Miss record: something governance should have stopped got through"}
+  ]
+}

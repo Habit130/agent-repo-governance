@@ -1,0 +1,47 @@
+{
+  "description": "Recorded Codex CLI output for a fixture machine home, replayed by the Codex stand-in in its self-tests. Synthetic: written in a plausible shape, not captured from the Codex CLI; the machine check's delivery records real output. ${HOME} expands from the stand-in's environment.",
+  "tool": "codex",
+  "calls": [
+    {
+      "args": [
+        "execpolicy",
+        "check",
+        "--rules",
+        "${HOME}/.codex/rules/governance.rules",
+        "--",
+        "gh",
+        "secret",
+        "set",
+        "TOKEN"
+      ],
+      "stdout": "{\"decision\":\"forbidden\",\"matchedRules\":[{\"pattern\":[\"gh\",\"secret\",\"set\"]}]}\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "execpolicy",
+        "check",
+        "--rules",
+        "${HOME}/.codex/rules/governance.rules",
+        "--",
+        "gh",
+        "secret",
+        "list"
+      ],
+      "stdout": "{\"decision\":\"allow\",\"matchedRules\":[]}\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "debug",
+        "prompt-input",
+        "x"
+      ],
+      "stdout": "<skills>\n- code-review: Review the changes since a fixed point.\n- tdd: Test-driven development.\n</skills>\n",
+      "stderr": "",
+      "exit": 0
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "base": {
+    "generator/govern-repository/store/1/manifest.json": "{\"version\": 1}\n",
+    "generator/govern-repository/store/1/templates/docs/agents/review.md": "fixed text\n",
+    "generator/govern-repository/store/1/templates/dot-github/governance/owner.sh": {
+      "content": "#!/bin/bash\necho owner\n",
+      "mode": "100755"
+    },
+    "tests/fixtures/change-notes/valid/a.md": "urgency: urgent\nmust-act: no\n\n正文。\n",
+    "tests/fixtures/repositories/x/repo/README.md": "x\n"
+  },
+  "description": "Version 1 has no note, and the head adds version 2 with a note, releasing 2 before 1.",
+  "expect": {
+    "consecutive": "PASS",
+    "fixtures": "PASS",
+    "frozen": "PASS",
+    "note-fields": "PASS",
+    "notes": "FAIL"
+  },
+  "head": {
+    "generator/govern-repository/store/1/manifest.json": "{\"version\": 1}\n",
+    "generator/govern-repository/store/1/templates/docs/agents/review.md": "fixed text\n",
+    "generator/govern-repository/store/1/templates/dot-github/governance/owner.sh": {
+      "content": "#!/bin/bash\necho owner\n",
+      "mode": "100755"
+    },
+    "generator/govern-repository/store/2/change-note.md": "urgency: urgent\nmust-act: no\n\nversion 2 修补了一条 hard rule 的漏洞。\n",
+    "generator/govern-repository/store/2/manifest.json": "{\"version\": 2}\n",
+    "generator/govern-repository/store/2/templates/docs/agents/review.md": "fixed text\n",
+    "generator/govern-repository/store/2/templates/dot-github/governance/owner.sh": {
+      "content": "#!/bin/bash\necho owner\n",
+      "mode": "100755"
+    },
+    "tests/fixtures/change-notes/valid/a.md": "urgency: urgent\nmust-act: no\n\n正文。\n",
+    "tests/fixtures/repositories/x/repo/README.md": "x\n"
+  }
+}

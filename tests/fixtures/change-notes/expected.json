@@ -1,0 +1,34 @@
+{
+  "description": "Expected results of the change-note parser: the two fields of each valid note, and the field or part each malformed note's refusal names. The suite builds the CRLF, trailing-space and empty-body variants from valid/urgent-must-act.md, so that no fixture carries whitespace git flags.",
+  "malformed": {
+    "capitalized-keys.md": "urgency",
+    "empty.md": "urgency",
+    "fields-swapped.md": "urgency",
+    "missing-urgency.md": "urgency",
+    "no-blank-line.md": "blank line",
+    "no-space-after-colon.md": "urgency",
+    "only-urgency.md": "must-act",
+    "underscore-key.md": "must-act",
+    "unknown-must-act.md": "must-act",
+    "unknown-urgency.md": "urgency",
+    "urgency-twice.md": "must-act"
+  },
+  "valid": {
+    "convenient-must-act.md": {
+      "must_act": "yes",
+      "urgency": "when convenient"
+    },
+    "convenient-no-action.md": {
+      "must_act": "no",
+      "urgency": "when convenient"
+    },
+    "urgent-must-act.md": {
+      "must_act": "yes",
+      "urgency": "urgent"
+    },
+    "urgent-no-action.md": {
+      "must_act": "no",
+      "urgency": "urgent"
+    }
+  }
+}
