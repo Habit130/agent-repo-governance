@@ -1,0 +1,19 @@
+version: 1
+agent_account: Habit098
+sensitive_paths:
+  - pattern: "**/AGENTS.md"
+    floor: medium
+confirmed:
+  sensitive_paths:
+    - pattern: "Src/Auth.TS"
+      floor: high
+    - pattern: "src/?/config.json"
+      floor: medium
+    - pattern: "src/{a,b}/[slug].ts"
+      floor: medium
+    - pattern: "deploy/**/secret*.env"
+      floor: high
+    - pattern: "src/auth/**"
+      floor: high
+  required_checks:
+    - "test"

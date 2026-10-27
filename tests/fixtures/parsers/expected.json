@@ -1,0 +1,754 @@
+{
+  "description": "Expected results of the shared parser fixtures (#44 §5), in the shapes tests/suites/parsers.py describes. record and pr_body map each file under record/ and pr-body/ to its result; record_texts and pr_body_texts hold the cases git diff --check would flag, as inline texts. A record that doesn't parse expects \"doesn't parse\" and nothing about why, so any parser can be registered against these results unchanged.",
+  "record": {
+    "alias.yml": "doesn't parse",
+    "anchor.yml": "doesn't parse",
+    "byte-order-mark.yml": "doesn't parse",
+    "colons-and-hashes-in-text.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/a: b # not a comment",
+            "floor": "high"
+          },
+          {
+            "pattern": "src/c#d",
+            "floor": "high"
+          },
+          {
+            "pattern": "src/e:f",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "comment-without-space.yml": "doesn't parse",
+    "comments-and-blank-lines.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "comments-only.yml": "doesn't parse",
+    "compact-sequences.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "complex-key.yml": "doesn't parse",
+    "confirmed-scalar.yml": "doesn't parse",
+    "directive.yml": "doesn't parse",
+    "document-marker.yml": "doesn't parse",
+    "duplicate-key.yml": "doesn't parse",
+    "empty-confirmed-lists.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        },
+        {
+          "pattern": "**/AGENTS.override.md",
+          "floor": "medium"
+        },
+        {
+          "pattern": "**/CLAUDE.md",
+          "floor": "medium"
+        },
+        {
+          "pattern": "docs/agents/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".claude/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".opencode/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": "opencode.json",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".dsh/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".agents/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".codex/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".cursor/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".github/**",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [],
+        "required_checks": []
+      }
+    },
+    "empty-flow-sequence.yml": "doesn't parse",
+    "empty-item.yml": "doesn't parse",
+    "empty-pattern.yml": "doesn't parse",
+    "empty.yml": "doesn't parse",
+    "escapes.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "say \"hi\" \\ then test"
+        ]
+      }
+    },
+    "floor-before-pattern.yml": "doesn't parse",
+    "floor-capitalized.yml": "doesn't parse",
+    "floor-low.yml": "doesn't parse",
+    "flow-mapping.yml": "doesn't parse",
+    "flow-sequence.yml": "doesn't parse",
+    "folded-block-scalar.yml": "doesn't parse",
+    "four-space-indent.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "indented-root.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "item-on-next-line.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "keys-out-of-order.yml": "doesn't parse",
+    "line-separator.yml": "doesn't parse",
+    "literal-block-scalar.yml": "doesn't parse",
+    "mapping-in-value.yml": "doesn't parse",
+    "missing-agent-account.yml": "doesn't parse",
+    "missing-confirmed.yml": "doesn't parse",
+    "missing-floor.yml": "doesn't parse",
+    "missing-required-checks.yml": "doesn't parse",
+    "missing-version.yml": "doesn't parse",
+    "multi-line-plain-scalar.yml": "doesn't parse",
+    "multi-line-quoted-scalar.yml": "doesn't parse",
+    "next-line-character.yml": "doesn't parse",
+    "non-ascii-text.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "docs/über/**",
+            "floor": "high"
+          },
+          {
+            "pattern": "認証/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "noncharacter.yml": "doesn't parse",
+    "not-utf-8.yml": "doesn't parse",
+    "other-escape.yml": "doesn't parse",
+    "pattern-without-value.yml": "doesn't parse",
+    "patterns-kept-as-written.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "Src/Auth.TS",
+            "floor": "high"
+          },
+          {
+            "pattern": "src/?/config.json",
+            "floor": "medium"
+          },
+          {
+            "pattern": "src/{a,b}/[slug].ts",
+            "floor": "medium"
+          },
+          {
+            "pattern": "deploy/**/secret*.env",
+            "floor": "high"
+          },
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "plain-boolean-check.yml": "doesn't parse",
+    "plain-digit-led-pattern.yml": "doesn't parse",
+    "plain-null-check.yml": "doesn't parse",
+    "plain-number-check.yml": "doesn't parse",
+    "plain-scalars.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "docs/agents/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".github/**",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/[id]/page.tsx",
+            "floor": "high"
+          },
+          {
+            "pattern": "scripts/release-v2.sh",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "CI / test",
+          "lint-and-typecheck"
+        ]
+      }
+    },
+    "quoted-digit-led-pattern.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "2fa/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "quoted-keys.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "sensitive-paths-scalar.yml": "doesn't parse",
+    "single-quoted-scalar.yml": "doesn't parse",
+    "tag.yml": "doesn't parse",
+    "tally.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        },
+        {
+          "pattern": "**/AGENTS.override.md",
+          "floor": "medium"
+        },
+        {
+          "pattern": "**/CLAUDE.md",
+          "floor": "medium"
+        },
+        {
+          "pattern": "docs/agents/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".claude/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".opencode/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": "opencode.json",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".dsh/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".agents/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".codex/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".cursor/**",
+          "floor": "medium"
+        },
+        {
+          "pattern": ".github/**",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/sync/auth.ts",
+            "floor": "medium"
+          },
+          {
+            "pattern": "scripts/release.sh",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "template-unrendered.yml": "doesn't parse",
+    "top-level-sequence.yml": "doesn't parse",
+    "uneven-indentation.yml": "doesn't parse",
+    "unknown-confirmed-key.yml": "doesn't parse",
+    "unknown-path-key.yml": "doesn't parse",
+    "unknown-top-level-key.yml": "doesn't parse",
+    "unquoted-double-star.yml": "doesn't parse",
+    "value-on-next-line.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "version-leading-zero.yml": "doesn't parse",
+    "version-quoted.yml": "doesn't parse",
+    "version-zero.yml": "doesn't parse"
+  },
+  "record_texts": {
+    "blank-lines-at-end": {
+      "text": "version: 1\nagent_account: Habit098\nsensitive_paths:\n  - pattern: \"**/AGENTS.md\"\n    floor: medium\nconfirmed:\n  sensitive_paths:\n    - pattern: \"src/auth/**\"\n      floor: high\n  required_checks:\n    - \"test\"\n\n\n  \n",
+      "expected": {
+        "version": 1,
+        "agent_account": "Habit098",
+        "sensitive_paths": [
+          {
+            "pattern": "**/AGENTS.md",
+            "floor": "medium"
+          }
+        ],
+        "confirmed": {
+          "sensitive_paths": [
+            {
+              "pattern": "src/auth/**",
+              "floor": "high"
+            }
+          ],
+          "required_checks": [
+            "test"
+          ]
+        }
+      }
+    },
+    "crlf-line-endings": {
+      "text": "version: 1\r\nagent_account: Habit098\r\nsensitive_paths:\r\n  - pattern: \"**/AGENTS.md\"\r\n    floor: medium\r\nconfirmed:\r\n  sensitive_paths:\r\n    - pattern: \"src/auth/**\"\r\n      floor: high\r\n  required_checks:\r\n    - \"test\"\r\n",
+      "expected": "doesn't parse"
+    },
+    "no-final-newline": {
+      "text": "version: 1\nagent_account: Habit098\nsensitive_paths:\n  - pattern: \"**/AGENTS.md\"\n    floor: medium\nconfirmed:\n  sensitive_paths:\n    - pattern: \"src/auth/**\"\n      floor: high\n  required_checks:\n    - \"test\"",
+      "expected": {
+        "version": 1,
+        "agent_account": "Habit098",
+        "sensitive_paths": [
+          {
+            "pattern": "**/AGENTS.md",
+            "floor": "medium"
+          }
+        ],
+        "confirmed": {
+          "sensitive_paths": [
+            {
+              "pattern": "src/auth/**",
+              "floor": "high"
+            }
+          ],
+          "required_checks": [
+            "test"
+          ]
+        }
+      }
+    },
+    "tab-after-colon": {
+      "text": "version:\t1\nagent_account: Habit098\nsensitive_paths:\n  - pattern: \"**/AGENTS.md\"\n    floor: medium\nconfirmed:\n  sensitive_paths:\n    - pattern: \"src/auth/**\"\n      floor: high\n  required_checks:\n    - \"test\"\n",
+      "expected": "doesn't parse"
+    },
+    "tab-in-comment": {
+      "text": "#\tnotice\nversion: 1\nagent_account: Habit098\nsensitive_paths:\n  - pattern: \"**/AGENTS.md\"\n    floor: medium\nconfirmed:\n  sensitive_paths:\n    - pattern: \"src/auth/**\"\n      floor: high\n  required_checks:\n    - \"test\"\n",
+      "expected": "doesn't parse"
+    },
+    "tab-indentation": {
+      "text": "version: 1\nagent_account: Habit098\nsensitive_paths:\n  - pattern: \"**/AGENTS.md\"\n\tfloor: medium\nconfirmed:\n  sensitive_paths:\n    - pattern: \"src/auth/**\"\n      floor: high\n  required_checks:\n    - \"test\"\n",
+      "expected": "doesn't parse"
+    },
+    "trailing-spaces": {
+      "text": "version: 1   \nagent_account: Habit098   \nsensitive_paths:   \n  - pattern: \"**/AGENTS.md\"   \n    floor: medium   \nconfirmed:   \n  sensitive_paths:   \n    - pattern: \"src/auth/**\"   \n      floor: high   \n  required_checks:   \n    - \"test\"   \n",
+      "expected": {
+        "version": 1,
+        "agent_account": "Habit098",
+        "sensitive_paths": [
+          {
+            "pattern": "**/AGENTS.md",
+            "floor": "medium"
+          }
+        ],
+        "confirmed": {
+          "sensitive_paths": [
+            {
+              "pattern": "src/auth/**",
+              "floor": "high"
+            }
+          ],
+          "required_checks": [
+            "test"
+          ]
+        }
+      }
+    }
+  },
+  "pr_body": {
+    "capitalized-tier.md": {
+      "risk": "malformed",
+      "reverts": null
+    },
+    "doubled-identical-risk.md": {
+      "risk": "more than one",
+      "reverts": null
+    },
+    "doubled-reverts.md": {
+      "risk": {
+        "tier": "low",
+        "reason": "a pure revert of the report's column change"
+      },
+      "reverts": "more than one"
+    },
+    "doubled-risk.md": {
+      "risk": "more than one",
+      "reverts": null
+    },
+    "empty-body.md": {
+      "risk": "missing",
+      "reverts": null
+    },
+    "empty-reason.md": {
+      "risk": "malformed",
+      "reverts": null
+    },
+    "en-dash-separator.md": {
+      "risk": "malformed",
+      "reverts": null
+    },
+    "hyphen-separator.md": {
+      "risk": "malformed",
+      "reverts": null
+    },
+    "missing-risk.md": {
+      "risk": "missing",
+      "reverts": null
+    },
+    "no-space-after-colon.md": {
+      "risk": "malformed",
+      "reverts": null
+    },
+    "reason-with-dashes.md": {
+      "risk": {
+        "tier": "high",
+        "reason": "touches src/sync/auth.ts — and scripts/release.sh"
+      },
+      "reverts": null
+    },
+    "reverts-pr-number.md": {
+      "risk": {
+        "tier": "low",
+        "reason": "a pure revert of the report's column change"
+      },
+      "reverts": "malformed"
+    },
+    "reverts-short-sha.md": {
+      "risk": {
+        "tier": "low",
+        "reason": "a pure revert of the report's column change"
+      },
+      "reverts": "malformed"
+    },
+    "reverts-trailing-text.md": {
+      "risk": {
+        "tier": "low",
+        "reason": "a pure revert of the report's column change"
+      },
+      "reverts": "malformed"
+    },
+    "reverts-uppercase-sha.md": {
+      "risk": {
+        "tier": "low",
+        "reason": "a pure revert of the report's column change"
+      },
+      "reverts": "malformed"
+    },
+    "reverts-without-risk.md": {
+      "risk": "missing",
+      "reverts": {
+        "sha": "82b74156b7a5748cd86b38bf9de102f67d5f94ea"
+      }
+    },
+    "reverts-without-value.md": {
+      "risk": {
+        "tier": "low",
+        "reason": "a pure revert of the report's column change"
+      },
+      "reverts": "malformed"
+    },
+    "risk-in-code-fence.md": {
+      "risk": "more than one",
+      "reverts": null
+    },
+    "risk-in-html-comment.md": {
+      "risk": "more than one",
+      "reverts": null
+    },
+    "risk-not-at-line-start.md": {
+      "risk": "missing",
+      "reverts": null
+    },
+    "risk-without-reverts.md": {
+      "risk": {
+        "tier": "medium",
+        "reason": "changes the report command's output"
+      },
+      "reverts": null
+    },
+    "unfilled-template.md": {
+      "risk": "malformed",
+      "reverts": null
+    },
+    "unknown-tier.md": {
+      "risk": "malformed",
+      "reverts": null
+    },
+    "valid-pair.md": {
+      "risk": {
+        "tier": "low",
+        "reason": "a pure revert of the report's column change"
+      },
+      "reverts": {
+        "sha": "82b74156b7a5748cd86b38bf9de102f67d5f94ea"
+      }
+    }
+  },
+  "pr_body_texts": {
+    "crlf-line-endings": {
+      "text": "Closes #12\r\n\r\nRisk: low — a pure revert of the report's column change\r\n\r\nReverts: 82b74156b7a5748cd86b38bf9de102f67d5f94ea\r\n\r\n## Summary\r\n\r\n- Restores the report's old column order.\r\n\r\n## Merge Danger\r\n\r\n- **Door:** two-way.\r\n- **Blast radius:** the report command.\r\n- **Revert:** revert this PR.\r\n",
+      "expected": {
+        "risk": {
+          "tier": "low",
+          "reason": "a pure revert of the report's column change"
+        },
+        "reverts": {
+          "sha": "82b74156b7a5748cd86b38bf9de102f67d5f94ea"
+        }
+      }
+    },
+    "tab-after-colon": {
+      "text": "Closes #12\n\nRisk:\tmedium — changes the report command's output\n\n## Summary\n\n- Restores the report's old column order.\n\n## Merge Danger\n\n- **Door:** two-way.\n- **Blast radius:** the report command.\n- **Revert:** revert this PR.\n",
+      "expected": {
+        "risk": "malformed",
+        "reverts": null
+      }
+    },
+    "trailing-spaces": {
+      "text": "Closes #12\n\nRisk: low — a pure revert of the report's column change   \n\nReverts: 82b74156b7a5748cd86b38bf9de102f67d5f94ea \t\n\n## Summary\n\n- Restores the report's old column order.\n\n## Merge Danger\n\n- **Door:** two-way.\n- **Blast radius:** the report command.\n- **Revert:** revert this PR.\n",
+      "expected": {
+        "risk": {
+          "tier": "low",
+          "reason": "a pure revert of the report's column change"
+        },
+        "reverts": {
+          "sha": "82b74156b7a5748cd86b38bf9de102f67d5f94ea"
+        }
+      }
+    },
+    "whitespace-only-reason": {
+      "text": "Closes #12\n\nRisk: medium —    \n\n## Summary\n\n- Restores the report's old column order.\n\n## Merge Danger\n\n- **Door:** two-way.\n- **Blast radius:** the report command.\n- **Revert:** revert this PR.\n",
+      "expected": {
+        "risk": "malformed",
+        "reverts": null
+      }
+    }
+  }
+}

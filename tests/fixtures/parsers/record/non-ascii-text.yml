@@ -1,0 +1,13 @@
+version: 1
+agent_account: Habit098
+sensitive_paths:
+  - pattern: "**/AGENTS.md"
+    floor: medium
+confirmed:
+  sensitive_paths:
+    - pattern: "docs/über/**"
+      floor: high
+    - pattern: 認証/**
+      floor: high
+  required_checks:
+    - "test"

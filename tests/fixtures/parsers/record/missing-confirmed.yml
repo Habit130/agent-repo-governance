@@ -1,0 +1,5 @@
+version: 1
+agent_account: Habit098
+sensitive_paths:
+  - pattern: "**/AGENTS.md"
+    floor: medium

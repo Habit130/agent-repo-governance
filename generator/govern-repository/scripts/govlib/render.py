@@ -15,7 +15,7 @@ Per class, into a temporary directory or a target worktree's top level:
 import os
 import re
 
-from govlib import GovernError, storedform
+from govlib import GovernError, record, storedform
 from govlib.store import StoreError
 
 TOKEN = re.compile(r"@@([A-Za-z0-9_]*)@@")
@@ -23,15 +23,12 @@ TOKEN = re.compile(r"@@([A-Za-z0-9_]*)@@")
 # diff hunk header, is text.
 LEFTOVER = re.compile(r"@@[A-Za-z0-9_]|[A-Za-z0-9_]@@")
 NAMES = ("version", "repository", "default_branch")
-FLOORS = ("medium", "high")
 
 BEGIN = re.compile(r"^<!-- governance:begin v[1-9][0-9]* -->$")
 END = "<!-- governance:end -->"
 
 _REPOSITORY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$")
 _BRANCH = re.compile(r"^[A-Za-z0-9._/-]+$")
-_CONFIRMED_KEYS = {"sensitive_paths", "required_checks"}
-_PATH_KEYS = {"pattern", "floor"}
 
 
 class RenderError(GovernError):
@@ -128,24 +125,24 @@ def _quoted(value):
 
 
 def _text_value(value, what):
-    if not isinstance(value, str) or not value or any(ord(ch) < 32 or ord(ch) == 127 for ch in value):
-        raise RenderError("%s %r must be non-empty text on one line" % (what, value))
+    if not record.is_text(value):
+        raise RenderError("%s %r must be non-empty text on one line, with no control character" % (what, value))
     return value
 
 
 def check_confirmed(confirmed):
-    """Validate confirmed values: sensitive paths with floors, and required checks."""
-    if not isinstance(confirmed, dict) or set(confirmed) != _CONFIRMED_KEYS:
+    """Validate confirmed values: sensitive paths with floors, and required checks, as the record holds them."""
+    if not isinstance(confirmed, dict) or set(confirmed) != set(record.CONFIRMED_KEYS):
         raise RenderError("confirmed values must hold exactly sensitive_paths and required_checks")
     paths = confirmed["sensitive_paths"]
     checks = confirmed["required_checks"]
     if not isinstance(paths, list) or not isinstance(checks, list):
         raise RenderError("confirmed sensitive_paths and required_checks must be lists")
     for entry in paths:
-        if not isinstance(entry, dict) or set(entry) != _PATH_KEYS:
+        if not isinstance(entry, dict) or set(entry) != set(record.PATH_KEYS):
             raise RenderError("a confirmed sensitive path needs exactly a pattern and a floor: %r" % (entry,))
         _text_value(entry["pattern"], "sensitive path pattern")
-        if entry["floor"] not in FLOORS:
+        if entry["floor"] not in record.FLOORS:
             raise RenderError("sensitive path %s has floor %r; a floor is medium or high" % (entry["pattern"], entry["floor"]))
     for check in checks:
         _text_value(check, "required check")
@@ -153,7 +150,10 @@ def check_confirmed(confirmed):
 
 
 def confirmed_lines(confirmed):
-    """The record's `confirmed` part below its key. An empty list is its key with no items."""
+    """The record's `confirmed` part below its key, every value double-quoted.
+
+    An empty list is its key with no items, which the record format reads as no items.
+    """
     lines = ["  sensitive_paths:"]
     for entry in confirmed["sensitive_paths"]:
         lines.append("    - pattern: %s" % _quoted(entry["pattern"]))
@@ -171,7 +171,9 @@ def record_fixed_part(text, where, template=False):
     below it: indented lines, blank lines and comments, so no top-level field after the key
     can redefine one of the fixed part's.
     """
-    lines = text.splitlines(True)
+    # Only LF ends a line in a record, as for its parser.
+    lines = [line + "\n" for line in text.split("\n")]
+    lines[-1] = lines[-1][:-1]
     keys = [i for i, line in enumerate(lines) if line.rstrip("\n") == "confirmed:"]
     if len(keys) != 1:
         raise MarkerError("%s has %d top-level `confirmed:` keys; a record has exactly one" % (where, len(keys)))
@@ -189,11 +191,16 @@ def record_fixed_part(text, where, template=False):
 
 
 def fill_record(text, confirmed, where):
-    """Insert confirmed values under the record template's final `confirmed:` key."""
+    """Insert confirmed values under the record template's final `confirmed:` key; the result must parse."""
     fixed = record_fixed_part(text, where, template=True)
     if confirmed is None:
         raise RenderError("%s is the record, and rendering it needs the record's confirmed values" % where)
-    return fixed + confirmed_lines(confirmed)
+    filled = fixed + confirmed_lines(confirmed)
+    try:
+        record.parse(filled.encode("utf-8"))
+    except record.RecordError as error:
+        raise RenderError("%s renders a record that doesn't parse: %s" % (where, error))
+    return filled
 
 
 def _read_template(store, version, path):
