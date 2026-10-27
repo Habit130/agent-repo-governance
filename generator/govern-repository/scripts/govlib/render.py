@@ -29,8 +29,6 @@ END = "<!-- governance:end -->"
 
 _REPOSITORY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$")
 _BRANCH = re.compile(r"^[A-Za-z0-9._/-]+$")
-_CONFIRMED_KEYS = {"sensitive_paths", "required_checks"}
-_PATH_KEYS = {"pattern", "floor"}
 
 
 class RenderError(GovernError):
@@ -134,14 +132,14 @@ def _text_value(value, what):
 
 def check_confirmed(confirmed):
     """Validate confirmed values: sensitive paths with floors, and required checks, as the record holds them."""
-    if not isinstance(confirmed, dict) or set(confirmed) != _CONFIRMED_KEYS:
+    if not isinstance(confirmed, dict) or set(confirmed) != set(record.CONFIRMED_KEYS):
         raise RenderError("confirmed values must hold exactly sensitive_paths and required_checks")
     paths = confirmed["sensitive_paths"]
     checks = confirmed["required_checks"]
     if not isinstance(paths, list) or not isinstance(checks, list):
         raise RenderError("confirmed sensitive_paths and required_checks must be lists")
     for entry in paths:
-        if not isinstance(entry, dict) or set(entry) != _PATH_KEYS:
+        if not isinstance(entry, dict) or set(entry) != set(record.PATH_KEYS):
             raise RenderError("a confirmed sensitive path needs exactly a pattern and a floor: %r" % (entry,))
         _text_value(entry["pattern"], "sensitive path pattern")
         if entry["floor"] not in record.FLOORS:

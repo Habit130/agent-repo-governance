@@ -94,8 +94,9 @@ script holds the governed repository's, which #55 builds.
 
 - **The record**: `govlib/record.py`, whose docstring defines the format in full. A list key
   with no items is null in YAML, and the record reads it as an empty list, which is how
-  rendering writes one. Text that YAML could read as null, a boolean or a number doesn't
-  parse unless double-quoted, and rendering double-quotes every confirmed value.
+  rendering writes one. Text that starts like a number, or that YAML could read as null or
+  a boolean, doesn't parse unless double-quoted, and rendering double-quotes every
+  confirmed value.
 - **The PR body's `Risk:` and `Reverts:` lines**: `govlib/prbody.py`. Only lines that start
   with `Risk:` or `Reverts:` count, inside comments and code fences too, and a CRLF body
   reads as LF.

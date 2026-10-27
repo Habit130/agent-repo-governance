@@ -20,7 +20,7 @@ DIRECTORIES = {"record": "record", "pr_body": "pr-body"}
 
 
 def load_expected():
-    with open(os.path.join(FIXTURES, "expected.json")) as handle:
+    with open(os.path.join(FIXTURES, "expected.json"), encoding="utf-8") as handle:
         return json.load(handle)
 
 

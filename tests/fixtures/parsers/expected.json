@@ -271,6 +271,7 @@
         ]
       }
     },
+    "noncharacter.yml": "doesn't parse",
     "not-utf-8.yml": "doesn't parse",
     "other-escape.yml": "doesn't parse",
     "pattern-without-value.yml": "doesn't parse",
@@ -312,6 +313,7 @@
       }
     },
     "plain-boolean-check.yml": "doesn't parse",
+    "plain-digit-led-pattern.yml": "doesn't parse",
     "plain-null-check.yml": "doesn't parse",
     "plain-number-check.yml": "doesn't parse",
     "plain-scalars.yml": {
@@ -341,6 +343,27 @@
         "required_checks": [
           "CI / test",
           "lint-and-typecheck"
+        ]
+      }
+    },
+    "quoted-digit-led-pattern.yml": {
+      "version": 1,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "2fa/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
         ]
       }
     },

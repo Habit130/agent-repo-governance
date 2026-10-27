@@ -7,9 +7,9 @@ template, rendering's confirmed values read back, and the parser's refusals nami
 
 import json
 import os
-import shutil
 import unittest
 
+import materialized
 import support
 from govlib import GovernError, record, store
 
@@ -36,13 +36,7 @@ NOTICE = (
     "`confirmed` follows AGENTS.md, Governance files.\n"
 )
 
-TALLY = {
-    "sensitive_paths": [
-        {"pattern": "src/sync/auth.ts", "floor": "medium"},
-        {"pattern": "scripts/release.sh", "floor": "high"},
-    ],
-    "required_checks": ["test"],
-}
+TALLY = materialized.tally_fixture()["confirmed"]
 EMPTY = {"sensitive_paths": [], "required_checks": []}
 # Confirmed values whose text YAML would misread unquoted, or that need escaping.
 AWKWARD = {
@@ -124,7 +118,10 @@ class VersionOneRecordTemplate(RenderedRecord):
 
 class ConfirmedValuesTheParserRefuses(RenderedRecord):
     def test_rendering_refuses_them_and_writes_nothing(self):
-        for text in ("line\u2028separator", "next\u0085line", "byte\ufefforder", "a\ttab", "c1\x9bcontrol", ""):
+        for text in (
+            "line\u2028separator", "next\u0085line", "byte\ufefforder", "a\ttab", "c1\x9bcontrol",
+            "non\uffffcharacter", "lone\ud800surrogate", "",
+        ):
             for confirmed in (
                 {"sensitive_paths": [{"pattern": text, "floor": "high"}], "required_checks": []},
                 {"sensitive_paths": [], "required_checks": [text]},

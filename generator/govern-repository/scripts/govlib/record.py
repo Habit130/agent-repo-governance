@@ -4,14 +4,16 @@ A record is a strict YAML subset: block mappings and sequences, plain or double-
 scalars, and `#` comments. Anything else doesn't parse. In detail:
 
 - The file is UTF-8 with LF line endings. It holds no byte order mark, no tab, no other
-  control character, and none of U+2028 and U+2029, which some YAML readers take as line
-  breaks. A final newline, trailing spaces and blank lines are optional.
+  control character, none of U+2028 and U+2029, which some YAML readers take as line
+  breaks, and neither U+FFFE nor U+FFFF. A final newline, trailing spaces and blank lines
+  are optional.
 - Indentation is spaces. A nested block is indented more than its key, and a sequence may
   also sit at its key's own indentation.
 - A double-quoted scalar closes on its line, and its only escapes are `\\"` and `\\\\`.
 - A plain scalar is one line, and it doesn't start with an indicator. Where text is
-  expected, a plain scalar YAML could read as null, a boolean or a number doesn't parse,
-  so such text is double-quoted.
+  expected, a plain scalar doesn't parse when YAML 1.1 or 1.2 could read it as null or a
+  boolean, or when it starts like a number: with a digit, or with `+`, `-` or `.` and then
+  a digit, or as an infinity or not-a-number form. `2fa/**` is double-quoted, then.
 - There are no anchors, aliases, tags, flow collections, block scalars, single-quoted
   scalars, directives, document markers or duplicate keys.
 
@@ -29,22 +31,24 @@ from govlib import GovernError
 FLOORS = ("medium", "high")
 
 # What a record never holds: every control character but LF, the line and paragraph
-# separators, and a byte order mark.
-_FORBIDDEN = re.compile("[\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\ufeff]")
-_FORBIDDEN_IN_TEXT = re.compile("[\x00-\x1f\x7f-\x9f\u2028\u2029\ufeff]")
+# separators, a byte order mark, the two noncharacters outside YAML's printable set, and
+# surrogates. Text holds no LF either.
+_NEVER = "\x00-\x09\x0b-\x1f\x7f-\x9f\u2028\u2029\ufeff\ufffe\uffff\ud800-\udfff"
+_FORBIDDEN = re.compile("[%s]" % _NEVER)
+_FORBIDDEN_IN_TEXT = re.compile("[\n%s]" % _NEVER)
 _INDICATORS = ",[]{}#&*!|>'%@`"
-# Plain scalars that YAML 1.1 or 1.2 could read as null, a boolean or a number (a date
-# included): the null and boolean words, and anything starting with a digit, a sign or a
-# dot before a digit, or an infinity or not-a-number form.
+# Plain scalars that aren't text: the YAML 1.1 and 1.2 null and boolean words, and anything
+# starting like a number (a date included), which also refuses some text, such as `2fa/**`,
+# that YAML would read as a string. Such text is double-quoted.
 _NOT_TEXT = re.compile(
     r"(?:~|null|Null|NULL|true|True|TRUE|false|False|FALSE|yes|Yes|YES|no|No|NO|on|On|ON|off|Off|OFF|y|Y|n|N"
     r"|[-+]?\.?[0-9].*|[-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))"
 )
 _VERSION = re.compile(r"[1-9][0-9]*")
 
-_RECORD_KEYS = ("version", "agent_account", "sensitive_paths", "confirmed")
-_CONFIRMED_KEYS = ("sensitive_paths", "required_checks")
-_PATH_KEYS = ("pattern", "floor")
+RECORD_KEYS = ("version", "agent_account", "sensitive_paths", "confirmed")
+CONFIRMED_KEYS = ("sensitive_paths", "required_checks")
+PATH_KEYS = ("pattern", "floor")
 
 
 class RecordError(GovernError):
@@ -271,7 +275,7 @@ def _list(value, line, what, item):
 
 
 def _sensitive_path(node, line):
-    entries = _keys(node, _PATH_KEYS, "a sensitive path", line)
+    entries = _keys(node, PATH_KEYS, "a sensitive path", line)
     pattern = _text(*entries["pattern"], what="a pattern")
     floor = _text(*entries["floor"], what="a floor")
     if floor not in FLOORS:
@@ -293,11 +297,11 @@ def parse(data):
     if forbidden:
         _fail(text.count("\n", 0, forbidden.start()) + 1, "holds the character U+%04X" % ord(forbidden.group()))
 
-    entries = _keys(_tree(text), _RECORD_KEYS, "the record", 1)
+    entries = _keys(_tree(text), RECORD_KEYS, "the record", 1)
     version, line = entries["version"]
     if not isinstance(version, _Scalar) or version.quoted or not _VERSION.fullmatch(version.text):
         _fail(line, "must give version as a positive integer, written plain")
-    confirmed = _keys(entries["confirmed"][0], _CONFIRMED_KEYS, "confirmed", entries["confirmed"][1])
+    confirmed = _keys(entries["confirmed"][0], CONFIRMED_KEYS, "confirmed", entries["confirmed"][1])
     return {
         "version": int(version.text),
         "agent_account": _text(*entries["agent_account"], what="agent_account"),
