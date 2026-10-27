@@ -3,6 +3,7 @@
 
   stored-form      fail on any stored path that has a dot segment or a loaded name
   release-check    compare a PR's base and head trees, one line per rule
+  copies           fail unless the skill copies, their provenance and the relied-on list agree
   py39             confirm this interpreter is Python 3.9 and every script parses as 3.9
   exact-comparison render version 1 into the tally sample repository and compare it exactly
   suites           run the suites: --job linux, --job macos, --all, or suites by name
@@ -25,6 +26,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUITES_DIR = os.path.join(REPO, "tests", "suites")
 sys.path.insert(0, os.path.join(REPO, "generator", "govern-repository", "scripts"))
 sys.path.insert(0, SUITES_DIR)
+sys.path.insert(0, os.path.join(REPO, "skill-copies", "scripts"))
 
 from govlib import storedform  # noqa: E402
 
@@ -42,6 +44,7 @@ SUITES = (
     ("record", "test_record", "linux"),
     ("parser-fixtures", "test_parser_fixtures", "linux"),
     ("release-check", "test_release_check", "linux"),
+    ("skill-copies", "test_skill_copies", "linux"),
     ("standins", "test_standins", "macos"),
 )
 
@@ -74,6 +77,45 @@ def cmd_release_check(args):
     for line in lines:
         print(line)
     return 0 if passed else 1
+
+
+def cmd_copies(args):
+    """The copies check (#44 §10): copies' names, provenance and the relied-on list agree, at one commit.
+
+    The role files' skill lists, the third side, join #41's materialized-version checks.
+    """
+    import copylib
+
+    root = os.path.join(args.repo, "skill-copies")
+    prefix = "skill-copies/%s/" % copylib.SKILLS
+    on_disk = sorted(set(path[len(prefix):].split("/")[0] for path in tracked(args.repo, prefix)))
+    try:
+        relied_on = copylib.relied_on(os.path.join(args.repo, "generator", "govern-repository", "store"))
+        provenance = copylib.load_provenance(root)
+    except copylib.CopyError as error:
+        print("FAIL copies: %s" % error)
+        return 1
+    listed = sorted(entry["name"] for entry in provenance["copies"])
+    failures = []
+    for label, names in (("in %s" % prefix, on_disk), ("in %s" % copylib.PROVENANCE, listed)):
+        extra = sorted(set(names) - set(relied_on))
+        missing = sorted(set(relied_on) - set(names))
+        if extra:
+            failures.append("%s but not on the relied-on list: %s" % (label, ", ".join(extra)))
+        if missing:
+            failures.append("on the relied-on list but not %s: %s" % (label, ", ".join(missing)))
+    commits = sorted(set(entry["commit"] for entry in [provenance["license"]] + provenance["copies"]))
+    if len(commits) > 1:
+        failures.append("the copies and the license must come from one upstream commit, not %s" % ", ".join(commits))
+    for failure in failures:
+        print("FAIL copies: %s" % failure)
+    if failures:
+        return 1
+    print(
+        "PASS copies: %d copies at %s match the relied-on list and %s, the license not counted"
+        % (len(on_disk), commits[0][:12], copylib.PROVENANCE)
+    )
+    return 0
 
 
 SHELL_SHEBANGS = (b"#!/bin/bash", b"#!/bin/sh", b"#!/usr/bin/env bash", b"#!/usr/bin/env sh")
@@ -172,6 +214,10 @@ def build_parser():
     release.add_argument("--base", required=True, help="the PR's base: HEAD^1 of the merge commit in CI")
     release.add_argument("--head", required=True, help="the PR's head, or its merge commit in CI")
     release.set_defaults(run=cmd_release_check)
+
+    copies = commands.add_parser("copies", help="check the skill copies against the relied-on list")
+    copies.add_argument("--repo", default=REPO)
+    copies.set_defaults(run=cmd_copies)
 
     py39 = commands.add_parser("py39", help="check Python 3.9 and /bin/bash compatibility")
     py39.add_argument("--repo", default=REPO)
