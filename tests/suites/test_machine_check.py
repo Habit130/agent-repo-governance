@@ -29,7 +29,7 @@ class CheckCase(support.TempDirCase):
     def h(self, *parts):
         return os.path.join(self.home, *parts)
 
-    def check(self, codex=("codex-execpolicy.json", "codex-prompt-input-ready.json"), gh=None, absent=False):
+    def check(self, codex=("codex-execpolicy.json", "codex-prompt-input-ready.json"), gh=None, absent=False, codex_bin=None):
         """Run the check; return {item: status} and the failing details, asserting the home is unchanged."""
         self.runs += 1
         scratch = self.path("scratch-%d" % self.runs)
@@ -39,7 +39,7 @@ class CheckCase(support.TempDirCase):
         codex_recording = ms.merge_codex_recordings(os.path.join(scratch, "codex.json"), *codex)
         env = ms.machine_env(self.home, scratch, gh_recording=recording, codex_recording=codex_recording)
         before = ms.snapshot(self.home)
-        args = ["check", "--home", self.home, "--codex", self.path("absent") if absent else ms.STANDIN_CODEX]
+        args = ["check", "--home", self.home, "--codex", self.path("absent") if absent else codex_bin or ms.STANDIN_CODEX]
         code, out, err = ms.run_machine(args, env)
         self.assertEqual(err, "", out)
         self.assertEqual(ms.snapshot(self.home), before, "the check changed the home")
@@ -61,6 +61,29 @@ class EveryItem(CheckCase):
     def test_a_ready_machine_passes_every_item(self):
         statuses, failures = self.check()
         self.assertEqual(set(statuses.values()), {"通过"}, failures)
+
+    def test_codex_writing_its_own_state_leaves_the_home_unchanged(self):
+        """Real Codex writes its state into CODEX_HOME as it starts; the check gives it a disposable one."""
+        seen = self.path("codex-homes-seen")
+        wrapper = self.path("state-writing-codex")
+        with open(wrapper, "w") as handle:
+            handle.write(
+                "#!/bin/bash\n"
+                "# Writes what real Codex 0.164 writes at start, then replays the recording.\n"
+                "echo \"$CODEX_HOME\" >> '%s'\n"
+                "mkdir -p \"$CODEX_HOME/skills/.system/imagegen\" \"$CODEX_HOME/shell_snapshots\"\n"
+                "echo id > \"$CODEX_HOME/installation_id\"\n"
+                "touch \"$CODEX_HOME/.sandbox_migration\" \"$CODEX_HOME/skills/.system/imagegen/SKILL.md\"\n"
+                "exec '%s' \"$@\"\n" % (seen, ms.STANDIN_CODEX)
+            )
+        os.chmod(wrapper, 0o755)
+        statuses, failures = self.check(codex_bin=wrapper)
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+        with open(seen) as handle:
+            homes = set(handle.read().split())
+        self.assertEqual(len(homes), 6)
+        self.assertFalse(any(path.startswith(self.home + os.sep + ".codex") for path in homes), homes)
+        self.assertFalse(any(os.path.exists(path) for path in homes), "a disposable CODEX_HOME was left behind")
 
     def test_codex_absent_skips_both_codex_items_and_reports_the_skip(self):
         statuses, _ = self.check(absent=True)

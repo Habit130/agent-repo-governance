@@ -10,8 +10,6 @@ skill roots: a missing one is omitted, and a description cut short is shortened.
 import json
 import os
 import re
-import shutil
-import tempfile
 
 from machinelib import AGENT, CODEX_APP, GENERATOR, home as homes, rules, skills, state as states
 
@@ -75,11 +73,7 @@ def codex_skills(home):
 
 
 def budget_problems(home, codex):
-    work = tempfile.mkdtemp(prefix="machine-check-")
-    try:
-        code, out, err = home.run([codex, "debug", "prompt-input", "x"], cwd=work)
-    finally:
-        shutil.rmtree(work, True)
+    code, out, err = home.run_codex(codex, ["debug", "prompt-input", "x"])
     if code != 0:
         return ["`codex debug prompt-input` 失败：%s" % (err or out).strip()]
     try:

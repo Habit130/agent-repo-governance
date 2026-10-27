@@ -225,7 +225,7 @@ def check_codex_rules(home, codex):
     """Problems `codex execpolicy check` finds with the installed rules, in Chinese; empty when they hold."""
     problems = []
     for command, forbidden in CODEX_PROBES:
-        code, out, err = home.run([codex, "execpolicy", "check", "--rules", home.codex_rules] + command)
+        code, out, err = home.run_codex(codex, ["execpolicy", "check", "--rules", home.codex_rules] + command)
         shown = " ".join(command)
         if code != 0:
             problems.append("`%s` 检查失败：%s" % (shown, (err or out).strip()))

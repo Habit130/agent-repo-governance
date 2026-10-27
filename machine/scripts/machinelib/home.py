@@ -6,7 +6,9 @@ all into a throwaway home never touches the real one.
 """
 
 import os
+import shutil
 import subprocess
+import tempfile
 
 PASS, FAIL, SKIP, NOTE = "通过", "失败", "跳过", "说明"
 
@@ -132,6 +134,34 @@ class Home(object):
             return 127, b"" if binary else "", str(error)
         out = result.stdout if binary else result.stdout.decode("utf-8", "replace")
         return result.returncode, out, result.stderr.decode("utf-8", "replace")
+
+    def run_codex(self, codex, args):
+        """Run the Codex CLI on this home's skills without writing to the home.
+
+        Codex writes its own state into `CODEX_HOME` as it starts: an installation id, a
+        sandbox migration marker, shell snapshots and its system skills under
+        `skills/.system`. So it runs with a disposable `CODEX_HOME` that holds a copy of
+        the home's `config.toml` and a link to each of the home's own Codex skills, and in
+        a disposable working directory. `HOME` stays the home's, so `~/.agents/skills` lists
+        as it does in a session.
+        """
+        scratch = tempfile.mkdtemp(prefix="machine-codex-")
+        try:
+            codex_home = os.path.join(scratch, "codex-home")
+            os.makedirs(os.path.join(codex_home, "skills"))
+            config = os.path.join(self.codex, "config.toml")
+            if os.path.isfile(config):
+                shutil.copy2(config, codex_home)
+            own = os.path.join(self.codex, "skills")
+            if os.path.isdir(own):
+                for name in sorted(os.listdir(own)):
+                    if not name.startswith("."):
+                        os.symlink(os.path.join(own, name), os.path.join(codex_home, "skills", name))
+            work = os.path.join(scratch, "work")
+            os.makedirs(work)
+            return self.run([codex] + list(args), cwd=work, extra_env={"CODEX_HOME": codex_home})
+        finally:
+            shutil.rmtree(scratch, True)
 
 
 class Report(object):
