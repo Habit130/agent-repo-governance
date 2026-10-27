@@ -35,11 +35,10 @@ def changed_lines(old, new):
     added, removed = [], []
     old_lines = old.decode("utf-8", "replace").splitlines()
     new_lines = new.decode("utf-8", "replace").splitlines()
-    for line in difflib.unified_diff(old_lines, new_lines, lineterm="", n=0):
-        if line.startswith("+") and not line.startswith("+++"):
-            added.append(line[1:])
-        elif line.startswith("-") and not line.startswith("---"):
-            removed.append(line[1:])
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, old_lines, new_lines, autojunk=False).get_opcodes():
+        if tag != "equal":
+            removed.extend(old_lines[i1:i2])
+            added.extend(new_lines[j1:j2])
     return added, removed
 
 

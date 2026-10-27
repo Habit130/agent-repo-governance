@@ -354,6 +354,18 @@ class ChangeList(SkillCopiesCase):
         self.assertEqual(code, 2, out + err)
         self.assertIn("skills/engineering/alpha", out)
 
+    def test_counts_and_quotes_changed_lines_that_start_with_dashes_or_pluses(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/alpha/REFERENCE.md"] = "Reference.\n---\n++ more\n"
+        newer = support.commit_tree(self.upstream, files, "dashes added")
+        files["skills/engineering/alpha/REFERENCE.md"] = "Reference.\n"
+        newest = support.commit_tree(self.upstream, files, "dashes removed")
+        code, out, err = self.changes("--from", newer, "--to", newest)
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("REFERENCE.md 有改动：增加 0 行，删除 2 行", out)
+        self.assertIn("删除：---", out)
+        self.assertIn("删除：++ more", out)
+
     def test_a_description_dropped_at_the_newer_commit_is_named(self):
         files = dict(UPSTREAM)
         files["skills/engineering/alpha/SKILL.md"] = "---\nname: alpha\n---\n\n# Alpha\n"
