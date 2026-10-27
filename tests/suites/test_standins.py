@@ -125,14 +125,14 @@ class StandInGitHub(StandInCase):
 class CodexStandIn(StandInCase):
     def test_replays_execpolicy_check_with_the_home_expanded(self):
         rules = os.path.join(self.home, ".codex", "rules", "governance.rules")
-        code, out, _ = self.call(["codex", "execpolicy", "check", "--rules", rules, "--", "gh", "secret", "set", "TOKEN"])
+        code, out, _ = self.call(["codex", "execpolicy", "check", "--rules", rules, "gh", "secret", "set", "TOKEN"])
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(out)["decision"], "forbidden")
 
     def test_replays_debug_prompt_input(self):
         code, out, _ = self.call(["codex", "debug", "prompt-input", "x"])
         self.assertEqual(code, 0)
-        self.assertIn("<skills>", out)
+        self.assertIn("<skills_instructions>", out)
 
     def test_a_stray_call_fails_and_never_reaches_codex(self):
         code, _, err = self.call(["codex", "exec", "write a poem"])

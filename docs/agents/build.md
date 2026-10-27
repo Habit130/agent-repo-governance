@@ -40,6 +40,9 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/` | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
+| `machine-install` | Seam C: every install fixture of #44's Testing Decisions, the machine rules, forward-only refusals and the ready command against a local origin | macos |
+| `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, and the Codex key detector's shapes | macos |
+| `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 
 ## CI
 
@@ -87,6 +90,39 @@ reason under `error`.
 - **The change note** opens with `urgency: urgent` or `urgency: when convenient`, then
   `must-act: yes` or `must-act: no`, then a blank line and the plain-Chinese body. Its parser
   and fixtures: `govlib/store.py` and `tests/fixtures/change-notes/`.
+
+## The machine area
+
+`machine/scripts/machine.py` is the one entry for the install, the machine check and the
+governed-repository list (#44 §8, §9). Its subcommands, `install --source <tree> --home
+<dir>`, `check` and `list`, print Chinese reports and exit 0 when nothing failed, 1 when an
+item or line failed, and 2 on a refusal that wrote nothing. `machinelib/__init__.py` names
+the layout; `install.py`'s docstring gives the steps.
+
+- **The ready command** is the one line in `machine/ready.sh`. habit runs it in Claude Code
+  with the `!` prefix after a merge that changes the machine; agents never run it, the
+  internal entry or the check against habit's home:
+
+  ```text
+  /bin/bash -c 'set -eu; d="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone --quiet --filter=blob:none https://github.com/Habit130/agent-repo-governance.git "$d/src"; /usr/bin/python3 "$d/src/machine/scripts/machine.py" install --source "$d/src" --home "$HOME"'
+  ```
+
+  The clone keeps history, since forward-only needs the installed commit to be an ancestor.
+- **Run on their own** from the installed copy: `/usr/bin/python3
+  ~/.agents/governance/machine/scripts/machine.py check` and `... list`. The installed state
+  is `~/.agents/governance/installed.json`; there the entry imports `govlib` from the
+  installed generator.
+- **Codex's real behaviour**, recorded under `tests/fixtures/machine/` from the ChatGPT app's
+  CLI: `codex execpolicy check --rules <file> <words...>` takes no `--` (it would become a
+  command word), exits 0 whatever the decision, and omits `decision` when no rule matches.
+  `codex debug prompt-input` prints no budget warning; it shortens descriptions and drops
+  entries silently, so the check compares the listed names with the home's skills.
+- **Seam C suites** build the source tree from this checkout's `machine/` and generator with
+  synthetic copies (`tests/suites/machine_support.py`), so the real recordings stay true
+  when the copies change. They pass the Codex stand-in or a missing path, never the app,
+  and put a `ghm` tripwire first on the path. Re-record a fixture home's Codex output with
+  the real CLI when its skills change, replacing the scratch home's path with
+  `/fixture-home`.
 
 ## Skill copies
 
