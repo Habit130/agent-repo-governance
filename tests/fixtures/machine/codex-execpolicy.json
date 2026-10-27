@@ -1,0 +1,80 @@
+{
+  "description": "Real `codex execpolicy check` output for the install's governance.rules, one call per probe in rules.CODEX_PROBES. Recorded from codex-cli 0.164.0-alpha.11.1, the CLI bundled in the ChatGPT app, on 2026-10-27, with HOME and CODEX_HOME set to a scratch home built as the suites build it. The scratch home's path is replaced by /fixture-home and the run's working directory by /fixture-cwd; everything else is verbatim.",
+  "tool": "codex",
+  "calls": [
+    {
+      "args": [
+        "execpolicy",
+        "check",
+        "--rules",
+        "${HOME}/.codex/rules/governance.rules",
+        "ghm",
+        "pr",
+        "merge",
+        "1"
+      ],
+      "stdout": "{\"matchedRules\":[{\"prefixRuleMatch\":{\"matchedPrefix\":[\"ghm\"],\"decision\":\"forbidden\",\"justification\":\"ghm is habit's maintainer account alias; agents never call it.\"}}],\"decision\":\"forbidden\"}\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "execpolicy",
+        "check",
+        "--rules",
+        "${HOME}/.codex/rules/governance.rules",
+        "gh",
+        "secret",
+        "set",
+        "TOKEN"
+      ],
+      "stdout": "{\"matchedRules\":[{\"prefixRuleMatch\":{\"matchedPrefix\":[\"gh\",\"secret\",\"set\"],\"decision\":\"forbidden\",\"justification\":\"Agents never create, overwrite or delete Actions secrets; listing names stays allowed.\"}}],\"decision\":\"forbidden\"}\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "execpolicy",
+        "check",
+        "--rules",
+        "${HOME}/.codex/rules/governance.rules",
+        "gh",
+        "secret",
+        "delete",
+        "TOKEN"
+      ],
+      "stdout": "{\"matchedRules\":[{\"prefixRuleMatch\":{\"matchedPrefix\":[\"gh\",\"secret\",\"delete\"],\"decision\":\"forbidden\",\"justification\":\"Agents never create, overwrite or delete Actions secrets; listing names stays allowed.\"}}],\"decision\":\"forbidden\"}\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "execpolicy",
+        "check",
+        "--rules",
+        "${HOME}/.codex/rules/governance.rules",
+        "gh",
+        "secret",
+        "remove",
+        "TOKEN"
+      ],
+      "stdout": "{\"matchedRules\":[{\"prefixRuleMatch\":{\"matchedPrefix\":[\"gh\",\"secret\",\"remove\"],\"decision\":\"forbidden\",\"justification\":\"Agents never create, overwrite or delete Actions secrets; listing names stays allowed.\"}}],\"decision\":\"forbidden\"}\n",
+      "stderr": "",
+      "exit": 0
+    },
+    {
+      "args": [
+        "execpolicy",
+        "check",
+        "--rules",
+        "${HOME}/.codex/rules/governance.rules",
+        "gh",
+        "secret",
+        "list"
+      ],
+      "stdout": "{\"matchedRules\":[]}\n",
+      "stderr": "",
+      "exit": 0
+    }
+  ]
+}
