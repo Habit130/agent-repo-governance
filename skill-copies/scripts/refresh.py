@@ -33,8 +33,10 @@ def plan(upstream, commit, names):
 
 def write(root, commit, copies, license_file):
     skills = os.path.join(root, copylib.SKILLS)
-    if os.path.islink(skills):
-        raise copylib.CopyError("%s is a symlink" % skills)
+    if os.path.islink(skills) or (os.path.lexists(skills) and not os.path.isdir(skills)):
+        raise copylib.CopyError("%s is not a directory" % skills)
+    for name in (copylib.LICENSE, copylib.PROVENANCE):
+        storedform.check_target(root, name)
     if os.path.isdir(skills):
         shutil.rmtree(skills)
     entries = []
@@ -44,7 +46,8 @@ def write(root, commit, copies, license_file):
         entries.append(
             {"name": name, "repository": copylib.REPOSITORY, "path": path, "commit": commit, "codex_key_added": added}
         )
-    storedform.write_file(root, copylib.LICENSE, license_file[1], license_file[0])
+    license_mode, license_data = license_file
+    storedform.write_file(root, copylib.LICENSE, license_data, license_mode)
     provenance = {
         "license": {"repository": copylib.REPOSITORY, "path": copylib.LICENSE, "commit": commit},
         "copies": entries,
@@ -66,7 +69,7 @@ def main(argv=None):
         with copylib.Upstream(copylib.source_of(copylib.REPOSITORY, args.upstream), [args.commit]) as upstream:
             copies, license_file = plan(upstream, args.commit, names)
         write(os.path.realpath(args.copies), args.commit, copies, license_file)
-    except (copylib.CopyError, storedform.StoredFormError) as error:
+    except (copylib.CopyError, storedform.StoredFormError, OSError) as error:
         print("REFUSED refresh: %s" % error)
         return 2
     for name, path, files, added in copies:

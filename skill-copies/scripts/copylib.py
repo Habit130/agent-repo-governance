@@ -62,26 +62,30 @@ def relied_on(store_root=STORE):
     return sorted(set(skills) - NOT_COPIED)
 
 
+def front_matter(skill_md):
+    """SKILL.md's front-matter lines, without line endings; empty when it has none."""
+    lines = [line.rstrip("\r") for line in skill_md.decode("utf-8", "replace").split("\n")]
+    if not lines or lines[0] != "---":
+        return []
+    found = []
+    for line in lines[1:]:
+        if line == "---":
+            return found
+        found.append(line)
+    return []
+
+
 def user_invoked(skill_md):
     """Whether SKILL.md's front matter sets `disable-model-invocation: true`."""
-    lines = skill_md.decode("utf-8", "replace").split("\n")
-    if not lines or lines[0].rstrip("\r") != "---":
-        return False
-    for line in lines[1:]:
-        line = line.rstrip("\r")
-        if line == "---":
-            return False
-        if line.strip() == "disable-model-invocation: true":
-            return True
-    return False
+    return any(line.strip() == "disable-model-invocation: true" for line in front_matter(skill_md))
 
 
 def _policy_block(codex_yaml):
-    """The indented lines under a top-level `policy:` key, or None when there is no such key."""
+    """The values under a top-level `policy` key, inline or indented, or None when there is no such key."""
     lines = codex_yaml.decode("utf-8", "replace").split("\n")
     for index, line in enumerate(lines):
-        if line.rstrip() == "policy:":
-            block = []
+        if line.startswith("policy:"):
+            block = [line[len("policy:"):].strip()]
             for following in lines[index + 1:]:
                 if following[:1] not in (" ", "\t") and following.strip():
                     break
@@ -92,7 +96,7 @@ def _policy_block(codex_yaml):
 
 def has_codex_key(codex_yaml):
     block = _policy_block(codex_yaml)
-    return block is not None and "allow_implicit_invocation: false" in block
+    return block is not None and any("allow_implicit_invocation: false" in value for value in block)
 
 
 def add_codex_key(codex_yaml):
@@ -116,19 +120,12 @@ class Upstream(object):
     def __init__(self, source, commits):
         self.source = source
         self.root = tempfile.mkdtemp(prefix="skill-copies-upstream-")
-        self._git("init", "--quiet", "--bare")
-        result = subprocess.run(
-            ["git", "-C", self.root, "fetch", "--quiet", "--no-tags", source] + sorted(set(commits)),
-            env=_git_env(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
-        )
-        if result.returncode != 0:
+        try:
+            self._git("init", "--quiet", "--bare")
+            self._git("fetch", "--quiet", "--no-tags", source, *sorted(set(commits)))
+        except (CopyError, OSError) as error:
             self.close()
-            raise CopyError(
-                "fetching %s from %s failed: %s" % (", ".join(sorted(set(commits))), source, result.stderr.strip())
-            )
+            raise CopyError("fetching %s from %s failed: %s" % (", ".join(sorted(set(commits))), source, error))
 
     def close(self):
         shutil.rmtree(self.root, True)
@@ -172,6 +169,13 @@ class Upstream(object):
             if mode not in MODES:
                 raise CopyError("%s/%s has mode %s at %s, which a copy can't hold" % (path, rel, mode, commit[:12]))
             found[rel] = (mode, self.blob(sha))
+        return found
+
+    def tree_files(self, commit, path):
+        """files(), refused when nothing is at path: a copy's recorded path must exist."""
+        found = self.files(commit, path)
+        if not found:
+            raise CopyError("%s holds nothing at %s" % (path, commit[:12]))
         return found
 
     def file(self, commit, path):

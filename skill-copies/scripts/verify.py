@@ -20,7 +20,7 @@ import copylib  # noqa: E402
 
 
 def check_copy(upstream, root, entry):
-    """(problems, whether the key is added upstream-wise) for one provenance entry."""
+    """(problems, whether the copy should carry an added Codex key) for one provenance entry."""
     commit, path = entry["commit"], entry["path"]
     try:
         expected, added = copylib.expected_copy(upstream, commit, path)
@@ -74,7 +74,7 @@ def main(argv=None):
         finally:
             for upstream in upstreams.values():
                 upstream.close()
-    except copylib.CopyError as error:
+    except (copylib.CopyError, OSError) as error:
         print("REFUSED verify: %s" % error)
         return 2
     for line in lines:
@@ -83,11 +83,10 @@ def main(argv=None):
         print("added Codex key: %s" % name)
     if not added_keys:
         print("added Codex key: none")
-    total = len(provenance["copies"]) + 1
     if failed:
         print("FAIL verify: %d of the checks above differ from upstream" % failed)
         return 1
-    print("PASS verify: %d copies and the license are byte-identical with upstream, Codex keys aside" % (total - 1))
+    print("PASS verify: %d copies and the license are byte-identical with upstream, Codex keys aside" % len(provenance["copies"]))
     return 0
 
 

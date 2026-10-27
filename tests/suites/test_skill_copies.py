@@ -156,6 +156,35 @@ class Refreshing(SkillCopiesCase):
         self.assertEqual(code, 2, out + err)
         self.assertIn("AGENTS.md.stored", out + err)
 
+    def test_refuses_an_unwritable_license_target_before_replacing_any_copy(self):
+        self.refresh()
+        before = sorted(os.listdir(self.copy_path("skills")))
+        support.write_tree(self.store, {"1/manifest.json": manifest(["alpha"])})
+        os.remove(self.copy_path("LICENSE"))
+        os.makedirs(self.copy_path("LICENSE"))
+        code, out, err = self.refresh()
+        self.assertEqual(code, 2, out + err)
+        self.assertEqual(sorted(os.listdir(self.copy_path("skills"))), before)
+        self.assertEqual(len(self.provenance()["copies"]), 3)
+
+    def test_refuses_to_append_a_second_policy_key_beside_an_inline_one(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/gated/agents/openai.yaml"] = 'interface:\n  display_name: "Gated"\npolicy: {}\n'
+        commit = support.commit_tree(self.upstream, files, "inline policy")
+        code, out, err = self.refresh(commit)
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("policy", out + err)
+
+    def test_reads_a_crlf_skill_md_as_user_invoked(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/alpha/SKILL.md"] = (
+            "---\r\nname: alpha\r\ndescription: Alpha.\r\ndisable-model-invocation: true\r\n---\r\n"
+        )
+        commit = support.commit_tree(self.upstream, files, "crlf")
+        code, out, err = self.refresh(commit)
+        self.assertEqual(code, 0, out + err)
+        self.assertTrue(self.provenance()["copies"][0]["codex_key_added"])
+
     def test_stores_a_loaded_name_and_a_dot_segment_in_stored_form(self):
         files = dict(UPSTREAM)
         files["skills/engineering/alpha/.hidden/CLAUDE.md"] = "nested\n"
@@ -278,6 +307,8 @@ class ChangeList(SkillCopiesCase):
         alpha = out.split("- alpha：", 1)[1].split("\n- ", 1)[0]
         self.assertIn("用途说明（description）改为：“Alpha does more.”", alpha)
         self.assertIn("SKILL.md 有改动：增加 1 行，删除 1 行", alpha)
+        self.assertIn("删除：description: Alpha does things.", alpha)
+        self.assertIn("增加：description: Alpha does more.", alpha)
         self.assertIn("新增文件 NEW.md（3 行）", alpha)
         self.assertIn("删除文件 scripts/loop.sh", alpha)
         keyed = out.split("- keyed：", 1)[1]
@@ -313,6 +344,24 @@ class ChangeList(SkillCopiesCase):
         code, out, err = self.changes("--from", self.first, "--to", self.second)
         self.assertEqual(code, 0, out + err)
         self.assertIn("2 个有变化", out)
+
+    def test_refuses_an_older_commit_without_the_recorded_path(self):
+        files = {k: v for k, v in UPSTREAM.items() if not k.startswith("skills/engineering/alpha/")}
+        files["skills/other/alpha/SKILL.md"] = UPSTREAM["skills/engineering/alpha/SKILL.md"]
+        older = support.commit_tree(self.upstream, files, "alpha elsewhere")
+        newest = support.commit_tree(self.upstream, UPSTREAM, "alpha back")
+        code, out, err = self.changes("--from", older, "--to", newest)
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("skills/engineering/alpha", out)
+
+    def test_a_description_dropped_at_the_newer_commit_is_named(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/alpha/SKILL.md"] = "---\nname: alpha\n---\n\n# Alpha\n"
+        newer = support.commit_tree(self.upstream, files, "no description")
+        code, out, err = self.changes("--to", newer)
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("去掉了用途说明（description）", out)
+        self.assertNotIn("None", out)
 
     def test_refuses_a_commit_that_is_not_newer(self):
         code, out, err = self.changes("--from", self.second, "--to", self.first)

@@ -108,8 +108,8 @@ allowed change, the Codex user-only key appended to a user-invoked skill that la
   no network, so Execution runs it on the PR head and Acceptance reruns it. For a planted
   change, pass `--copies` a modified copy of `skill-copies/` in a temporary directory.
 - **The change list**: `python3 skill-copies/scripts/changes.py --to <newer sha>` prints, in
-  plain Chinese, what changed per copy since the recorded commit, for the Merge summary;
-  `--from` names another older commit.
+  plain Chinese, what changed per copy since the recorded commit, quoting up to ten changed
+  lines per file, for the Merge summary; `--from` names another older commit.
 - Only these evidence runs reach GitHub, read-only. Suites pass `--upstream` a local
   repository built at test time instead.
 
