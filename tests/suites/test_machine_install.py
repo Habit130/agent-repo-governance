@@ -157,7 +157,7 @@ class SkillsTakenOver(InstallCase):
             ".agents/skills/alpha-check/.notes/kept.md": ms.COPIES["alpha-check"]["dot-notes/kept.md"],
             ".agents/skills/beta-flow/SKILL.md": "---\nname: beta-flow\ndescription: An older upstream text.\n---\n",
             ".agents/skills/grill-me/SKILL.md": "---\nname: grill-me\ndescription: Stays with npx skills.\n---\n",
-            lock_path: json.dumps(self.LOCK, indent=2),
+            lock_path: json.dumps(self.LOCK, indent=2) + "\n",
         })
 
     def assert_taken_over(self, lock_path, out):
@@ -165,6 +165,7 @@ class SkillsTakenOver(InstallCase):
         self.assertEqual(sorted(lock["skills"]), ["grill-me"])
         self.assertEqual(lock["dismissed"], {"findSkillsPrompt": True})
         self.assertEqual(lock["version"], 3)
+        self.assertTrue(self.read(*lock_path.split("/")).endswith("}\n"))
         notes = self.notes(out, "machine skills")
         self.assertIn("接管同名 skill beta-flow：内容不同，已替换", notes)
         self.assertFalse(any("alpha-check" in n for n in notes[:-1]), notes)
@@ -206,9 +207,19 @@ class SkillsTakenOver(InstallCase):
         code, out = self.install()
         self.assertEqual(code, 0, out)
         self.assertIn("beta-flow 已不在 machine skill set 里，已移除", self.notes(out, "machine skills"))
+        self.assertFalse(any("本地改动" in n for n in self.notes(out, "machine skills")))
         self.assertFalse(os.path.lexists(self.h(".agents", "skills", "beta-flow")))
         state = json.loads(self.read(".agents", "governance", "installed.json"))
         self.assertEqual(sorted(state["skills"]), ["alpha-check", "govern-repository"])
+
+
+    def test_a_dropped_skill_with_local_edits_says_so(self):
+        self.install()
+        with open(self.h(".agents", "skills", "beta-flow", "SKILL.md"), "a") as handle:
+            handle.write("habit's edit.\n")
+        self.commit = support.commit_tree(self.source, ms.source_files({"alpha-check": ms.COPIES["alpha-check"]}), "drop beta-flow")
+        code, out = self.install()
+        self.assertIn("beta-flow 已不在 machine skill set 里，已移除（它在上次 install 后有本地改动）", self.notes(out, "machine skills"))
 
 
 class PersonalSkills(InstallCase):

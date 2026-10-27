@@ -15,9 +15,8 @@ import tempfile
 
 from machinelib import AGENT, CODEX_APP, GENERATOR, home as homes, rules, skills, state as states
 
-ITEMS = (
-    "Codex rules",
-    "Codex skill list",
+CODEX_ITEMS = ("Codex rules", "Codex skill list")
+ITEMS = CODEX_ITEMS + (
     "Codex user-only key",
     "名称冲突",
     "deny entries",
@@ -108,9 +107,13 @@ def budget_problems(home, codex):
 
 def _key_problems(home):
     problems = []
-    for skill in skills.skills_in(home.skills):
-        if skill.user_invoked and skill.policy != skills.FALSE:
-            problems.append("%s 缺少 Codex user-only key%s" % (skill.dir_name, "（链接的 personal skill）" if skill.linked else ""))
+    codex_root = os.path.join(home.codex, "skills")
+    for root in (home.skills, codex_root):
+        for skill in skills.skills_in(root):
+            if skill.user_invoked and skill.policy != skills.FALSE:
+                where = "%s 里的 " % home.show(codex_root) if root == codex_root else ""
+                problems.append("%s%s 缺少 Codex user-only key%s"
+                                % (where, skill.dir_name, "（链接的 personal skill）" if skill.linked else ""))
     return problems
 
 
@@ -150,6 +153,9 @@ def _deny_problems(home):
             problems.append("%s 缺少 deny entries：%s" % (harness, "、".join(missing)))
         if conflicting:
             problems.append("%s 的这些条目不是 deny：%s" % (harness, "、".join(conflicting)))
+        overridden = rules.deny_overridden(harness, data)
+        if overridden:
+            problems.append("%s 里后面的条目覆盖了 deny：%s" % (harness, "、".join(overridden)))
         denied = rules.listing_denied(harness, data)
         if denied:
             problems.append("%s 也拒绝了 `gh secret list`：%s" % (harness, "、".join(denied)))
@@ -250,14 +256,14 @@ def run(home, codex=None, machine_names=None):
             report.add(homes.PASS, item, passed)
 
     if found is None:
-        for item in ITEMS[:2]:
+        for item in CODEX_ITEMS:
             report.add(homes.SKIP, item, "没有找到 ChatGPT app 自带的 Codex CLI（%s）" % (codex or CODEX_APP))
     else:
         rule_problems = []
         if not os.path.isfile(home.codex_rules):
             rule_problems.append("%s 不存在" % home.show(home.codex_rules))
         else:
-            with open(home.codex_rules) as handle:
+            with open(home.codex_rules, encoding="utf-8") as handle:
                 if handle.read() != rules.CODEX_RULES:
                     rule_problems.append("%s 与 install 写入的内容不同" % home.show(home.codex_rules))
             rule_problems.extend(rules.check_codex_rules(home, found))

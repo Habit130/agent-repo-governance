@@ -148,6 +148,36 @@ def listing_denied(harness, data):
     return ["%s = deny" % last[0]] if last and last[1] == "deny" else []
 
 
+# Commands each forbidden pattern must catch, checked against OpenCode's last-match-wins order.
+FORBIDDEN_SAMPLES = ("ghm", "ghm pr merge 1", "gh secret set TOKEN", "gh secret delete TOKEN", "gh secret remove TOKEN")
+
+
+def deny_overridden(harness, data):
+    """OpenCode patterns after the deny entries that allow a forbidden command again; Claude Code's deny always wins."""
+    if harness != "OpenCode" or data is None:
+        return []
+    bash = (data.get("permission") or {}).get("bash")
+    if not isinstance(bash, dict):
+        return []
+    found = []
+    for command in FORBIDDEN_SAMPLES:
+        last = None
+        for pattern, action in bash.items():
+            if fnmatch.fnmatchcase(command, pattern):
+                last = (pattern, action)
+        if last and last[1] != "deny" and "%s = %s" % last not in found:
+            found.append("%s = %s" % last)
+    return found
+
+
+def write_text(path, text):
+    """Write text as UTF-8 through a temporary sibling, so a reader never sees half a file."""
+    temporary = path + ".governance-new"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        handle.write(text)
+    os.rename(temporary, path)
+
+
 def backup_path(path):
     """A dated backup beside the file that never replaces an earlier one."""
     stamp = time.strftime("%Y%m%d")
@@ -179,8 +209,7 @@ def apply_deny(harness, path):
     parent = os.path.dirname(path)
     if not os.path.isdir(parent):
         os.makedirs(parent)
-    with open(path, "w") as handle:
-        handle.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
     return missing, backup, conflicting
 
 

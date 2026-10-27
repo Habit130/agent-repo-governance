@@ -42,6 +42,6 @@ def save(home, commit, managed):
     if not os.path.isdir(home.governance):
         os.makedirs(home.governance)
     temporary = home.state + ".new"
-    with open(temporary, "w") as handle:
+    with open(temporary, "w", encoding="utf-8") as handle:
         handle.write(json.dumps({"commit": commit, "skills": managed}, indent=2, sort_keys=True) + "\n")
     os.rename(temporary, home.state)

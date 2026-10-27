@@ -86,9 +86,11 @@ def _machine_skills(home, report, skill_set, installed):
         written[name] = new_hash
     for name in sorted(set(managed) - set(skill_set)):
         target = os.path.join(home.skills, name)
+        edited = os.path.lexists(target) and skills.disk_hash(target) != managed[name]
         if os.path.lexists(target):
             _remove(target)
-        report.add(homes.NOTE, "machine skills", "%s 已不在 machine skill set 里，已移除" % name)
+        report.add(homes.NOTE, "machine skills", "%s 已不在 machine skill set 里，已移除%s"
+                   % (name, "（它在上次 install 后有本地改动）" if edited else ""))
     report.add(homes.PASS, "machine skills", "%d 个 machine skills 就位：%s" % (len(written), "、".join(sorted(written))))
     return written
 
@@ -113,8 +115,9 @@ def _lock_file(home, report, names):
     shutil.copy2(path, backup)
     for name in taken:
         del entries[name]
-    with open(path, "w") as handle:
-        handle.write(json.dumps(lock, indent=2, ensure_ascii=False))
+    with open(path, "rb") as handle:
+        ending = "\n" if handle.read().endswith(b"\n") else ""
+    rules.write_text(path, json.dumps(lock, indent=2, ensure_ascii=False) + ending)
     report.add(homes.NOTE, "lock file", "已从 %s 移除被接管的条目：%s（备份 %s）"
                % (home.show(path), "、".join(taken), home.show(backup)))
 
@@ -125,6 +128,8 @@ def _codex_keys(home, report, managed):
             continue
         if skill.linked:
             report.add(homes.NOTE, "Codex user-only key", "%s 是链接的 personal skill，缺少 key，只报告不写入" % skill.dir_name)
+        elif skill.policy == skills.UNCLEAR:
+            report.add(homes.NOTE, "Codex user-only key", "%s 的 %s 写法无法确定是否 user-only，未修改" % (skill.dir_name, skills.CODEX_FILE))
         elif skill.policy != skills.ABSENT:
             report.add(homes.NOTE, "Codex user-only key", "%s 的 %s 已有 policy 但不是 user-only，未修改" % (skill.dir_name, skills.CODEX_FILE))
         else:
@@ -151,14 +156,13 @@ def _machine_rules(home, report, codex):
             report.add(homes.NOTE, subject, "这些已有条目不是 deny，未改动：%s" % "、".join(conflicting))
     current = None
     if os.path.isfile(home.codex_rules):
-        with open(home.codex_rules) as handle:
+        with open(home.codex_rules, encoding="utf-8") as handle:
             current = handle.read()
     if current != rules.CODEX_RULES:
         parent = os.path.dirname(home.codex_rules)
         if not os.path.isdir(parent):
             os.makedirs(parent)
-        with open(home.codex_rules, "w") as handle:
-            handle.write(rules.CODEX_RULES)
+        rules.write_text(home.codex_rules, rules.CODEX_RULES)
         report.add(homes.NOTE, "Codex rules", "已写入 %s" % home.show(home.codex_rules))
     found = check.codex_path(codex)
     if found is None:

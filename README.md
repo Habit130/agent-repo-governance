@@ -14,7 +14,7 @@ Suites、检查和 CI 的命令见 `docs/agents/build.md`；generator 等程序�
 /bin/bash -c 'set -eu; d="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone --quiet --filter=blob:none https://github.com/Habit130/agent-repo-governance.git "$d/src"; /usr/bin/python3 "$d/src/machine/scripts/machine.py" install --source "$d/src" --home "$HOME"'
 ```
 
-Install 之后，machine check 和 governed-repository list 可单独运行，都是只读的：
+Install 之后，machine check 和 governed-repository list 可单独运行。两者都不改动 skills、规则、链接或 installed state；只有它们调用的 Codex 和交互式登录 shell 可能按各自习惯写自己的文件：
 
 ```text
 /usr/bin/python3 ~/.agents/governance/machine/scripts/machine.py check

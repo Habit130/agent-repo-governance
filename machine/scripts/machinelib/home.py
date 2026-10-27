@@ -147,14 +147,6 @@ class Report(object):
     def failed(self):
         return any(status == FAIL for status, _, _ in self.lines)
 
-    def statuses(self):
-        """{subject: status} for the suites; a subject reported more than once keeps its worst status."""
-        found = {}
-        for status, subject, _ in self.lines:
-            if found.get(subject) != FAIL:
-                found[subject] = status
-        return found
-
     def render(self):
         out = ["== %s" % self.title]
         for status, subject, detail in self.lines:

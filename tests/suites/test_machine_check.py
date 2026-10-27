@@ -115,6 +115,20 @@ class EveryItem(CheckCase):
         statuses, failures = self.check()
         self.assert_only("deny entries", statuses, failures, "OpenCode 也拒绝了 `gh secret list`：gh secret * = deny")
 
+    def test_a_later_opencode_pattern_allowing_ghm_again(self):
+        path = self.h(".config", "opencode", "opencode.json")
+        data = json.loads(support.read_text(path))
+        data["permission"]["bash"]["gh*"] = "allow"
+        support.write_tree(self.home, {".config/opencode/opencode.json": json.dumps(data)})
+        statuses, failures = self.check()
+        self.assert_only("deny entries", statuses, failures, "OpenCode 里后面的条目覆盖了 deny：gh* = allow")
+
+    def test_a_user_invoked_skill_under_codex_skills_missing_the_key(self):
+        support.write_tree(self.h(".codex", "skills"), ms.KEYLESS)
+        statuses, failures = self.check(absent=True)
+        self.assertEqual({k for k, v in statuses.items() if v == "失败"}, {"Codex user-only key"}, failures)
+        self.assertIn("~/.codex/skills 里的 gamma-solo 缺少 Codex user-only key", failures)
+
     def test_a_real_file_in_place_of_a_link(self):
         os.remove(self.h(".config", "opencode", "AGENTS.md"))
         support.write_tree(self.home, {".config/opencode/AGENTS.md": "OpenCode's own copy.\n"})
