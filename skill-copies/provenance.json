@@ -1,0 +1,121 @@
+{
+  "license": {
+    "repository": "mattpocock/skills",
+    "path": "LICENSE",
+    "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2"
+  },
+  "copies": [
+    {
+      "name": "code-review",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/code-review",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "codebase-design",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/codebase-design",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "diagnosing-bugs",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/diagnosing-bugs",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "domain-modeling",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/domain-modeling",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "grilling",
+      "repository": "mattpocock/skills",
+      "path": "skills/productivity/grilling",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "implement-spec",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/implement-spec",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "pr",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/pr",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "prototype",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/prototype",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "research",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/research",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "retro",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/retro",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "tdd",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/tdd",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "to-spec",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/to-spec",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "to-tickets",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/to-tickets",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "triage",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/triage",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "wayfinder",
+      "repository": "mattpocock/skills",
+      "path": "skills/engineering/wayfinder",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    },
+    {
+      "name": "writing-for-agents",
+      "repository": "mattpocock/skills",
+      "path": "skills/productivity/writing-for-agents",
+      "commit": "5beb35b040e3de97e54fa9e386d7e42d15c295c2",
+      "codex_key_added": false
+    }
+  ]
+}

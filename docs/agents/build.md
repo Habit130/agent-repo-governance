@@ -38,6 +38,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
 | `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/` | linux |
+| `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
 
 ## CI
@@ -86,6 +87,31 @@ reason under `error`.
 - **The change note** opens with `urgency: urgent` or `urgency: when convenient`, then
   `must-act: yes` or `must-act: no`, then a blank line and the plain-Chinese body. Its parser
   and fixtures: `govlib/store.py` and `tests/fixtures/change-notes/`.
+
+## Skill copies
+
+`skill-copies/` holds the third-party skill copies (#44 §10, ADR 0020): upstream's `LICENSE`,
+`provenance.json`, one whole upstream skill directory per copy under `skills/<name>/`, and the
+scripts under `scripts/`. `scripts/copylib.py`'s docstring defines the manifest and the one
+allowed change, the Codex user-only key appended to a user-invoked skill that lacks it.
+
+- **The copies check**, `python3 tests/run.py copies`, fails unless the copies under
+  `skills/`, the manifest's entries and the highest version's `relied_on_skills`
+  (`govern-repository` aside) name the same skills, all from one upstream commit. The
+  `skill-copies` suite runs it on the real tree in the `linux` job.
+- **An update PR** refreshes every copy from one upstream commit with
+  `python3 skill-copies/scripts/refresh.py --commit <sha>`, which replaces `skills/`,
+  `LICENSE` and the manifest and refuses, writing nothing, when a relied-on skill is missing,
+  a user-invoked one has no `agents/openai.yaml`, or an upstream path fails stored form.
+- **Verification**: `python3 skill-copies/scripts/verify.py` fetches each recorded commit and
+  prints a PASS or FAIL line per copy and for the license, then each added Codex key. CI has
+  no network, so Execution runs it on the PR head and Acceptance reruns it. For a planted
+  change, pass `--copies` a modified copy of `skill-copies/` in a temporary directory.
+- **The change list**: `python3 skill-copies/scripts/changes.py --to <newer sha>` prints, in
+  plain Chinese, what changed per copy since the recorded commit, for the Merge summary;
+  `--from` names another older commit.
+- Only these evidence runs reach GitHub, read-only. Suites pass `--upstream` a local
+  repository built at test time instead.
 
 ## Parsers
 
