@@ -1,0 +1,9 @@
+version: 1
+agent_account: Habit098
+sensitive_paths: "**/AGENTS.md"
+confirmed:
+  sensitive_paths:
+    - pattern: "src/auth/**"
+      floor: high
+  required_checks:
+    - "test"

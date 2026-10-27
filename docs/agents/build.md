@@ -34,7 +34,9 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `store` | Version 1's manifest, the change-note parser fixtures, released and installed versions | linux |
 | `render` | Rendering's placeholders, confirmed values and unreleased versions, into a temporary directory and a worktree | linux |
 | `compare` | Exact comparison naming each difference | linux |
-| `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly; #41's seam-3 checks join it | linux |
+| `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; #41's seam-3 checks join it | linux |
+| `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
+| `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/` | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
 
@@ -77,12 +79,32 @@ reason under `error`.
   is written only when its target is absent. Repairing or rebuilding markers is #50's.
 - **One template per target path.** A mixed file's template holds its fixed part between the
   markers and its skeleton text after them. The record template ends at its `confirmed:`
-  key, and rendering writes the confirmed values below it.
+  key, and rendering writes the confirmed values below it. Rendering refuses confirmed
+  values, or a template, whose record wouldn't parse.
 - **Writes stay inside the destination.** Rendering and materializing refuse a target whose
   parent is a symlink or not a directory before writing anything.
 - **The change note** opens with `urgency: urgent` or `urgency: when convenient`, then
   `must-act: yes` or `must-act: no`, then a blank line and the plain-Chinese body. Its parser
   and fixtures: `govlib/store.py` and `tests/fixtures/change-notes/`.
+
+## Parsers
+
+One parser per side (#44 §5): the generator's library holds the machine side's, and the gate
+script holds the governed repository's, which #55 builds.
+
+- **The record**: `govlib/record.py`, whose docstring defines the format in full. A list key
+  with no items is null in YAML, and the record reads it as an empty list, which is how
+  rendering writes one. Text that YAML could read as null, a boolean or a number doesn't
+  parse unless double-quoted, and rendering double-quotes every confirmed value.
+- **The PR body's `Risk:` and `Reverts:` lines**: `govlib/prbody.py`. Only lines that start
+  with `Risk:` or `Reverts:` count, inside comments and code fences too, and a CRLF body
+  reads as LF.
+- **The shared parser fixtures**: `tests/fixtures/parsers/`, with every fixture's expected
+  result in `expected.json`, where the inputs `git diff --check` would flag sit as inline
+  texts. The `parser-fixtures` suite runs each fixture against every parser in `PARSERS` in
+  `tests/suites/parsers.py`. A parser registers as one more `Parser` there, whose adapters
+  return the shapes that file's docstring gives, so registering changes no fixture or
+  expected result. A record that doesn't parse expects only "doesn't parse".
 
 ## Operational constraints
 

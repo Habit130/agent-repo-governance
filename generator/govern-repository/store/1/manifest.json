@@ -1,6 +1,8 @@
 {
   "version": 1,
-  "templates": [],
+  "templates": [
+    {"path": ".github/governance/record.yml", "class": "record", "mode": "100644"}
+  ],
   "relied_on_skills": [
     "code-review",
     "codebase-design",

@@ -1,0 +1,15 @@
+version: 1
+agent_account: Habit098
+sensitive_paths:
+  - pattern: "**/AGENTS.md"
+    floor: medium
+confirmed:
+  sensitive_paths:
+    - pattern: "src/a: b # not a comment"
+      floor: high
+    - pattern: src/c#d
+      floor: high
+    - pattern: src/e:f
+      floor: high
+  required_checks:
+    - "test"

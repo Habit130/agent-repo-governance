@@ -1,0 +1,13 @@
+%YAML 1.2
+---
+version: 1
+agent_account: Habit098
+sensitive_paths:
+  - pattern: "**/AGENTS.md"
+    floor: medium
+confirmed:
+  sensitive_paths:
+    - pattern: "src/auth/**"
+      floor: high
+  required_checks:
+    - "test"

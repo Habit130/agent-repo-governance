@@ -1,0 +1,16 @@
+version: 1
+agent_account: Habit098
+sensitive_paths:
+  - pattern: docs/agents/**
+    floor: medium
+  - pattern: .github/**
+    floor: "medium"
+confirmed:
+  sensitive_paths:
+    - pattern: src/[id]/page.tsx
+      floor: "high"
+    - pattern: scripts/release-v2.sh
+      floor: high
+  required_checks:
+    - CI / test
+    - lint-and-typecheck

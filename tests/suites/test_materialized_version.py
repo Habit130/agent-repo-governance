@@ -9,6 +9,8 @@ import unittest
 
 import materialized
 import support
+from govlib import record
+from test_record import DEFAULT_PATTERNS, RECORD
 
 
 class MaterializedVersionOne(support.TempDirCase):
@@ -21,6 +23,7 @@ class MaterializedVersionOne(support.TempDirCase):
         self.assertEqual(code, 0, facts)
         self.assertEqual(facts["differences"], [])
         self.assertEqual((facts["repository"], facts["default_branch"]), ("Habit130/tally", "main"))
+        self.assertIn(RECORD, facts["checked"])
 
     def test_rendering_writes_only_the_versions_templates(self):
         status = support.git(self.worktree, "status", "--porcelain", "--untracked-files=all")
@@ -33,6 +36,19 @@ class MaterializedVersionOne(support.TempDirCase):
         self.assertTrue(os.path.isfile(os.path.join(self.worktree, ".gitignore")))
 
     # #41's template tickets add their seam-3 checks below, against self.worktree.
+
+    def test_the_record_parses(self):
+        with open(os.path.join(self.worktree, *RECORD.split("/")), "rb") as handle:
+            parsed = record.parse(handle.read())
+        self.assertEqual(
+            parsed,
+            {
+                "version": 1,
+                "agent_account": "Habit098",
+                "sensitive_paths": [{"pattern": pattern, "floor": "medium"} for pattern in DEFAULT_PATTERNS],
+                "confirmed": materialized.tally_fixture()["confirmed"],
+            },
+        )
 
 
 if __name__ == "__main__":
