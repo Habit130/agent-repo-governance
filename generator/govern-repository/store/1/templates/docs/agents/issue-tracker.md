@@ -30,7 +30,8 @@ GitHub shares one number space between issues and PRs: resolve a bare `#42` with
   `gh issue create`, or `gh issue edit <n> --repo @@repository@@ --add-blocked-by <blocker>`
   (`--remove-blocked-by` to undo) on an existing issue.
 - **Read both**: `gh issue view <n> --repo @@repository@@ --json parent,subIssues,blockedBy,blocking`.
-  An issue is unblocked when every issue under `blockedBy` is closed.
+  A ticket is unblocked once every blocker under `blockedBy` has merged, its PR closing it; a
+  wayfinder ticket, once every blocker is closed.
 
 ## Tickets
 
