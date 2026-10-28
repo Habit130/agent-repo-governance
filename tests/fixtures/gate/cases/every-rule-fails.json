@@ -1,0 +1,25 @@
+{
+  "description": "An outside author, a doubled Risk: line and a malformed Reverts: line each report; floors need a tier, so they don't run.",
+  "author": "someone-else",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "docs",
+      "files": {
+        "docs/guide.md": "guide, edited\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\nRisk: high — x\nReverts: HEAD\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Author",
+      "Risk line",
+      "Pure revert"
+    ],
+    "pure_revert": false
+  }
+}

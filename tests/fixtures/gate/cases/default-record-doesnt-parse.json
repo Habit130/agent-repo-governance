@@ -1,0 +1,30 @@
+{
+  "description": "The default branch's record doesn't parse, so the gate fails closed with one line.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [
+    {
+      "name": "broken",
+      "files": {
+        ".github/governance/record.yml": "version: 1\nagent_account: [Habit098]\n"
+      }
+    }
+  ],
+  "branch_from": "broken",
+  "head": [
+    {
+      "name": "docs",
+      "files": {
+        "docs/guide.md": "guide, edited\n"
+      }
+    }
+  ],
+  "body": "Risk: high — x\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Record"
+    ],
+    "pure_revert": false
+  }
+}

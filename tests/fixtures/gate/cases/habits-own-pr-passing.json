@@ -1,0 +1,21 @@
+{
+  "description": "habit's own PR at a tier that reaches the floor passes.",
+  "author": "Habit130",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "auth",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2 by habit\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    }
+  ],
+  "body": "Risk: high — x\n",
+  "expected": {
+    "passed": true,
+    "rules": [],
+    "pure_revert": false
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "description": "An edit to a nested packages/app/AGENTS.md, declared low, meets the medium floor of **/AGENTS.md.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "nested",
+      "files": {
+        "packages/app/AGENTS.md": "# app rules, edited\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "description": "Reverts: names a full SHA no commit has.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "docs",
+      "files": {
+        "docs/guide.md": "guide, edited\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\nReverts: 0123456789abcdef0123456789abcdef01234567\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Pure revert"
+    ],
+    "pure_revert": false
+  }
+}

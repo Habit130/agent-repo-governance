@@ -1,0 +1,23 @@
+{
+  "description": "Two Reverts: lines fail.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "docs",
+      "files": {
+        "docs/guide.md": "guide, edited\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\nReverts: {base}\nReverts: {base}\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Pure revert"
+    ],
+    "pure_revert": false
+  }
+}

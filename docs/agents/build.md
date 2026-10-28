@@ -37,6 +37,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; #41's seam-3 checks join it | linux |
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
 | `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
+| `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/` | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
@@ -170,8 +171,23 @@ allowed change, the Codex user-only key appended to a user-invoked skill whose
 ## Parsers
 
 One parser per side (#44 §5): the generator's library holds the machine side's, and the gate
-script holds the governed repository's, which #55 builds.
+script, `generator/govern-repository/store/1/templates/dot-github/governance/gate.py`, holds
+the governed repository's. Both register in the `parser-fixtures` suite.
 
+- **The gate script's interface.** In a governed repository it is
+  `.github/governance/gate.py`, and a script beside it, such as Merge watch's or the owner
+  script's embedded Python, runs `import gate`. A script run by path finds it on its own
+  directory; embedded Python first puts `.github/governance/` on `sys.path`. Set
+  `sys.dont_write_bytecode = True` before the import, so no `__pycache__` lands in the
+  governed tree. The module's docstring gives the gate's rules and the pattern rules.
+  - `parse_record(data)` takes the record's bytes and returns it in the shape
+    `tests/suites/parsers.py`'s docstring gives, or raises `gate.RecordError`.
+  - `parse_body(body)` returns `{"risk": ..., "reverts": ...}` in that docstring's shapes.
+  - `matches(pattern, path)` matches a sensitive-path pattern against a root-relative path.
+  - `verdict(repo, author, owner, body, default_head, head)` is Seam 1. It returns
+    `{"passed", "failures", "pure_revert"}`, and each failure is one line led by its rule.
+- **Its template loads as it is**, since its one token sits in its first line, a comment:
+  `PARSERS` in `tests/suites/parsers.py` loads it by path.
 - **The record**: `govlib/record.py`, whose docstring defines the format in full. A list key
   with no items is null in YAML, and the record reads it as an empty list, which is how
   rendering writes one. Text that starts like a number, or that YAML could read as null or

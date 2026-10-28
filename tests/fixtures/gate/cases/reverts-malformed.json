@@ -1,0 +1,24 @@
+{
+  "description": "A Reverts: line naming a short SHA fails, and floors still judge the change.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "auth",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\nReverts: abc1234\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Pure revert",
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}
