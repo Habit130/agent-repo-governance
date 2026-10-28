@@ -1,0 +1,21 @@
+{
+  "description": "High on src/auth/**, a confirmed high floor, passes.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "auth",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2 changed\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    }
+  ],
+  "body": "Risk: high — x\n",
+  "expected": {
+    "passed": true,
+    "rules": [],
+    "pure_revert": false
+  }
+}

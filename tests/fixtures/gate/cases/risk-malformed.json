@@ -1,0 +1,23 @@
+{
+  "description": "A Risk: line with a hyphen for the em dash.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "docs",
+      "files": {
+        "docs/guide.md": "guide, edited\n"
+      }
+    }
+  ],
+  "body": "Risk: low - a docs edit\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Risk line"
+    ],
+    "pure_revert": false
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "description": "An author who is neither the owner nor the agent account; everything else passes.",
+  "author": "someone-else",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "docs",
+      "files": {
+        "docs/guide.md": "guide, edited\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Author"
+    ],
+    "pure_revert": false
+  }
+}
