@@ -485,8 +485,8 @@ class Skill(object):
 
     @property
     def listed_by_codex(self):
-        """Whether Codex surely lists the skill for the model: its policy is readable and not user-only."""
-        return self.policy in (ABSENT, OTHER)
+        """Whether Codex may list the skill for the model: unless its policy reads as user-only, so an unclear one may."""
+        return self.policy != FALSE
 
 
 def skills_in(root):

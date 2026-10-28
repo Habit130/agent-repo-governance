@@ -4,7 +4,9 @@ Codex items need the CLI bundled in the ChatGPT app; when it is absent they are 
 and the skip is reported. `codex debug prompt-input` prints no warning when the skill list
 overflows its budget: Codex shortens descriptions and drops entries silently. So the budget
 item compares the listed entries, by name, with the skills Codex would list from the home's
-skill roots: a missing one is omitted, and a description cut short is shortened.
+skill roots: a missing one is omitted, and a description cut short is shortened. A machine
+skill whose user-only key can't be read is looked for too, so its omission still fails; a
+personal one is left out rather than reported on a guess.
 
 Only machine skills fail the Codex items (#44 §9, changed by #70). A machine skill is a
 directory in `~/.agents/skills` named in the machine skill set; every other skill there, and
@@ -98,7 +100,7 @@ def budget_problems(home, codex, machine_names):
         return ["`codex debug prompt-input` 的输出里没有 skill 列表"], []
     found = {True: ([], []), False: ([], [])}
     for skill, machine in codex_skills(home, machine_names):
-        if not skill.listed_by_codex:
+        if not skill.listed_by_codex or skill.policy == skills.UNCLEAR and not machine:
             continue
         omitted, shortened = found[machine]
         name = skill.name if machine else _personal(home, skill)

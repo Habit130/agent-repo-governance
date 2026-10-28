@@ -123,7 +123,9 @@ the layout; `install.py`'s docstring gives the steps.
   in `~/.codex/skills` is personal. The install never writes inside a personal skill, nor
   through a link inside one, and adds no Codex user-only key anywhere: machine skills carry
   theirs in this repository. The check fails a machine skill's missing key, omitted entry or
-  shortened description, and reports a personal skill's as a `说明` line that never fails.
+  shortened description, and reports a personal skill's as a `说明` line that never fails. A
+  machine skill whose key reads `unclear` is still looked for in Codex's list, so its omission
+  fails; a personal one's is left out.
 - **Codex's user-only key** is read by its effective value in one detector,
   `machinelib.skills.codex_policy`, which the copies share. Only `false` is user-only. Codex
   ignores an `agents/openai.yaml` that real YAML refuses (repeated keys, tabs, open quotes, a

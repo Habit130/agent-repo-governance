@@ -275,6 +275,27 @@ class MachineSkillUnclear(CheckCase):
         self.assertEqual(failures, ["machine skill beta-flow 的 agents/openai.yaml 写法无法确定是否 user-only"])
 
 
+class ModelInvokedMachineSkillUnclear(CheckCase):
+    """CRIT-2: a model-invoked machine skill whose policy can't be read is still looked for in Codex's list.
+
+    The key item passes it, since it isn't user-invoked, so only the list catches its omission.
+    Its flow mapping sets true, which hides nothing, so the real recordings stay true for it.
+    """
+
+    COPIES = dict(ms.COPIES, **{"alpha-check": dict(ms.COPIES["alpha-check"], **{
+        "agents/openai.yaml": "policy: {allow_implicit_invocation: true}\n"})})
+
+    def test_its_omission_fails(self):
+        ms.crowd(self.home, *ms.CROWDS["crowded-out"])
+        statuses, failures = self.check(codex=("codex-execpolicy.json", "codex-prompt-input-crowded-out.json"))
+        self.assert_only("Codex skill list", statuses, failures)
+        self.assertEqual(failures, ["超出预算，被省略：alpha-check"])
+
+    def test_it_passes_when_listed(self):
+        statuses, failures = self.check()
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+
+
 class CommentedKey(unittest.TestCase):
     """The detector reads the effective key, never a comment (#67's S-1, on the machine's wider surface)."""
 
