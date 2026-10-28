@@ -1,0 +1,645 @@
+{
+  "description": "Shapes of a skill's agents/openai.yaml, and how Codex's user-only key detectors read each: false only when Codex's effective policy.allow_implicit_invocation is false; other when the file sets something else; absent when it has no policy key; unclear when a reader can't tell safely, which includes every file real YAML would refuse, since Codex then ignores the whole file. Both the machine's detector and the skill copies' run against every shape, and codex-prompt-input-policy-shapes.json records which shapes the real Codex CLI hides.",
+  "shapes": [
+    {
+      "name": "no-policy",
+      "yaml": "interface:\n  display_name: \"X\"\n",
+      "reading": "absent"
+    },
+    {
+      "name": "false",
+      "yaml": "policy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "false-capitalized",
+      "yaml": "policy:\n  allow_implicit_invocation: False\n",
+      "reading": "false"
+    },
+    {
+      "name": "false-upper",
+      "yaml": "policy:\n  allow_implicit_invocation: FALSE\n",
+      "reading": "false"
+    },
+    {
+      "name": "true",
+      "yaml": "policy:\n  allow_implicit_invocation: true\n",
+      "reading": "other"
+    },
+    {
+      "name": "commented-only",
+      "yaml": "# policy:\n#   allow_implicit_invocation: false\n",
+      "reading": "absent"
+    },
+    {
+      "name": "commented-key-in-block",
+      "yaml": "policy:\n  # allow_implicit_invocation: false\n",
+      "reading": "other"
+    },
+    {
+      "name": "commented-false-above-true",
+      "yaml": "policy:\n  # allow_implicit_invocation: false\n  allow_implicit_invocation: true\n",
+      "reading": "other"
+    },
+    {
+      "name": "quoted-policy",
+      "yaml": "\"policy\":\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "single-quoted-policy",
+      "yaml": "'policy':\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "quoted-allow-key",
+      "yaml": "policy:\n  \"allow_implicit_invocation\": false\n",
+      "reading": "false"
+    },
+    {
+      "name": "spaced-policy",
+      "yaml": "policy :\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "flow-mapping",
+      "yaml": "policy: {allow_implicit_invocation: false}\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-policy",
+      "yaml": "policy:\n  allow_implicit_invocation: false\npolicy:\n  allow_implicit_invocation: true\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-policy-spellings",
+      "yaml": "policy:\n  allow_implicit_invocation: true\n\"policy\":\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-allow-key",
+      "yaml": "policy:\n  allow_implicit_invocation: false\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-interface",
+      "yaml": "interface:\n  display_name: A\ninterface:\n  display_name: B\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-nested-key",
+      "yaml": "interface:\n  display_name: A\n  display_name: B\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "string-false",
+      "yaml": "policy:\n  allow_implicit_invocation: \"false\"\n",
+      "reading": "other"
+    },
+    {
+      "name": "yaml11-no",
+      "yaml": "policy:\n  allow_implicit_invocation: no\n",
+      "reading": "other"
+    },
+    {
+      "name": "next-line-value",
+      "yaml": "policy:\n  allow_implicit_invocation:\n    false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tagged",
+      "yaml": "policy:\n  allow_implicit_invocation: !!bool false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "anchor-alias",
+      "yaml": "x: &f false\npolicy:\n  allow_implicit_invocation: *f\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "key-without-space",
+      "yaml": "policy:\n  allow_implicit_invocation:false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "policy-sequence",
+      "yaml": "policy:\n  - allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "policy-empty",
+      "yaml": "policy:\n",
+      "reading": "other"
+    },
+    {
+      "name": "policy-null",
+      "yaml": "policy: null\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "nested-key",
+      "yaml": "policy:\n  other: 1\n  nested:\n    allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "deeper-indent",
+      "yaml": "policy:\n    allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "trailing-comment",
+      "yaml": "policy:\n  allow_implicit_invocation: false # user-only\n",
+      "reading": "false"
+    },
+    {
+      "name": "hash-in-quoted-value",
+      "yaml": "interface:\n  display_name: \"C# tool\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "tab-indent",
+      "yaml": "policy:\n\tallow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tab-no-policy",
+      "yaml": "interface:\n\tdisplay_name: X\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tab-no-policy-appended",
+      "yaml": "interface:\n\tdisplay_name: X\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unclosed-quote-no-policy",
+      "yaml": "interface:\n  display_name: \"X\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unclosed-quote-appended",
+      "yaml": "interface:\n  display_name: \"X\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "multiline-quoted",
+      "yaml": "description: \"a\npolicy:\n  allow_implicit_invocation: false\"\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-scalar-hides-policy",
+      "yaml": "notes: |\n  policy:\n    allow_implicit_invocation: false\n",
+      "reading": "absent"
+    },
+    {
+      "name": "block-scalar-before-policy",
+      "yaml": "notes: |\n  text\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "crlf",
+      "yaml": "interface:\r\n  display_name: X\r\npolicy:\r\n  allow_implicit_invocation: false\r\n",
+      "reading": "false"
+    },
+    {
+      "name": "byte-order-mark",
+      "yaml": "\ufeffpolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "document-start",
+      "yaml": "---\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "two-documents",
+      "yaml": "policy:\n  allow_implicit_invocation: false\n---\ninterface:\n  display_name: X\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "real-copy",
+      "yaml": "interface:\n  display_name: \"Triage\"\n  short_description: \"Move issues through triage roles\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "dependencies-sequence",
+      "yaml": "interface:\n  display_name: \"X\"\ndependencies:\n  tools:\n    - type: \"mcp\"\n      value: \"x\"\n    - type: env\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "compact-sequence",
+      "yaml": "tools:\n- a\n- b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "apostrophe-in-plain",
+      "yaml": "interface:\n  short_description: Don't do X\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "brackets-in-plain",
+      "yaml": "interface:\n  short_description: Use x [y] z\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "flow-elsewhere",
+      "yaml": "interface: {display_name: X}\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "multiline-plain",
+      "yaml": "interface:\n  short_description: one\n    two\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "misaligned",
+      "yaml": "policy:\n    other: 1\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "root-indented",
+      "yaml": "  policy:\n    allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "empty-file",
+      "yaml": "",
+      "reading": "absent"
+    },
+    {
+      "name": "quoted-key-escape",
+      "yaml": "\"pol\\x69cy\":\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "interface-scalar",
+      "yaml": "interface: X\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "interface-sequence",
+      "yaml": "interface:\n  - a\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "interface-value-mapping",
+      "yaml": "interface:\n  display_name:\n    a: 1\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "interface-value-number",
+      "yaml": "interface:\n  display_name: 5\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "dependencies-scalar",
+      "yaml": "dependencies: x\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tools-scalar",
+      "yaml": "dependencies:\n  tools: x\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tools-item-scalar",
+      "yaml": "dependencies:\n  tools:\n    - x\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tools-value-mapping",
+      "yaml": "dependencies:\n  tools:\n    - type: mcp\n      value:\n        a: 1\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "dependencies-unknown-key",
+      "yaml": "dependencies:\n  zzz: 1\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "policy-other-field",
+      "yaml": "policy:\n  other: 1\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "policy-products-scalar",
+      "yaml": "policy:\n  products: x\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-flow-colon",
+      "yaml": "zzz: {a: b: c}\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-flow-trailing",
+      "yaml": "zzz: [a, b] c\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-bad-escape",
+      "yaml": "zzz: \"a\\qb\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-dash-value",
+      "yaml": "zzz: - a\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-plain-dash-word",
+      "yaml": "zzz: -a\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "unknown-after-policy-bad",
+      "yaml": "policy:\n  allow_implicit_invocation: false\nzzz: [a, b] c\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "control-character",
+      "yaml": "interface:\n  display_name: a\u0001b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-character",
+      "yaml": "zzz: a\u0085b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-less-indented",
+      "yaml": "zzz: |\n    a\n  b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-leading-blank-longer",
+      "yaml": "zzz: |\n      \n  a\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-tab",
+      "yaml": "zzz: |\n  \ta\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-ok",
+      "yaml": "zzz: |\n  a\n    b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "long-key",
+      "yaml": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk: 1\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-colon-quoted-policy",
+      "yaml": "zzz: foo\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-colon-start",
+      "yaml": "zzz: foo\n  : bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-key-with-hash",
+      "yaml": "zzz: foo\n  a#b: c\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-flow-mapping",
+      "yaml": "zzz: foo\n  {a: b}\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-quoted-colon",
+      "yaml": "zzz: foo\n  \"a: b\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-single-quoted-colon",
+      "yaml": "zzz: foo\n  'a: b'\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-bracket-key",
+      "yaml": "zzz: foo\n  [a, b]: c\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-dash-colon",
+      "yaml": "zzz: foo\n  -: x\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-trailing-colon",
+      "yaml": "zzz: foo\n  a#b:\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-twice-then-colon",
+      "yaml": "zzz: foo\n  bar\n  : baz\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-colon-tabs",
+      "yaml": "zzz: foo\n  x\t:\ty\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-colon-tab",
+      "yaml": "zzz: foo\n  a:\tb\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-colon-in-interface",
+      "yaml": "interface:\n  display_name: a\n    : b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-colon-in-tools-item",
+      "yaml": "dependencies:\n  tools:\n    - type: mcp\n      value: x\n        : y\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-after-trailing-comment",
+      "yaml": "zzz: foo # c\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-after-comment-line",
+      "yaml": "zzz: foo\n# c\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-after-indented-comment-line",
+      "yaml": "zzz: foo\n  # c\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-after-continuation-comment",
+      "yaml": "zzz: foo\n  bar # c\n  baz\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-quote-hiding-comment",
+      "yaml": "zzz: foo\n  \"bar # c\"\n  baz\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-continued-after-comment",
+      "yaml": "zzz:\n  foo # c\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-quoted-continued",
+      "yaml": "zzz:\n  \"x\"\n  more\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-flow-sequence-continued",
+      "yaml": "zzz:\n  [a]\n  b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-flow-mapping-continued",
+      "yaml": "zzz:\n  {a: 1}\n  b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-block-misaligned",
+      "yaml": "zzz:\n  |\n    a\n   b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-complex-key-continued",
+      "yaml": "zzz:\n  ? a\n  b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-null-key",
+      "yaml": "zzz:\n  : bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-complex-key",
+      "yaml": "zzz:\n  ? a\n  : b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-quoted",
+      "yaml": "zzz:\n  \"x\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-flow-sequence",
+      "yaml": "zzz:\n  [a]\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-plain",
+      "yaml": "zzz: foo\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "continued-plain-twice",
+      "yaml": "zzz: foo\n  bar\n  baz\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "next-line-plain-continued",
+      "yaml": "zzz:\n  foo\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "next-line-after-trailing-comment",
+      "yaml": "zzz: # c\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "next-line-after-comment-line",
+      "yaml": "zzz:\n  # c\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "continued-after-blank-line",
+      "yaml": "zzz: foo\n\n  bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "continued-hash-in-word",
+      "yaml": "zzz: foo\n  bar#baz\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "continued-colon-in-word",
+      "yaml": "zzz: foo\n  a:b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "continued-comment-last",
+      "yaml": "zzz: foo\n  bar # c\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "continued-quotes-inside",
+      "yaml": "zzz: foo\n  it's \"x\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "continued-question-mark",
+      "yaml": "zzz: foo\n  ? bar\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-brackets",
+      "yaml": "zzz: foo\n  [a] b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "value-colon-tab",
+      "yaml": "zzz: a:\tb\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "value-dash-tab",
+      "yaml": "zzz: -\ta\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "value-question-tab",
+      "yaml": "zzz: ?\ta\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "value-colon-start-tab",
+      "yaml": "zzz: :\ta\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "value-trailing-colon-tab",
+      "yaml": "zzz: a:\t\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "continued-dash-tab",
+      "yaml": "zzz: foo\n  -\tb\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "item-colon-tab",
+      "yaml": "tools:\n- a:\tb\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "item-dash-tab",
+      "yaml": "tools:\n-\ta\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "value-colon-in-word",
+      "yaml": "zzz: a:b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    }
+  ]
+}

@@ -16,14 +16,17 @@ ITEMS = ("Codex rules", "Codex skill list", "Codex user-only key", "名称冲突
 
 
 class CheckCase(support.TempDirCase):
+    COPIES = None
+    INSTALL_EXIT = 0
+
     def setUp(self):
         super(CheckCase, self).setUp()
         self.source = self.path("source")
-        ms.build_source(self.source)
+        ms.build_source(self.source, self.COPIES)
         self.home = ms.ready_home(self.path("home"))
         env = ms.machine_env(self.home, self.path("install-scratch"), gh_recording=ms.write_gh_recording(self.path("gh-install.json")))
         code, out, err = ms.run_machine(["install", "--source", self.source, "--home", self.home], env)
-        self.assertEqual((code, err), (0, ""), out)
+        self.assertEqual((code, err), (self.INSTALL_EXIT, ""), out)
         self.runs = 0
 
     def h(self, *parts):
@@ -48,6 +51,10 @@ class CheckCase(support.TempDirCase):
         self.assertEqual(sorted(statuses), sorted(ITEMS), out)
         self.assertEqual(code, 1 if "失败" in statuses.values() else 0, out)
         failures = [detail for status, _, detail in ms.lines(out) if status == "失败"]
+        self.notes = {}
+        for status, subject, detail in ms.lines(out):
+            if status == "说明":
+                self.notes.setdefault(subject, []).append(detail)
         return statuses, failures
 
     def assert_only(self, item, statuses, failures, *expected):
@@ -97,20 +104,62 @@ class EveryItem(CheckCase):
         self.assert_only("Codex rules", statuses, failures, "与 install 写入的内容不同", "`ghm pr merge 1` 未被禁止", "`gh secret set TOKEN` 未被禁止")
 
     def test_codex_skill_list_shortened(self):
+        """Codex shortens every description: the machine skill's fails the item, the crowd's are only noted."""
         ms.crowd(self.home, *ms.CROWDS["shortened"])
         statuses, failures = self.check(codex=("codex-execpolicy.json", "codex-prompt-input-shortened.json"))
-        self.assert_only("Codex skill list", statuses, failures, "描述被截短")
+        self.assert_only("Codex skill list", statuses, failures)
+        self.assertEqual(failures, ["超出预算，描述被截短：alpha-check"])
+        notes = self.notes["Codex skill list"]
+        self.assertEqual(len(notes), 1, notes)
+        self.assertTrue(notes[0].startswith("超出预算，描述被截短：personal skill crowd-1、"), notes)
+        self.assertIn("personal skill crowd-300", notes[0])
+        self.assertTrue(notes[0].endswith("（只报告，不算失败）"), notes)
 
     def test_codex_skill_list_omitted(self):
+        """Codex drops the crowd's tail and empties every description, alpha-check's too: only alpha-check fails."""
         ms.crowd(self.home, *ms.CROWDS["omitted"])
         statuses, failures = self.check(codex=("codex-execpolicy.json", "codex-prompt-input-omitted.json"))
-        self.assert_only("Codex skill list", statuses, failures, "被省略：")
-        self.assertIn("crowd-1500", " ".join(failures))
+        self.assert_only("Codex skill list", statuses, failures)
+        self.assertEqual(failures, ["超出预算，描述被截短：alpha-check"])
+        notes = " ".join(self.notes["Codex skill list"])
+        self.assertIn("超出预算，被省略：", notes)
+        self.assertIn("personal skill crowd-1500", notes)
+        self.assertNotIn("crowd", " ".join(failures))
+
+    def test_a_machine_skill_crowded_out_of_codexs_list_by_personal_skills(self):
+        ms.crowd(self.home, *ms.CROWDS["crowded-out"])
+        statuses, failures = self.check(codex=("codex-execpolicy.json", "codex-prompt-input-crowded-out.json"))
+        self.assert_only("Codex skill list", statuses, failures)
+        self.assertEqual(failures, ["超出预算，被省略：alpha-check"])
+        notes = " ".join(self.notes["Codex skill list"])
+        self.assertIn("personal skill aa-crowd-999", notes)
 
     def test_codex_user_only_key(self):
+        """A personal skill missing the key is reported, and the check still passes."""
         support.write_tree(self.h(".agents", "skills"), ms.KEYLESS)
         statuses, failures = self.check(codex=("codex-execpolicy.json", "codex-prompt-input-keyless.json"))
-        self.assert_only("Codex user-only key", statuses, failures, "gamma-solo 缺少 Codex user-only key")
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+        self.assertEqual(self.notes["Codex user-only key"], ["personal skill gamma-solo 缺少 Codex user-only key（只报告，不算失败）"])
+
+    def test_linked_personal_skills_missing_the_key_in_either_root_are_only_reported(self):
+        target = self.path("elsewhere")
+        support.write_tree(target, ms.KEYLESS)
+        os.makedirs(self.h(".codex", "skills"))
+        os.symlink(os.path.join(target, "gamma-solo"), self.h(".agents", "skills", "gamma-solo"))
+        os.symlink(os.path.join(target, "gamma-solo"), self.h(".codex", "skills", "gamma-linked"))
+        statuses, failures = self.check(absent=True)
+        self.assertEqual({k for k, v in statuses.items() if v != "通过"}, {"Codex rules", "Codex skill list"}, failures)
+        self.assertEqual(self.notes["Codex user-only key"], [
+            "personal skill gamma-solo（链接） 缺少 Codex user-only key（只报告，不算失败）",
+            "personal skill ~/.codex/skills 里的 gamma-linked（链接） 缺少 Codex user-only key（只报告，不算失败）",
+        ])
+
+    def test_a_personal_skill_whose_policy_cant_be_read_is_only_reported(self):
+        support.write_tree(self.h(".agents", "skills"), dict(ms.KEYLESS, **{"gamma-solo/agents/openai.yaml": "policy: {allow_implicit_invocation: false}\n"}))
+        statuses, failures = self.check(absent=True)
+        self.assertEqual({k for k, v in statuses.items() if v == "失败"}, set(), failures)
+        self.assertEqual(self.notes["Codex user-only key"],
+                         ["personal skill gamma-solo 的 agents/openai.yaml 写法无法确定是否 user-only（只报告，不算失败）"])
 
     def test_a_personal_skill_sharing_a_machine_skills_name(self):
         support.write_tree(self.h(".agents", "skills"), {"my-alpha/SKILL.md": ms.COPIES["alpha-check"]["SKILL.md"]})
@@ -149,8 +198,9 @@ class EveryItem(CheckCase):
     def test_a_user_invoked_skill_under_codex_skills_missing_the_key(self):
         support.write_tree(self.h(".codex", "skills"), ms.KEYLESS)
         statuses, failures = self.check(absent=True)
-        self.assertEqual({k for k, v in statuses.items() if v == "失败"}, {"Codex user-only key"}, failures)
-        self.assertIn("~/.codex/skills 里的 gamma-solo 缺少 Codex user-only key", failures)
+        self.assertEqual({k for k, v in statuses.items() if v == "失败"}, set(), failures)
+        self.assertEqual(self.notes["Codex user-only key"],
+                         ["personal skill ~/.codex/skills 里的 gamma-solo 缺少 Codex user-only key（只报告，不算失败）"])
 
     def test_a_real_file_in_place_of_a_link(self):
         os.remove(self.h(".config", "opencode", "AGENTS.md"))
@@ -184,6 +234,68 @@ class EveryItem(CheckCase):
         self.assert_only("identity", statuses, failures, "没有把 ghm 定义为 alias 或 function")
 
 
+def _beta_flow(codex_yaml):
+    """The synthetic copies, with beta-flow's agents/openai.yaml replaced, or dropped when None."""
+    copies = {name: dict(files) for name, files in ms.COPIES.items()}
+    del copies["beta-flow"]["agents/openai.yaml"]
+    if codex_yaml is not None:
+        copies["beta-flow"]["agents/openai.yaml"] = codex_yaml
+    return copies
+
+
+class MachineSkillWithoutTheKey(CheckCase):
+    """CRIT-2: a user-invoked machine skill that isn't user-only still fails, built so from the source tree."""
+
+    COPIES = _beta_flow(None)
+    INSTALL_EXIT = 1
+
+    def test_a_missing_key_fails(self):
+        statuses, failures = self.check(absent=True)
+        self.assertEqual({k for k, v in statuses.items() if v == "失败"}, {"Codex user-only key"}, failures)
+        self.assertEqual(failures, ["machine skill beta-flow 缺少 Codex user-only key"])
+
+
+class MachineSkillSettingTrue(CheckCase):
+    COPIES = _beta_flow("policy:\n  # allow_implicit_invocation: false\n  allow_implicit_invocation: true\n")
+    INSTALL_EXIT = 1
+
+    def test_a_policy_that_isnt_user_only_fails(self):
+        statuses, failures = self.check(absent=True)
+        self.assertEqual({k for k, v in statuses.items() if v == "失败"}, {"Codex user-only key"}, failures)
+        self.assertEqual(failures, ["machine skill beta-flow 缺少 Codex user-only key"])
+
+
+class MachineSkillUnclear(CheckCase):
+    COPIES = _beta_flow('"policy":\n  allow_implicit_invocation: false\n"policy":\n  allow_implicit_invocation: true\n')
+    INSTALL_EXIT = 1
+
+    def test_an_unclear_policy_fails(self):
+        statuses, failures = self.check(absent=True)
+        self.assertEqual({k for k, v in statuses.items() if v == "失败"}, {"Codex user-only key"}, failures)
+        self.assertEqual(failures, ["machine skill beta-flow 的 agents/openai.yaml 写法无法确定是否 user-only"])
+
+
+class ModelInvokedMachineSkillUnclear(CheckCase):
+    """CRIT-2: a model-invoked machine skill whose policy can't be read is still looked for in Codex's list.
+
+    The key item passes it, since it isn't user-invoked, so only the list catches its omission.
+    Its flow mapping sets true, which hides nothing, so the real recordings stay true for it.
+    """
+
+    COPIES = dict(ms.COPIES, **{"alpha-check": dict(ms.COPIES["alpha-check"], **{
+        "agents/openai.yaml": "policy: {allow_implicit_invocation: true}\n"})})
+
+    def test_its_omission_fails(self):
+        ms.crowd(self.home, *ms.CROWDS["crowded-out"])
+        statuses, failures = self.check(codex=("codex-execpolicy.json", "codex-prompt-input-crowded-out.json"))
+        self.assert_only("Codex skill list", statuses, failures)
+        self.assertEqual(failures, ["超出预算，被省略：alpha-check"])
+
+    def test_it_passes_when_listed(self):
+        statuses, failures = self.check()
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+
+
 class CommentedKey(unittest.TestCase):
     """The detector reads the effective key, never a comment (#67's S-1, on the machine's wider surface)."""
 
@@ -198,7 +310,7 @@ class CommentedKey(unittest.TestCase):
             b"policy: {allow_implicit_invocation: false}\n": skills.UNCLEAR,
             b"interface:\n  display_name: x\n": skills.ABSENT,
             b"policy:\n  allow_implicit_invocation: \"false\"\n": skills.OTHER,
-            b"policy:\n  other: 1\n  nested:\n    allow_implicit_invocation: false\n": skills.OTHER,
+            b"policy:\n  other: 1\n  nested:\n    allow_implicit_invocation: false\n": skills.UNCLEAR,
         }
         for text, expected in cases.items():
             self.assertEqual(skills.codex_policy(text), expected, text)

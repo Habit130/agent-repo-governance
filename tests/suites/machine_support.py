@@ -259,12 +259,19 @@ def section(out, title):
 
 
 def snapshot(root):
-    """Every path under root with its kind, mode and content hash or link target."""
+    """Every path under root with its kind, mode and content hash or link target.
+
+    Except the cache macOS's xcrun shims (/usr/bin/git, /usr/bin/python3) may keep in
+    `$TMPDIR/xcrun_db`, which machine_env puts in the home: the OS writes it, depending on the
+    machine, and a real home's TMPDIR is never inside it.
+    """
     found = {}
     for base, dirs, names in os.walk(root):
         for name in dirs + names:
             full = os.path.join(base, name)
             rel = os.path.relpath(full, root)
+            if rel == os.path.join("tmp", "xcrun_db"):
+                continue
             if os.path.islink(full):
                 found[rel] = ("link", os.readlink(full))
             elif os.path.isdir(full):
@@ -275,10 +282,10 @@ def snapshot(root):
     return found
 
 
-def crowd(home, count, description):
-    """Fill ~/.agents/skills with count personal skills, crowd-1 to crowd-<count>, for the budget cases."""
+def crowd(home, count, description, prefix="crowd"):
+    """Fill ~/.agents/skills with count personal skills, <prefix>-1 to <prefix>-<count>, for the budget cases."""
     for number in range(1, count + 1):
-        name = "crowd-%d" % number
+        name = "%s-%d" % (prefix, number)
         support.write_tree(
             os.path.join(home, ".agents", "skills"),
             {"%s/SKILL.md" % name: "---\nname: %s\ndescription: %s\n---\n\nBody.\n" % (name, description)},
@@ -286,10 +293,12 @@ def crowd(home, count, description):
 
 
 # The budget homes: the ready home after an install, plus a crowd of personal skills. Their
-# recorded `codex debug prompt-input` output shortens descriptions, and drops entries.
+# recorded `codex debug prompt-input` output shortens descriptions, and drops entries. Codex
+# keeps entries in name order, so a crowd whose names sort before `alpha-check` drops it.
 CROWDS = {
     "shortened": (300, " ".join(["word"] * 200)),
     "omitted": (1500, "short"),
+    "crowded-out": (1500, "short", "aa-crowd"),
 }
 
 # A personal user-invoked skill without Codex's user-only key, written after an install.

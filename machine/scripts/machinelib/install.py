@@ -7,8 +7,10 @@ state's commit isn't an ancestor of. Then it runs §8's steps in order:
 
 1. machine skills: take over same-name skills (silently when identical, listed when not),
    remove their entries from the `skills` CLI's lock file, restore and list any managed
-   skill changed since the last write, remove skills dropped from the set, and add a
-   missing Codex user-only key to a personal user-invoked skill, only reporting a linked one;
+   skill changed since the last write, and remove skills dropped from the set. It writes no
+   Codex user-only key: machine skills carry theirs in the source tree, and a personal skill
+   is never written, nor anything through a link inside one; the machine check only reports
+   a personal skill missing the key (#44 §8, changed by #70);
 2. machine rules (`rules.py`);
 3. links, created where absent, a real file or a foreign link reported and never overwritten;
 4. the installed state, and a copy of `machine/` at `~/.agents/governance/machine`, from
@@ -122,25 +124,6 @@ def _lock_file(home, report, names):
                % (home.show(path), "、".join(taken), home.show(backup)))
 
 
-def _codex_keys(home, report, managed):
-    for skill in skills.skills_in(home.skills):
-        if skill.dir_name in managed or not skill.user_invoked or skill.policy == skills.FALSE:
-            continue
-        if skill.linked:
-            report.add(homes.NOTE, "Codex user-only key", "%s 是链接的 personal skill，缺少 key，只报告不写入" % skill.dir_name)
-        elif skill.policy == skills.UNCLEAR:
-            report.add(homes.NOTE, "Codex user-only key", "%s 的 %s 写法无法确定是否 user-only，未修改" % (skill.dir_name, skills.CODEX_FILE))
-        elif skill.policy != skills.ABSENT:
-            report.add(homes.NOTE, "Codex user-only key", "%s 的 %s 已有 policy 但不是 user-only，未修改" % (skill.dir_name, skills.CODEX_FILE))
-        else:
-            parent = os.path.dirname(skill.codex_file)
-            if not os.path.isdir(parent):
-                os.makedirs(parent)
-            with open(skill.codex_file, "wb") as handle:
-                handle.write(skills.with_codex_key(skill.codex_yaml or b""))
-            report.add(homes.NOTE, "Codex user-only key", "已为 %s 添加 Codex user-only key" % skill.dir_name)
-
-
 def _machine_rules(home, report, codex):
     for harness, path in (("Claude Code", home.claude_settings), ("OpenCode", home.opencode_settings)):
         subject = "%s settings" % harness
@@ -230,7 +213,6 @@ def run(source, home, codex=None):
     report = homes.Report("install %s" % commit)
     written = _machine_skills(home, report, skill_set, installed)
     _lock_file(home, report, set(skill_set))
-    _codex_keys(home, report, set(skill_set))
     _machine_rules(home, report, codex)
     _links(home, report)
     _replace_dir(home, home.tools, tools)
