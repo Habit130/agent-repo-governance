@@ -24,8 +24,8 @@ habit's explicit request for a change, with no ticket, makes the session a Build
    `docs/agents/build.md`.
 2. **Claim**: assign the ticket to yourself (`issue-tracker.md`). It is your first write,
    and it posts no comment.
-3. **Worktree**: your own, on a `<type>/<kebab-slug>` branch from the latest `origin`
-   default branch: `git fetch origin`, then
+3. **Worktree**: your own, on a new branch from the latest `origin` default branch:
+   `git fetch origin`, then
    `git worktree add -b <branch> <path> origin/<default branch>`.
 4. **Implement** with `tdd` and the skills the ticket names; for a bug, `diagnosing-bugs`.
 5. **Commit**: run the ticket's Verification, then commit in English Conventional Commits.

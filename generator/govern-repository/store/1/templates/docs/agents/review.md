@@ -119,6 +119,8 @@ from users, PRs and the network; exposure of private data. It rates each finding
 - **MEDIUM**: a weakness that one further mistake or an unlikely condition would expose;
 - **LOW**: hardening, with no exposure today.
 
+The Code Review Rules map these ratings onto finding categories.
+
 ## Merge summary
 
 Written by the Builder at low, and by the Reviewer at medium and high, after the last clear
@@ -156,12 +158,14 @@ Required reviews: <kind>=<state>, <kind>=<state>
 
 - `<tier>` is `low`, `medium` or `high`; `<short sha>` is the head's first seven hex digits.
 - Kinds, in this order, each one the tier requires: `self-verification`, `bugbot`, `codex`,
-  `reviewer`, `security`. At low or medium, `codex` joins when it substituted for Bugbot.
-- States: `clear`, or `reduced` for a review habit accepted going without; the body links
-  habit's comment.
+  `reviewer`, `security`.
+- States: `clear`; `reduced` for a review habit accepted going without, the body linking
+  habit's comment; and, at low or medium only, `bugbot=substituted` when the Codex review
+  bot ran in Bugbot's place, with `codex` then listed as `clear`.
 - For example: `Required reviews: self-verification=clear, bugbot=clear, codex=reduced, reviewer=clear`.
 
-The seven items below follow, in English, with the high-risk report's additions at high.
+The rest of the comment is the terminal copy's first line and seven items, in English, with
+the high-risk report's additions at high.
 
 ### In the terminal
 
@@ -192,11 +196,12 @@ In the terminal, after the summary:
    `ghm pr merge <n> --admin --squash --match-head-commit <sha>`, with the full head SHA.
    It is the only governed merge path.
 2. **The next ticket.** When this merge unblocks a ticket in the same spec, a start request
-   for the first unclaimed one: open, unassigned, and with every blocker merged once this PR
-   is.
+   for a Builder on the first unclaimed one: open, unassigned, and with every blocker merged
+   once this PR is.
 3. **Misses.** The count of open miss records, `gh issue list --label miss --state open`.
-   When any is open, a start request for `retro` on the oldest: "给 habit" says to invoke
-   `retro` in a Planner session, and "粘贴给 agent" is
-   `Role: Planner. Miss record: #<n>. Skills: retro.`
+   When any is open, a start request for a Planner session in which habit invokes `retro` on
+   the oldest.
 4. **At high**: say merged in the Builder's terminal, so the Builder runs its after-merge
    steps.
+
+Each start request takes the form `AGENTS.md`'s How to start gives.

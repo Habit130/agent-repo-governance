@@ -25,7 +25,7 @@ ROLE_FILES = {
     "builder": "docs/agents/builder.md",
     "reviewer": "docs/agents/reviewer.md",
 }
-REVIEW_FILES = tuple(sorted(ROLE_FILES.values())) + ("docs/agents/review.md",)
+ROLE_AND_REVIEW_FILES = tuple(sorted(ROLE_FILES.values())) + ("docs/agents/review.md",)
 ROLE_SKILLS = {
     "planner": {
         "to-spec", "to-tickets", "triage", "wayfinder", "retro",
@@ -118,7 +118,7 @@ class MaterializedVersionOne(support.TempDirCase):
     def test_the_role_files_and_review_md_carry_the_notice_and_pass_exact_comparison(self):
         code, facts = materialized.compare_version_one(self.worktree)
         self.assertEqual(code, 0, facts)
-        for path in REVIEW_FILES:
+        for path in ROLE_AND_REVIEW_FILES:
             text = support.read_text(os.path.join(self.worktree, *path.split("/")))
             self.assertEqual(text.split("\n")[0], MARKDOWN_NOTICE, path)
             self.assertNotIn("@@", text, path)
@@ -139,8 +139,8 @@ class MaterializedVersionOne(support.TempDirCase):
         target = os.path.join(self.worktree, *path.split("/"))
         text = support.read_text(target)
         self.assertEqual(text.count(old), 1, (path, old))
-        with open(target, "w") as handle:
-            handle.write(text.replace(old, new))
+        with open(target, "wb") as handle:
+            handle.write(text.replace(old, new).encode("utf-8"))
 
     def test_a_planted_skill_mismatch_fails_the_skills_check(self):
         relied_on = store.Store(support.REAL_STORE).manifest(1)["relied_on_skills"]

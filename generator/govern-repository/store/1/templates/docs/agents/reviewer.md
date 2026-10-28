@@ -53,8 +53,8 @@ On the exact head, as the agent account:
   (`review.md`, Merge summary).
 
 The review speaks in the Reviewer's voice only: it states findings and never commits the
-Builder to changes. Repairs are the Builder's; the Reviewer leaves the PR, tickets and
-labels as they are (`AGENTS.md`, Hard limits).
+Builder to changes. Repairs are the Builder's: the Reviewer never pushes, and leaves the
+PR, tickets and labels as they are (`AGENTS.md`, Hard limits).
 
 ## A new head
 

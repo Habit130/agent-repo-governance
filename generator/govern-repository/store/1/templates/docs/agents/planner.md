@@ -50,8 +50,8 @@ A ticket holds `to-tickets`' body, or triage's agent brief, plus:
 A ticket carries no tier. Once published it is frozen: a Builder proposes a change, habit
 agrees, and the ticket records both.
 
-When habit approves, hand habit one start request for the first unblocked ticket, its
-"粘贴给 agent" part `Role: Builder. Ticket: #<n>. Skills: <the ticket's skills>.`
+When habit approves, hand habit one start request for a Builder on the first unblocked
+ticket (`AGENTS.md`, How to start).
 
 ## The docs PR
 
@@ -63,7 +63,8 @@ spec or map and closes no issue.
 
 When triage traces a bug to a merged PR, open a miss record for that PR
 (`issue-tracker.md`), linking the bug's own triaged issue. Tell habit at once, with a start
-request for `retro` on the record (`review.md`, The merge handoff, gives its form).
+request for a Planner session in which habit invokes `retro` on the record (`AGENTS.md`, How
+to start).
 
 ## Running retro
 
