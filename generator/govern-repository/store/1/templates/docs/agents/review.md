@@ -76,7 +76,8 @@ unavailable. A result for an older head never counts for this one.
 - **Unavailable**: no result within 30 minutes of the request, an error, or no quota.
   Request once more. Still unavailable at low or medium: the Builder escalates, offering
   habit's Codex review bot request as the substitute. At high: the Builder escalates, and
-  habit waits or accepts one bot fewer, recorded in the high-risk report.
+  habit waits or, in a PR comment, accepts going without that one bot, recorded in the
+  high-risk report.
 
 ## Answering findings
 
@@ -90,11 +91,13 @@ unavailable. A result for an older head never counts for this one.
 ## Rounds
 
 - A round is every required review on one head plus the Builder's response.
-  Self-verification comes before the PR opens and is not a round.
+  Self-verification is never a round: it runs before the PR opens and again on each new
+  head.
 - From round 2 a review narrows as the Code Review Rules' round-2 rules say.
 - Any new head, a sync included, gets the review bots again and, at medium and high, a
-  Reviewer pass over the change, at high with habit's Codex review bot request. The Builder reruns verification and
-  updates the evidence comment first.
+  Reviewer pass over the change, at high with habit's Codex review bot request. First the
+  Builder reruns verification and self-verification (`builder.md`, step 6) on that head,
+  then updates the evidence comment.
 - After three rounds with an Important finding still open, the Builder escalates with the
   options: change approach, split, more rounds, or drop.
 
@@ -130,9 +133,14 @@ review. At high it is the high-risk report.
 
 On the head the summary names:
 
-1. Each review the tier requires ran on that head and is clear, habit accepted going
-   without it in a PR comment, or, at low or medium, the Codex review bot's clear result on
-   that head stands in for an unavailable Bugbot (Review state).
+1. Each review the tier requires ran on that head and is clear. The only exceptions are for
+   a review bot still unavailable after the retry and escalation (Review state):
+   - at low or medium, the Codex review bot's clear result on that head stands in for
+     Bugbot;
+   - at high, habit accepted going without one of the two review bots in a PR comment.
+
+   Self-verification, the Reviewer session and a required security review have no
+   exception.
 2. The Gate and Merge rules are in effect on the default branch. Read, as the agent
    account, `gh repo view --json visibility,defaultBranchRef`, then:
    - **public**: `gh api repos/{owner}/{repo}/rulesets` lists the Gate and Merge rulesets,
@@ -160,10 +168,17 @@ Required reviews: <kind>=<state>, <kind>=<state>
 - `<tier>` is `low`, `medium` or `high`; `<short sha>` is the head's first seven hex digits.
 - Kinds, in this order, each one the tier requires: `self-verification`, `bugbot`, `codex`,
   `reviewer`, `security`.
-- States: `clear`; `reduced` for a review habit accepted going without, the body linking
-  habit's comment; and, at low or medium only, `bugbot=substituted` when the Codex review
-  bot ran in Bugbot's place, with `codex` then listed as `clear`.
-- For example: `Required reviews: self-verification=clear, bugbot=clear, codex=reduced, reviewer=clear`.
+- States: `clear`; at low or medium only, `bugbot=substituted` when the Codex review bot ran
+  in Bugbot's place, with `codex` then listed as `clear`; and, at high only,
+  `bugbot=reduced` or `codex=reduced` for the one review bot habit accepted going without,
+  the body linking habit's comment. No other kind is ever `reduced`, and at most one per
+  summary.
+- For example, at high:
+
+  ```text
+  ## Merge summary: high at 1a2b3c4
+  Required reviews: self-verification=clear, bugbot=clear, codex=reduced, reviewer=clear
+  ```
 
 The rest of the comment is the terminal copy's first line and seven items, in English, with
 the high-risk report's additions at high.
@@ -181,9 +196,9 @@ In Chinese (`AGENTS.md`, Talking to habit and to other agents):
   5. each finding in one sentence, with its answer;
   6. what the checks don't cover;
   7. how to revert.
-- **The high-risk report adds** why the change is high, the rehearsal result, any review
-  habit accepted going without, and each step awaiting habit's go-ahead, with what it does
-  and whether it can be undone.
+- **The high-risk report adds** why the change is high, the rehearsal result, the review bot
+  habit accepted going without, if any, and each step awaiting habit's go-ahead, with what
+  it does and whether it can be undone.
 - **At low**, items 4 and 5 state only checkable facts and link each review bot's own
   result, so habit still sees one source independent of the Builder.
 
