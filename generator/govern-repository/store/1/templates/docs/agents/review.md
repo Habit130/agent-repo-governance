@@ -92,8 +92,8 @@ unavailable. A result for an older head never counts for this one.
 - A round is every required review on one head plus the Builder's response.
   Self-verification comes before the PR opens and is not a round.
 - From round 2 a review narrows as the Code Review Rules' round-2 rules say.
-- Any new head, a sync included, gets the review bots again and a Reviewer pass over the
-  change, at high with habit's Codex review bot request. The Builder reruns verification and
+- Any new head, a sync included, gets the review bots again and, at medium and high, a
+  Reviewer pass over the change, at high with habit's Codex review bot request. The Builder reruns verification and
   updates the evidence comment first.
 - After three rounds with an Important finding still open, the Builder escalates with the
   options: change approach, split, more rounds, or drop.
@@ -130,8 +130,9 @@ review. At high it is the high-risk report.
 
 On the head the summary names:
 
-1. Each review the tier requires ran on that head and is clear, or habit accepted going
-   without it in a PR comment.
+1. Each review the tier requires ran on that head and is clear, habit accepted going
+   without it in a PR comment, or, at low or medium, the Codex review bot's clear result on
+   that head stands in for an unavailable Bugbot (Review state).
 2. The Gate and Merge rules are in effect on the default branch. Read, as the agent
    account, `gh repo view --json visibility,defaultBranchRef`, then:
    - **public**: `gh api repos/{owner}/{repo}/rulesets` lists the Gate and Merge rulesets,
