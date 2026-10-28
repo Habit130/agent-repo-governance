@@ -1,0 +1,23 @@
+{
+  "description": "A body with no Risk: line.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "docs",
+      "files": {
+        "docs/guide.md": "guide, edited\n"
+      }
+    }
+  ],
+  "body": "## Summary\nA docs edit.\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Risk line"
+    ],
+    "pure_revert": false
+  }
+}

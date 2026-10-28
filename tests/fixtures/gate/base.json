@@ -1,0 +1,13 @@
+{
+  "description": "The default branch's first commit in every Seam 1 case: this tree plus record.yml at .github/governance/record.yml. record.yml holds version 1's default sensitive paths and three confirmed ones: src/auth/** and scripts/release.sh with a high floor, src/billing/** with a medium floor.",
+  "files": {
+    "README.md": "tally\n",
+    "docs/guide.md": "guide\n",
+    "src/report.ts": "report\n",
+    "src/auth/login.ts": "login 1\nlogin 2\nlogin 3\nlogin 4\nlogin 5\n",
+    "src/auth/token.ts": "token\n",
+    "scripts/release.sh": "release\n",
+    "AGENTS.md": "# root rules\n",
+    "packages/app/AGENTS.md": "# app rules\n"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "description": "habit, the repository owner, authors the PR; the gate judges it like any other.",
+  "author": "Habit130",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "auth",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2 by habit\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    }
+  ],
+  "body": "Risk: medium — x\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}

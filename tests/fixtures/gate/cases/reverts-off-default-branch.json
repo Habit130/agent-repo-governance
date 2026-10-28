@@ -1,0 +1,29 @@
+{
+  "description": "Reverts: names a commit that exists only on the PR's head.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "first",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2 changed\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    },
+    {
+      "name": "second",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    }
+  ],
+  "body": "Risk: high — x\nReverts: {first}\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Pure revert"
+    ],
+    "pure_revert": false
+  }
+}

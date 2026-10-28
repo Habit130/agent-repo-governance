@@ -1,0 +1,37 @@
+{
+  "description": "A revert of the sensitive commit plus one more change is not pure, so low fails the high floor.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [
+    {
+      "name": "sensitive",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2 sensitive\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    },
+    {
+      "name": "later",
+      "files": {
+        "docs/guide.md": "guide, later\n"
+      }
+    }
+  ],
+  "branch_from": "later",
+  "head": [
+    {
+      "name": "revert",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2\nlogin 3\nlogin 4\nlogin 5\n",
+        "docs/guide.md": "guide, extra\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\nReverts: {sensitive}\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}

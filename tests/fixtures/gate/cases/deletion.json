@@ -1,0 +1,23 @@
+{
+  "description": "Deleting scripts/release.sh, a high floor, declared medium.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "delete",
+      "files": {
+        "scripts/release.sh": null
+      }
+    }
+  ],
+  "body": "Risk: medium — x\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}

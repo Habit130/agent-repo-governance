@@ -1,0 +1,23 @@
+{
+  "description": "Low on src/billing/**, a confirmed medium floor.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "billing",
+      "files": {
+        "src/billing/invoice.ts": "invoice\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}

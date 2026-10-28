@@ -1,0 +1,24 @@
+{
+  "description": "Renaming src/auth/token.ts to src/token.ts, declared low: the old side's high floor counts.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "rename",
+      "files": {
+        "src/auth/token.ts": null,
+        "src/token.ts": "token\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}

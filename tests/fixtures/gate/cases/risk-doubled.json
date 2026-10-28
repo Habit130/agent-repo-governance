@@ -1,0 +1,23 @@
+{
+  "description": "Two Risk: lines.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "default": [],
+  "branch_from": "base",
+  "head": [
+    {
+      "name": "docs",
+      "files": {
+        "docs/guide.md": "guide, edited\n"
+      }
+    }
+  ],
+  "body": "Risk: low — x\nRisk: medium — x\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Risk line"
+    ],
+    "pure_revert": false
+  }
+}
