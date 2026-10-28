@@ -34,7 +34,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `store` | Version 1's manifest, the change-note parser fixtures, released and installed versions | linux |
 | `render` | Rendering's placeholders, confirmed values and unreleased versions, into a temporary directory and a worktree | linux |
 | `compare` | Exact comparison naming each difference | linux |
-| `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; #41's seam-3 checks join it | linux |
+| `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; each fixed file's notice, the Markdown form an HTML comment on line 1 (`MARKDOWN_NOTICE`); the role files' skill lists against #41 §13 and the relied-on list, planted mismatches failing; #41's other seam-3 checks join it | linux |
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
 | `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
