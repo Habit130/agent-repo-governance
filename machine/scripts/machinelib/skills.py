@@ -199,6 +199,9 @@ _MAP_KEY = re.compile(
     r"""^(?:"([^"\\]*)"|'((?:[^']|'')*)'|([^\s?:,\[\]{}#&*!|>'"%@`-][^#]*?|-\S[^#]*?))[ \t]*:(?:[ \t]+(.*))?$"""
 )
 _BLOCK = re.compile(r"^[|>][-+]?$")
+# What a plain scalar can't hold: a leading `-` or `?`, or a `:` anywhere, then a blank (a tab
+# too) or the end, which YAML reads as an indicator.
+_NOT_PLAIN = re.compile(r"^[-?](?:[ \t]|$)|:(?:[ \t]|$)")
 # Characters YAML refuses in a stream (C0 controls other than tab and newline, DEL, C1 and
 # non-characters), and the line breaks other than newline, which this reader doesn't split on.
 _REFUSED = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\ufffe\uffff]")
@@ -271,9 +274,7 @@ def _kind(value):
         return BLOCK
     if value[0] in "\"'":
         return QUOTED
-    if value[0] in "[{|>" or value[:2] in ("- ", "? ", ": ") or value in ("-", "?", ":"):
-        raise _Unclear()
-    if ": " in value or value.endswith(":"):
+    if value[0] in "[{|>" or _NOT_PLAIN.search(value):
         raise _Unclear()
     return PLAIN
 
@@ -292,7 +293,9 @@ def _read_mappings(text):
     refused characters, open quotes, escapes, flow collections, repeated keys, keys near
     YAML's 1024-character limit, anchors, aliases, tags, merge keys, complex keys, nested
     sequences, a second document, a tab in a block scalar or a misaligned line, block scalar
-    lines included, are unclear. A sequence item's path ends with ITEM and its index; block
+    lines included, are unclear. So is a value's next line, which may only continue a plain
+    scalar, or start one under an empty key: one that isn't plain text, holds `: `, or follows
+    a comment that ended the scalar. A sequence item's path ends with ITEM and its index; block
     scalars are skipped.
     """
     text = text.replace("\r\n", "\n")
@@ -301,6 +304,7 @@ def _read_mappings(text):
     found, stack, sequences = {}, [], {}
     block = None  # A block scalar being skipped: [its key's indent, its content's indent, longest blank line before it].
     started = False
+    ended = False  # Whether a comment has ended the last value's plain scalar, so no line may continue it.
 
     def add_key(indent, body, top, popped):
         match = _MAP_KEY.match(body)
@@ -340,8 +344,10 @@ def _read_mappings(text):
         if "\t" in raw[:len(raw) - len(raw.lstrip(_BLANKS))]:
             raise _Unclear()
         line = _scan(raw)
+        commented = line != raw.rstrip(_BLANKS)
         body = line.lstrip(" ")
         if not body:
+            ended = ended or commented
             continue
         indent = len(line) - len(body)
         if indent == 0 and body.startswith(("---", "...")):
@@ -358,6 +364,7 @@ def _read_mappings(text):
         if _MAP_KEY.match(body):
             if add_key(indent, body, top, popped) == BLOCK:
                 block = [indent, None, 0]
+            ended = commented
             continue
         if top is None or top.last is None:
             raise _Unclear()
@@ -382,9 +389,14 @@ def _read_mappings(text):
                     block = [column, None, 0]
             else:
                 found[item] = (_kind(rest), rest)
+            ended = commented
             continue
-        if indent > top.indent and not popped and kind in (EMPTY, PLAIN, MULTILINE):
+        # A value's next line. YAML reads it as plain text, quotes and brackets included, but this
+        # reader follows only a line that is plain text at the start of a value too.
+        continues = kind == EMPTY or kind in (PLAIN, MULTILINE) and not ended
+        if indent > top.indent and not popped and continues and _kind(body) == PLAIN:
             found[owner] = (MULTILINE, None)
+            ended = commented
         else:
             raise _Unclear()
     return found

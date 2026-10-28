@@ -42,7 +42,9 @@ RELIED_ON = ["alpha", "gated", "keyed"]
 
 # #67's shape: a commented false above an effective true.
 COMMENTED_TRUE = "policy:\n  # allow_implicit_invocation: false\n  allow_implicit_invocation: true\n"
-SHAPES = os.path.join(support.FIXTURES, "machine", "codex-policy-shapes.json")
+# AC-71 round 1's F1: a plain value continued by a line YAML refuses, so Codex drops the file and lists the skill.
+CONTINUED_COLON = 'zzz: foo\n  : bar\n"policy":\n  allow_implicit_invocation: false\n'
+SHAPES =os.path.join(support.FIXTURES, "machine", "codex-policy-shapes.json")
 SHAPES_RECORDING = os.path.join(support.FIXTURES, "machine", "codex-prompt-input-policy-shapes.json")
 
 
@@ -201,6 +203,16 @@ class Refreshing(SkillCopiesCase):
         self.assertIn("can't be read safely", out)
         self.assertEqual(os.listdir(self.copies), [])
 
+    def test_refuses_a_false_after_a_line_codex_would_drop_the_file_for_and_writes_nothing(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/gated/agents/openai.yaml"] = CONTINUED_COLON
+        commit = support.commit_tree(self.upstream, files, "continued colon")
+        code, out, err = self.refresh(commit)
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("gated", out)
+        self.assertIn("can't be read safely", out)
+        self.assertEqual(os.listdir(self.copies), [])
+
     def test_reads_a_crlf_skill_md_as_user_invoked(self):
         files = dict(UPSTREAM)
         files["skills/engineering/alpha/SKILL.md"] = (
@@ -294,6 +306,23 @@ class Verifying(SkillCopiesCase):
         self.assertEqual(code, 1, out + err)
         self.assertIn("FAIL copy gated:", out)
         self.assertIn("isn't user-only", out)
+        self.assertIn("PASS copy keyed:", out)
+
+    def test_fails_on_a_copy_whose_false_follows_a_line_codex_would_drop_the_file_for(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/gated/agents/openai.yaml"] = CONTINUED_COLON
+        newer = support.commit_tree(self.upstream, files, "continued colon")
+        with open(self.copy_path("skills", "gated", "agents", "openai.yaml"), "w") as handle:
+            handle.write(CONTINUED_COLON)
+        data = self.provenance()
+        for entry in data["copies"] + [data["license"]]:
+            entry["commit"] = newer
+        data["copies"][1]["codex_key_added"] = False
+        self.write_provenance(data)
+        code, out, err = self.verify()
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("FAIL copy gated:", out)
+        self.assertIn("can't be read safely", out)
         self.assertIn("PASS copy keyed:", out)
 
     def test_fails_when_the_key_is_recorded_as_added_where_upstream_has_it(self):
@@ -488,7 +517,7 @@ class CopiesCheck(support.TempDirCase):
     def test_fails_on_a_user_invoked_copy_that_isnt_user_only(self):
         gated = "---\nname: gated\ndisable-model-invocation: true\n---\n"
         for name, codex in (("commented", COMMENTED_TRUE), ("unclear", "policy: {allow_implicit_invocation: false}\n"),
-                            ("missing", None)):
+                            ("continued", CONTINUED_COLON), ("missing", None)):
             extra = {"skill-copies/skills/gated/SKILL.md": gated}
             if codex is not None:
                 extra["skill-copies/skills/gated/agents/openai.yaml"] = codex

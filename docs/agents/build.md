@@ -126,11 +126,13 @@ the layout; `install.py`'s docstring gives the steps.
   shortened description, and reports a personal skill's as a `说明` line that never fails.
 - **Codex's user-only key** is read by its effective value in one detector,
   `machinelib.skills.codex_policy`, which the copies share. Only `false` is user-only. Codex
-  ignores an `agents/openai.yaml` that real YAML refuses (repeated keys, tabs, open quotes),
-  or where a field it types, such as `interface`, `dependencies.tools` or a `policy` field,
-  holds the wrong type, so a shape the detector can't read safely is `unclear`, flow
-  collections and escapes included, which fails a machine skill and never reads as user-only. `tests/fixtures/machine/codex-policy-shapes.json` is the shared
-  shape set; a new shape the detector reads as `false` joins it and its real recording,
+  ignores an `agents/openai.yaml` that real YAML refuses (repeated keys, tabs, open quotes, a
+  plain value continued after a comment or by a line holding `: `), or where a field it
+  types, such as `interface`, `dependencies.tools` or a `policy` field, holds the wrong type.
+  So a shape the detector can't read safely is `unclear`, flow collections, escapes and a
+  value's next line that isn't plain text included, which fails a machine skill and never
+  reads as user-only. `tests/fixtures/machine/codex-policy-shapes.json` is the shared shape
+  set; a new shape the detector reads as `false` joins it and its real recording,
   `codex-prompt-input-policy-shapes.json`, re-recorded with the shape's skill.
 - **Seam C suites** build the source tree from this checkout's `machine/` and generator with
   synthetic copies (`tests/suites/machine_support.py`), so the real recordings stay true
