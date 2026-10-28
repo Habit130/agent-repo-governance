@@ -144,6 +144,24 @@ class FailureLines(GateCase):
         self.assertIn("more than one `Risk:` line", self.failures("risk-doubled")[0])
         self.assertIn("malformed", self.failures("risk-malformed")[0])
 
+    def test_a_file_name_that_isnt_utf_8_is_floored_and_named_in_printable_utf_8(self):
+        case = load(os.path.join(CASES, "low-on-plain-path.json"))
+        repo, default_head, _, _ = build(self.tmp, case)
+        # Built in git's index alone, since some file systems refuse a name that isn't UTF-8.
+        blob = support.git(repo, "hash-object", "-w", "README.md").strip()
+        subprocess.run(
+            ["git", "-C", repo, "update-index", "-z", "--index-info"],
+            input=b"100644 blob " + blob.encode("ascii") + b"\tsrc/auth/\xff\nname.ts\0",
+            env=support.isolated_env(), check=True,
+        )
+        tree = support.git(repo, "write-tree").strip()
+        head = support.git(repo, "commit-tree", tree, "-p", default_head, "-m", "odd name").strip()
+        result = gate.verdict(repo, case["author"], case["owner"], case["body"], default_head, head)
+        (line,) = result["failures"]
+        self.assertTrue(line.startswith("Floors: "), line)
+        self.assertIn('"src/auth/\\udcff\\nname.ts"', line)
+        line.encode("utf-8")
+
 
 class Patterns(unittest.TestCase):
     """#44 §4's pattern rules: root-relative, case-sensitive, `*` in one segment, `**` across any."""

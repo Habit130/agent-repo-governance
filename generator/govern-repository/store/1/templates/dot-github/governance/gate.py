@@ -36,7 +36,8 @@ A pattern is root-relative and case-sensitive. A segment that is exactly `**` ma
 number of segments, none included; any other `*` matches within one segment, so a segment
 `a**b` reads as `a*b`. Nothing else is special.
 
-Python 3's standard library at the 3.9 level, plus `git` and `gh`.
+Python 3's standard library at the 3.9 level, plus `git` 2.40 or later, for
+`merge-tree --merge-base`, and `gh`.
 """
 
 import argparse
@@ -397,7 +398,8 @@ def _git(repo, args, codes=(0,)):
         ["git", "-C", repo] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     if result.returncode not in codes:
-        raise GitError("`git %s` failed: %s" % (" ".join(args), result.stderr.decode("utf-8", "replace").strip()))
+        stderr = " ".join(result.stderr.decode("utf-8", "replace").split())
+        raise GitError("`git %s` failed: %s" % (" ".join(args), stderr))
     return result.returncode, result.stdout
 
 
@@ -427,8 +429,8 @@ def matches(pattern, path):
 
 
 def _quote(path):
-    """A path as a JSON string, so no file name can start a line of the gate's output."""
-    return json.dumps(path, ensure_ascii=False)
+    """A path as an ASCII JSON string, so no file name can start a line of the gate's output or fail to print."""
+    return json.dumps(path)
 
 
 def _author_rule(record, author, owner):
@@ -605,8 +607,13 @@ def main(argv=None):
         event = json.load(handle)
     pull = event["pull_request"]
     head = pull["head"]["sha"]
-    default_head = _line(repo, ["rev-parse", "HEAD"])
-    if _is_commit(repo, head) or _fetch(repo, head):
+    try:
+        default_head = _line(repo, ["rev-parse", "HEAD"])
+        judged = _is_commit(repo, head) or _fetch(repo, head)
+    except GitError as error:
+        default_head, judged = "an unreadable checkout", False
+        print("FAIL Git: %s" % error)
+    if judged:
         result = verdict(
             repo, pull["user"]["login"], event["repository"]["owner"]["login"], pull["body"], default_head, head
         )
