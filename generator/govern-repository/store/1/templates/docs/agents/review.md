@@ -96,8 +96,8 @@ unavailable. A result for an older head never counts for this one.
 - From round 2 a review narrows as the Code Review Rules' round-2 rules say.
 - Any new head, a sync included, gets the review bots again and, at medium and high, a
   Reviewer pass over the change, at high with habit's Codex review bot request. First the
-  Builder reruns verification and self-verification (`builder.md`, step 6) on that head,
-  then updates the evidence comment.
+  Builder reruns self-verification (`builder.md`, step 6) on that head, deals with its
+  findings, then updates the evidence comment.
 - After three rounds with an Important finding still open, the Builder escalates with the
   options: change approach, split, more rounds, or drop.
 
