@@ -139,7 +139,7 @@
     {
       "name": "nested-key",
       "yaml": "policy:\n  other: 1\n  nested:\n    allow_implicit_invocation: false\n",
-      "reading": "other"
+      "reading": "unclear"
     },
     {
       "name": "deeper-indent",
@@ -244,7 +244,7 @@
     {
       "name": "flow-elsewhere",
       "yaml": "interface: {display_name: X}\npolicy:\n  allow_implicit_invocation: false\n",
-      "reading": "false"
+      "reading": "unclear"
     },
     {
       "name": "multiline-plain",
@@ -269,6 +269,126 @@
     {
       "name": "quoted-key-escape",
       "yaml": "\"pol\\x69cy\":\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "interface-scalar",
+      "yaml": "interface: X\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "interface-sequence",
+      "yaml": "interface:\n  - a\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "interface-value-mapping",
+      "yaml": "interface:\n  display_name:\n    a: 1\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "interface-value-number",
+      "yaml": "interface:\n  display_name: 5\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "dependencies-scalar",
+      "yaml": "dependencies: x\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tools-scalar",
+      "yaml": "dependencies:\n  tools: x\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tools-item-scalar",
+      "yaml": "dependencies:\n  tools:\n    - x\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tools-value-mapping",
+      "yaml": "dependencies:\n  tools:\n    - type: mcp\n      value:\n        a: 1\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "dependencies-unknown-key",
+      "yaml": "dependencies:\n  zzz: 1\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "policy-other-field",
+      "yaml": "policy:\n  other: 1\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "policy-products-scalar",
+      "yaml": "policy:\n  products: x\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-flow-colon",
+      "yaml": "zzz: {a: b: c}\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-flow-trailing",
+      "yaml": "zzz: [a, b] c\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-bad-escape",
+      "yaml": "zzz: \"a\\qb\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-dash-value",
+      "yaml": "zzz: - a\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unknown-plain-dash-word",
+      "yaml": "zzz: -a\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "unknown-after-policy-bad",
+      "yaml": "policy:\n  allow_implicit_invocation: false\nzzz: [a, b] c\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "control-character",
+      "yaml": "interface:\n  display_name: a\u0001b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "next-line-character",
+      "yaml": "zzz: a\u0085b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-less-indented",
+      "yaml": "zzz: |\n    a\n  b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-leading-blank-longer",
+      "yaml": "zzz: |\n      \n  a\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-tab",
+      "yaml": "zzz: |\n  \ta\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-ok",
+      "yaml": "zzz: |\n  a\n    b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "long-key",
+      "yaml": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk: 1\npolicy:\n  allow_implicit_invocation: false\n",
       "reading": "unclear"
     }
   ]

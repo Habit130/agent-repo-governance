@@ -289,7 +289,7 @@ class CommentedKey(unittest.TestCase):
             b"policy: {allow_implicit_invocation: false}\n": skills.UNCLEAR,
             b"interface:\n  display_name: x\n": skills.ABSENT,
             b"policy:\n  allow_implicit_invocation: \"false\"\n": skills.OTHER,
-            b"policy:\n  other: 1\n  nested:\n    allow_implicit_invocation: false\n": skills.OTHER,
+            b"policy:\n  other: 1\n  nested:\n    allow_implicit_invocation: false\n": skills.UNCLEAR,
         }
         for text, expected in cases.items():
             self.assertEqual(skills.codex_policy(text), expected, text)
