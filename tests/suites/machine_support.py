@@ -259,12 +259,19 @@ def section(out, title):
 
 
 def snapshot(root):
-    """Every path under root with its kind, mode and content hash or link target."""
+    """Every path under root with its kind, mode and content hash or link target.
+
+    Except the cache macOS's xcrun shims (/usr/bin/git, /usr/bin/python3) may keep in
+    `$TMPDIR/xcrun_db`, which machine_env puts in the home: the OS writes it, depending on the
+    machine, and a real home's TMPDIR is never inside it.
+    """
     found = {}
     for base, dirs, names in os.walk(root):
         for name in dirs + names:
             full = os.path.join(base, name)
             rel = os.path.relpath(full, root)
+            if rel == os.path.join("tmp", "xcrun_db"):
+                continue
             if os.path.islink(full):
                 found[rel] = ("link", os.readlink(full))
             elif os.path.isdir(full):
