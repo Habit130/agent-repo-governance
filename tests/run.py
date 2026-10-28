@@ -83,7 +83,9 @@ def cmd_release_check(args):
 
 
 def cmd_copies(args):
-    """The copies check (#44 §10): copies' names, provenance and the relied-on list agree, at one commit.
+    """The copies check (#44 §10): names, provenance and the relied-on list agree, and each user-invoked copy is user-only.
+
+    All at one upstream commit; user-only means Codex's key reads false (`copylib.codex_policy`).
 
     The role files' skill lists, the third side, join #41's materialized-version checks.
     """
@@ -107,6 +109,18 @@ def cmd_copies(args):
             failures.append("%s but not on the relied-on list: %s" % (label, ", ".join(extra)))
         if missing:
             failures.append("on the relied-on list but not %s: %s" % (label, ", ".join(missing)))
+    for name in on_disk:
+        try:
+            files = copylib.copy_files(os.path.join(root, copylib.SKILLS, name))
+        except copylib.CopyError as error:
+            failures.append("%s can't be read: %s" % (name, error))
+            continue
+        if not copylib.user_invoked(files.get("SKILL.md", ("", b""))[1]):
+            continue
+        codex = files.get(copylib.CODEX_FILE)
+        reading = copylib.codex_policy(codex[1]) if codex else "absent"
+        if reading != "false":
+            failures.append("%s is user-invoked, but its %s reads as %s, not user-only" % (name, copylib.CODEX_FILE, reading))
     commits = sorted(set(entry["commit"] for entry in [provenance["license"]] + provenance["copies"]))
     if len(commits) > 1:
         failures.append("the copies and the license must come from one upstream commit, not %s" % ", ".join(commits))
@@ -115,7 +129,8 @@ def cmd_copies(args):
     if failures:
         return 1
     print(
-        "PASS copies: %d copies at %s match the relied-on list and %s, the license not counted"
+        "PASS copies: %d copies at %s match the relied-on list and %s, the license not counted,"
+        " and every user-invoked copy is user-only in Codex"
         % (len(on_disk), commits[0][:12], copylib.PROVENANCE)
     )
     return 0

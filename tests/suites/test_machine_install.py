@@ -241,33 +241,49 @@ class PersonalSkills(InstallCase):
         os.makedirs(self.h(".agents", "skills"))
         os.symlink(target, self.h(".agents", "skills", "linked-flow"))
         code, out = self.install()
-        self.assertEqual(code, 1, out)
+        self.assertEqual(code, 0, out)
         self.assertEqual(os.listdir(target), ["SKILL.md"])
-        self.assertIn("linked-flow 是链接的 personal skill，缺少 key，只报告不写入", self.notes(out, "Codex user-only key"))
-        self.assertEqual(self.check(out)["Codex user-only key"], "失败")
+        self.assertEqual(self.notes(out, "Codex user-only key"), [])
+        self.assertEqual(self.check(out)["Codex user-only key"], "通过")
+        self.assertIn("[说明] Codex user-only key：personal skill linked-flow（链接） 缺少 Codex user-only key（只报告，不算失败）", out)
 
-    def test_a_personal_skill_missing_the_key_gets_it_and_a_commented_key_is_no_key(self):
-        commented = "policy:\n  # allow_implicit_invocation: false\n  allow_implicit_invocation: true\n"
+    def test_the_install_writes_nothing_inside_a_personal_skill_in_either_root(self):
+        """CRIT-3, #69's S-2 to S-4: missing, quoted, spaced and commented keys, and links inside a skill."""
         flow = "---\nname: %s\ndescription: Personal.\ndisable-model-invocation: true\n---\n"
-        self.write({
-            ".agents/skills/plain-flow/SKILL.md": flow % "plain-flow",
-            ".agents/skills/shown-flow/SKILL.md": flow % "shown-flow",
-            ".agents/skills/shown-flow/agents/openai.yaml": "interface:\n  display_name: \"Shown\"\n",
-            ".agents/skills/commented-flow/SKILL.md": flow % "commented-flow",
-            ".agents/skills/commented-flow/agents/openai.yaml": commented,
-        })
+        keyless = 'interface:\n  display_name: "Shared"\n'
+        external = self.path("dotfiles")
+        roots = {".agents/skills": "agents", ".codex/skills": "codex"}
+        files, targets = {}, {}
+        for root, tag in sorted(roots.items()):
+            for name, codex in (("plain", None), ("shown", keyless),
+                                ("quoted", '"policy":\n  allow_implicit_invocation: true\n'),
+                                ("spaced", "policy :\n  allow_implicit_invocation: true\n"),
+                                ("commented", "policy:\n  # allow_implicit_invocation: false\n  allow_implicit_invocation: true\n"),
+                                ("dirlink", None), ("filelink", None)):
+                skill = "%s-%s" % (name, tag)
+                files["%s/%s/SKILL.md" % (root, skill)] = flow % skill
+                if codex is not None:
+                    files["%s/%s/agents/openai.yaml" % (root, skill)] = codex
+            targets[tag] = os.path.join(external, tag)
+            support.write_tree(targets[tag], {"agents/openai.yaml": keyless, "openai.yaml": keyless})
+        self.write(files)
+        for root, tag in roots.items():
+            os.symlink(os.path.join(targets[tag], "agents"), self.h(root, "dirlink-%s" % tag, "agents"))
+            os.makedirs(self.h(root, "filelink-%s" % tag, "agents"))
+            os.symlink(os.path.join(targets[tag], "openai.yaml"), self.h(root, "filelink-%s" % tag, "agents", "openai.yaml"))
+        personal = sorted(self.h(root, name) for root in roots for name in os.listdir(self.h(root)))
+        self.assertEqual(len(personal), 14)
+        before = [ms.snapshot(path) for path in personal + [external]]
+
         code, out = self.install()
-        notes = self.notes(out, "Codex user-only key")
-        self.assertIn("已为 plain-flow 添加 Codex user-only key", notes)
-        self.assertIn("已为 shown-flow 添加 Codex user-only key", notes)
-        self.assertEqual(self.read(".agents", "skills", "plain-flow", "agents", "openai.yaml"), "policy:\n  allow_implicit_invocation: false\n")
-        self.assertEqual(self.read(".agents", "skills", "shown-flow", "agents", "openai.yaml"),
-                         "interface:\n  display_name: \"Shown\"\npolicy:\n  allow_implicit_invocation: false\n")
-        self.assertIn("commented-flow 的 agents/openai.yaml 已有 policy 但不是 user-only，未修改", notes)
-        self.assertEqual(self.read(".agents", "skills", "commented-flow", "agents", "openai.yaml"), commented)
-        failures = [d for s, subject, d in ms.lines(out) if subject == "Codex user-only key" and s == "失败"]
-        self.assertEqual(failures, ["commented-flow 缺少 Codex user-only key"])
-        self.assertEqual(code, 1)
+        self.assertEqual(code, 0, out)
+        self.assertEqual([ms.snapshot(path) for path in personal + [external]], before)
+        self.assertEqual(self.notes(out, "Codex user-only key"), [])
+        self.assertNotIn("添加 Codex user-only key", out)
+        self.assertEqual(self.check(out)["Codex user-only key"], "通过", out)
+        noted = [d for s, subject, d in ms.lines(out) if subject == "Codex user-only key" and s == "说明"]
+        self.assertEqual(len(noted), 14, noted)
+        self.assertIn("personal skill ~/.codex/skills 里的 quoted-codex 缺少 Codex user-only key（只报告，不算失败）", noted)
 
     def test_a_machine_skills_name_under_codex_skills_is_reported(self):
         self.write({".codex/skills/alpha-check/SKILL.md": ms.COPIES["alpha-check"]["SKILL.md"]})

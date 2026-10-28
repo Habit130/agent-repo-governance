@@ -4,7 +4,9 @@
 copy per relied-on skill under `skills/<name>/`: the skill's whole upstream directory at one
 recorded commit, in stored form (#44 §3). The one allowed change appends the Codex user-only
 key to `agents/openai.yaml` of a user-invoked skill (`disable-model-invocation: true`) that
-lacks it. The scripts here sit outside every copy.
+has no `policy` key, as one new block. Codex's key is read by its effective value, with the
+machine's detector (`machinelib.skills.codex_policy`), so the copies and the machine check
+read every shape alike. The scripts here sit outside every copy.
 
 The manifest, `provenance.json`:
 
@@ -25,9 +27,11 @@ COPIES = os.path.dirname(HERE)
 REPO = os.path.dirname(COPIES)
 STORE = os.path.join(REPO, "generator", "govern-repository", "store")
 sys.path.insert(0, os.path.join(REPO, "generator", "govern-repository", "scripts"))
+sys.path.insert(0, os.path.join(REPO, "machine", "scripts"))
 
 from govlib import storedform  # noqa: E402
 from govlib import store as template_store  # noqa: E402
+from machinelib import skills as machine_skills  # noqa: E402
 
 PROVENANCE = "provenance.json"
 LICENSE = "LICENSE"
@@ -80,32 +84,32 @@ def user_invoked(skill_md):
     return any(line.strip() == "disable-model-invocation: true" for line in front_matter(skill_md))
 
 
-def _policy_block(codex_yaml):
-    """The values under a top-level `policy` key, inline or indented, or None when there is no such key."""
-    lines = codex_yaml.decode("utf-8", "replace").split("\n")
-    for index, line in enumerate(lines):
-        if line.startswith("policy:"):
-            block = [line[len("policy:"):].strip()]
-            for following in lines[index + 1:]:
-                if following[:1] not in (" ", "\t") and following.strip():
-                    break
-                block.append(following.strip())
-            return block
-    return None
+def codex_policy(codex_yaml):
+    """The effective `policy.allow_implicit_invocation`: the machine detector's false, other, absent or unclear."""
+    return machine_skills.codex_policy(codex_yaml)
 
 
 def has_codex_key(codex_yaml):
-    block = _policy_block(codex_yaml)
-    return block is not None and any("allow_implicit_invocation: false" in value for value in block)
+    return codex_policy(codex_yaml) == machine_skills.FALSE
 
 
 def add_codex_key(codex_yaml):
-    """Upstream's bytes with the key appended as a new `policy:` block, the one allowed change."""
-    if _policy_block(codex_yaml) is not None:
-        raise CopyError("its %s has a policy block without the key, so appending one would repeat it" % CODEX_FILE)
+    """Upstream's bytes with the key appended as a new `policy:` block, the one allowed change.
+
+    Refused unless the file has no `policy` key and the appended block reads as user-only: a
+    policy that isn't user-only, or one that can't be read safely, can't be fixed by appending.
+    """
+    reading = codex_policy(codex_yaml)
+    if reading == machine_skills.OTHER:
+        raise CopyError("its %s sets a policy that isn't user-only, which appending a block can't change" % CODEX_FILE)
+    if reading != machine_skills.ABSENT:
+        raise CopyError("its %s takes a shape whose Codex policy can't be read safely" % CODEX_FILE)
     if codex_yaml and not codex_yaml.endswith(b"\n"):
         codex_yaml += b"\n"
-    return codex_yaml + CODEX_KEY
+    codex_yaml += CODEX_KEY
+    if not has_codex_key(codex_yaml):
+        raise CopyError("its %s doesn't read as user-only with the key appended" % CODEX_FILE)
+    return codex_yaml
 
 
 def _git_env():

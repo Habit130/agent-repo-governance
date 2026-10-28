@@ -73,7 +73,13 @@ def skill_changes(upstream, older, newer, entry):
     was, now = copylib.user_invoked(old_md), copylib.user_invoked(new_md)
     if now and not was:
         codex = new.get(copylib.CODEX_FILE)
-        note = "已带 Codex 的 user-only key" if codex and copylib.has_codex_key(codex[1]) else "复制时要补上 Codex 的 user-only key"
+        reading = copylib.codex_policy(codex[1]) if codex else copylib.machine_skills.ABSENT
+        if reading == copylib.machine_skills.FALSE:
+            note = "已带 Codex 的 user-only key"
+        elif reading == copylib.machine_skills.ABSENT:
+            note = "复制时要补上 Codex 的 user-only key"
+        else:
+            note = "它的 %s 的 policy 不是 user-only 或无法确定，refresh 会拒绝" % copylib.CODEX_FILE
         lines.append("改为只由 habit 调用，模型不再自行调用；%s" % note)
     elif was and not now:
         lines.append("不再只由 habit 调用：模型也能自行调用（去掉了 disable-model-invocation）")

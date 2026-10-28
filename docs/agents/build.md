@@ -38,10 +38,10 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
 | `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/` | linux |
-| `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches | linux |
+| `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
 | `machine-install` | Seam C: every install fixture of #44's Testing Decisions, the machine rules, forward-only refusals and the ready command against a local origin | macos |
-| `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, and the Codex key detector's shapes | macos |
+| `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, personal skills' Codex problems only reported, and the Codex key detector's shapes | macos |
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 
 ## CI
@@ -116,7 +116,20 @@ the layout; `install.py`'s docstring gives the steps.
   CLI: `codex execpolicy check --rules <file> <words...>` takes no `--` (it would become a
   command word), exits 0 whatever the decision, and omits `decision` when no rule matches.
   `codex debug prompt-input` prints no budget warning; it shortens descriptions and drops
-  entries silently, so the check compares the listed names with the home's skills.
+  entries silently, in name order, so the check compares the listed names with the home's skills.
+- **Personal skills** (#44 §8, §9, changed by #70): a machine skill is a directory in
+  `~/.agents/skills` named in the machine skill set; every other skill there and every skill
+  in `~/.codex/skills` is personal. The install never writes inside a personal skill, nor
+  through a link inside one, and adds no Codex user-only key anywhere: machine skills carry
+  theirs in this repository. The check fails a machine skill's missing key, omitted entry or
+  shortened description, and reports a personal skill's as a `说明` line that never fails.
+- **Codex's user-only key** is read by its effective value in one detector,
+  `machinelib.skills.codex_policy`, which the copies share. Only `false` is user-only. Codex
+  ignores an `agents/openai.yaml` that real YAML refuses (repeated keys, tabs, open quotes),
+  so a shape the detector can't read safely is `unclear`, which fails a machine skill and
+  never reads as user-only. `tests/fixtures/machine/codex-policy-shapes.json` is the shared
+  shape set; a new shape the detector reads as `false` joins it and its real recording,
+  `codex-prompt-input-policy-shapes.json`, re-recorded with the shape's skill.
 - **Seam C suites** build the source tree from this checkout's `machine/` and generator with
   synthetic copies (`tests/suites/machine_support.py`), so the real recordings stay true
   when the copies change. They pass the Codex stand-in or a missing path, never the app,
@@ -129,16 +142,20 @@ the layout; `install.py`'s docstring gives the steps.
 `skill-copies/` holds the third-party skill copies (#44 §10, ADR 0020): upstream's `LICENSE`,
 `provenance.json`, one whole upstream skill directory per copy under `skills/<name>/`, and the
 scripts under `scripts/`. `scripts/copylib.py`'s docstring defines the manifest and the one
-allowed change, the Codex user-only key appended to a user-invoked skill that lacks it.
+allowed change, the Codex user-only key appended to a user-invoked skill whose
+`agents/openai.yaml` has no `policy` key. The copies read the key with the machine's detector
+(The machine area, above).
 
 - **The copies check**, `python3 tests/run.py copies`, fails unless the copies under
   `skills/`, the manifest's entries and the highest version's `relied_on_skills`
-  (`govern-repository` aside) name the same skills, all from one upstream commit. The
-  `skill-copies` suite runs it on the real tree in the `linux` job.
+  (`govern-repository` aside) name the same skills, all from one upstream commit, and every
+  user-invoked copy reads as user-only. The `skill-copies` suite runs it on the real tree in
+  the `linux` job.
 - **An update PR** refreshes every copy from one upstream commit with
   `python3 skill-copies/scripts/refresh.py --commit <sha>`, which replaces `skills/`,
   `LICENSE` and the manifest and refuses, writing nothing, when a relied-on skill is missing,
-  a user-invoked one has no `agents/openai.yaml`, or an upstream path fails stored form.
+  a user-invoked one has no `agents/openai.yaml` or a policy that one appended block can't
+  make user-only (one that isn't `false`, or `unclear`), or an upstream path fails stored form.
 - **Verification**: `python3 skill-copies/scripts/verify.py` fetches each recorded commit and
   prints a PASS or FAIL line per copy and for the license, then each added Codex key. CI has
   no network, so Execution runs it on the PR head and Acceptance reruns it. For a planted

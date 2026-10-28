@@ -7,8 +7,10 @@ adds, and a user-invoked skill that already carries it.
 
 import json
 import os
+import re
 import unittest
 
+import copylib
 import support
 
 SCRIPTS = os.path.join(support.REPO, "skill-copies", "scripts")
@@ -37,6 +39,11 @@ UPSTREAM = {
 }
 
 RELIED_ON = ["alpha", "gated", "keyed"]
+
+# #67's shape: a commented false above an effective true.
+COMMENTED_TRUE = "policy:\n  # allow_implicit_invocation: false\n  allow_implicit_invocation: true\n"
+SHAPES = os.path.join(support.FIXTURES, "machine", "codex-policy-shapes.json")
+SHAPES_RECORDING = os.path.join(support.FIXTURES, "machine", "codex-prompt-input-policy-shapes.json")
 
 
 def manifest(skills):
@@ -175,6 +182,25 @@ class Refreshing(SkillCopiesCase):
         self.assertEqual(code, 2, out + err)
         self.assertIn("policy", out + err)
 
+    def test_refuses_a_commented_false_above_an_effective_true_and_writes_nothing(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/gated/agents/openai.yaml"] = COMMENTED_TRUE
+        commit = support.commit_tree(self.upstream, files, "commented false above true")
+        code, out, err = self.refresh(commit)
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("gated", out)
+        self.assertIn("isn't user-only", out)
+        self.assertEqual(os.listdir(self.copies), [])
+
+    def test_refuses_a_policy_it_cant_read_safely_and_writes_nothing(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/gated/agents/openai.yaml"] = 'interface:\n  display_name: "Gated\n'
+        commit = support.commit_tree(self.upstream, files, "unclosed quote")
+        code, out, err = self.refresh(commit)
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("can't be read safely", out)
+        self.assertEqual(os.listdir(self.copies), [])
+
     def test_reads_a_crlf_skill_md_as_user_invoked(self):
         files = dict(UPSTREAM)
         files["skills/engineering/alpha/SKILL.md"] = (
@@ -252,6 +278,23 @@ class Verifying(SkillCopiesCase):
         self.assertEqual(code, 1, out + err)
         self.assertIn("FAIL copy gated:", out)
         self.assertIn("Codex", out)
+
+    def test_fails_on_a_copy_whose_upstream_has_a_commented_false_above_an_effective_true(self):
+        files = dict(UPSTREAM)
+        files["skills/engineering/gated/agents/openai.yaml"] = COMMENTED_TRUE
+        newer = support.commit_tree(self.upstream, files, "commented false above true")
+        with open(self.copy_path("skills", "gated", "agents", "openai.yaml"), "w") as handle:
+            handle.write(COMMENTED_TRUE)
+        data = self.provenance()
+        for entry in data["copies"] + [data["license"]]:
+            entry["commit"] = newer
+        data["copies"][1]["codex_key_added"] = False
+        self.write_provenance(data)
+        code, out, err = self.verify()
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("FAIL copy gated:", out)
+        self.assertIn("isn't user-only", out)
+        self.assertIn("PASS copy keyed:", out)
 
     def test_fails_when_the_key_is_recorded_as_added_where_upstream_has_it(self):
         data = self.provenance()
@@ -389,10 +432,10 @@ class CopiesCheck(support.TempDirCase):
     def check(self, repo):
         return support.run_cli(support.RUN, ["copies", "--repo", repo])
 
-    def plant(self, relied_on, on_disk, listed=None, commits=None):
+    def plant(self, relied_on, on_disk, listed=None, commits=None, extra=None, name="repo"):
         listed = on_disk if listed is None else listed
         commits = commits or {}
-        repo = support.init_repo(self.path("repo"))
+        repo = support.init_repo(self.path(name))
         files = {
             "generator/govern-repository/store/1/manifest.json": manifest(relied_on),
             "skill-copies/LICENSE": "MIT\n",
@@ -410,6 +453,7 @@ class CopiesCheck(support.TempDirCase):
         }
         for name in on_disk:
             files["skill-copies/skills/%s/SKILL.md" % name] = "---\nname: %s\n---\n" % name
+        files.update(extra or {})
         support.write_tree(repo, files)
         support.git(repo, "add", "-A")
         return repo
@@ -441,11 +485,98 @@ class CopiesCheck(support.TempDirCase):
         self.assertIn("provenance", out)
         self.assertIn("gated", out)
 
+    def test_fails_on_a_user_invoked_copy_that_isnt_user_only(self):
+        gated = "---\nname: gated\ndisable-model-invocation: true\n---\n"
+        for name, codex in (("commented", COMMENTED_TRUE), ("unclear", "policy: {allow_implicit_invocation: false}\n"),
+                            ("missing", None)):
+            extra = {"skill-copies/skills/gated/SKILL.md": gated}
+            if codex is not None:
+                extra["skill-copies/skills/gated/agents/openai.yaml"] = codex
+            code, out, err = self.check(self.plant(["alpha", "gated"], ["alpha", "gated"], extra=extra, name=name))
+            self.assertEqual(code, 1, (name, out + err))
+            self.assertIn("FAIL copies: gated is user-invoked", out, name)
+
+    def test_passes_a_user_invoked_copy_that_is_user_only(self):
+        extra = {"skill-copies/skills/gated/SKILL.md": "---\nname: gated\ndisable-model-invocation: true\n---\n",
+                 "skill-copies/skills/gated/agents/openai.yaml": 'interface:\n  display_name: "Gated"\n' + KEY}
+        code, out, err = self.check(self.plant(["alpha", "gated"], ["alpha", "gated"], extra=extra))
+        self.assertEqual(code, 0, out + err)
+
     def test_fails_when_the_copies_come_from_more_than_one_commit(self):
         repo = self.plant(["alpha", "gated"], ["alpha", "gated"], commits={"gated": "b" * 40})
         code, out, err = self.check(repo)
         self.assertEqual(code, 1, out + err)
         self.assertIn("one upstream commit", out)
+
+
+class _ShapeUpstream(object):
+    """An upstream holding one user-invoked skill whose agents/openai.yaml is the shape."""
+
+    def __init__(self, codex_yaml):
+        self.codex_yaml = codex_yaml
+
+    def files(self, commit, path):
+        return {
+            "SKILL.md": ("100644", b"---\nname: shape\ndisable-model-invocation: true\n---\n"),
+            copylib.CODEX_FILE: ("100644", self.codex_yaml),
+        }
+
+
+class PolicyShapes(unittest.TestCase):
+    """CRIT-4 to CRIT-6: both Codex key detectors read one shared set of shapes alike, as Codex does.
+
+    One test per shape and detector, its reading in the test's name, so CI's output shows each.
+    The machine's detector is `machinelib.skills.codex_policy`; the copies' is copylib's
+    `has_codex_key` and `expected_copy`, which refresh and verify call.
+    """
+
+    def test_codex_hides_every_shape_read_as_false_and_lists_every_absent_or_other(self):
+        from machinelib import check
+
+        with open(SHAPES_RECORDING) as handle:
+            listed = check.listed_skills(json.load(handle)["calls"][0]["stdout"])
+        for shape in _shapes():
+            shown = "shape-" + shape["name"] in listed
+            if shape["reading"] == "false":
+                self.assertFalse(shown, shape["name"])
+            elif shape["reading"] in ("absent", "other"):
+                self.assertTrue(shown, shape["name"])
+
+
+def _shapes():
+    with open(SHAPES) as handle:
+        return json.load(handle)["shapes"]
+
+
+def _machine_case(shape):
+    def test(self):
+        from machinelib import skills
+
+        self.assertEqual(skills.codex_policy(shape["yaml"].encode("utf-8")), shape["reading"])
+
+    return test
+
+
+def _copies_case(shape):
+    def test(self):
+        data = shape["yaml"].encode("utf-8")
+        self.assertEqual(copylib.has_codex_key(data), shape["reading"] == "false")
+        upstream = _ShapeUpstream(data)
+        if shape["reading"] in ("other", "unclear"):
+            with self.assertRaises(copylib.CopyError):
+                copylib.expected_copy(upstream, "c" * 40, "skills/test/shape")
+            return
+        files, added = copylib.expected_copy(upstream, "c" * 40, "skills/test/shape")
+        self.assertEqual(added, shape["reading"] == "absent")
+        self.assertTrue(copylib.has_codex_key(files[copylib.CODEX_FILE][1]))
+
+    return test
+
+
+for _shape in _shapes():
+    _slug = re.sub(r"[^a-z0-9]+", "_", _shape["name"].lower())
+    setattr(PolicyShapes, "test_machine_reads_%s_as_%s" % (_slug, _shape["reading"]), _machine_case(_shape))
+    setattr(PolicyShapes, "test_copies_read_%s_as_%s" % (_slug, _shape["reading"]), _copies_case(_shape))
 
 
 if __name__ == "__main__":

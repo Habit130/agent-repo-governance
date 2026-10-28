@@ -21,6 +21,8 @@ Install 之后，machine check 和 governed-repository list 可单独运行。�
 /usr/bin/python3 ~/.agents/governance/machine/scripts/machine.py list
 ```
 
+Install 只写 machine skills，从不写 personal skill，也不经 personal skill 里的链接写入。Machine check 里，machine skill 缺少 Codex user-only key、在 Codex skill list 里被省略或描述被截短时算失败；personal skill 出现同样的问题只报告（`说明`），不算失败。
+
 GitHub:https://github.com/habit130/agent-repo-governance
 
 ## 本次初始化范围

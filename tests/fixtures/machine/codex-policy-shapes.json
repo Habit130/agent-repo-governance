@@ -1,0 +1,275 @@
+{
+  "description": "Shapes of a skill's agents/openai.yaml, and how Codex's user-only key detectors read each: false only when Codex's effective policy.allow_implicit_invocation is false; other when the file sets something else; absent when it has no policy key; unclear when a reader can't tell safely, which includes every file real YAML would refuse, since Codex then ignores the whole file. Both the machine's detector and the skill copies' run against every shape, and codex-prompt-input-policy-shapes.json records which shapes the real Codex CLI hides.",
+  "shapes": [
+    {
+      "name": "no-policy",
+      "yaml": "interface:\n  display_name: \"X\"\n",
+      "reading": "absent"
+    },
+    {
+      "name": "false",
+      "yaml": "policy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "false-capitalized",
+      "yaml": "policy:\n  allow_implicit_invocation: False\n",
+      "reading": "false"
+    },
+    {
+      "name": "false-upper",
+      "yaml": "policy:\n  allow_implicit_invocation: FALSE\n",
+      "reading": "false"
+    },
+    {
+      "name": "true",
+      "yaml": "policy:\n  allow_implicit_invocation: true\n",
+      "reading": "other"
+    },
+    {
+      "name": "commented-only",
+      "yaml": "# policy:\n#   allow_implicit_invocation: false\n",
+      "reading": "absent"
+    },
+    {
+      "name": "commented-key-in-block",
+      "yaml": "policy:\n  # allow_implicit_invocation: false\n",
+      "reading": "other"
+    },
+    {
+      "name": "commented-false-above-true",
+      "yaml": "policy:\n  # allow_implicit_invocation: false\n  allow_implicit_invocation: true\n",
+      "reading": "other"
+    },
+    {
+      "name": "quoted-policy",
+      "yaml": "\"policy\":\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "single-quoted-policy",
+      "yaml": "'policy':\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "quoted-allow-key",
+      "yaml": "policy:\n  \"allow_implicit_invocation\": false\n",
+      "reading": "false"
+    },
+    {
+      "name": "spaced-policy",
+      "yaml": "policy :\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "flow-mapping",
+      "yaml": "policy: {allow_implicit_invocation: false}\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-policy",
+      "yaml": "policy:\n  allow_implicit_invocation: false\npolicy:\n  allow_implicit_invocation: true\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-policy-spellings",
+      "yaml": "policy:\n  allow_implicit_invocation: true\n\"policy\":\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-allow-key",
+      "yaml": "policy:\n  allow_implicit_invocation: false\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-interface",
+      "yaml": "interface:\n  display_name: A\ninterface:\n  display_name: B\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "repeated-nested-key",
+      "yaml": "interface:\n  display_name: A\n  display_name: B\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "string-false",
+      "yaml": "policy:\n  allow_implicit_invocation: \"false\"\n",
+      "reading": "other"
+    },
+    {
+      "name": "yaml11-no",
+      "yaml": "policy:\n  allow_implicit_invocation: no\n",
+      "reading": "other"
+    },
+    {
+      "name": "next-line-value",
+      "yaml": "policy:\n  allow_implicit_invocation:\n    false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tagged",
+      "yaml": "policy:\n  allow_implicit_invocation: !!bool false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "anchor-alias",
+      "yaml": "x: &f false\npolicy:\n  allow_implicit_invocation: *f\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "key-without-space",
+      "yaml": "policy:\n  allow_implicit_invocation:false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "policy-sequence",
+      "yaml": "policy:\n  - allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "policy-empty",
+      "yaml": "policy:\n",
+      "reading": "other"
+    },
+    {
+      "name": "policy-null",
+      "yaml": "policy: null\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "nested-key",
+      "yaml": "policy:\n  other: 1\n  nested:\n    allow_implicit_invocation: false\n",
+      "reading": "other"
+    },
+    {
+      "name": "deeper-indent",
+      "yaml": "policy:\n    allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "trailing-comment",
+      "yaml": "policy:\n  allow_implicit_invocation: false # user-only\n",
+      "reading": "false"
+    },
+    {
+      "name": "hash-in-quoted-value",
+      "yaml": "interface:\n  display_name: \"C# tool\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "tab-indent",
+      "yaml": "policy:\n\tallow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tab-no-policy",
+      "yaml": "interface:\n\tdisplay_name: X\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "tab-no-policy-appended",
+      "yaml": "interface:\n\tdisplay_name: X\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unclosed-quote-no-policy",
+      "yaml": "interface:\n  display_name: \"X\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "unclosed-quote-appended",
+      "yaml": "interface:\n  display_name: \"X\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "multiline-quoted",
+      "yaml": "description: \"a\npolicy:\n  allow_implicit_invocation: false\"\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "block-scalar-hides-policy",
+      "yaml": "notes: |\n  policy:\n    allow_implicit_invocation: false\n",
+      "reading": "absent"
+    },
+    {
+      "name": "block-scalar-before-policy",
+      "yaml": "notes: |\n  text\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "crlf",
+      "yaml": "interface:\r\n  display_name: X\r\npolicy:\r\n  allow_implicit_invocation: false\r\n",
+      "reading": "false"
+    },
+    {
+      "name": "byte-order-mark",
+      "yaml": "\ufeffpolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "document-start",
+      "yaml": "---\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "two-documents",
+      "yaml": "policy:\n  allow_implicit_invocation: false\n---\ninterface:\n  display_name: X\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "real-copy",
+      "yaml": "interface:\n  display_name: \"Triage\"\n  short_description: \"Move issues through triage roles\"\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "dependencies-sequence",
+      "yaml": "interface:\n  display_name: \"X\"\ndependencies:\n  tools:\n    - type: \"mcp\"\n      value: \"x\"\n    - type: env\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "compact-sequence",
+      "yaml": "tools:\n- a\n- b\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "apostrophe-in-plain",
+      "yaml": "interface:\n  short_description: Don't do X\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "brackets-in-plain",
+      "yaml": "interface:\n  short_description: Use x [y] z\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "flow-elsewhere",
+      "yaml": "interface: {display_name: X}\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "multiline-plain",
+      "yaml": "interface:\n  short_description: one\n    two\npolicy:\n  allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "misaligned",
+      "yaml": "policy:\n    other: 1\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    },
+    {
+      "name": "root-indented",
+      "yaml": "  policy:\n    allow_implicit_invocation: false\n",
+      "reading": "false"
+    },
+    {
+      "name": "empty-file",
+      "yaml": "",
+      "reading": "absent"
+    },
+    {
+      "name": "quoted-key-escape",
+      "yaml": "\"pol\\x69cy\":\n  allow_implicit_invocation: false\n",
+      "reading": "unclear"
+    }
+  ]
+}

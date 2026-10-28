@@ -5,6 +5,12 @@ and the skip is reported. `codex debug prompt-input` prints no warning when the 
 overflows its budget: Codex shortens descriptions and drops entries silently. So the budget
 item compares the listed entries, by name, with the skills Codex would list from the home's
 skill roots: a missing one is omitted, and a description cut short is shortened.
+
+Only machine skills fail the Codex items (#44 §9, changed by #70). A machine skill is a
+directory in `~/.agents/skills` named in the machine skill set; every other skill there, and
+every skill in `~/.codex/skills`, is personal. A personal skill's omitted entry, shortened
+description or missing user-only key is reported, before the item's own line, and never
+fails the item or the check.
 """
 
 import json
@@ -64,51 +70,70 @@ def _normal(text):
     return " ".join(text.split())
 
 
-def codex_skills(home):
-    """The skills Codex would list for the model, from ~/.agents/skills and ~/.codex/skills."""
+def codex_skills(home, machine_names):
+    """[(skill, whether it is a machine skill)] from ~/.agents/skills and ~/.codex/skills."""
     found = []
     for root in (home.skills, os.path.join(home.codex, "skills")):
-        found.extend(skill for skill in skills.skills_in(root) if skill.listed_by_codex)
+        for skill in skills.skills_in(root):
+            found.append((skill, root == home.skills and skill.dir_name in machine_names))
     return found
 
 
-def budget_problems(home, codex):
+def _personal(home, skill):
+    """How a personal skill is named in a report line: its root when that is ~/.codex/skills, and a link."""
+    where = "" if skill.root == home.skills else "%s 里的 " % home.show(skill.root)
+    return "personal skill %s%s%s" % (where, skill.dir_name, "（链接）" if skill.linked else "")
+
+
+def budget_problems(home, codex, machine_names):
+    """(failures, notes): a machine skill's omitted or shortened entry fails, a personal skill's is noted."""
     code, out, err = home.run_codex(codex, ["debug", "prompt-input", "x"])
     if code != 0:
-        return ["`codex debug prompt-input` 失败：%s" % (err or out).strip()]
+        return ["`codex debug prompt-input` 失败：%s" % (err or out).strip()], []
     try:
         listed = listed_skills(out)
     except ValueError:
-        return ["`codex debug prompt-input` 的输出不是 JSON"]
+        return ["`codex debug prompt-input` 的输出不是 JSON"], []
     if listed is None:
-        return ["`codex debug prompt-input` 的输出里没有 skill 列表"]
-    omitted, shortened = [], []
-    for skill in codex_skills(home):
+        return ["`codex debug prompt-input` 的输出里没有 skill 列表"], []
+    found = {True: ([], []), False: ([], [])}
+    for skill, machine in codex_skills(home, machine_names):
+        if not skill.listed_by_codex:
+            continue
+        omitted, shortened = found[machine]
+        name = skill.name if machine else _personal(home, skill)
         if skill.name not in listed:
-            omitted.append(skill.name)
+            omitted.append(name)
             continue
         full = _normal(skill.meta.get("description", ""))
         shown = _normal(listed[skill.name][0])
         if full and shown != full and (not shown or full.startswith(shown)):
-            shortened.append(skill.name)
-    problems = []
-    if omitted:
-        problems.append("超出预算，被省略：%s" % "、".join(sorted(set(omitted))))
-    if shortened:
-        problems.append("超出预算，描述被截短：%s" % "、".join(sorted(set(shortened))))
-    return problems
+            shortened.append(name)
+    lines = {}
+    for machine, (omitted, shortened) in found.items():
+        lines[machine] = []
+        if omitted:
+            lines[machine].append("超出预算，被省略：%s" % "、".join(sorted(set(omitted))))
+        if shortened:
+            lines[machine].append("超出预算，描述被截短：%s" % "、".join(sorted(set(shortened))))
+    return lines[True], ["%s（只报告，不算失败）" % line for line in lines[False]]
 
 
-def _key_problems(home):
-    problems = []
-    codex_root = os.path.join(home.codex, "skills")
-    for root in (home.skills, codex_root):
-        for skill in skills.skills_in(root):
-            if skill.user_invoked and skill.policy != skills.FALSE:
-                where = "%s 里的 " % home.show(codex_root) if root == codex_root else ""
-                problems.append("%s%s 缺少 Codex user-only key%s"
-                                % (where, skill.dir_name, "（链接的 personal skill）" if skill.linked else ""))
-    return problems
+def _key_problems(home, machine_names):
+    """(failures, notes): a user-invoked machine skill that isn't user-only fails, a personal one is noted."""
+    failures, notes = [], []
+    for skill, machine in codex_skills(home, machine_names):
+        if not skill.user_invoked or skill.policy == skills.FALSE:
+            continue
+        if skill.policy == skills.UNCLEAR:
+            problem = " 的 %s 写法无法确定是否 user-only" % skills.CODEX_FILE
+        else:
+            problem = " 缺少 Codex user-only key"
+        if machine:
+            failures.append("machine skill %s%s" % (skill.dir_name, problem))
+        else:
+            notes.append("%s%s（只报告，不算失败）" % (_personal(home, skill), problem))
+    return failures, notes
 
 
 def _collision_problems(home, machine_names):
@@ -242,7 +267,9 @@ def run(home, codex=None, machine_names=None):
     machine_names = set(machine_names) | {GENERATOR}
     found = codex_path(codex)
 
-    def add(item, problems, passed):
+    def add(item, problems, passed, notes=()):
+        for note in notes:
+            report.add(homes.NOTE, item, note)
         if problems:
             for problem in problems:
                 report.add(homes.FAIL, item, problem)
@@ -262,8 +289,10 @@ def run(home, codex=None, machine_names=None):
                     rule_problems.append("%s 与 install 写入的内容不同" % home.show(home.codex_rules))
             rule_problems.extend(rules.check_codex_rules(home, found))
         add("Codex rules", rule_problems, "`codex execpolicy check` 禁止 ghm 和 Actions secret 写入，允许 `gh secret list`")
-        add("Codex skill list", budget_problems(home, found), "`codex debug prompt-input` 列出了全部 skill，没有省略或截短")
-    add("Codex user-only key", _key_problems(home), "每个 user-invoked skill 都有 Codex user-only key")
+        failures, notes = budget_problems(home, found, machine_names)
+        add("Codex skill list", failures, "`codex debug prompt-input` 列出了全部 machine skill，没有省略或截短", notes)
+    failures, notes = _key_problems(home, machine_names)
+    add("Codex user-only key", failures, "每个 user-invoked machine skill 都有 Codex user-only key", notes)
     add("名称冲突", _collision_problems(home, machine_names), "没有 personal skill 与 machine skill 同名，~/.codex/skills/ 里也没有")
     add("deny entries", _deny_problems(home), "Claude Code 和 OpenCode 都拒绝 ghm 和 Actions secret 写入，允许 `gh secret list`")
     add("links", _link_problems(home), "四个链接就位，~/.dsh/AGENTS.md 不存在")
