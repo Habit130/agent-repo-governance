@@ -44,6 +44,8 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-install` | Seam C: every install fixture of #44's Testing Decisions, the machine rules, forward-only refusals and the ready command against a local origin | macos |
 | `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, personal skills' Codex problems only reported, and the Codex key detector's shapes | macos |
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
+| `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
+| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the result comment, and habit's commands under `/bin/bash` | macos |
 
 ## CI
 
@@ -64,9 +66,9 @@ or the pre-merge check confirms both jobs are green on the head.
 ## The generator's command line
 
 `generator/govern-repository/scripts/govern.py` is the generator's one entry. Its
-subcommands (`store`, `change-note`, `render`, `compare`, `materialize`) print JSON and exit
-0 on good facts, 1 when exact comparison finds differences, and 2 on a refusal, with the
-reason under `error`.
+subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`)
+print JSON and exit 0 on good facts, 1 when exact comparison finds differences, and 2 on a
+refusal, with the reason under `error`.
 
 - **Exact comparison in a governed worktree** is one command:
   `python3 generator/govern-repository/scripts/govern.py compare --worktree <path>`. It reads
@@ -206,6 +208,62 @@ the governed repository's. Both register in the `parser-fixtures` suite.
   `tests/suites/parsers.py`. A parser registers as one more `Parser` there, whose adapters
   return the shapes that file's docstring gives, so registering changes no fixture or
   expected result. A record that doesn't parse expects only "doesn't parse".
+
+## The owner script and live checks
+
+The owner script is version 1's fixed template
+`generator/govern-repository/store/1/templates/dot-github/governance/owner.sh` (#44 §7). Its
+docstring gives the preconditions, the order of writes and the exit codes (0 in place, 1 an
+item failed or missing, 2 stopped before any write).
+
+- **Its shape.** Line 1 is `#!/bin/bash`, so step 5's `/bin/bash -n` finds it; line 2 is the
+  notice; its mode is `100755` in the manifest and the index. The bash entry feeds the Python
+  program to `/usr/bin/python3 -I` through a quoted heredoc, so step 5 never parses that
+  program: the `owner` suite parses it as 3.9. `@@version@@` in the notice is its only token.
+- **The owner-script command** has one home, `govlib/owner.py`, and prints with
+  `python3 generator/govern-repository/scripts/govern.py owner-command --repository <owner/name>`.
+  habit runs it with the `!` prefix; agents never run it or the script against real GitHub.
+  For `OWNER/NAME` it reads:
+
+  ```text
+  /bin/bash -c 'set -eu; d="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone --quiet --depth 1 --no-checkout https://github.com/OWNER/NAME.git "$d/r"; git -C "$d/r" checkout --quiet --detach origin/HEAD; env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN GH_CONFIG_DIR="$HOME/.config/gh-maintainer" /bin/bash "$d/r/.github/governance/owner.sh"'
+  ```
+
+- **GitHub's facts it relies on**, read 2026-10-28: the GitHub Actions app's id 15368 from
+  `GET /apps/github-actions`; the admin role's bypass actor id 5 from GitHub's own exported
+  rulesets in `github/docs` at `57f571f`, since no prose states it; the repository-level
+  Actions policy endpoints `/repos/{owner}/{repo}/actions/policies` and their allowlist-only
+  `restrict_action_events` rule, from the same commit. GitHub returns rulesets and policies
+  with fields the script never sent and leaves `update` bare, so it compares only what the
+  target declares. Ruleset ref patterns are Ruby's `File.fnmatch` with `FNM_PATHNAME`
+  (`github/docs` at `57f571f`, "Using `fnmatch` syntax", read 2026-10-29). The script
+  decides which rulesets apply to the default branch with a step-by-step port of Ruby's
+  `fnmatch`, `fnmatch_helper` and `bracket`. `tests/fixtures/owner/ref-patterns.json` records
+  Ruby's own answers, which Seam D checks row by row. GitHub refuses a backslash and doesn't
+  support complementing a set with `^` (same source), so a ruleset whose pattern has either is
+  never removed: the report fails it and names the reason. The live probe `owner-state` asks
+  `/usr/bin/ruby` itself instead of sharing the port.
+- **Seam D** (`tests/suites/test_owner.py`) runs each case as `owner_support.py`'s docstring
+  defines it. `tests/target_state.py` is #41 §7 written independently of the script; Seam D's
+  recorded bodies and the live probes both compare against it. A new case joins
+  `tests/fixtures/owner/cases/` and is never renamed.
+- **Live checks** run through `tests/live/live.py` as the agent account, in the two
+  sandboxes only. Its docstring lists the subcommands; `tests/live/probes/__init__.py` gives
+  the one probe shape, and a live-check delivery adds its probes as a module there without
+  changing the runner. One check, for a sandbox:
+  1. habit runs `live.py sandbox-command`'s line once, then connects Bugbot (the Cursor
+     GitHub App's repository access) and the Codex review bot (its connector's repository
+     list) for both sandboxes. `live.py seed --sandbox <s>` then accepts the invitation and
+     seeds the empty default branch from `tests/fixtures/repositories/sandbox/`, whose
+     `fixture.json` holds the sandboxes' fixed confirmed values.
+  2. `live.py prepare --pr <n> --sandbox <s> --probe <name>...`, at this checkout's pushed
+     PR head, opens the sandbox PR, with a record under `live-checks/` so one exists even
+     when the render is unchanged, and prints habit's commands: the pinned merge command,
+     the owner-script command, then each probe's commands, each saving its output in the
+     check directory.
+  3. After habit's steps, `live.py probe --state <dir>/prepared.json --probe <name>... --post`
+     posts the result comment, naming the commit. The owner probes need one run without
+     `--post` between habit's two owner-script runs (`probes/owner.py`).
 
 ## Operational constraints
 

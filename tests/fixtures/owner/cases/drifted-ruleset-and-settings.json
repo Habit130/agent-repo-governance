@@ -1,0 +1,133 @@
+{
+  "description": "Drift after the last run: a bypass actor added to Gate, merge commits allowed, Actions allowed to approve PRs and push protection off. Gate is updated in place, and only the differing settings are written.",
+  "visibility": "public",
+  "required_checks": [
+    "test"
+  ],
+  "start": "target",
+  "github": {
+    "rulesets": [
+      {"as_target": "Gate",
+        "changes": {
+          "bypass_actors": [
+            {
+              "actor_id": 5,
+              "actor_type": "RepositoryRole",
+              "bypass_mode": "always"
+            }
+          ]
+        }
+      },
+      {"as_target": "Merge"
+      },
+      {"as_target": "History"
+      }
+    ],
+    "settings": {
+      "allow_merge_commit": true
+    },
+    "workflow": {
+      "can_approve_pull_request_reviews": true
+    },
+    "security": {
+      "secret_scanning_push_protection": "disabled"
+    }
+  },
+  "writes": [
+    [
+      "PUT",
+      "rulesets/9001",
+      {
+        "ruleset": "Gate"
+      }
+    ],
+    [
+      "PATCH",
+      "",
+      {
+        "allow_merge_commit": false
+      }
+    ],
+    [
+      "PUT",
+      "actions/permissions/workflow",
+      {
+        "can_approve_pull_request_reviews": false
+      }
+    ],
+    [
+      "PATCH",
+      "",
+      {
+        "security_and_analysis": {
+          "secret_scanning_push_protection": {
+            "status": "enabled"
+          }
+        }
+      }
+    ]
+  ],
+  "exit": 0,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "已就位",
+      "Actions 可运行工作流"
+    ],
+    [
+      "已设置",
+      "Gate 规则集"
+    ],
+    [
+      "已就位",
+      "Merge 规则集"
+    ],
+    [
+      "已就位",
+      "History 规则集"
+    ],
+    [
+      "已就位",
+      "main 的经典分支保护"
+    ],
+    [
+      "已设置",
+      "仅 squash 合并"
+    ],
+    [
+      "已就位",
+      "合并后删除 head 分支"
+    ],
+    [
+      "已就位",
+      "auto-merge 关闭"
+    ],
+    [
+      "已设置",
+      "Actions 不能创建或批准 PR"
+    ],
+    [
+      "已就位",
+      "secret scanning"
+    ],
+    [
+      "已设置",
+      "push protection"
+    ],
+    [
+      "已就位",
+      "pull_request_target 事件策略"
+    ]
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "description": "The copy is at the default branch's head but a tracked file is changed in its working tree: the run stops and writes nothing.",
+  "visibility": "public",
+  "checkout": "modified",
+  "required_checks": [
+    "test"
+  ],
+  "start": "nothing",
+  "writes": [],
+  "exit": 2,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "未通过",
+      "前提"
+    ]
+  ]
+}

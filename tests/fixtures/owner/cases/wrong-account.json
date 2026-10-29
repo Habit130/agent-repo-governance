@@ -1,0 +1,17 @@
+{
+  "description": "gh acts as the agent account, a write collaborator, not the repository's owner: the run stops after two reads and writes nothing.",
+  "visibility": "public",
+  "account": "Habit098",
+  "required_checks": [
+    "test"
+  ],
+  "start": "nothing",
+  "writes": [],
+  "exit": 2,
+  "report": [
+    [
+      "未通过",
+      "前提"
+    ]
+  ]
+}

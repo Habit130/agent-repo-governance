@@ -1,0 +1,35 @@
+{
+  "description": "A private repository whose owner has no Pro: GitHub refuses to list rulesets, so the run stops before any write and says Pro is needed.",
+  "visibility": "private",
+  "required_checks": [
+    "test"
+  ],
+  "start": "nothing",
+  "github": {
+    "rulesets_forbidden": true
+  },
+  "writes": [],
+  "exit": 2,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "已就位",
+      "Actions 可运行工作流"
+    ],
+    [
+      "未通过",
+      "规则集"
+    ]
+  ]
+}

@@ -1,0 +1,272 @@
+{
+  "description": "Ref patterns read as Ruby's File.fnmatch with FNM_PATHNAME, the reading GitHub documents: a ruleset that excludes the default branch through a character set, a leading-hyphen negated set or a leading `**/` stays, one that includes it through a set, a reversed range or `**/` is removed, and a negated set that leaves it out stays.",
+  "visibility": "public",
+  "required_checks": [
+    "test"
+  ],
+  "start": "target",
+  "github": {
+    "rulesets": [
+      {
+        "as_target": "Gate"
+      },
+      {
+        "as_target": "Merge"
+      },
+      {
+        "as_target": "History"
+      },
+      {
+        "id": 701,
+        "name": "all but m branches",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "~ALL"
+            ],
+            "exclude": [
+              "refs/heads/m[ai]*"
+            ]
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 702,
+        "name": "main by set",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/[lm]ain"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 703,
+        "name": "not main by set",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/[!m]ain"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 704,
+        "name": "all but main anywhere",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "~ALL"
+            ],
+            "exclude": [
+              "refs/heads/**/main"
+            ]
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 705,
+        "name": "main anywhere",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/**/main"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 706,
+        "name": "all but dash and z",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "~ALL"
+            ],
+            "exclude": [
+              "refs/heads/[!-z]ain"
+            ]
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 707,
+        "name": "main by reversed range",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/[m-a]ain"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      }
+    ]
+  },
+  "writes": [
+    [
+      "DELETE",
+      "rulesets/702"
+    ],
+    [
+      "DELETE",
+      "rulesets/705"
+    ],
+    [
+      "DELETE",
+      "rulesets/707"
+    ]
+  ],
+  "exit": 0,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "已就位",
+      "Actions 可运行工作流"
+    ],
+    [
+      "已就位",
+      "Gate 规则集"
+    ],
+    [
+      "已就位",
+      "Merge 规则集"
+    ],
+    [
+      "已就位",
+      "History 规则集"
+    ],
+    [
+      "已保留",
+      "规则集 “all but m branches”（id 701，branch）"
+    ],
+    [
+      "已移除",
+      "规则集 “main by set”（id 702，branch）"
+    ],
+    [
+      "已保留",
+      "规则集 “not main by set”（id 703，branch）"
+    ],
+    [
+      "已保留",
+      "规则集 “all but main anywhere”（id 704，branch）"
+    ],
+    [
+      "已移除",
+      "规则集 “main anywhere”（id 705，branch）"
+    ],
+    [
+      "已保留",
+      "规则集 “all but dash and z”（id 706，branch）"
+    ],
+    [
+      "已移除",
+      "规则集 “main by reversed range”（id 707，branch）"
+    ],
+    [
+      "已就位",
+      "main 的经典分支保护"
+    ],
+    [
+      "已就位",
+      "仅 squash 合并"
+    ],
+    [
+      "已就位",
+      "合并后删除 head 分支"
+    ],
+    [
+      "已就位",
+      "auto-merge 关闭"
+    ],
+    [
+      "已就位",
+      "Actions 不能创建或批准 PR"
+    ],
+    [
+      "已就位",
+      "secret scanning"
+    ],
+    [
+      "已就位",
+      "push protection"
+    ],
+    [
+      "已就位",
+      "pull_request_target 事件策略"
+    ]
+  ]
+}
