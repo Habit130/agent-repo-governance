@@ -1,6 +1,9 @@
 {
   "version": 1,
   "templates": [
+    {"path": "AGENTS.md", "class": "fixed part", "mode": "100644"},
+    {"path": ".claude/CLAUDE.md", "class": "fixed part", "mode": "100644"},
+    {"path": ".cursor/BUGBOT.md", "class": "fixed", "mode": "100644"},
     {"path": ".github/governance/record.yml", "class": "record", "mode": "100644"},
     {"path": ".github/governance/gate.py", "class": "fixed", "mode": "100644"},
     {"path": ".github/workflows/governance-gate.yml", "class": "fixed", "mode": "100644"},
