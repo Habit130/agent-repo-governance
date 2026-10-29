@@ -14,6 +14,7 @@ the two sandboxes and this repository's PR; results carry probe output only, nev
 """
 
 import argparse
+import collections
 import datetime
 import json
 import os
@@ -251,7 +252,7 @@ def comment(state, results):
         "- **Commit**: `%s`, this PR's head when the check ran." % state["commit"],
         "- **Sandbox**: `%s` (%s), PR %s#%d at `%s`." % (state["sandbox"], state["visibility"], state["sandbox"],
                                                          state["sandbox_pr"], state["sandbox_head"]),
-        "- **Probes**: %s." % ", ".join(sorted(set(name for name, _ in results), key=[n for n, _ in results].index)),
+        "- **Probes**: %s." % ", ".join(collections.OrderedDict((name, None) for name, _ in results)),
         "- **Result**: %s" % ("every assertion passed (%d of %d)." % (len(counted), len(counted)) if not failed
                               else "%d of %d assertions failed." % (len(failed), len(counted))),
         "",
