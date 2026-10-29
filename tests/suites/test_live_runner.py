@@ -236,6 +236,18 @@ class Comment(unittest.TestCase):
         self.assertIn("| owner-state | a \\| b | Pass | x |", text)
 
 
+class ProbeProvenance(support.TempDirCase):
+    def test_a_checkout_other_than_the_prepared_commit_stops_before_any_probe_or_post(self):
+        state = self.path("prepared.json")
+        with open(state, "w") as handle:
+            json.dump({"pr": 1, "commit": COMMIT, "sandbox": PUBLIC, "visibility": "public", "branch": "live/x",
+                       "sandbox_pr": 4, "sandbox_head": "d" * 40, "probes": ["owner-state"]}, handle)
+        with mock.patch.object(live, "gh_json", side_effect=AssertionError("GitHub was read")), \
+                mock.patch("sys.stdout", new_callable=lambda: open(os.devnull, "w")):
+            code = live.main(["probe", "--state", state, "--probe", "owner-state", "--post"])
+        self.assertEqual(code, 2)
+
+
 class HabitsCommands(support.TempDirCase):
     def run_line(self, line, recording):
         home = ms.make_home(self.path("home"))

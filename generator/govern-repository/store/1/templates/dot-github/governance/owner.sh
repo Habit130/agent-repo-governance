@@ -17,9 +17,12 @@ exec /usr/bin/python3 -I - "$here" "$@" <<'PY'
    copy is a clean checkout at the default branch's head on GitHub; gh acts as the
    repository's owner, with admin; the record parses through the gate script's parser; and
    Actions can run the gate's workflow. Any failure stops the run with exit code 2.
-2. Rulesets: Gate, Merge and History, created or updated in place by name; only then every
-   other ruleset that applies to the default branch, and classic branch protection on it, is
-   removed and named. Rulesets on other branches and tags stay and are listed.
+2. Rulesets: Gate, Merge and History, created, or updated in place from the first branch
+   ruleset of that name on the default branch; a name held only by a ruleset elsewhere fails
+   that item and leaves the holder alone. Only once all three are in place is every other
+   ruleset that applies to the default branch, by GitHub's fnmatch reading of its patterns,
+   removed and named, and classic branch protection on it with them. Rulesets on other
+   branches and tags stay and are listed.
 3. Settings: squash merge only, head branches deleted on merge, auto-merge off, and Actions
    unable to create or approve pull requests.
 4. A public repository gets secret scanning and push protection, and the Actions event
@@ -340,11 +343,19 @@ def declared(ruleset):
 
 
 def _ref_pattern(pattern):
-    """A ruleset's fnmatch-style ref pattern as a regular expression: `**` crosses `/`, `*` and `?` don't."""
+    """A ruleset's fnmatch-style ref pattern as a regular expression.
+
+    `**` crosses `/`, `*` and `?` don't; `[...]` is a character set, negated by a leading `!`
+    or `^` and never matching `/`; a backslash escapes the next character; an unclosed `[` is
+    literal.
+    """
     if not pattern.startswith("refs/"):
         pattern = "refs/heads/" + pattern
     out, index = [], 0
     while index < len(pattern):
+        negated = pattern[index:index + 1] == "[" and pattern[index + 1:index + 2] in ("!", "^")
+        # A `]` right after `[` or `[!` is a member, so the set closes at a later one.
+        close = pattern.find("]", index + 2 + negated) if pattern[index] == "[" else -1
         if pattern.startswith("**", index):
             out.append(".*")
             index += 2
@@ -354,6 +365,14 @@ def _ref_pattern(pattern):
         elif pattern[index] == "?":
             out.append("[^/]")
             index += 1
+        elif pattern[index] == "\\" and index + 1 < len(pattern):
+            out.append(re.escape(pattern[index + 1]))
+            index += 2
+        elif close != -1:
+            members = re.sub(r"\\(.)|([\[&~|^])", lambda m: re.escape(m.group(1)) if m.group(1) else "\\" + m.group(2),
+                             pattern[index + 1 + negated:close])
+            out.append(("[^/" if negated else "[") + members + "]")
+            index = close + 1
         else:
             out.append(re.escape(pattern[index]))
             index += 1
@@ -391,12 +410,24 @@ def apply_rulesets(report, facts):
     report.section("规则集")
     repository, branch = facts["repository"], facts["branch"]
     existing = read_rulesets(repository)
-    by_name = dict((ruleset.get("name"), ruleset) for ruleset in existing)
+    # One of the three is the first ruleset of its name on the default branch; any other
+    # ruleset, a same-named one elsewhere included, is judged with the rest below.
+    by_name = {}
+    for ruleset in existing:
+        if ruleset.get("name") in RULESET_NAMES and applies_to(ruleset, branch):
+            by_name.setdefault(ruleset.get("name"), ruleset)
+    adopted = set(ruleset["id"] for ruleset in by_name.values())
+    taken = dict((ruleset.get("name"), ruleset) for ruleset in existing if ruleset["id"] not in adopted)
     ours_in_place = True
     for body in target_rulesets(facts["checks"]):
         name = body["name"]
         summary = RULESET_SUMMARY[name] % describe_checks(facts["checks"]) if name == "Gate" else RULESET_SUMMARY[name]
         current = by_name.get(name)
+        if current is None and name in taken:
+            ours_in_place = False
+            report.line("未通过", "%s 规则集" % name, "规则集 %s 已占用这个名字但不作用于默认分支 %s，未改动它；请把它改名后重跑"
+                        % (describe_ruleset(taken[name]), branch))
+            continue
         if current is not None and declared(current) == declared(body):
             report.line("已就位", "%s 规则集" % name, summary)
             continue
@@ -415,7 +446,7 @@ def apply_rulesets(report, facts):
             continue
         report.wrote("已设置", "%s 规则集" % name, ("已创建：" if current is None else "已更新：") + summary)
 
-    others = [ruleset for ruleset in existing if ruleset.get("name") not in RULESET_NAMES]
+    others = [ruleset for ruleset in existing if ruleset["id"] not in adopted]
     for ruleset in others:
         if not applies_to(ruleset, branch):
             report.line("已保留", "规则集 %s" % describe_ruleset(ruleset), "不作用于默认分支 %s，保留不动" % branch)

@@ -276,6 +276,11 @@ def cmd_probe(args):
     with open(args.state) as handle:
         state = json.load(handle)
     chosen = chosen_probes(args.probe, state["visibility"])
+    # The probes and the target come from this checkout, so it must be the commit the results name.
+    commit = run(["git", "-C", REPO, "rev-parse", "HEAD"]).stdout.strip()
+    if commit != state["commit"] or run(["git", "-C", REPO, "status", "--porcelain"]).stdout.strip():
+        raise RunnerError("this checkout is %s%s, not the prepared %s, so its probes couldn't speak for that commit"
+                          % (commit[:12], " with uncommitted changes" if commit == state["commit"] else "", state["commit"][:12]))
     merged = gh_json(["pr", "view", str(state["sandbox_pr"]), "--repo", state["sandbox"], "--json", "state,headRefOid"])
     if merged["state"] != "MERGED" or merged["headRefOid"] != state["sandbox_head"]:
         raise RunnerError("%s#%d is %s at %s, not merged at %s" % (state["sandbox"], state["sandbox_pr"], merged["state"],
