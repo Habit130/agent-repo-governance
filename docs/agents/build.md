@@ -236,9 +236,13 @@ item failed or missing, 2 stopped before any write).
   `restrict_action_events` rule, from the same commit. GitHub returns rulesets and policies
   with fields the script never sent and leaves `update` bare, so it compares only what the
   target declares. Ruleset ref patterns are Ruby's `File.fnmatch` with `FNM_PATHNAME`
-  (`github/docs` at `57f571f`, "Using `fnmatch` syntax", read 2026-10-29), so the script
-  decides which rulesets apply to the default branch by that reading;
-  `tests/fixtures/owner/ref-patterns.json` records Ruby's own answers, which Seam D checks.
+  (`github/docs` at `57f571f`, "Using `fnmatch` syntax", read 2026-10-29). The script
+  decides which rulesets apply to the default branch with a step-by-step port of Ruby's
+  `fnmatch`, `fnmatch_helper` and `bracket`. `tests/fixtures/owner/ref-patterns.json` records
+  Ruby's own answers, which Seam D checks row by row. GitHub refuses a backslash and doesn't
+  support complementing a set with `^` (same source), so a ruleset whose pattern has either is
+  never removed: the report fails it and names the reason. The live probe `owner-state` asks
+  `/usr/bin/ruby` itself instead of sharing the port.
 - **Seam D** (`tests/suites/test_owner.py`) runs each case as `owner_support.py`'s docstring
   defines it. `tests/target_state.py` is #41 §7 written independently of the script; Seam D's
   recorded bodies and the live probes both compare against it. A new case joins

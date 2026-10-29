@@ -1,5 +1,5 @@
 {
-  "description": "Ref patterns read as GitHub's fnmatch with FNM_PATHNAME reads them: a ruleset that excludes the default branch through a character set or a leading `**/` stays, one whose set or `**/` includes it is removed, and a negated set that leaves it out stays.",
+  "description": "Ref patterns read as Ruby's File.fnmatch with FNM_PATHNAME, the reading GitHub documents: a ruleset that excludes the default branch through a character set, a leading-hyphen negated set or a leading `**/` stays, one that includes it through a set, a reversed range or `**/` is removed, and a negated set that leaves it out stays.",
   "visibility": "public",
   "required_checks": [
     "test"
@@ -119,6 +119,48 @@
             "type": "deletion"
           }
         ]
+      },
+      {
+        "id": 706,
+        "name": "all but dash and z",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "~ALL"
+            ],
+            "exclude": [
+              "refs/heads/[!-z]ain"
+            ]
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 707,
+        "name": "main by reversed range",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/[m-a]ain"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
       }
     ]
   },
@@ -130,6 +172,10 @@
     [
       "DELETE",
       "rulesets/705"
+    ],
+    [
+      "DELETE",
+      "rulesets/707"
     ]
   ],
   "exit": 0,
@@ -181,6 +227,14 @@
     [
       "已移除",
       "规则集 “main anywhere”（id 705，branch）"
+    ],
+    [
+      "已保留",
+      "规则集 “all but dash and z”（id 706，branch）"
+    ],
+    [
+      "已移除",
+      "规则集 “main by reversed range”（id 707，branch）"
     ],
     [
       "已就位",

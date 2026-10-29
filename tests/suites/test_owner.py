@@ -124,17 +124,35 @@ class Program(unittest.TestCase):
         self.assertNotIn("@@", program)
         self.assertEqual(support.read_text(TEMPLATE).count("@@"), 2, "only the notice's @@version@@ token")
 
-    def test_its_ref_patterns_read_as_rubys_fnmatch_on_every_recorded_row(self):
+    def program_functions(self, *names):
         tree = ast.parse(embedded_program(support.read_text(TEMPLATE)))
-        function = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ref_pattern"]
-        namespace = {"re": re}
-        exec(compile(ast.Module(body=function, type_ignores=[]), "owner.sh's _ref_pattern", "exec"), namespace)
+        nodes = [node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.Assign))
+                 and (getattr(node, "name", None) in names
+                      or any(getattr(target, "id", None) == "UNREADABLE_FORMS" for target in getattr(node, "targets", [])))]
+        namespace = {}
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), "owner.sh's program", "exec"), namespace)
+        return namespace
+
+    def test_its_ref_patterns_read_as_rubys_fnmatch_on_every_recorded_row(self):
+        fnmatch = self.program_functions("_bracket", "_component", "fnmatch")["fnmatch"]
         with open(os.path.join(support.FIXTURES, "owner", "ref-patterns.json")) as handle:
             rows = json.load(handle)["cases"]
-        wrong = [(pattern, branch, expected) for pattern, branch, expected in rows
-                 if (re.fullmatch(namespace["_ref_pattern"](pattern), "refs/heads/" + branch) is not None) != expected]
+        wrong = [(pattern, string, expected) for pattern, string, expected in rows if fnmatch(pattern, string) != expected]
         self.assertEqual(wrong, [])
-        self.assertGreater(len(rows), 400)
+        self.assertGreater(len(rows), 8000)
+        self.assertGreater(sum(1 for _, _, expected in rows if expected), 2000)
+
+    def test_a_pattern_github_cant_read_leaves_the_rulesets_reach_unknown(self):
+        applies_to = self.program_functions("_bracket", "_component", "fnmatch", "applies_to")["applies_to"]
+
+        def ruleset(include, exclude=()):
+            return {"target": "branch", "conditions": {"ref_name": {"include": list(include), "exclude": list(exclude)}}}
+
+        self.assertIsNone(applies_to(ruleset(["~ALL"], ["refs/heads/ma\\in"]), "main"))
+        self.assertIsNone(applies_to(ruleset(["refs/heads/[^x]ain"]), "main"))
+        self.assertIs(applies_to(ruleset(["~ALL"], ["refs/heads/[!-z]ain"]), "main"), False)
+        self.assertIs(applies_to(ruleset(["refs/heads/[!-z]ain"]), "main"), True)
+        self.assertIs(applies_to({"target": "tag", "conditions": {"ref_name": {"include": ["\\"]}}}, "main"), False)
 
     def test_it_imports_the_gate_scripts_parser_and_adds_no_file(self):
         program = embedded_program(support.read_text(TEMPLATE))

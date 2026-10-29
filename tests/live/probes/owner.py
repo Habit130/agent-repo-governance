@@ -11,6 +11,8 @@ the rerun must find it in place.
 import json
 import os
 import re
+import shutil
+import subprocess
 import time
 
 import target_state
@@ -125,14 +127,41 @@ def _rulesets(context):
     return [context.api("repos/%s/rulesets/%s" % (context.repository, item["id"])) for item in listed]
 
 
+RUBY_FNMATCH = 'STDIN.each_line { |l| p, s = l.chomp("\\n").split("\\t", 2); puts File.fnmatch(p, s, File::FNM_PATHNAME) }'
+
+
+def _ruby():
+    return "/usr/bin/ruby" if os.path.exists("/usr/bin/ruby") else shutil.which("ruby")
+
+
+def _ruby_fnmatch(pattern, ref):
+    """Ruby's own File.fnmatch with FNM_PATHNAME, the reading GitHub documents for ruleset patterns.
+
+    The probe asks Ruby itself rather than share the owner script's port of it, so it judges the
+    script's removals independently.
+    """
+    ruby = _ruby()
+    if ruby is None:
+        raise ProbeError("no ruby to read ruleset patterns with: macOS ships /usr/bin/ruby")
+    result = subprocess.run([ruby, "-e", RUBY_FNMATCH], input="%s\t%s\n" % (pattern, ref), stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, universal_newlines=True)
+    if result.returncode != 0 or result.stdout.strip() not in ("true", "false"):
+        raise ProbeError("ruby couldn't read the pattern %r: %s" % (pattern, " ".join(result.stderr.split())))
+    return result.stdout.strip() == "true"
+
+
 def _applies_to_default_branch(ruleset, branch):
-    """Whether a branch ruleset names the default branch, by the literal forms a pattern takes for it."""
+    """Whether a branch ruleset applies to the default branch, its patterns read by Ruby's fnmatch."""
     if ruleset.get("target") != "branch":
         return False
     ref_name = (ruleset.get("conditions") or {}).get("ref_name") or {}
-    names = ("~ALL", "~DEFAULT_BRANCH", "refs/heads/" + branch, branch, "refs/heads/*", "refs/heads/**")
-    return (any(p in names for p in ref_name.get("include") or [])
-            and not any(p in names for p in ref_name.get("exclude") or []))
+
+    def hit(pattern):
+        if pattern in ("~ALL", "~DEFAULT_BRANCH"):
+            return True
+        return _ruby_fnmatch(pattern if pattern.startswith("refs/") else "refs/heads/" + pattern, "refs/heads/" + branch)
+
+    return any(hit(p) for p in ref_name.get("include") or []) and not any(hit(p) for p in ref_name.get("exclude") or [])
 
 
 def owner_state(context):

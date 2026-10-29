@@ -22,7 +22,8 @@ exec /usr/bin/python3 -I - "$here" "$@" <<'PY'
    that item and leaves the holder alone. Only once all three are in place is every other
    ruleset that applies to the default branch, by GitHub's fnmatch reading of its patterns,
    removed and named, and classic branch protection on it with them. Rulesets on other
-   branches and tags stay and are listed.
+   branches and tags stay and are listed; a ruleset whose pattern has a form GitHub doesn't
+   support stays and fails with the reason.
 3. Settings: squash merge only, head branches deleted on merge, auto-merge off, and Actions
    unable to create or approve pull requests.
 4. A public repository gets secret scanning and push protection, and the Actions event
@@ -342,58 +343,134 @@ def declared(ruleset):
     }
 
 
-def _ref_pattern(pattern):
-    """A ruleset's ref pattern as a regular expression, read as Ruby's File.fnmatch with FNM_PATHNAME.
+# Ref patterns: a port of Ruby's File.fnmatch with FNM_PATHNAME (dir.c's fnmatch,
+# fnmatch_helper and bracket), the reading GitHub documents for ruleset patterns. A translation
+# into a regular expression misread character sets twice, so this follows Ruby step by step;
+# tests/fixtures/owner/ref-patterns.json holds Ruby's own answers.
+# GitHub refuses a backslash and doesn't support complementing a set with `^`, so a pattern
+# with either has no known reading there.
+UNREADABLE_FORMS = ("\\", "[^")
 
-    `**/` at the start of a component matches zero or more whole components; any other `*`,
-    `**` included, and `?` stay within one; `[...]` is a character set, negated by a leading
-    `!` or `^`, closed by the first `]` and never matching `/`; a backslash escapes the next
-    character; a pattern with an unclosed `[` matches nothing.
-    """
-    if not pattern.startswith("refs/"):
-        pattern = "refs/heads/" + pattern
-    out, index = [], 0
-    while index < len(pattern):
-        negated = pattern[index:index + 1] == "[" and pattern[index + 1:index + 2] in ("!", "^")
-        close = pattern.find("]", index + 1 + negated) if pattern[index] == "[" else -1
-        if pattern[index] == "[" and close == -1:
-            return "(?!)"
-        if pattern.startswith("**/", index) and (index == 0 or pattern[index - 1] == "/"):
-            out.append("(?:[^/]*/)*")
-            index += 3
-        elif pattern.startswith("**", index):
-            out.append("[^/]*")
-            index += 2
-        elif pattern[index] == "*":
-            out.append("[^/]*")
-            index += 1
-        elif pattern[index] == "?":
-            out.append("[^/]")
-            index += 1
-        elif pattern[index] == "\\" and index + 1 < len(pattern):
-            out.append(re.escape(pattern[index + 1]))
-            index += 2
-        elif close != -1:
-            members = re.sub(r"\\(.)|([\[&~|^])", lambda m: re.escape(m.group(1)) if m.group(1) else "\\" + m.group(2),
-                             pattern[index + 1 + negated:close])
-            out.append(("[^/" + members + "]") if negated else ("[" + members + "]" if members else "(?!)"))
-            index = close + 1
+
+def _bracket(p, i, ch):
+    """Ruby's bracket(): where the set opened just before p[i] ends if it admits ch, else None."""
+    ok = negated = False
+    if i < len(p) and p[i] in "!^":
+        negated, i = True, i + 1
+    while True:
+        if i >= len(p):
+            return None
+        if p[i] == "]":
+            break
+        t1 = i + 1 if p[i] == "\\" else i
+        if t1 >= len(p):
+            return None
+        i = t1 + 1
+        if i >= len(p):
+            return None
+        if p[i] == "-" and (i + 1 >= len(p) or p[i + 1] != "]"):
+            t2 = i + 2 if i + 1 < len(p) and p[i + 1] == "\\" else i + 1
+            if t2 >= len(p):
+                return None
+            i = t2 + 1
+            # Ruby admits either end before comparing the range, so a reversed range keeps both ends.
+            ok = ok or ch in (p[t1], p[t2]) or p[t1] <= ch <= p[t2]
+            continue
+        ok = ok or p[t1] == ch
+    return None if ok == negated else i + 1
+
+
+def _component(p, pi, s, si):
+    """Ruby's fnmatch_helper(): match one path component; (matched, pattern index, string index)."""
+    def end(text, i):
+        return i >= len(text) or text[i] == "/"
+
+    def unescape(i):
+        return i + 1 if i < len(p) and p[i] == "\\" else i
+
+    if si < len(s) and s[si] == "." and (p[unescape(pi)] if unescape(pi) < len(p) else "") != ".":
+        return False, pi, si
+    ptmp = stmp = None
+    while True:
+        c = p[pi] if pi < len(p) else ""
+        if c == "*":
+            while pi < len(p) and p[pi] == "*":
+                pi += 1
+            if end(p, unescape(pi)):
+                return True, unescape(pi), si
+            if end(s, si):
+                return False, pi, si
+            ptmp, stmp = pi, si
+            continue
+        if c == "?":
+            if end(s, si):
+                return False, pi, si
+            pi, si = pi + 1, si + 1
+            continue
+        if c == "[":
+            if end(s, si):
+                return False, pi, si
+            after = _bracket(p, pi + 1, s[si])
+            if after is not None:
+                pi, si = after, si + 1
+                continue
         else:
-            out.append(re.escape(pattern[index]))
-            index += 1
-    return "".join(out)
+            pi = unescape(pi)
+            if end(s, si):
+                return end(p, pi), pi, si
+            if not end(p, pi) and p[pi] == s[si]:
+                pi, si = pi + 1, si + 1
+                continue
+        if ptmp is None:
+            return False, pi, si
+        stmp += 1
+        pi, si = ptmp, stmp
+
+
+def fnmatch(p, s):
+    """Ruby's File.fnmatch(p, s, File::FNM_PATHNAME)."""
+    pi = si = 0
+    ptmp = stmp = None
+    while True:
+        if p.startswith("**/", pi):
+            while p.startswith("**/", pi):
+                pi += 3
+            ptmp, stmp = pi, si
+        matched, pi, si = _component(p, pi, s, si)
+        if matched:
+            while si < len(s) and s[si] != "/":
+                si += 1
+            if pi < len(p) and si < len(s):
+                pi, si = pi + 1, si + 1
+                continue
+            if pi >= len(p) and si >= len(s):
+                return True
+        if ptmp is not None and not (stmp < len(s) and s[stmp] == "."):
+            while stmp < len(s) and s[stmp] != "/":
+                stmp += 1
+            if stmp < len(s):
+                stmp += 1
+                pi, si = ptmp, stmp
+                continue
+        return False
 
 
 def applies_to(ruleset, branch):
-    """Whether a ruleset applies to the default branch, enforced or not."""
+    """Whether a ruleset applies to the default branch, enforced or not: True, False, or None
+    when a branch ruleset's pattern has a form GitHub doesn't support, so nobody can tell."""
     if ruleset.get("target") != "branch":
         return False
     ref_name = (ruleset.get("conditions") or {}).get("ref_name") or {}
+    include, exclude = ref_name.get("include") or [], ref_name.get("exclude") or []
+    if any(form in pattern for pattern in include + exclude for form in UNREADABLE_FORMS):
+        return None
 
     def hit(pattern):
-        return pattern in ("~ALL", "~DEFAULT_BRANCH") or re.fullmatch(_ref_pattern(pattern), "refs/heads/" + branch) is not None
+        if pattern in ("~ALL", "~DEFAULT_BRANCH"):
+            return True
+        return fnmatch(pattern if pattern.startswith("refs/") else "refs/heads/" + pattern, "refs/heads/" + branch)
 
-    return any(hit(p) for p in ref_name.get("include") or []) and not any(hit(p) for p in ref_name.get("exclude") or [])
+    return any(hit(p) for p in include) and not any(hit(p) for p in exclude)
 
 
 def describe_ruleset(ruleset):
@@ -419,7 +496,7 @@ def apply_rulesets(report, facts):
     # ruleset, a same-named one elsewhere included, is judged with the rest below.
     by_name = {}
     for ruleset in existing:
-        if ruleset.get("name") in RULESET_NAMES and applies_to(ruleset, branch):
+        if ruleset.get("name") in RULESET_NAMES and applies_to(ruleset, branch) is True:
             by_name.setdefault(ruleset.get("name"), ruleset)
     adopted = set(ruleset["id"] for ruleset in by_name.values())
     taken = dict((ruleset.get("name"), ruleset) for ruleset in existing if ruleset["id"] not in adopted)
@@ -430,8 +507,8 @@ def apply_rulesets(report, facts):
         current = by_name.get(name)
         if current is None and name in taken:
             ours_in_place = False
-            report.line("未通过", "%s 规则集" % name, "规则集 %s 已占用这个名字但不作用于默认分支 %s，未改动它；请把它改名后重跑"
-                        % (describe_ruleset(taken[name]), branch))
+            report.line("未通过", "%s 规则集" % name, "规则集 %s 已占用这个名字，但不是确定作用于默认分支 %s 的分支规则集，未改动它；"
+                        "请把它改名后重跑" % (describe_ruleset(taken[name]), branch))
             continue
         if current is not None and declared(current) == declared(body):
             report.line("已就位", "%s 规则集" % name, summary)
@@ -453,7 +530,12 @@ def apply_rulesets(report, facts):
 
     others = [ruleset for ruleset in existing if ruleset["id"] not in adopted]
     for ruleset in others:
-        if not applies_to(ruleset, branch):
+        applies = applies_to(ruleset, branch)
+        if applies is None:
+            report.line("未通过", "规则集 %s" % describe_ruleset(ruleset),
+                        "它的分支模式含 GitHub 不支持的写法（反斜杠或 [^），判断不了是否作用于默认分支 %s，保留不动；"
+                        "请在 GitHub 上核对它并改写模式后重跑" % branch)
+        elif not applies:
             report.line("已保留", "规则集 %s" % describe_ruleset(ruleset), "不作用于默认分支 %s，保留不动" % branch)
         elif not ours_in_place:
             report.line("已跳过", "规则集 %s" % describe_ruleset(ruleset), "%s 未全部就位，先不移除默认分支上的保护" % OURS)

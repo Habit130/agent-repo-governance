@@ -165,6 +165,22 @@ class OwnerStateAndRerun(ProbeCase):
                                   "Gate's and Merge's rules are in effect on main",
                                   "the merge settings the agent can read match the target"])
 
+    def test_other_rulesets_are_judged_by_rubys_fnmatch_not_by_literal_forms(self):
+        def other(name, ruleset_id, include, exclude=()):
+            return ow.as_github({"name": name, "target": "branch", "enforcement": "active",
+                                 "conditions": {"ref_name": {"include": list(include), "exclude": list(exclude)}},
+                                 "rules": [{"type": "deletion"}]}, ruleset_id)
+
+        kept = [other("all but m branches", 81, ["~ALL"], ["refs/heads/m*"]),
+                other("all but dash and z", 82, ["~ALL"], ["refs/heads/[!-z]ain"])]
+        self.with_github(agent_view(self.path("kept.json"), PUBLIC, target_rulesets() + kept, owner_probes.RULES_IN_EFFECT))
+        self.assertEqual(self.failed(self.results("owner-state", self.context("public"))), [])
+
+        extra = [other("m branches", 83, ["refs/heads/m*"]), other("main anywhere", 84, ["refs/heads/**/main"])]
+        self.with_github(agent_view(self.path("extra.json"), PUBLIC, target_rulesets() + extra, owner_probes.RULES_IN_EFFECT))
+        failed = self.failed(self.results("owner-state", self.context("public")))
+        self.assertEqual(failed, [("no other ruleset applies to main", "m branches (id 83), main anywhere (id 84)")])
+
     def snapshot(self, context, updated_at, taken_at=None):
         context.remember("rulesets_after_first_run", {"taken_at": time.time() - 60 if taken_at is None else taken_at,
                                                       "updated_at": updated_at})
