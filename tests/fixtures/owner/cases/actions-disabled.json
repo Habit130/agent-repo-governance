@@ -1,0 +1,33 @@
+{
+  "description": "Actions is disabled for the repository, so governance-gate could never report: the run stops before any write.",
+  "visibility": "public",
+  "required_checks": [
+    "test"
+  ],
+  "start": "nothing",
+  "github": {
+    "actions": {
+      "enabled": false
+    }
+  },
+  "writes": [],
+  "exit": 2,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "未通过",
+      "前提"
+    ]
+  ]
+}

@@ -13,7 +13,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from govlib import GovernError, compare, render, store, storedform  # noqa: E402
+from govlib import GovernError, compare, owner, render, store, storedform  # noqa: E402
 
 DEFAULT_STORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "store")
 
@@ -89,6 +89,10 @@ def cmd_materialize(args):
     return emit({"ok": True, "dest": os.path.realpath(args.dest), "written": written})
 
 
+def cmd_owner_command(args):
+    return emit({"ok": True, "repository": args.repository, "command": owner.command(args.repository)})
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="govern.py", description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", metavar="command")
@@ -123,6 +127,10 @@ def build_parser():
     materialize.add_argument("--source", required=True, help="the stored tree")
     materialize.add_argument("--dest", required=True, help="a temporary directory or a worktree's top level")
     materialize.set_defaults(run=cmd_materialize)
+
+    owner_command = commands.add_parser("owner-command", help="the owner-script command habit runs for a repository")
+    owner_command.add_argument("--repository", required=True, help="owner/name")
+    owner_command.set_defaults(run=cmd_owner_command)
     return parser
 
 

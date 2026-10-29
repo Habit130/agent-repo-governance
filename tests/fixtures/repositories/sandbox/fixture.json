@@ -1,0 +1,15 @@
+{
+  "description": "The sandbox repositories' seed (#44 §12), after the tally sample: one CI job that runs on every PR with no package install and only a SHA-pinned action, an authentication module and a release script. repo/ holds the tree in stored form; confirmed holds the sandboxes' fixed confirmed values, which every live check renders.",
+  "repositories": {
+    "public": "Habit130/governance-sandbox",
+    "private": "Habit130/governance-sandbox-private"
+  },
+  "default_branch": "main",
+  "confirmed": {
+    "sensitive_paths": [
+      {"pattern": "src/auth.py", "floor": "medium"},
+      {"pattern": "scripts/release.sh", "floor": "high"}
+    ],
+    "required_checks": ["test"]
+  }
+}

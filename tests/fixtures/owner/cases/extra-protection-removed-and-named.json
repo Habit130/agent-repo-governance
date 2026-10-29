@@ -1,0 +1,192 @@
+{
+  "description": "A repository at the target state plus other protection: two rulesets on the default branch (one enforced, one disabled) and classic branch protection are removed and named, after the three rulesets are in place; a ruleset on release branches and a tag ruleset stay and are listed.",
+  "visibility": "public",
+  "required_checks": [
+    "test"
+  ],
+  "start": "target",
+  "github": {
+    "rulesets": [
+      {"as_target": "Gate"
+      },
+      {"as_target": "Merge"
+      },
+      {"as_target": "History"
+      },
+      {
+        "id": 501,
+        "name": "legacy main",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/main"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 502,
+        "name": "release branches",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/release/*"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 503,
+        "name": "version tags",
+        "target": "tag",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "~ALL"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 504,
+        "name": "old default",
+        "target": "branch",
+        "enforcement": "disabled",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "~DEFAULT_BRANCH"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "non_fast_forward"
+          }
+        ]
+      }
+    ],
+    "classic_protection": true
+  },
+  "writes": [
+    [
+      "DELETE",
+      "rulesets/501"
+    ],
+    [
+      "DELETE",
+      "rulesets/504"
+    ],
+    [
+      "DELETE",
+      "branches/main/protection"
+    ]
+  ],
+  "exit": 0,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "已就位",
+      "Actions 可运行工作流"
+    ],
+    [
+      "已就位",
+      "Gate 规则集"
+    ],
+    [
+      "已就位",
+      "Merge 规则集"
+    ],
+    [
+      "已就位",
+      "History 规则集"
+    ],
+    [
+      "已移除",
+      "规则集 “legacy main”（id 501，branch）"
+    ],
+    [
+      "已保留",
+      "规则集 “release branches”（id 502，branch）"
+    ],
+    [
+      "已保留",
+      "规则集 “version tags”（id 503，tag）"
+    ],
+    [
+      "已移除",
+      "规则集 “old default”（id 504，branch）"
+    ],
+    [
+      "已移除",
+      "main 的经典分支保护"
+    ],
+    [
+      "已就位",
+      "仅 squash 合并"
+    ],
+    [
+      "已就位",
+      "合并后删除 head 分支"
+    ],
+    [
+      "已就位",
+      "auto-merge 关闭"
+    ],
+    [
+      "已就位",
+      "Actions 不能创建或批准 PR"
+    ],
+    [
+      "已就位",
+      "secret scanning"
+    ],
+    [
+      "已就位",
+      "push protection"
+    ],
+    [
+      "已就位",
+      "pull_request_target 事件策略"
+    ]
+  ]
+}

@@ -265,7 +265,7 @@ class SiblingImport(RenderedGate):
             ["Habit098", {"risk": {"tier": "medium", "reason": "a reason"}, "reverts": {"sha": "a" * 40}}, True],
         )
         os.remove(sibling)
-        self.assertEqual(sorted(os.listdir(directory)), ["gate.py", "record.yml"])
+        self.assertEqual(sorted(os.listdir(directory)), ["gate.py", "owner.sh", "record.yml"])
 
 
 class Entry(GateCase):

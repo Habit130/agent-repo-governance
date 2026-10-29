@@ -1,0 +1,72 @@
+{
+  "description": "A rerun on a public repository already at the target state, as GitHub returns it with its own extra fields and order: nothing is written, and every item is reported in place, the event policy included.",
+  "visibility": "public",
+  "required_checks": [
+    "test"
+  ],
+  "start": "target",
+  "writes": [],
+  "exit": 0,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "已就位",
+      "Actions 可运行工作流"
+    ],
+    [
+      "已就位",
+      "Gate 规则集"
+    ],
+    [
+      "已就位",
+      "Merge 规则集"
+    ],
+    [
+      "已就位",
+      "History 规则集"
+    ],
+    [
+      "已就位",
+      "main 的经典分支保护"
+    ],
+    [
+      "已就位",
+      "仅 squash 合并"
+    ],
+    [
+      "已就位",
+      "合并后删除 head 分支"
+    ],
+    [
+      "已就位",
+      "auto-merge 关闭"
+    ],
+    [
+      "已就位",
+      "Actions 不能创建或批准 PR"
+    ],
+    [
+      "已就位",
+      "secret scanning"
+    ],
+    [
+      "已就位",
+      "push protection"
+    ],
+    [
+      "已就位",
+      "pull_request_target 事件策略"
+    ]
+  ]
+}

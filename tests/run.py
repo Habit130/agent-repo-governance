@@ -47,6 +47,8 @@ SUITES = (
     ("release-check", "test_release_check", "linux"),
     ("skill-copies", "test_skill_copies", "linux"),
     ("standins", "test_standins", "macos"),
+    ("owner", "test_owner", "macos"),
+    ("live-runner", "test_live_runner", "macos"),
     ("machine-install", "test_machine_install", "macos"),
     ("machine-check", "test_machine_check", "macos"),
     ("machine-list", "test_machine_list", "macos"),

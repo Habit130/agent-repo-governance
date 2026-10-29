@@ -1,0 +1,103 @@
+{
+  "description": "A private repository from nothing, with rulesets available under Pro: the rulesets and settings are written, and secret scanning, push protection and the event policy are skipped with the reason.",
+  "visibility": "private",
+  "required_checks": [
+    "test"
+  ],
+  "start": "nothing",
+  "writes": [
+    [
+      "POST",
+      "rulesets",
+      {
+        "ruleset": "Gate"
+      }
+    ],
+    [
+      "POST",
+      "rulesets",
+      {
+        "ruleset": "Merge"
+      }
+    ],
+    [
+      "POST",
+      "rulesets",
+      {
+        "ruleset": "History"
+      }
+    ],
+    [
+      "PATCH",
+      "",
+      {
+        "allow_merge_commit": false,
+        "allow_rebase_merge": false,
+        "delete_branch_on_merge": true
+      }
+    ]
+  ],
+  "exit": 0,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "已就位",
+      "Actions 可运行工作流"
+    ],
+    [
+      "已设置",
+      "Gate 规则集"
+    ],
+    [
+      "已设置",
+      "Merge 规则集"
+    ],
+    [
+      "已设置",
+      "History 规则集"
+    ],
+    [
+      "已就位",
+      "main 的经典分支保护"
+    ],
+    [
+      "已设置",
+      "仅 squash 合并"
+    ],
+    [
+      "已设置",
+      "合并后删除 head 分支"
+    ],
+    [
+      "已就位",
+      "auto-merge 关闭"
+    ],
+    [
+      "已就位",
+      "Actions 不能创建或批准 PR"
+    ],
+    [
+      "已跳过",
+      "secret scanning"
+    ],
+    [
+      "已跳过",
+      "push protection"
+    ],
+    [
+      "已跳过",
+      "pull_request_target 事件策略"
+    ]
+  ]
+}
