@@ -107,7 +107,7 @@ class Registry(unittest.TestCase):
 
         context = probes.Context(PUBLIC, "public", "main", {}, COMMIT, 1, tempfile.gettempdir())
         for run in (raising, lambda context: []):
-            results = probes.run(probes.Probe("x", ("public",), (), lambda c: [], run), context)
+            results = probes.run(probes.Probe("x", ("public",), lambda c: [], run), context)
             self.assertEqual([r.passed for r in results], [False])
 
     def test_the_runner_refuses_an_unknown_probe_or_one_for_the_other_sandbox(self):
@@ -215,7 +215,7 @@ class Comment(unittest.TestCase):
         self.assertIn("%s#4 at `%s`" % (PUBLIC, "d" * 40), text)
         self.assertIn("- **Result**: 1 of 2 assertions failed.", text)
         self.assertIn("| owner-rerun | c | Fail | y z |", text)
-        self.assertIn("| owner-state | a | b | Pass | x |".replace("a | b", "a | b"), text)
+        self.assertIn("| owner-state | a \\| b | Pass | x |", text)
 
 
 class HabitsCommands(support.TempDirCase):

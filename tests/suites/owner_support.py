@@ -1,8 +1,8 @@
-"""Seam D's inputs (#44 §7, Testing Decisions): the target state as the tests read it, and a stand-in GitHub per case.
+"""Seam D's inputs (#44 §7, Testing Decisions): a stand-in GitHub per case, built against the target state.
 
-The target state below is written from #41 §7, independently of the owner script, so the
-recorded writes check the script against the spec rather than against itself. The live
-check's probes compare the sandbox with the same target.
+The target state comes from `tests/target_state.py`, written from #41 §7 independently of the
+owner script, so the recorded writes check the script against the spec rather than against
+itself. The live check's probes compare the sandbox with the same target.
 
 A case under `tests/fixtures/owner/cases/` names a starting GitHub state and the writes and
 report lines it expects:
@@ -18,6 +18,7 @@ report lines it expects:
     for one of the three as the target state has it, optionally with `checks` and `changes`;
   - `classic_protection`: whether the default branch has classic branch protection;
   - `rulesets_forbidden`: GitHub refuses to list rulesets, as on a private repository without Pro;
+  - `failing_reads`: maps a read, `actions/permissions/workflow`, to the HTTP status GitHub fails it with;
   - `event_policy`: `none`, `target`, `unreadable`, or policies that differ from the target
     by the fields given, each with an `id`.
 - `writes`: every write in order, `[method, path under repos/<repository>/, body]`, where a
@@ -207,8 +208,12 @@ def recording(case, head, path):
         ok(api(""), state.repository()),
         ok(api("/branches/%s" % BRANCH), {"name": BRANCH, "commit": {"sha": default_head}, "protected": bool(state.rulesets)}),
         ok(api("/actions/permissions"), dict(state.actions, selected_actions_url="https://api.github.com/x")),
-        ok(api("/actions/permissions/workflow"), state.workflow),
     ]
+    failing = case.get("github", {}).get("failing_reads", {})
+    if "actions/permissions/workflow" in failing:
+        calls.append(http_error(api("/actions/permissions/workflow"), failing["actions/permissions/workflow"], "Server Error"))
+    else:
+        calls.append(ok(api("/actions/permissions/workflow"), state.workflow))
     if state.rulesets_forbidden:
         message = "Upgrade to GitHub Pro or make this repository public to enable this feature."
         calls.append(http_error(api("/rulesets?includes_parents=false&per_page=100"), 403, message))

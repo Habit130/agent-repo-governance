@@ -8,9 +8,9 @@ ruleset's `updated_at`, which `owner-rerun` compares after the second run.
 import json
 import re
 
-from probes import Probe, ProbeError, Result
-
 import target_state
+from govlib import owner
+from probes import Probe, ProbeError, Result
 
 # The report's items (owner.sh), and the statuses each may end in on a first run.
 FIRST_RUN = (
@@ -74,8 +74,6 @@ def _report_results(context, text, label, allowed_for):
 
 
 def _owner_command(context):
-    from govlib import owner
-
     return owner.command(context.repository)
 
 
@@ -119,10 +117,13 @@ def _rulesets(context):
 
 
 def _applies_to_default_branch(ruleset, branch):
+    """Whether a branch ruleset names the default branch, by the literal forms a pattern takes for it."""
     if ruleset.get("target") != "branch":
         return False
-    include = ((ruleset.get("conditions") or {}).get("ref_name") or {}).get("include") or []
-    return any(p in ("~ALL", "~DEFAULT_BRANCH", "refs/heads/" + branch, branch, "refs/heads/*", "refs/heads/**") for p in include)
+    ref_name = (ruleset.get("conditions") or {}).get("ref_name") or {}
+    names = ("~ALL", "~DEFAULT_BRANCH", "refs/heads/" + branch, branch, "refs/heads/*", "refs/heads/**")
+    return (any(p in names for p in ref_name.get("include") or [])
+            and not any(p in names for p in ref_name.get("exclude") or []))
 
 
 def owner_state(context):
@@ -158,8 +159,7 @@ def owner_state(context):
 
 
 SECRET_COMMAND = (
-    "/bin/bash -c 'export GH_CONFIG_DIR=\"$HOME/.config/gh-maintainer\"; "
-    "unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN; r=%s; "
+    "/bin/bash -c '" + owner.MAINTAINER_SHELL.replace("%", "%%") + "r=%s; "
     "echo \"== PATCH repos/$r security_and_analysis\"; "
     "printf %%s \"{\\\"security_and_analysis\\\":{\\\"secret_scanning\\\":{\\\"status\\\":\\\"enabled\\\"},"
     "\\\"secret_scanning_push_protection\\\":{\\\"status\\\":\\\"enabled\\\"}}}\" "
@@ -199,8 +199,8 @@ def no_commands(context):
 
 
 PROBES = (
-    Probe("owner-report", ("public", "private"), ("owner_report",), owner_report_commands, owner_report),
-    Probe("owner-state", ("public", "private"), (), no_commands, owner_state),
-    Probe("owner-rerun", ("public", "private"), ("owner_rerun",), owner_rerun_commands, owner_rerun),
-    Probe("owner-private-secret", ("private",), ("secret_response",), secret_commands, secret_response),
+    Probe("owner-report", ("public", "private"), owner_report_commands, owner_report),
+    Probe("owner-state", ("public", "private"), no_commands, owner_state),
+    Probe("owner-rerun", ("public", "private"), owner_rerun_commands, owner_rerun),
+    Probe("owner-private-secret", ("private",), secret_commands, secret_response),
 )

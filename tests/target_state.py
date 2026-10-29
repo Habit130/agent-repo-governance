@@ -9,7 +9,8 @@ import copy
 import json
 
 # #41 §7. The GitHub Actions app's id is what GET /apps/github-actions answered on
-# 2026-10-28; the admin role's actor id is GitHub's documented RepositoryRole id for admin.
+# 2026-10-28; the admin role's actor id is the RepositoryRole id GitHub's own exported
+# rulesets use for admins (github/docs at 57f571f), since no documentation states it.
 ACTIONS_APP = 15368
 ADMIN_ROLE = 5
 RULESET_NAMES = ("Gate", "Merge", "History")

@@ -1,0 +1,40 @@
+{
+  "description": "Actions allows selected actions without GitHub's own, and its pattern names a tag of actions/checkout, which doesn't allow the commit the gate workflow pins: the run stops before any write.",
+  "visibility": "public",
+  "required_checks": [
+    "test"
+  ],
+  "start": "target",
+  "github": {
+    "actions": {
+      "allowed_actions": "selected"
+    },
+    "selected_actions": {
+      "github_owned_allowed": false,
+      "verified_allowed": false,
+      "patterns_allowed": [
+        "actions/checkout@v7.0.1"
+      ]
+    }
+  },
+  "writes": [],
+  "exit": 2,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "未通过",
+      "前提"
+    ]
+  ]
+}

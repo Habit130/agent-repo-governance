@@ -42,8 +42,6 @@ SEED = os.path.join(REPO, "tests", "fixtures", "repositories", "sandbox")
 STORE = os.path.join(REPO, "generator", "govern-repository", "store")
 GOVERN = os.path.join(SCRIPTS, "govern.py")
 VERSION = 1
-MAINTAINER_ENV = ("export GH_CONFIG_DIR=\"%s\"; unset GH_TOKEN GITHUB_TOKEN GH_ENTERPRISE_TOKEN GITHUB_ENTERPRISE_TOKEN; "
-                  % owner.MAINTAINER_GH_CONFIG)
 
 
 class RunnerError(Exception):
@@ -88,7 +86,7 @@ def sandbox_command():
     """
     specs = " ".join("%s:%s" % (sandbox_name(v).split("/")[1], v) for v in ("public", "private"))
     return (
-        "/bin/bash -c '" + MAINTAINER_ENV + "s=0; for spec in " + specs + "; do "
+        "/bin/bash -c '" + owner.MAINTAINER_SHELL + "s=0; for spec in " + specs + "; do "
         "n=\"" + MAINTAINER + "/${spec%%:*}\"; v=\"${spec##*:}\"; "
         "if gh repo view \"$n\" --json nameWithOwner >/dev/null 2>&1; then echo \"已存在：${n}，未重新创建\"; "
         "elif gh repo create \"$n\" \"--$v\" --description \"Sandbox for agent-repo-governance live checks; not a governed repository.\" >/dev/null; "
@@ -244,8 +242,7 @@ def cmd_prepare(args):
 
 def comment(state, results):
     """The result comment for this repository's PR: probe results only, naming the commit."""
-    counted = [result for _, result in results if result.passed is not None]
-    failed = [result for result in counted if not result.passed]
+    failed = [result for _, result in results if not result.passed]
     lines = [
         "## Live check at %s" % state["commit"],
         "",
@@ -253,16 +250,15 @@ def comment(state, results):
         "- **Sandbox**: `%s` (%s), PR %s#%d at `%s`." % (state["sandbox"], state["visibility"], state["sandbox"],
                                                          state["sandbox_pr"], state["sandbox_head"]),
         "- **Probes**: %s." % ", ".join(collections.OrderedDict((name, None) for name, _ in results)),
-        "- **Result**: %s" % ("every assertion passed (%d of %d)." % (len(counted), len(counted)) if not failed
-                              else "%d of %d assertions failed." % (len(failed), len(counted))),
+        "- **Result**: %s" % ("every assertion passed (%d of %d)." % (len(results), len(results)) if not failed
+                              else "%d of %d assertions failed." % (len(failed), len(results))),
         "",
         "| Probe | Assertion | Result | Detail |",
         "| --- | --- | --- | --- |",
     ]
     for name, result in results:
-        mark = "Pass" if result.passed else ("Not checked" if result.passed is None else "Fail")
-        detail = str(result.detail).replace("|", "\\|").replace("\n", " ")
-        lines.append("| %s | %s | %s | %s |" % (name, result.assertion, mark, detail))
+        cells = [name, result.assertion, "Pass" if result.passed else "Fail", str(result.detail)]
+        lines.append("| %s |" % " | ".join(cell.replace("|", "\\|").replace("\n", " ") for cell in cells))
     return "\n".join(lines) + "\n"
 
 
@@ -286,7 +282,7 @@ def cmd_probe(args):
                               % (state["pr"], head[:12], state["commit"][:12]))
         url = run(["gh", "pr", "comment", str(state["pr"]), "--repo", THIS_REPOSITORY, "--body-file", "-"], stdin=text).stdout.strip()
         print("posted: %s" % url)
-    return 0 if all(result.passed is not False for _, result in results) else 1
+    return 0 if all(result.passed for _, result in results) else 1
 
 
 def build_parser():

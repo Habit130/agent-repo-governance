@@ -27,8 +27,10 @@ exec /usr/bin/python3 -I - "$here" "$@" <<'PY'
    skips both, and the report says why.
 
 Each item compares GitHub's state with what the target declares and writes only what
-differs. A write is confirmed from GitHub's response. Exit codes: 0 when every item is in
-place, 1 when an item failed or is missing, 2 when a precondition stopped the run.
+differs. A write that answers with the written object is confirmed from it; a DELETE, and
+the Actions setting's PUT, answer with no content and count on success. Exit codes: 0 when
+every item is in place, 1 when an item failed or is missing, or GitHub failed after a
+write; 2 when the run stopped before any write.
 """
 
 import json
@@ -51,8 +53,10 @@ ADMIN_ROLE = 5
 GATE_WORKFLOW = ".github/workflows/governance-gate.yml"
 # The gate workflow's one action, which a restricted Actions policy must still allow.
 CHECKOUT = "actions/checkout"
+_USES_CHECKOUT = re.compile(r"(?m)^ +(?:- )?uses: (actions/checkout@\S+)")
 TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
 RULESET_NAMES = ("Gate", "Merge", "History")
+OURS = "、".join(RULESET_NAMES)
 _REMOTE = re.compile(r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([A-Za-z0-9-]+/[A-Za-z0-9._-]+?)(?:\.git)?/?")
 _HTTP_STATUS = re.compile(r"\(HTTP (\d{3})\)")
 
@@ -114,9 +118,10 @@ def git(root, *args):
 
 class Report(object):
     def __init__(self):
-        self.writes, self.problems = 0, 0
+        self.writes, self.problems, self.current = 0, 0, ""
 
     def section(self, title):
+        self.current = title
         print("== %s" % title)
 
     def line(self, status, subject, detail):
@@ -182,21 +187,27 @@ def preconditions(report):
     checks = required_checks(record)
     report.line("通过", "记录", "%s 可解析；必需检查：%s" % (gate.RECORD, describe_checks(checks)))
 
-    actions_can_run(report, repository)
+    actions_can_run(report, repository, root)
     return {"root": root, "repository": repository, "branch": branch, "repo": repo, "checks": checks}
 
 
-def actions_can_run(report, repository):
-    """Stop unless Actions is enabled and allows the gate workflow's checkout action."""
+def actions_can_run(report, repository, root):
+    """Stop unless Actions is enabled and allows the checkout action the gate workflow pins."""
     permissions = gh_api("repos/%s/actions/permissions" % repository)
     if not permissions.get("enabled"):
         raise Stop("此仓库的 Actions 已停用，governance-gate 永远不会报告；请在 Settings → Actions → General 允许 Actions 后重新运行")
     allowed = permissions.get("allowed_actions")
     if allowed == "selected":
+        try:
+            with open(os.path.join(root, *GATE_WORKFLOW.split("/")), encoding="utf-8") as handle:
+                pinned = _USES_CHECKOUT.findall(handle.read())
+        except OSError:
+            pinned = []
         selected = gh_api("repos/%s/actions/permissions/selected-actions" % repository)
         patterns = selected.get("patterns_allowed") or []
-        allowed_checkout = selected.get("github_owned_allowed") is True or any(
-            re.fullmatch(".*".join(re.escape(piece) for piece in pattern.split("*")), CHECKOUT + "@0") for pattern in patterns
+        allowed_checkout = selected.get("github_owned_allowed") is True or bool(pinned) and all(
+            any(re.fullmatch(".*".join(re.escape(piece) for piece in pattern.split("*")), uses) for pattern in patterns)
+            for uses in pinned
         )
         if not allowed_checkout:
             raise Stop("此仓库的 Actions 只允许选定的 action，不含 %s，governance-gate 无法运行；请在 Settings → Actions → General 允许 GitHub 自己的 action 后重新运行" % CHECKOUT)
@@ -280,16 +291,6 @@ RULESET_SUMMARY = {
     "Merge": "默认分支；仓库管理员始终可绕过；限制更新",
     "History": "所有分支；仓库管理员始终可绕过；禁止 force-push",
 }
-_BOOLEAN_DEFAULTS = {
-    "dismiss_stale_reviews_on_push": False,
-    "require_code_owner_review": False,
-    "require_last_push_approval": False,
-    "required_review_thread_resolution": False,
-    "do_not_enforce_on_create": False,
-    "strict_required_status_checks_policy": False,
-    "update_allows_fetch_and_merge": False,
-}
-
 
 def _sorted_json(items):
     return sorted(json.dumps(item, sort_keys=True) for item in items)
@@ -308,11 +309,11 @@ def declared(ruleset):
         if rule["type"] == "pull_request":
             known = ("dismiss_stale_reviews_on_push", "require_code_owner_review", "require_last_push_approval",
                      "required_review_thread_resolution")
-            value = dict((key, parameters.get(key, _BOOLEAN_DEFAULTS[key])) for key in known)
+            value = dict((key, parameters.get(key, False)) for key in known)
             value["required_approving_review_count"] = parameters.get("required_approving_review_count", 0)
             value["allowed_merge_methods"] = sorted(parameters.get("allowed_merge_methods") or ["merge", "rebase", "squash"])
         elif rule["type"] == "required_status_checks":
-            value = dict((key, parameters.get(key, _BOOLEAN_DEFAULTS[key]))
+            value = dict((key, parameters.get(key, False))
                          for key in ("do_not_enforce_on_create", "strict_required_status_checks_policy"))
             value["required_status_checks"] = _sorted_json(
                 {"context": check["context"], "integration_id": check.get("integration_id")}
@@ -380,7 +381,10 @@ def read_rulesets(repository):
         listed = gh_api("repos/%s/rulesets?includes_parents=false&per_page=100" % repository)
     except GitHubError as error:
         raise Stop("读不到 %s 的规则集（%s）；私有仓库需要所有者的 GitHub Pro" % (repository, error.message))
-    return [gh_api("repos/%s/rulesets/%s" % (repository, item["id"])) for item in listed or []]
+    try:
+        return [gh_api("repos/%s/rulesets/%s" % (repository, item["id"])) for item in listed or []]
+    except GitHubError as error:
+        raise Stop("读不到 %s 的某个规则集：%s" % (repository, error.message))
 
 
 def apply_rulesets(report, facts):
@@ -416,14 +420,14 @@ def apply_rulesets(report, facts):
         if not applies_to(ruleset, branch):
             report.line("已保留", "规则集 %s" % describe_ruleset(ruleset), "不作用于默认分支 %s，保留不动" % branch)
         elif not ours_in_place:
-            report.line("已跳过", "规则集 %s" % describe_ruleset(ruleset), "Gate、Merge、History 未全部就位，先不移除默认分支上的保护")
+            report.line("已跳过", "规则集 %s" % describe_ruleset(ruleset), "%s 未全部就位，先不移除默认分支上的保护" % OURS)
         else:
             try:
                 gh_api("repos/%s/rulesets/%s" % (repository, ruleset["id"]), "DELETE")
             except GitHubError as error:
                 report.line("未通过", "规则集 %s" % describe_ruleset(ruleset), "移除失败：%s" % error.message)
                 continue
-            report.wrote("已移除", "规则集 %s" % describe_ruleset(ruleset), "它作用于默认分支 %s，由 Gate、Merge、History 取代" % branch)
+            report.wrote("已移除", "规则集 %s" % describe_ruleset(ruleset), "它作用于默认分支 %s，由 %s 取代" % (branch, OURS))
     return ours_in_place
 
 
@@ -440,58 +444,79 @@ def apply_branch_protection(report, facts, ours_in_place):
         report.line("未通过", subject, "读取失败：%s" % error.message)
         return
     if not ours_in_place:
-        report.line("已跳过", subject, "Gate、Merge、History 未全部就位，先不移除")
+        report.line("已跳过", subject, "%s 未全部就位，先不移除" % OURS)
         return
     try:
         gh_api(path, "DELETE")
     except GitHubError as error:
         report.line("未通过", subject, "移除失败：%s" % error.message)
         return
-    report.wrote("已移除", subject, "由 Gate、Merge、History 取代")
+    report.wrote("已移除", subject, "由 %s 取代" % OURS)
 
 
-# 3. Settings.
+# 3. Settings, and 4's secret protection: both are fields of PATCH /repos/{owner}/{repo}.
+# Each item is (subject, {path: value}), a path being the keys into the repository's JSON.
 
 SETTINGS = (
-    ("仅 squash 合并", {"allow_squash_merge": True, "allow_merge_commit": False, "allow_rebase_merge": False}),
-    ("合并后删除 head 分支", {"delete_branch_on_merge": True}),
-    ("auto-merge 关闭", {"allow_auto_merge": False}),
+    ("仅 squash 合并", {("allow_squash_merge",): True, ("allow_merge_commit",): False, ("allow_rebase_merge",): False}),
+    ("合并后删除 head 分支", {("delete_branch_on_merge",): True}),
+    ("auto-merge 关闭", {("allow_auto_merge",): False}),
 )
+SECRET_PROTECTION = tuple(
+    (subject, {("security_and_analysis", key, "status"): "enabled"})
+    for subject, key in (("secret scanning", "secret_scanning"), ("push protection", "secret_scanning_push_protection"))
+)
+PRIVATE_SECRET_REASON = "私有仓库：个人账户的私有仓库用不了 secret scanning 和 push protection（需要组织的 GitHub Secret Protection），按目标状态跳过"
+
+
+def _at(data, path):
+    for key in path:
+        data = data.get(key) if isinstance(data, dict) else None
+    return data
+
+
+def _nested(pairs):
+    body = {}
+    for path, value in pairs:
+        node = body
+        for key in path[:-1]:
+            node = node.setdefault(key, {})
+        node[path[-1]] = value
+    return body
+
+
+def patch_repository(report, facts, items, in_place, done):
+    """Write the items' differing fields in one PATCH and report each item from GitHub's answer."""
+    differing = [(path, value) for _, values in items for path, value in values.items() if _at(facts["repo"], path) != value]
+    written, failure = None, None
+    if differing:
+        try:
+            written = gh_api("repos/%s" % facts["repository"], "PATCH", _nested(differing))
+        except GitHubError as error:
+            failure = error.message
+    changed = set(path for path, _ in differing)
+    for subject, values in items:
+        if not changed.intersection(values):
+            report.line("已就位", subject, in_place)
+        elif failure is not None:
+            report.line("未通过", subject, "GitHub 拒绝了写入：%s" % failure)
+        elif all(_at(written, path) == value for path, value in values.items()):
+            report.wrote("已设置", subject, done)
+        else:
+            report.line("未通过", subject, "GitHub 的回应仍不是目标值")
 
 
 def apply_settings(report, facts):
     report.section("设置")
-    repository, repo = facts["repository"], facts["repo"]
-    differing = {}
-    for subject, values in SETTINGS:
-        for key, value in values.items():
-            if repo.get(key) != value:
-                differing[key] = value
-    written = None
-    failure = None
-    if differing:
-        try:
-            written = gh_api("repos/%s" % repository, "PATCH", differing)
-        except GitHubError as error:
-            failure = error.message
-    for subject, values in SETTINGS:
-        if not any(key in differing for key in values):
-            report.line("已就位", subject, "已是目标值")
-        elif failure is not None:
-            report.line("未通过", subject, "GitHub 拒绝了写入：%s" % failure)
-        elif all((written or {}).get(key) == value for key, value in values.items()):
-            report.wrote("已设置", subject, "已改为目标值")
-        else:
-            report.line("未通过", subject, "GitHub 的回应仍不是目标值")
-    actions_cannot_approve(report, repository)
+    patch_repository(report, facts, SETTINGS, "已是目标值", "已改为目标值")
+    actions_cannot_approve(report, facts["repository"])
 
 
 def actions_cannot_approve(report, repository):
     """The setting the agent can't read: Actions may not create or approve pull requests."""
     subject = "Actions 不能创建或批准 PR"
     path = "repos/%s/actions/permissions/workflow" % repository
-    current = gh_api(path)
-    if current.get("can_approve_pull_request_reviews") is False:
+    if gh_api(path).get("can_approve_pull_request_reviews") is False:
         report.line("已就位", subject, "已关闭")
         return
     try:
@@ -504,36 +529,14 @@ def actions_cannot_approve(report, repository):
 
 # 4. Secret protection and the Actions event policy, public repositories only.
 
-SECRET_PROTECTION = (("secret scanning", "secret_scanning"), ("push protection", "secret_scanning_push_protection"))
-PRIVATE_SECRET_REASON = "私有仓库：个人账户的私有仓库用不了 secret scanning 和 push protection（需要组织的 GitHub Secret Protection），按目标状态跳过"
-
 
 def apply_secret_protection(report, facts):
     report.section("Secret 保护")
-    repository, repo = facts["repository"], facts["repo"]
-    if repo.get("private"):
+    if facts["repo"].get("private"):
         for subject, _ in SECRET_PROTECTION:
             report.line("已跳过", subject, PRIVATE_SECRET_REASON)
         return
-    current = repo.get("security_and_analysis") or {}
-    differing = dict(
-        (key, {"status": "enabled"}) for _, key in SECRET_PROTECTION if (current.get(key) or {}).get("status") != "enabled"
-    )
-    written, failure = None, None
-    if differing:
-        try:
-            written = gh_api("repos/%s" % repository, "PATCH", {"security_and_analysis": differing})
-        except GitHubError as error:
-            failure = error.message
-    for subject, key in SECRET_PROTECTION:
-        if key not in differing:
-            report.line("已就位", subject, "已启用")
-        elif failure is not None:
-            report.line("未通过", subject, "GitHub 拒绝了写入：%s" % failure)
-        elif (((written or {}).get("security_and_analysis") or {}).get(key) or {}).get("status") == "enabled":
-            report.wrote("已设置", subject, "已启用")
-        else:
-            report.line("未通过", subject, "GitHub 的回应仍未启用")
+    patch_repository(report, facts, SECRET_PROTECTION, "已启用", "已启用")
 
 
 # From 2026-12-02 GitHub's default policy blocks pull_request_target on a public repository
@@ -610,18 +613,18 @@ def main():
     report = Report()
     try:
         facts = preconditions(report)
-    except (Stop, GitHubError) as error:
-        report.line("未通过", "前提", "%s；未写入任何内容" % (error.message if isinstance(error, GitHubError) else error))
-        return 2
-    try:
         ours_in_place = apply_rulesets(report, facts)
-    except Stop as error:
-        report.line("未通过", "规则集", "%s；未写入任何内容" % error)
-        return 2
-    apply_branch_protection(report, facts, ours_in_place)
-    apply_settings(report, facts)
-    apply_secret_protection(report, facts)
-    apply_event_policy(report, facts)
+        apply_branch_protection(report, facts, ours_in_place)
+        apply_settings(report, facts)
+        apply_secret_protection(report, facts)
+        apply_event_policy(report, facts)
+    except (Stop, GitHubError) as error:
+        reason = error.message if isinstance(error, GitHubError) else str(error)
+        if not report.writes:
+            report.line("未通过", report.current, "%s；未写入任何内容" % reason)
+            return 2
+        report.line("未通过", report.current, "%s；本次已写入 %d 项，其余未做，修好后重新运行" % (reason, report.writes))
+        return 1
     report.section("结果")
     if report.problems:
         print("写入 %d 项；%d 项未通过或缺失，见上方各行" % (report.writes, report.problems))

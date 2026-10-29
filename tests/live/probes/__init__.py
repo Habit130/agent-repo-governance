@@ -6,11 +6,11 @@ and never changes the runner. A probe has:
 
 - `name`: unique across modules, given to `live.py prepare` and `live.py probe` as `--probe`.
 - `sandboxes`: the sandboxes it runs in, `public`, `private` or both.
-- `inputs`: names of what habit's steps produce for it. Each input is the file
-  `<check directory>/<name>.txt`. A missing input fails the probe; it is never skipped.
 - `commands(context)`: habit's ready commands for this probe, `[(input or None, label,
   line)]`, in order. `prepare` prints each one, and a command with an input gets
-  `2>&1 | tee <its file>` appended, so its output reaches both habit and the probe.
+  `2>&1 | tee <check directory>/<input>.txt` appended, so its output reaches both habit and
+  the probe, which reads it with `context.input(name)`. A missing input fails the probe; it
+  is never skipped.
 - `run(context)`: the checks, as the agent account. It returns one `Result` per assertion,
   `(assertion, passed, detail)`, in plain English. A probe never writes to GitHub outside
   the sandbox and prints no credential.
@@ -28,7 +28,7 @@ import os
 import pkgutil
 import subprocess
 
-Probe = collections.namedtuple("Probe", "name sandboxes inputs commands run")
+Probe = collections.namedtuple("Probe", "name sandboxes commands run")
 Result = collections.namedtuple("Result", "assertion passed detail")
 
 
