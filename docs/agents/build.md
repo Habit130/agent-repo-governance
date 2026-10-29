@@ -235,7 +235,10 @@ item failed or missing, 2 stopped before any write).
   Actions policy endpoints `/repos/{owner}/{repo}/actions/policies` and their allowlist-only
   `restrict_action_events` rule, from the same commit. GitHub returns rulesets and policies
   with fields the script never sent and leaves `update` bare, so it compares only what the
-  target declares.
+  target declares. Ruleset ref patterns are Ruby's `File.fnmatch` with `FNM_PATHNAME`
+  (`github/docs` at `57f571f`, "Using `fnmatch` syntax", read 2026-10-29), so the script
+  decides which rulesets apply to the default branch by that reading;
+  `tests/fixtures/owner/ref-patterns.json` records Ruby's own answers, which Seam D checks.
 - **Seam D** (`tests/suites/test_owner.py`) runs each case as `owner_support.py`'s docstring
   defines it. `tests/target_state.py` is #41 §7 written independently of the script; Seam D's
   recorded bodies and the live probes both compare against it. A new case joins

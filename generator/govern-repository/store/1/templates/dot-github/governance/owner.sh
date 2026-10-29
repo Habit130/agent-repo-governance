@@ -343,21 +343,26 @@ def declared(ruleset):
 
 
 def _ref_pattern(pattern):
-    """A ruleset's fnmatch-style ref pattern as a regular expression.
+    """A ruleset's ref pattern as a regular expression, read as Ruby's File.fnmatch with FNM_PATHNAME.
 
-    `**` crosses `/`, `*` and `?` don't; `[...]` is a character set, negated by a leading `!`
-    or `^` and never matching `/`; a backslash escapes the next character; an unclosed `[` is
-    literal.
+    `**/` at the start of a component matches zero or more whole components; any other `*`,
+    `**` included, and `?` stay within one; `[...]` is a character set, negated by a leading
+    `!` or `^`, closed by the first `]` and never matching `/`; a backslash escapes the next
+    character; a pattern with an unclosed `[` matches nothing.
     """
     if not pattern.startswith("refs/"):
         pattern = "refs/heads/" + pattern
     out, index = [], 0
     while index < len(pattern):
         negated = pattern[index:index + 1] == "[" and pattern[index + 1:index + 2] in ("!", "^")
-        # A `]` right after `[` or `[!` is a member, so the set closes at a later one.
-        close = pattern.find("]", index + 2 + negated) if pattern[index] == "[" else -1
-        if pattern.startswith("**", index):
-            out.append(".*")
+        close = pattern.find("]", index + 1 + negated) if pattern[index] == "[" else -1
+        if pattern[index] == "[" and close == -1:
+            return "(?!)"
+        if pattern.startswith("**/", index) and (index == 0 or pattern[index - 1] == "/"):
+            out.append("(?:[^/]*/)*")
+            index += 3
+        elif pattern.startswith("**", index):
+            out.append("[^/]*")
             index += 2
         elif pattern[index] == "*":
             out.append("[^/]*")
@@ -371,7 +376,7 @@ def _ref_pattern(pattern):
         elif close != -1:
             members = re.sub(r"\\(.)|([\[&~|^])", lambda m: re.escape(m.group(1)) if m.group(1) else "\\" + m.group(2),
                              pattern[index + 1 + negated:close])
-            out.append(("[^/" if negated else "[") + members + "]")
+            out.append(("[^/" + members + "]") if negated else ("[" + members + "]" if members else "(?!)"))
             index = close + 1
         else:
             out.append(re.escape(pattern[index]))

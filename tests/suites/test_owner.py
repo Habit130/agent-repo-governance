@@ -124,6 +124,18 @@ class Program(unittest.TestCase):
         self.assertNotIn("@@", program)
         self.assertEqual(support.read_text(TEMPLATE).count("@@"), 2, "only the notice's @@version@@ token")
 
+    def test_its_ref_patterns_read_as_rubys_fnmatch_on_every_recorded_row(self):
+        tree = ast.parse(embedded_program(support.read_text(TEMPLATE)))
+        function = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "_ref_pattern"]
+        namespace = {"re": re}
+        exec(compile(ast.Module(body=function, type_ignores=[]), "owner.sh's _ref_pattern", "exec"), namespace)
+        with open(os.path.join(support.FIXTURES, "owner", "ref-patterns.json")) as handle:
+            rows = json.load(handle)["cases"]
+        wrong = [(pattern, branch, expected) for pattern, branch, expected in rows
+                 if (re.fullmatch(namespace["_ref_pattern"](pattern), "refs/heads/" + branch) is not None) != expected]
+        self.assertEqual(wrong, [])
+        self.assertGreater(len(rows), 400)
+
     def test_it_imports_the_gate_scripts_parser_and_adds_no_file(self):
         program = embedded_program(support.read_text(TEMPLATE))
         self.assertIn("sys.dont_write_bytecode = True\nGOVERNANCE = sys.argv[1]\nsys.path.insert(0, GOVERNANCE)\n", program)

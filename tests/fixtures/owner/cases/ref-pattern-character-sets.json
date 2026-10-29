@@ -1,5 +1,5 @@
 {
-  "description": "Character sets in ref patterns, read the way GitHub's fnmatch reads them: a ruleset that excludes the default branch through a set stays, one whose set includes it is removed, and a negated set that leaves it out stays.",
+  "description": "Ref patterns read as GitHub's fnmatch with FNM_PATHNAME reads them: a ruleset that excludes the default branch through a character set or a leading `**/` stays, one whose set or `**/` includes it is removed, and a negated set that leaves it out stays.",
   "visibility": "public",
   "required_checks": [
     "test"
@@ -77,6 +77,48 @@
             "type": "deletion"
           }
         ]
+      },
+      {
+        "id": 704,
+        "name": "all but main anywhere",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "~ALL"
+            ],
+            "exclude": [
+              "refs/heads/**/main"
+            ]
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 705,
+        "name": "main anywhere",
+        "target": "branch",
+        "enforcement": "active",
+        "bypass_actors": [],
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/**/main"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
       }
     ]
   },
@@ -84,6 +126,10 @@
     [
       "DELETE",
       "rulesets/702"
+    ],
+    [
+      "DELETE",
+      "rulesets/705"
     ]
   ],
   "exit": 0,
@@ -127,6 +173,14 @@
     [
       "已保留",
       "规则集 “not main by set”（id 703，branch）"
+    ],
+    [
+      "已保留",
+      "规则集 “all but main anywhere”（id 704，branch）"
+    ],
+    [
+      "已移除",
+      "规则集 “main anywhere”（id 705，branch）"
     ],
     [
       "已就位",
