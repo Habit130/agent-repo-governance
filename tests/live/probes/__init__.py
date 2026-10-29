@@ -7,7 +7,9 @@ and never changes the runner. A probe has:
 - `name`: unique across modules, given to `live.py prepare` and `live.py probe` as `--probe`.
 - `sandboxes`: the sandboxes it runs in, `public`, `private` or both.
 - `commands(context)`: habit's ready commands for this probe, `[(input or None, label,
-  line)]`, in order. `prepare` prints each one, and a command with an input gets
+  line)]`, in order. `prepare` prints them after the pinned merge command and the
+  owner-script command, whose report is the input `owner_report` in every check. A command
+  with an input gets
   `2>&1 | tee <check directory>/<input>.txt` appended, so its output reaches both habit and
   the probe, which reads it with `context.input(name)`. A missing input fails the probe; it
   is never skipped.

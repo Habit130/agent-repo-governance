@@ -244,13 +244,16 @@ item failed or missing, 2 stopped before any write).
   sandboxes only. Its docstring lists the subcommands; `tests/live/probes/__init__.py` gives
   the one probe shape, and a live-check delivery adds its probes as a module there without
   changing the runner. One check, for a sandbox:
-  1. habit runs `live.py sandbox-command`'s line once; `live.py seed --sandbox <s>` then
-     accepts the invitation and seeds the empty default branch from
-     `tests/fixtures/repositories/sandbox/`, whose `fixture.json` holds the sandboxes'
-     fixed confirmed values.
+  1. habit runs `live.py sandbox-command`'s line once, then connects Bugbot (the Cursor
+     GitHub App's repository access) and the Codex review bot (its connector's repository
+     list) for both sandboxes. `live.py seed --sandbox <s>` then accepts the invitation and
+     seeds the empty default branch from `tests/fixtures/repositories/sandbox/`, whose
+     `fixture.json` holds the sandboxes' fixed confirmed values.
   2. `live.py prepare --pr <n> --sandbox <s> --probe <name>...`, at this checkout's pushed
-     PR head, opens the sandbox PR and prints habit's commands: the pinned merge command,
-     then each probe's commands, which save their output in the check directory.
+     PR head, opens the sandbox PR, with a record under `live-checks/` so one exists even
+     when the render is unchanged, and prints habit's commands: the pinned merge command,
+     the owner-script command, then each probe's commands, each saving its output in the
+     check directory.
   3. After habit's steps, `live.py probe --state <dir>/prepared.json --probe <name>... --post`
      posts the result comment, naming the commit. The owner probes need one run without
      `--post` between habit's two owner-script runs (`probes/owner.py`).

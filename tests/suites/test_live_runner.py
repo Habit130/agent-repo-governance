@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -68,8 +69,7 @@ def target_rulesets(checks=("test",)):
 
 class ProbeCase(support.TempDirCase):
     def context(self, visibility="public", inputs=None):
-        directory = self.path("check-%s" % visibility)
-        os.makedirs(directory, exist_ok=True)
+        directory = tempfile.mkdtemp(prefix="check-%s-" % visibility, dir=self.tmp)
         for name, text in (inputs or {}).items():
             with open(os.path.join(directory, "%s.txt" % name), "w") as handle:
                 handle.write(text)
@@ -151,7 +151,7 @@ class OwnerStateAndRerun(ProbeCase):
         context = self.context("public")
         results = self.results("owner-state", context)
         self.assertEqual(self.failed(results), [])
-        self.assertEqual(sorted(context.recall("rulesets_after_first_run")), ["9001", "9002", "9003"])
+        self.assertEqual(sorted(context.recall("rulesets_after_first_run")["updated_at"]), ["9001", "9002", "9003"])
 
     def test_a_drifted_ruleset_an_extra_one_and_a_lapsed_rule_fail(self):
         rulesets = target_rulesets(checks=())
@@ -165,17 +165,35 @@ class OwnerStateAndRerun(ProbeCase):
                                   "Gate's and Merge's rules are in effect on main",
                                   "the merge settings the agent can read match the target"])
 
+    def snapshot(self, context, updated_at, taken_at=None):
+        context.remember("rulesets_after_first_run", {"taken_at": time.time() - 60 if taken_at is None else taken_at,
+                                                      "updated_at": updated_at})
+
     def test_a_rerun_that_wrote_nothing_passes_and_one_that_wrote_fails(self):
         self.with_github(agent_view(self.path("gh.json"), PUBLIC, target_rulesets(), owner_probes.RULES_IN_EFFECT))
-        quiet = owner_report(self.path("quiet"), "rerun-at-target")
-        context = self.context("public", {"owner_rerun": quiet})
-        context.remember("rulesets_after_first_run", dict((str(r["id"]), r["updated_at"]) for r in target_rulesets()))
+        context = self.context("public", {"owner_rerun": owner_report(self.path("quiet"), "rerun-at-target")})
+        self.snapshot(context, dict((str(r["id"]), r["updated_at"]) for r in target_rulesets()))
         self.assertEqual(self.failed(self.results("owner-rerun", context)), [])
         noisy = self.context("public", {"owner_rerun": owner_report(self.path("noisy"), "drifted-ruleset-and-settings")})
-        noisy.remember("rulesets_after_first_run", {"9001": "earlier"})
+        self.snapshot(noisy, {"9001": "earlier"})
         failed = [assertion for assertion, _ in self.failed(self.results("owner-rerun", noisy))]
         self.assertIn("the rerun's report sets and removes nothing", failed)
         self.assertIn("the rerun left every ruleset's updated_at unchanged", failed)
+
+    def test_a_rerun_that_still_misses_the_event_policy_fails(self):
+        self.with_github(agent_view(self.path("gh.json"), PUBLIC, target_rulesets(), owner_probes.RULES_IN_EFFECT))
+        context = self.context("public", {"owner_rerun": owner_report(self.path("run"), "event-policy-api-cannot-create")})
+        self.snapshot(context, dict((str(r["id"]), r["updated_at"]) for r in target_rulesets()))
+        failed = [assertion for assertion, _ in self.failed(self.results("owner-rerun", context))]
+        self.assertIn("the rerun's report reports pull_request_target 事件策略 as 已就位", failed)
+        self.assertIn("the rerun's report writes nothing and finds everything in place", failed)
+
+    def test_a_snapshot_taken_after_the_rerun_fails(self):
+        self.with_github(agent_view(self.path("gh.json"), PUBLIC, target_rulesets(), owner_probes.RULES_IN_EFFECT))
+        context = self.context("public", {"owner_rerun": owner_report(self.path("run"), "rerun-at-target")})
+        self.snapshot(context, dict((str(r["id"]), r["updated_at"]) for r in target_rulesets()), taken_at=time.time() + 60)
+        failed = [assertion for assertion, _ in self.failed(self.results("owner-rerun", context))]
+        self.assertEqual(failed, ["the ruleset snapshot was taken before the rerun"])
 
     def test_a_rerun_without_the_first_snapshot_fails(self):
         self.with_github(agent_view(self.path("gh.json"), PUBLIC, target_rulesets(), owner_probes.RULES_IN_EFFECT))
@@ -261,13 +279,14 @@ class HabitsCommands(support.TempDirCase):
         self.assertIn("r=%s;" % PRIVATE, line)
         self.assertIn('export GH_CONFIG_DIR="$HOME/.config/gh-maintainer"', line)
 
-    def test_the_owner_probes_hand_habit_the_one_owner_script_command(self):
+    def test_the_rerun_probe_hands_habit_the_one_owner_script_command_and_the_runner_the_first(self):
         from govlib import owner
 
         context = probes.Context(PUBLIC, "public", "main", {}, COMMIT, 1, "/x")
-        for name in ("owner-report", "owner-rerun"):
-            (_, _, line), = probes.registered()[name].commands(context)
-            self.assertEqual(line, owner.command(PUBLIC))
+        (name, _, line), = probes.registered()["owner-rerun"].commands(context)
+        self.assertEqual((name, line), ("owner_rerun", owner.command(PUBLIC)))
+        self.assertEqual(probes.registered()["owner-report"].commands(context), [])
+        self.assertEqual(live.OWNER_REPORT, "owner_report")
 
 
 if __name__ == "__main__":

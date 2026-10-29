@@ -1,12 +1,17 @@
 """The owner script's probes (#44 §11): the state matches the target, a rerun writes nothing, and the private skip.
 
-habit runs the owner script twice through `prepare`'s commands, which save each report as an
-input. Run `live.py probe` once between the two runs: `owner-state` then remembers each
-ruleset's `updated_at`, which `owner-rerun` compares after the second run.
+`prepare` hands habit the owner-script command for every check, saving its report as the
+input `owner_report`; `owner-rerun` hands it over again for the input `owner_rerun`. Run
+`live.py probe` once between the two runs: `owner-state` then remembers each ruleset's
+`updated_at`, which `owner-rerun` compares after the second run. On a public repository a
+first run may report the event policy missing (CRIT-9); habit then sets it once by hand, and
+the rerun must find it in place.
 """
 
 import json
+import os
 import re
+import time
 
 import target_state
 from govlib import owner
@@ -73,14 +78,6 @@ def _report_results(context, text, label, allowed_for):
     return results, items, last
 
 
-def _owner_command(context):
-    return owner.command(context.repository)
-
-
-def owner_report_commands(context):
-    return [("owner_report", "the owner-script command, first run", _owner_command(context))]
-
-
 def owner_report(context):
     results, items, last = _report_results(context, context.input("owner_report"), "first run's report", lambda s, a: a)
     if context.visibility == "private":
@@ -90,25 +87,37 @@ def owner_report(context):
     return results
 
 
+RERUN_LAST_LINE = "写入 0 项；全部已就位，本次未改动 GitHub"
+
+
 def owner_rerun_commands(context):
-    return [("owner_rerun", "the owner-script command again, after the first probe run", _owner_command(context))]
+    return [("owner_rerun", "the owner-script command again, after the first probe run and, if the first run reported "
+             "the event policy missing, after habit set it once by hand", owner.command(context.repository))]
 
 
 def owner_rerun(context):
     def in_place(subject, allowed):
-        return {"通过"} if allowed == {"通过"} else (allowed & {"已就位", "已跳过", "缺失"})
+        return {"通过"} if allowed == {"通过"} else (allowed & {"已就位", "已跳过"})
 
     results, items, last = _report_results(context, context.input("owner_rerun"), "rerun's report", in_place)
     wrote = [subject for subject, (status, _) in items.items() if status in ("已设置", "已移除")]
     results.append(Result("the rerun's report sets and removes nothing", not wrote, ", ".join(wrote) or "nothing written"))
-    results.append(Result("the rerun's report counts no write", last.startswith("写入 0 项"), last))
-    before = context.recall("rulesets_after_first_run")
-    if before is None:
+    results.append(Result("the rerun's report writes nothing and finds everything in place", last == RERUN_LAST_LINE, last))
+    snapshot = context.recall("rulesets_after_first_run")
+    if snapshot is None:
         raise ProbeError("no ruleset snapshot from the first run: run `live.py probe` with owner-state between habit's two runs")
+    rerun_at = os.path.getmtime(context.input_path("owner_rerun"))
+    results.append(Result("the ruleset snapshot was taken before the rerun", snapshot["taken_at"] < rerun_at,
+                          "snapshot %s, rerun report %s" % (_when(snapshot["taken_at"]), _when(rerun_at))))
     now = dict((str(ruleset["id"]), ruleset.get("updated_at")) for ruleset in _rulesets(context))
+    before = snapshot["updated_at"]
     results.append(Result("the rerun left every ruleset's updated_at unchanged", now == before,
                           "before %s, after %s" % (json.dumps(before, sort_keys=True), json.dumps(now, sort_keys=True))))
     return results
+
+
+def _when(seconds):
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(seconds))
 
 
 def _rulesets(context):
@@ -129,7 +138,10 @@ def _applies_to_default_branch(ruleset, branch):
 def owner_state(context):
     rulesets = _rulesets(context)
     if context.recall("rulesets_after_first_run") is None:
-        context.remember("rulesets_after_first_run", dict((str(r["id"]), r.get("updated_at")) for r in rulesets))
+        context.remember("rulesets_after_first_run", {
+            "taken_at": time.time(),
+            "updated_at": dict((str(r["id"]), r.get("updated_at")) for r in rulesets),
+        })
     by_name = dict((ruleset.get("name"), ruleset) for ruleset in rulesets)
     results = []
     for name in target_state.RULESET_NAMES:
@@ -199,7 +211,7 @@ def no_commands(context):
 
 
 PROBES = (
-    Probe("owner-report", ("public", "private"), owner_report_commands, owner_report),
+    Probe("owner-report", ("public", "private"), no_commands, owner_report),
     Probe("owner-state", ("public", "private"), no_commands, owner_state),
     Probe("owner-rerun", ("public", "private"), owner_rerun_commands, owner_rerun),
     Probe("owner-private-secret", ("private",), secret_commands, secret_response),

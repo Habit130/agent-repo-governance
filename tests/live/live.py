@@ -4,7 +4,8 @@
   sandbox-command  print habit's one line that creates both sandboxes and invites the agent account
   seed             as the agent: accept a sandbox's invitation, and seed its empty default branch
   prepare          steps 1 to 4: render this checkout's PR head into a fresh sandbox branch, open the
-                   sandbox PR, and hand habit the pinned merge command and each probe's commands
+                   sandbox PR, and hand habit the pinned merge command, the owner-script command
+                   and each probe's commands
   probe            step 5: run the named probes and post their results on this repository's PR
 
 Execution runs it as the agent account. habit runs only the printed commands, each one line
@@ -42,6 +43,8 @@ SEED = os.path.join(REPO, "tests", "fixtures", "repositories", "sandbox")
 STORE = os.path.join(REPO, "generator", "govern-repository", "store")
 GOVERN = os.path.join(SCRIPTS, "govern.py")
 VERSION = 1
+# Step 4 hands habit the owner-script command in every check; its report is this input.
+OWNER_REPORT = "owner_report"
 
 
 class RunnerError(Exception):
@@ -200,9 +203,13 @@ def cmd_prepare(args):
                         "--confirmed", confirmed], check=False)
         if rendered.returncode != 0:
             raise RunnerError("rendering version %d failed: %s" % (VERSION, rendered.stdout.strip()))
+        # The check's record, so a sandbox PR exists even when the sandbox already holds this render.
+        record = os.path.join(clone, "live-checks", "%s.md" % branch.split("/", 1)[1])
+        os.makedirs(os.path.dirname(record), exist_ok=True)
+        with open(record, "w") as handle:
+            handle.write("Live check of governance model version %d from %s at %s, probes: %s.\n"
+                         % (VERSION, THIS_REPOSITORY, commit, ", ".join(args.probe)))
         run(["git", "-C", clone, "add", "-A"])
-        if not run(["git", "-C", clone, "status", "--porcelain"]).stdout.strip():
-            raise RunnerError("%s's %s already holds this render, so there is nothing to merge" % (repository, default_branch))
         run(["git", "-C", clone, "commit", "-q", "-m", "Live check: governance version %d at %s" % (VERSION, commit[:12])])
         head = run(["git", "-C", clone, "rev-parse", "HEAD"]).stdout.strip()
         run(["git", "-C", clone, "push", "-q", "origin", "HEAD:refs/heads/%s" % branch])
@@ -224,11 +231,13 @@ def cmd_prepare(args):
     print("Opened %s from %s at %s, rendering %s." % (url, branch, head[:12], commit[:12]))
     print("Check directory: %s" % directory)
     print("")
+    ctx = context(state, directory)
     print("habit's commands, in order, each with the ! prefix in Claude Code:")
     print("1. Merge the sandbox PR once its checks are green:")
     print("   ghm pr merge %d --repo %s --admin --squash --match-head-commit %s" % (number, repository, head))
-    step = 2
-    ctx = context(state, directory)
+    print("2. The owner-script command, after the merge:")
+    print("   %s 2>&1 | tee %s" % (owner.command(repository), ctx.input_path(OWNER_REPORT)))
+    step = 3
     for probe in chosen:
         for name, label, line in probe.commands(ctx):
             print("%d. %s (%s):" % (step, label, probe.name))
