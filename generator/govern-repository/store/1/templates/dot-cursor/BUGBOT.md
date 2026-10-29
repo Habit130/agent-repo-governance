@@ -12,12 +12,12 @@ A change takes the highest tier any part of it reaches.
 
 | Tier | The change |
 | --- | --- |
-| low | A two-way door with a small blast radius, touching no sensitive path, covered by its verification: docs, copy, comments, tests, internal refactors that keep behavior, small tested fixes, additive changes behind a default-off flag |
+| low | A two-way door with a small blast radius, touching no sensitive path, covered by its verification. Examples: docs, copy, comments, tests, internal refactors that keep behavior, small tested fixes, additive changes behind a default-off flag |
 | medium | Ordinary product changes, such as user-visible behavior or an interface, CLI or API. Also dependency changes, build or CI configuration, shared modules, a medium-floor sensitive path, and a re-landed outside change |
 | high | One-way doors: data migrations, destructive operations, releases and publishing. Also authentication, privacy and secret handling, an Actions secret's use added or changed included; production resources; a broad blast radius; a change that loosens governance or its enforcement; a high-floor sensitive path; and the generator's output |
 
-- **Trusted authors** are habit and the agent account. The governance gate fails anyone
-  else's PR, whose change a Builder re-lands.
+- **Trusted authors** are habit and the agent account; anyone else's PR is an outside PR
+  (`docs/agents/builder.md`, Outside PRs).
 - **Sensitive paths** are listed once, with their floors, in
   `.github/governance/record.yml`: the defaults, each with a medium floor, and the
   repository's confirmed ones, medium or high. A change touching one, by a deletion or
@@ -25,11 +25,15 @@ A change takes the highest tier any part of it reaches.
 
 ### Findings
 
-- **Important** blocks the merge while open: the Codex review bot's P0 or P1; a blocking
-  Bugbot finding; a security review's HIGH or MEDIUM; a declared tier below what the change
-  warrants; an edit to fixed content, a file carrying the generated notice or the text
-  between governance markers, in any PR but the generator's own; a credential value in a
-  diff, PR text or comment, named by its type and location only.
+- **Important** blocks the merge while open:
+  - the Codex review bot's P0 or P1;
+  - a blocking Bugbot finding;
+  - a security review's HIGH or MEDIUM;
+  - a declared tier below what the change warrants;
+  - an edit to fixed content in any PR but the generator's own: a file whose notice says
+    only the generator changes it, the record's `confirmed` part aside, or the text between
+    governance markers;
+  - a credential value in a diff, PR text or comment, named by its type and location only.
 - **Nit** never blocks: a non-blocking Bugbot finding; a security review's LOW.
 - **Pre-existing** never blocks: anything the change didn't introduce, whatever its
   severity.

@@ -83,19 +83,20 @@ AGENTS_SECTIONS = (
 REPOSITORY_SECTIONS = ("This repository",)
 CODE_REVIEW_RULES = "## Code Review Rules"
 # AGENTS.md's budget, rendered and skeleton included: #41 §1's "about 10 KB", with 10% over
-# allowed, leaves 21 KiB of the Codex harness's 32 KiB cap for the repository's own section.
+# allowed, which leaves 21 KiB of the Codex harness's 32 KiB cap for the repository's own text.
 AGENTS_BUDGET = 11 * 1024
-# Version 1 writes no root CLAUDE.md, AGENTS.override.md or .codex/ (#41 §1, §11).
-NEVER_WRITTEN = re.compile(r"^(?:CLAUDE\.md|(?:.*/)?AGENTS\.override\.md|\.codex/.*)$")
+# Version 1 writes no root CLAUDE.md, AGENTS.override.md or .codex/ (#41 §1, §11), in any case,
+# since a case-insensitive file system opens claude.md for CLAUDE.md.
+NEVER_WRITTEN = re.compile(r"^(?:CLAUDE\.md|(?:.*/)?AGENTS\.override\.md|\.codex/.*)$", re.I)
 
 # Routing (#41 seam 3): every path pointer in a Markdown file version 1 writes names a file
 # version 1 writes. A pointer is a path ending in one of these extensions, backticked or not,
-# or a backticked directory ending in `/`. A path starting `../` is relative to its file, one
-# with a `/` is root-relative, and a bare name is a root or `docs/agents/` file. Outside the
-# check: the workflows and the scripts they and habit run, and files the generator never
-# writes, repository-owned or named as absent.
+# or a backticked directory ending in `/`. A path starting `./` or `../` is relative to its
+# file, one with a `/` is root-relative, and a bare name is a root or `docs/agents/` file.
+# Outside the check: the workflows and the scripts they and habit run, and files the generator
+# never writes, repository-owned or named as absent.
 POINTER = re.compile(
-    r"(?<![\w./-])((?:\.\./)*(?:\.?[A-Za-z0-9_-]+/)*\.?[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\.(?:md|yml|yaml|py|sh|json))(?![\w/-])"
+    r"(?<![\w./-])((?:\.\.?/)*(?:\.?[A-Za-z0-9_-]+/)*\.?[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*\.(?:md|yml|yaml|py|sh|json))(?!\.?[\w/-])"
 )
 DIRECTORY_POINTER = re.compile(r"`((?:\.?[A-Za-z0-9_-]+/)+)`")
 UNROUTED = (
@@ -196,7 +197,7 @@ def headings(text):
     return [line[3:] for line in text.split("\n") if line.startswith("## ")]
 
 
-def section(text, heading, where):
+def level_two_section(text, heading, where):
     """One level-2 section: its heading line up to the next level-2 heading, trailing blank lines dropped."""
     lines = text.split("\n")
     starts = [index for index, line in enumerate(lines) if line == heading]
@@ -211,7 +212,7 @@ def section(text, heading, where):
 
 def bugbot_failures(agents_text, bugbot_text):
     """A line naming where .cursor/BUGBOT.md first departs from its notice, a blank line and AGENTS.md's Code Review Rules."""
-    expected = (MARKDOWN_NOTICE + "\n\n" + section(agents_text, CODE_REVIEW_RULES, AGENTS)).split("\n")
+    expected = (MARKDOWN_NOTICE + "\n\n" + level_two_section(agents_text, CODE_REVIEW_RULES, AGENTS)).split("\n")
     found = bugbot_text.split("\n")
     if found == expected:
         return []
@@ -231,14 +232,19 @@ def budget_failures(data):
 
 def pointer_targets(source, pointer):
     """The store paths a pointer in the file at source may name."""
-    if pointer.startswith("../"):
+    if pointer.startswith(("./", "../")):
         return [posixpath.normpath(posixpath.join(posixpath.dirname(source), pointer))]
     if "/" in pointer:
         return [pointer]
     return [pointer, "docs/agents/" + pointer]
 
 
-def routing_failures(worktree, paths):
+def covers(name, path):
+    """Whether a file or directory name, a directory ending in `/`, covers a path."""
+    return path.startswith(name) if name.endswith("/") else path == name
+
+
+def routing_failures(worktree, paths, unrouted=UNROUTED):
     """One line per path pointer, in the Markdown files among paths, that names no file among paths."""
     failures = []
     for source in sorted(path for path in paths if path.endswith(".md")):
@@ -248,9 +254,9 @@ def routing_failures(worktree, paths):
             pointers += [match.group(1) for match in DIRECTORY_POINTER.finditer(line)]
             for pointer in pointers:
                 targets = pointer_targets(source, pointer)
-                if any(target == path or (target.endswith("/") and path.startswith(target)) for target in targets for path in paths):
+                if any(covers(target, path) for target in targets for path in paths):
                     continue
-                if any(target.startswith(unrouted) if unrouted.endswith("/") else target == unrouted for target in targets for unrouted in UNROUTED):
+                if any(covers(name, target) for target in targets for name in unrouted):
                     continue
                 failures.append("%s line %d points at %s, which version 1 doesn't write" % (source, number, pointer))
     return failures
@@ -466,6 +472,10 @@ class MaterializedVersionOne(support.TempDirCase):
         swapped = text.replace(BEGIN_MARKER, "<swap>").replace(END_MARKER, BEGIN_MARKER).replace("<swap>", END_MARKER)
         self.assertEqual(marker_failures(swapped, AGENTS), ["AGENTS.md has its end marker before its begin marker"])
         self.assertEqual(
+            marker_failures(text.replace(BEGIN_MARKER, "<!-- governance:begin v2 -->"), AGENTS),
+            ["AGENTS.md's begin marker is '<!-- governance:begin v2 -->', not version 1's"],
+        )
+        self.assertEqual(
             marker_failures(self.text(CLAUDE).replace(MIXED_NOTICE + "\n", ""), CLAUDE),
             [".claude/CLAUDE.md's first line inside the markers is '@../AGENTS.md', not the notice"],
         )
@@ -529,29 +539,41 @@ class MaterializedVersionOne(support.TempDirCase):
     def test_every_path_pointer_names_a_file_version_one_writes(self):
         self.assertEqual(routing_failures(self.worktree, self.manifest_paths()), [])
 
+    def line_number(self, path, text):
+        """The 1-based number of the one line of a worktree file holding text."""
+        numbers = [number for number, line in enumerate(self.text(path).split("\n"), 1) if text in line]
+        self.assertEqual(len(numbers), 1, (path, text))
+        return numbers[0]
+
     def test_planted_broken_pointers_fail_the_routing_check(self):
         self.plant(PR_TEMPLATE, "as builder.md, step 7", "as build-steps.md, step 7")
         self.plant(AGENTS, "`docs/agents/triage-labels.md`", "`docs/agents/labels.md`")
         self.plant(CLAUDE, "@../AGENTS.md", "@../AGENT.md")
-        number = lambda path, text: self.text(path).split("\n").index(next(line for line in self.text(path).split("\n") if text in line)) + 1
+        self.plant(CLAUDE, "## Claude Code notes\n", "## Claude Code notes\n\nSee ./local-notes.md.\n")
         self.assertEqual(
             routing_failures(self.worktree, self.manifest_paths()),
             [
-                "%s line %d points at ../AGENT.md, which version 1 doesn't write" % (CLAUDE, number(CLAUDE, "@../AGENT.md")),
-                "%s line %d points at build-steps.md, which version 1 doesn't write" % (PR_TEMPLATE, number(PR_TEMPLATE, "build-steps.md")),
-                "%s line %d points at docs/agents/labels.md, which version 1 doesn't write" % (AGENTS, number(AGENTS, "docs/agents/labels.md")),
+                "%s line %d points at ../AGENT.md, which version 1 doesn't write" % (CLAUDE, self.line_number(CLAUDE, "@../AGENT.md")),
+                "%s line %d points at ./local-notes.md, which version 1 doesn't write" % (CLAUDE, self.line_number(CLAUDE, "./local-notes.md")),
+                "%s line %d points at build-steps.md, which version 1 doesn't write" % (PR_TEMPLATE, self.line_number(PR_TEMPLATE, "build-steps.md")),
+                "%s line %d points at docs/agents/labels.md, which version 1 doesn't write" % (AGENTS, self.line_number(AGENTS, "docs/agents/labels.md")),
             ],
         )
 
-    def test_unrouted_names_stay_outside_the_routing_check(self):
+    def test_unrouted_names_stay_outside_the_routing_check_and_fail_without_it(self):
         paths = self.manifest_paths()
-        for pointer in ("`GLOSSARY.md`", "`docs/adr/`", "`.github/workflows/merge-watch.yml`", "no root `CLAUDE.md`", "`.codex/`"):
+        before = len(routing_failures(self.worktree, paths, unrouted=()))
+        planted = ("`GLOSSARY.md`", "`docs/adr/`", "`.github/workflows/merge-watch.yml`", "no root `CLAUDE.md`", "`.codex/`")
+        for pointer in planted:
             self.plant(AGENTS, "## This repository\n", "## This repository\n\n%s\n" % pointer)
         self.assertEqual(routing_failures(self.worktree, paths), [])
+        self.assertEqual(len(routing_failures(self.worktree, paths, unrouted=())), before + len(planted))
 
     def test_version_one_writes_no_root_claude_md_override_or_codex_directory(self):
         self.assertEqual([path for path in self.manifest_paths() if NEVER_WRITTEN.match(path)], [])
         self.assertEqual([path for path in self.render_facts["written"] if NEVER_WRITTEN.match(path)], [])
+        planted = ["CLAUDE.md", "claude.md", "docs/AGENTS.override.md", ".codex/config.toml", ".claude/CLAUDE.md", "AGENTS.md"]
+        self.assertEqual([path for path in planted if NEVER_WRITTEN.match(path)], planted[:4])
 
 
 if __name__ == "__main__":
