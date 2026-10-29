@@ -1,0 +1,72 @@
+{
+  "description": "#17: rulesets and classic protection that exist before Initialize are reported for the confirmation.",
+  "expect": {
+    "inspect": {
+      "github": {
+        "branch_protection": {
+          "protected": true,
+          "classic_protection": true
+        },
+        "rulesets": [
+          {
+            "id": 7201,
+            "name": "protect main",
+            "applies_to_default_branch": true
+          },
+          {
+            "id": 7202,
+            "name": "release tags",
+            "applies_to_default_branch": false
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "classic_protection": true,
+    "rulesets": [
+      {
+        "id": 7201,
+        "name": "protect main",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "~DEFAULT_BRANCH"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 7202,
+        "name": "release tags",
+        "target": "tag",
+        "enforcement": "active",
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/tags/v*"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "run": [
+    "inspect"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "description": "#25: AGENTS.md's end marker removed, the generator's text between the markers intact: the markers are restored.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "Repair through the Upgrade flow, restoring the drift in files",
+      "drift": {
+        "in_files": true,
+        "differences": [],
+        "markers": [
+          {
+            "path": "AGENTS.md",
+            "problems": [
+              "missing"
+            ],
+            "generator_text_intact": true,
+            "end_lines": [],
+            "repair": "restore the markers"
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3,
+    "edits": [
+      {
+        "path": "AGENTS.md",
+        "replace": [
+          "<!-- governance:end -->\n",
+          ""
+        ]
+      }
+    ]
+  },
+  "run": [
+    "mode"
+  ]
+}

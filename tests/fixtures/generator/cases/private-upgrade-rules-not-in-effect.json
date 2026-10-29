@@ -1,0 +1,56 @@
+{
+  "description": "#17 split: a private repository at Upgrade whose rules aren't in effect, since GitHub won't list rulesets. It fails closed until #53.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "fail",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": false
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Upgrade",
+      "drift": {
+        "in_github": true,
+        "github": {
+          "rulesets": [
+            {
+              "name": "Gate",
+              "state": "missing"
+            },
+            {
+              "name": "Merge",
+              "state": "missing"
+            },
+            {
+              "name": "History",
+              "state": "missing"
+            }
+          ],
+          "unreadable": [
+            "rulesets: Upgrade to GitHub Pro or make this repository public to enable this feature."
+          ]
+        }
+      }
+    }
+  },
+  "github": {
+    "private": true,
+    "rulesets_forbidden": true
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 2
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "description": "A relied-on skill missing from the machine skill set stops the run, and the install goes on the checklist.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "fail",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "install",
+        "review bots"
+      ]
+    }
+  },
+  "harness": "claude-code",
+  "run": [
+    "preconditions"
+  ],
+  "store": "missing-skill"
+}

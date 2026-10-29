@@ -1,0 +1,31 @@
+{
+  "description": "An empty repository, whose default branch has no commit, doesn't qualify.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "fail",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ]
+    }
+  },
+  "github": {
+    "empty": true
+  },
+  "harness": "claude-code",
+  "repository": {
+    "empty": true
+  },
+  "run": [
+    "preconditions"
+  ]
+}

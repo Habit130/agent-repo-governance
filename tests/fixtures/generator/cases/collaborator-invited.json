@@ -1,0 +1,49 @@
+{
+  "description": "habit has sent the invitation: the preconditions say so, and accepting it is the one write before habit's answer.",
+  "expect": {
+    "preconditions": {
+      "exit": 0,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "agent",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ]
+    },
+    "accept-invitation": {
+      "exit": 0,
+      "accepted": 4242,
+      "repository": "Habit130/tally"
+    }
+  },
+  "github": {
+    "permissions": {
+      "admin": false,
+      "maintain": false,
+      "push": false,
+      "triage": false,
+      "pull": true
+    },
+    "invitations": [
+      {
+        "id": 4242,
+        "repository": {
+          "full_name": "Habit130/tally"
+        },
+        "permissions": "write"
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "run": [
+    "preconditions",
+    "accept-invitation"
+  ]
+}

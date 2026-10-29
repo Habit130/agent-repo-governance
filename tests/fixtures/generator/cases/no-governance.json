@@ -1,0 +1,28 @@
+{
+  "description": "#17: a public repository with no governance, at Initialize, in Claude Code, every precondition met.",
+  "harness": "claude-code",
+  "expect": {
+    "preconditions": {
+      "exit": 0,
+      "items": {"directory": "pass", "repository": "pass", "private": "pass", "collaborator": "pass", "machine check": "pass",
+                "machine skill set": "pass", "versions": "pass", "review bots": "habit"},
+      "checklist": ["review bots"],
+      "harness": {"passed": true, "harness": "Claude Code"},
+      "repository": "Habit130/tally",
+      "passed": true
+    },
+    "mode": {"exit": 0, "mode": "Initialize", "outcome": "Initialize", "installed_version": 3,
+             "record": {"present": false}, "drift": {"checked": false}},
+    "inspect": {
+      "exit": 0,
+      "github": {"owner": {"login": "Habit130", "type": "User"}, "visibility": "public", "default_branch": "main",
+                 "labels": [], "open_pull_requests": [], "rulesets": []},
+      "record": {"present": false},
+      "instructions": {"instructions": [], "docs_agents": [], "process": ["CONTRIBUTING.md"], "github_templates": [], "review_bot_rules": []},
+      "ci": {"none": false, "secrets": [],
+             "workflows": [{"path": ".github/workflows/ci.yml", "readable": true, "secrets": [],
+                            "jobs": [{"id": "test", "every_pr": true, "uncertain": false}]}]},
+      "credentials": []
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "description": "Governed at the installed version with a missing History ruleset, a confirmed check dropped from Gate, an extra ruleset and classic protection on the default branch, a tag ruleset, and merge commits allowed.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "a ready owner-script command, then re-verification",
+      "drift": {
+        "in_files": false,
+        "in_github": true,
+        "github": {
+          "drift": true,
+          "rulesets": [
+            {
+              "name": "Gate",
+              "state": "differs",
+              "differences": [
+                "required_status_checks required_status_checks is [{'context': 'governance-gate', 'integration_id': 15368}], not [{'context': 'governance-gate', 'integration_id': 15368}, {'context': 'test'}]"
+              ]
+            },
+            {
+              "name": "Merge",
+              "state": "in place"
+            },
+            {
+              "name": "History",
+              "state": "missing"
+            }
+          ],
+          "other_rulesets": [
+            {
+              "name": "legacy main",
+              "applies_to_default_branch": true
+            },
+            {
+              "name": "release tags",
+              "applies_to_default_branch": false
+            },
+            {
+              "name": "paused",
+              "applies_to_default_branch": null
+            }
+          ],
+          "uncertain": [
+            "paused"
+          ],
+          "branch_protection": {
+            "classic_protection": true
+          },
+          "settings": [
+            {
+              "setting": "allow_merge_commit",
+              "found": true,
+              "target": false
+            }
+          ]
+        }
+      }
+    }
+  },
+  "github": {
+    "classic_protection": true,
+    "settings": {
+      "allow_squash_merge": true,
+      "allow_merge_commit": true,
+      "allow_rebase_merge": false,
+      "delete_branch_on_merge": true,
+      "allow_auto_merge": false
+    },
+    "rulesets": [
+      {
+        "as_target": "Gate",
+        "checks": []
+      },
+      {
+        "as_target": "Merge"
+      },
+      {
+        "id": 7101,
+        "name": "legacy main",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/main"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 7102,
+        "name": "release tags",
+        "target": "tag",
+        "enforcement": "active",
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/tags/v*"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      },
+      {
+        "id": 7103,
+        "name": "paused",
+        "target": "branch",
+        "enforcement": "disabled",
+        "conditions": {
+          "ref_name": {
+            "include": [
+              "refs/heads/rel*"
+            ],
+            "exclude": []
+          }
+        },
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ]
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "description": "ADR 0013: deepseekharness is refused before any other step, with no call to GitHub.",
+  "expect": {
+    "preconditions": {
+      "exit": 2,
+      "harness": {
+        "passed": false
+      }
+    },
+    "mode": {
+      "exit": 2,
+      "harness": {
+        "passed": false
+      }
+    },
+    "inspect": {
+      "exit": 2,
+      "harness": {
+        "passed": false
+      }
+    },
+    "accept-invitation": {
+      "exit": 2,
+      "harness": {
+        "passed": false
+      }
+    }
+  },
+  "expect_no_calls": true,
+  "harness": "dsh",
+  "run": [
+    "preconditions",
+    "mode",
+    "inspect",
+    "accept-invitation"
+  ]
+}

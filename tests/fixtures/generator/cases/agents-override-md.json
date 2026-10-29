@@ -1,0 +1,29 @@
+{
+  "description": "#24: an AGENTS.override.md and a root CLAUDE.md are found.",
+  "expect": {
+    "inspect": {
+      "instructions": {
+        "instructions": [
+          {
+            "path": "AGENTS.override.md",
+            "name": "AGENTS.override.md"
+          },
+          {
+            "path": "CLAUDE.md",
+            "name": "CLAUDE.md"
+          }
+        ]
+      }
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      "AGENTS.override.md": "# Local override\n",
+      "CLAUDE.md": "# Claude notes\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

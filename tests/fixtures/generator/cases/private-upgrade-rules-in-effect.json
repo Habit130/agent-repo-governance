@@ -1,0 +1,37 @@
+{
+  "description": "#17 split: a private repository at Upgrade with its Gate and Merge rules in effect. It fails closed until #53.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "fail",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": false
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Upgrade",
+      "drift": {
+        "in_github": false
+      }
+    }
+  },
+  "github": {
+    "private": true,
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 2
+  }
+}

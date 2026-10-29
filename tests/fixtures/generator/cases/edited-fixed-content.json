@@ -1,0 +1,62 @@
+{
+  "description": "#25: a fixed file edited and the owner script's mode lost, at the record's version: drift in files, restored through the Upgrade flow.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "Repair through the Upgrade flow, restoring the drift in files",
+      "drift": {
+        "in_files": true,
+        "in_github": false,
+        "markers": [],
+        "differences": [
+          {
+            "path": ".github/governance/owner.sh",
+            "kind": "mode",
+            "detail": "expected 100755, found 100644"
+          },
+          {
+            "path": "AGENTS.md",
+            "class": "fixed part",
+            "kind": "content"
+          },
+          {
+            "path": "docs/agents/review.md",
+            "class": "fixed",
+            "kind": "content"
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3,
+    "edits": [
+      {
+        "path": "docs/agents/review.md",
+        "replace": [
+          "Version 3 of Seam A's synthetic store adds this line.",
+          "Edited by hand."
+        ]
+      },
+      {
+        "path": ".github/governance/owner.sh",
+        "mode": "100644"
+      },
+      {
+        "path": "AGENTS.md",
+        "replace": [
+          "Every session reads this file first, in every harness.",
+          "Every session reads this file first."
+        ]
+      }
+    ]
+  },
+  "run": [
+    "mode"
+  ]
+}

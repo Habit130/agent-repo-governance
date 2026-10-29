@@ -1,0 +1,36 @@
+{
+  "description": "#17 split: a private repository at Initialize where rulesets are available. It fails closed until #53.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "fail",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": false
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Initialize"
+    },
+    "inspect": {
+      "github": {
+        "visibility": "private",
+        "rulesets": []
+      }
+    }
+  },
+  "github": {
+    "private": true
+  },
+  "harness": "claude-code"
+}

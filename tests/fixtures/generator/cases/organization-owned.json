@@ -1,0 +1,35 @@
+{
+  "description": "An organization-owned repository doesn't qualify.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "fail",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "repository": "tally-org/tally"
+    }
+  },
+  "github": {
+    "owner": [
+      "tally-org",
+      "Organization"
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "name": "tally-org/tally"
+  },
+  "run": [
+    "preconditions"
+  ]
+}

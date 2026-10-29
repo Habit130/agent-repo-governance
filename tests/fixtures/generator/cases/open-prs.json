@@ -1,0 +1,48 @@
+{
+  "description": "#17: open PRs are reported with their authors, for information.",
+  "expect": {
+    "inspect": {
+      "exit": 0,
+      "github": {
+        "open_pull_requests": [
+          {
+            "number": 12,
+            "title": "Add CSV export",
+            "author": "Habit130",
+            "draft": false
+          },
+          {
+            "number": 15,
+            "title": "Bump eslint",
+            "author": "dependabot[bot]",
+            "draft": true
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "pulls": [
+      {
+        "number": 12,
+        "title": "Add CSV export",
+        "user": {
+          "login": "Habit130"
+        },
+        "draft": false
+      },
+      {
+        "number": 15,
+        "title": "Bump eslint",
+        "user": {
+          "login": "dependabot[bot]"
+        },
+        "draft": true
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "run": [
+    "inspect"
+  ]
+}

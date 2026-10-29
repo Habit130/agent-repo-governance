@@ -1,0 +1,22 @@
+{
+  "description": "#17: a repository with no CI: no workflow, so the gate alone is required.",
+  "expect": {
+    "inspect": {
+      "exit": 0,
+      "ci": {
+        "none": true,
+        "workflows": [],
+        "secrets": []
+      }
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      ".github/workflows/ci.yml": null
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

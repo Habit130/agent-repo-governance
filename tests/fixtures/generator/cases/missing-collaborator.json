@@ -1,0 +1,35 @@
+{
+  "description": "#19: the agent account has no write permission and no invitation, so habit's ready invite command goes on the checklist.",
+  "expect": {
+    "preconditions": {
+      "exit": 0,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "habit",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "invite",
+        "review bots"
+      ]
+    }
+  },
+  "github": {
+    "permissions": {
+      "admin": false,
+      "maintain": false,
+      "push": false,
+      "triage": false,
+      "pull": true
+    }
+  },
+  "harness": "claude-code",
+  "run": [
+    "preconditions"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "description": "Markers duplicated and out of order in AGENTS.md, the generator's text still intact between them.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "drift": {
+        "in_files": true,
+        "differences": [],
+        "markers": [
+          {
+            "path": "AGENTS.md",
+            "problems": [
+              "duplicated",
+              "out of order"
+            ],
+            "generator_text_intact": true,
+            "repair": "restore the markers"
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3,
+    "edits": [
+      {
+        "path": "AGENTS.md",
+        "replace": [
+          "## This repository\n",
+          "## This repository\n\n<!-- governance:end -->\n<!-- governance:begin v3 -->\n"
+        ]
+      }
+    ]
+  },
+  "run": [
+    "mode"
+  ]
+}
