@@ -215,18 +215,17 @@ def commands(root, paths):
             text = _text(root, path) or ""
             fence, key = None, False
             for number, line in enumerate(text.splitlines(), 1):
-                # A private key's body is its value too, so its lines never become commands.
+                match = _FENCE.match(line)
+                if match:
+                    fence, key = (match.group(2).lower() if fence is None else None), False
+                    continue
+                if fence not in SHELL_FENCES:
+                    continue
+                # A private key's lines are its value, so within its block none becomes a command.
                 if key or secrets.KEY_BEGIN.search(line):
                     key = not secrets.KEY_END.search(line)
                     continue
-                match = _FENCE.match(line)
-                if match and fence is None:
-                    fence = match.group(2).lower()
-                    continue
-                if match and fence is not None:
-                    fence = None
-                    continue
-                if fence in SHELL_FENCES and line.strip():
+                if line.strip():
                     command = line.strip()
                     command = command[2:] if command.startswith("$ ") else command
                     documents.append({"path": path, "line": number, "command": command})
