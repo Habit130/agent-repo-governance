@@ -413,12 +413,28 @@ class GateProbes(ProbeCase):
         failed = self.failed_by(self.gate_context(attempts=False))
         for name in GATE_PROBES:
             self.assertEqual(failed[name], ["%s ran" % name], name)
-        stopped = self.gate_context(setup={"error": "no completed governance-gate run on 111111111111 within 600 seconds"})
-        for name in GATE_PROBES:
+
+    def test_a_stopped_setup_fails_its_run_is_recorded_and_the_next_run_sets_up_afresh(self):
+        self.with_github(self.path("nothing.json"))
+        with open(self.path("nothing.json"), "w") as handle:
+            json.dump({"tool": "gh", "calls": []}, handle)
+        earlier = "`gh pr create --repo` failed: Post \"https://api.github.com/graphql\": EOF"
+        stopped = self.gate_context(setup={"stopped": [earlier]})
+        for count, name in enumerate(GATE_PROBES, 2):
             (result,) = self.results(name, stopped)
             self.assertFalse(result.passed)
-            self.assertIn("within 600 seconds", result.detail)
-            self.assertIn("live.py prepare", result.detail)
+            self.assertIn("repos/%s/commits/main" % PUBLIC, result.detail)
+            self.assertIn("1 earlier attempt stopped" if count == 2 else "%d earlier attempts stopped" % (count - 1), result.detail)
+            self.assertEqual(len(stopped.recall("gate_setup")["stopped"]), count)
+            self.assertEqual(stopped.recall("gate_setup")["stopped"][0], earlier)
+        self.assertFalse(os.path.exists(os.path.join(stopped.directory, "gate_targets.txt")))
+
+    def test_a_setup_after_stopped_attempts_names_them_in_the_trigger_probe(self):
+        self.with_github(sandbox_now(self.path("gh.json")))
+        setup = dict(gate_setup(), stopped=["`gh pr create --repo` failed: EOF"])
+        results = self.results("gate-trigger", self.gate_context(setup=setup))
+        self.assertEqual(self.failed(results), [])
+        self.assertIn("1 earlier setup attempt stopped first: `gh pr create --repo` failed: EOF", results[0].detail)
 
     def test_a_private_check_reports_the_event_policy_skipped(self):
         self.with_github(sandbox_now(self.path("gh.json")))

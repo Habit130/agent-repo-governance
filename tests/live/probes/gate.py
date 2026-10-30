@@ -3,7 +3,7 @@
 Run the four together. A check takes three steps after habit's merge and owner-script run:
 
 1. `live.py probe` without `--post` sets the check up, as the agent account, in the sandbox
-   only. It opens three probe PRs from `live/gate-<sandbox PR>-…` branches: `trigger`, with
+   only. It opens three probe PRs from `live/gate-<sandbox PR>-<UTC stamp>-…` branches: `trigger`, with
    a good `Risk:` line and then a pushed second commit; `edit`, with a bad one that a body
    edit fixes; `failing`, whose bad line stays. Each change is one file under
    `live-checks/`. It pushes a `source` branch whose commit is in no PR, and posts the
@@ -11,7 +11,8 @@ Run the four together. A check takes three steps after habit's merge and owner-s
    each step it waits for the gate's run, failing on a timeout, and reads the run, its job's
    log and the head's check runs. It remembers what it read as `gate_setup` and writes
    `gate_targets.txt` for habit's command. A later run reads them back and never sets up
-   again; a setup that stopped stays failed, and the next check starts from `prepare`.
+   again. An attempt that stops fails its run; the next run tries afresh under new branch
+   names, and `gate-trigger` names the stopped attempts.
 2. habit runs `gate-rulesets`' one command, as the agent account (`gh`, never `ghm`): a
    direct push of the source commit to the default branch, a force-push of the source
    branch, and the merge of each probe PR at its head. The harness keeps these attempts
@@ -124,15 +125,22 @@ def _await_run(context, head, seen):
     """The first completed gate run on head that isn't in seen; ProbeError after WAIT_SECONDS."""
     deadline = time.time() + WAIT_SECONDS
     while True:
-        runs = (context.api("repos/%s/actions/runs?head_sha=%s&event=%s&per_page=100" % (context.repository, head, EVENT))
-                or {}).get("workflow_runs") or []
+        try:
+            runs = (context.api("repos/%s/actions/runs?head_sha=%s&event=%s&per_page=100" % (context.repository, head, EVENT))
+                    or {}).get("workflow_runs") or []
+        except ProbeError as error:
+            # A read that fails while waiting is retried until the deadline, which names it.
+            runs, last = [], error
+        else:
+            last = None
         done = sorted((r for r in runs if r.get("path") == WORKFLOW and r["id"] not in seen and r.get("status") == "completed"),
                       key=lambda r: r["id"])
         if done:
             seen.add(done[0]["id"])
             return _read_run(context, done[0], head)
         if time.time() > deadline:
-            raise ProbeError("no completed %s run on %s within %d seconds" % (CHECK, head[:12], WAIT_SECONDS))
+            raise ProbeError("no completed %s run on %s within %d seconds%s" % (
+                CHECK, head[:12], WAIT_SECONDS, "; the last read failed: %s" % last if last else ""))
         time.sleep(POLL_SECONDS)
 
 
@@ -153,7 +161,8 @@ def _required(context):
 
 def _act(context):
     repository, branch = context.repository, context.default_branch
-    prefix = "live/gate-%s" % context.sandbox_pr
+    # Each attempt names its own branches: a stopped attempt's branches stay, and History blocks pushing over them.
+    prefix = "live/gate-%s-%s" % (context.sandbox_pr, datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S"))
     setup = {"default_head": context.api("repos/%s/commits/%s" % (repository, branch))["sha"],
              "required": _required(context), "pulls": {}}
     work = tempfile.mkdtemp(prefix="live-gate-")
@@ -208,20 +217,30 @@ def _targets(setup):
     return "\n".join(lines) + "\n"
 
 
+def _attempts(count):
+    return "%d earlier attempt%s stopped" % (count, "" if count == 1 else "s")
+
+
 def _setup(context):
-    """The setup's observations, from the first run of this check or read back."""
-    setup = context.recall("gate_setup")
-    if setup is None:
-        try:
-            setup = _act(context)
-        except ProbeError as error:
-            context.remember("gate_setup", {"error": str(error)})
-            raise
-        context.remember("gate_setup", setup)
-        with open(os.path.join(context.directory, TARGETS), "w") as handle:
-            handle.write(_targets(setup))
-    if "error" in setup:
-        raise ProbeError("the gate probes' setup stopped: %s; start a fresh check from `live.py prepare`" % setup["error"])
+    """The setup's observations, read back once one attempt has completed; otherwise a fresh attempt.
+
+    A stopped attempt fails its run and is recorded under `stopped`; the next run sets up
+    afresh under new branch names, and `gate-trigger` names the stopped attempts.
+    """
+    setup = context.recall("gate_setup") or {}
+    if "pulls" in setup:
+        return setup
+    stopped = list(setup.get("stopped") or [])
+    try:
+        setup = _act(context)
+    except ProbeError as error:
+        context.remember("gate_setup", {"stopped": stopped + [str(error)]})
+        raise ProbeError("the gate probes' setup stopped: %s (%s); the next `live.py probe` run sets up afresh"
+                         % (error, _attempts(len(stopped))))
+    setup["stopped"] = stopped
+    context.remember("gate_setup", setup)
+    with open(os.path.join(context.directory, TARGETS), "w") as handle:
+        handle.write(_targets(setup))
     return setup
 
 
@@ -332,7 +351,10 @@ def trigger(context):
     run = opened["run"]
     results = [
         Result("the gate's run on the probe PR's head is %s from %s" % (EVENT, WORKFLOW),
-               run["event"] == EVENT and run["path"] == WORKFLOW and run["head_sha"] == opened["head"], _run_detail(run)),
+               run["event"] == EVENT and run["path"] == WORKFLOW and run["head_sha"] == opened["head"],
+               _run_detail(run) + ("; %d earlier setup attempt%s stopped first: %s" % (
+                   len(setup.get("stopped") or []), "" if len(setup.get("stopped") or []) == 1 else "s",
+                   " | ".join(setup["stopped"])) if setup.get("stopped") else "")),
         Result("the gate judged by the default branch's checkout", run["judged"] == [opened["head"], setup["default_head"]],
                "log: %s; the default branch was at %s" % (
                    "governance-gate on %s, judged by the default branch at %s" % tuple(run["judged"]) if run["judged"]
