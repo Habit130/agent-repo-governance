@@ -1,0 +1,25 @@
+{
+  "description": "A push to a branch other than the default records nothing.",
+  "event_name": "push",
+  "event": {
+    "ref": "refs/heads/feature",
+    "before": "51de2b835bd35a67eb32dbcd3d77d4b96e5aa39d",
+    "after": "d712851bb7a20adccc269087d34a32b43559135f",
+    "commits": [
+      {
+        "id": "d712851bb7a20adccc269087d34a32b43559135f",
+        "distinct": true,
+        "message": "a change"
+      }
+    ],
+    "repository": {
+      "full_name": "Habit130/tally",
+      "default_branch": "main"
+    }
+  },
+  "github": {
+    "repos/Habit130/tally/commits/d712851bb7a20adccc269087d34a32b43559135f/pulls": [],
+    "repos/Habit130/tally/issues?labels=miss&state=open": []
+  },
+  "expected": []
+}

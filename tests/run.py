@@ -44,6 +44,7 @@ SUITES = (
     ("record", "test_record", "linux"),
     ("parser-fixtures", "test_parser_fixtures", "linux"),
     ("gate", "test_gate", "linux"),
+    ("merge-watch", "test_merge_watch", "linux"),
     ("release-check", "test_release_check", "linux"),
     ("skill-copies", "test_skill_copies", "linux"),
     ("standins", "test_standins", "macos"),

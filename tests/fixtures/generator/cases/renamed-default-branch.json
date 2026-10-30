@@ -17,6 +17,10 @@
           {
             "path": ".github/workflows/governance-gate.yml",
             "kind": "content"
+          },
+          {
+            "path": ".github/workflows/merge-watch.yml",
+            "kind": "content"
           }
         ]
       }
