@@ -15,10 +15,16 @@ Run the four together. A check takes three steps after habit's merge and owner-s
    names, and `gate-trigger` names the stopped attempts.
 2. habit runs `gate-rulesets`' one command, as the agent account (`gh`, never `ghm`): a
    direct push of the source commit to the default branch, a force-push of the default
-   branch and of the source branch, and the merge of each probe PR at its head. The harness keeps these attempts
-   with habit; the probes never push to the default branch, force-push or merge.
+    branch and of the source branch, and the merge of each probe PR at its head. The harness keeps these attempts
+    with habit; the probes never push to the default branch, force-push or merge.
+   The first push or merge that exits 0 stops every later attempt and exits 3. Its section
+   keeps `exit=0` and prints `stop-after: <attempt>` plus Chinese advice; `== account`
+   remains, and `== after` reads the refs after the stop. habit then stops as for a product
+   question instead of rerunning. A failed clone, checkout or amend prints `never-reached:`;
+   it is neither a success nor a rejection, and later attempts still run.
 3. `live.py probe --post` judges what step 1 read, habit's output, and the refs and PRs as
-   they are then.
+    they are then. A stopped rulesets run fails each skipped attempt with the stop's reason,
+    while still reading both refs and every probe PR from GitHub.
 
 Every assertion reads GitHub's own answers. A same-name status sits only on the source
 commit, so it never confounds a probe PR's head. GitHub's rejections, recorded from the
@@ -54,6 +60,7 @@ POLL_SECONDS = 10
 _JUDGED = re.compile(r"governance-gate on ([0-9a-f]{40}), judged by the default branch at ([0-9a-f]{40})")
 _SECTION = re.compile(r"(?m)^== (.*)$")
 _EXIT = re.compile(r"(?m)^exit=(\d+)\s*$")
+_STOP = re.compile(r"(?m)^stop-after: (.+)$")
 
 
 # Step 1: the setup, as the agent account.
@@ -265,20 +272,27 @@ ATTEMPTS_COMMAND = (
     "u=https://github.com/{repository}.git; r={repository}; b={branch}; t=\"{targets}\"; "
     "if [ ! -f \"$t\" ]; then echo \"没有 ${{t}}：先运行一次不带 --post 的 live.py probe\"; exit 2; fi; "
     "d=\"$(mktemp -d)\"; trap \"rm -rf \\\"\\$d\\\"\" EXIT; "
+    "after() {{ echo \"== after\"; git ls-remote \"$u\" \"refs/heads/$b\" \"refs/heads/$s\"; }}; "
+    "attempt_exit() {{ echo \"exit=$1\"; if [ \"$1\" -eq 0 ]; then echo \"stop-after: $2\"; "
+    "echo \"尝试已成功：$2；停止后续尝试，按产品问题停止，不要重跑命令\"; after; exit 3; fi; }}; "
+    "never_reached() {{ echo \"never-reached: $2\"; echo \"准备失败，未到达 GitHub，不是拒绝\"; echo \"exit=$1\"; }}; "
     "while read -r k a z; do if [ \"$k\" = source ]; then c=$a; s=$z; fi; done < \"$t\"; "
     "echo \"== account\"; gh api user --jq .login; echo \"exit=$?\"; "
-    "git clone -q --filter=blob:none \"$u\" \"$d/s\"; "
-    "echo \"== push $c to $b\"; git -C \"$d/s\" push \"$u\" \"$c:refs/heads/$b\" 2>&1; echo \"exit=$?\"; "
-    "echo \"== force-push $b\"; git -C \"$d/s\" checkout -q --detach \"origin/$b\" "
-    "&& git -C \"$d/s\" commit -q --amend -m \"Live check: a force-push attempt\" "
-    "&& git -C \"$d/s\" push --force \"$u\" \"HEAD:refs/heads/$b\" 2>&1; echo \"exit=$?\"; "
-    "echo \"== force-push $s\"; git -C \"$d/s\" checkout -q --detach \"origin/$s\" "
-    "&& git -C \"$d/s\" commit -q --amend -m \"Live check: a force-push attempt\" "
-    "&& git -C \"$d/s\" push --force \"$u\" \"HEAD:refs/heads/$s\" 2>&1; echo \"exit=$?\"; "
+    "git clone -q --filter=blob:none \"$u\" \"$d/s\"; cloned=$?; "
+    "echo \"== push $c to $b\"; if [ \"$cloned\" -eq 0 ]; then "
+    "git -C \"$d/s\" push \"$u\" \"$c:refs/heads/$b\" 2>&1; attempt_exit $? \"push $c to $b\"; "
+    "else never_reached \"$cloned\" \"push $c to $b\"; fi; "
+    "echo \"== force-push $b\"; if [ \"$cloned\" -eq 0 ] && git -C \"$d/s\" checkout -q --detach \"origin/$b\" "
+    "&& git -C \"$d/s\" commit -q --amend -m \"Live check: a force-push attempt\"; then "
+    "git -C \"$d/s\" push --force \"$u\" \"HEAD:refs/heads/$b\" 2>&1; attempt_exit $? \"force-push $b\"; "
+    "else never_reached $? \"force-push $b\"; fi; "
+    "echo \"== force-push $s\"; if [ \"$cloned\" -eq 0 ] && git -C \"$d/s\" checkout -q --detach \"origin/$s\" "
+    "&& git -C \"$d/s\" commit -q --amend -m \"Live check: a force-push attempt\"; then "
+    "git -C \"$d/s\" push --force \"$u\" \"HEAD:refs/heads/$s\" 2>&1; attempt_exit $? \"force-push $s\"; "
+    "else never_reached $? \"force-push $s\"; fi; "
     "while read -r k n h; do if [ \"$k\" = merge ]; then echo \"== merge $n at $h\"; "
     "gh api --method PUT \"repos/$r/pulls/$n/merge\" -f merge_method=squash -f sha=\"$h\" < /dev/null 2>&1; "
-    "echo \"exit=$?\"; fi; done < \"$t\"; "
-    "echo \"== after\"; git ls-remote \"$u\" \"refs/heads/$b\" \"refs/heads/$s\"'"
+    "attempt_exit $? \"merge $n at $h\"; fi; done < \"$t\"; after'"
 )
 
 
@@ -461,21 +475,29 @@ def rulesets(context):
     src, branch = setup["source"], context.default_branch
     account, _ = _attempt(found, "account")
     results = [Result("habit's attempts ran as the agent account", account.strip() == AGENT, "gh user: %s" % account.strip())]
-    pushed, code = _attempt(found, "push %s to %s" % (src["commit"], branch))
-    results.append(Result("the agent's direct push to %s is rejected" % branch,
-                          code not in (None, 0) and "[remote rejected]" in pushed and "GH013" in pushed, _quote(_violations(pushed))))
+    stopped = next((match.group(1) for output, _ in found.values() for match in [_STOP.search(output)] if match), None)
+
+    def rejection(header, assertion, rejected):
+        if header not in found and stopped:
+            return Result(assertion, False, "skipped after %s went through; stop as for a product question" % stopped)
+        output, code = _attempt(found, header)
+        if any(line.startswith("never-reached: ") for line in output.splitlines()):
+            return Result(assertion, False, "%s never reached GitHub: preparation failed, not a rejection" % header)
+        if code == 0:
+            return Result(assertion, False, "%s went through; stop as for a product question" % header)
+        return Result(assertion, code is not None and rejected(output), _quote(_violations(output)))
+
+    results.append(rejection("push %s to %s" % (src["commit"], branch), "the agent's direct push to %s is rejected" % branch,
+                             lambda output: "[remote rejected]" in output and "GH013" in output))
     # The default branch's force-push meets Gate's rule; the source branch's meets History's alone.
     for ref in (branch, src["branch"]):
-        forced, code = _attempt(found, "force-push %s" % ref)
-        results.append(Result("the agent's force-push to %s is rejected" % ref,
-                              code not in (None, 0) and "Cannot force-push to this branch" in _violations(forced),
-                              _quote(_violations(forced))))
+        results.append(rejection("force-push %s" % ref, "the agent's force-push to %s is rejected" % ref,
+                                 lambda output: "Cannot force-push to this branch" in _violations(output)))
     for role in ROLES:
         pull = setup["pulls"][role]
-        output, code = _merge(found, pull)
-        violations = _violations(output)
-        results.append(Result("the agent's merge of probe PR #%d (%s) is rejected" % (pull["number"], role),
-                              code not in (None, 0) and "Cannot update this protected ref." in violations, _quote(violations)))
+        results.append(rejection("merge %d at %s" % (pull["number"], pull["stages"][-1]["head"]),
+                                 "the agent's merge of probe PR #%d (%s) is rejected" % (pull["number"], role),
+                                 lambda output: "Cannot update this protected ref." in _violations(output)))
     now = context.api("repos/%s/commits/%s" % (context.repository, branch))["sha"]
     results.append(Result("%s didn't move" % branch, now == setup["default_head"], "before %s, now %s" % (setup["default_head"], now)))
     ref = context.api("repos/%s/git/ref/heads/%s" % (context.repository, src["branch"]))
