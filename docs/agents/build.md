@@ -46,7 +46,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, personal skills' Codex problems only reported, and the Codex key detector's shapes | macos |
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
-| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the result comment, and habit's commands under `/bin/bash` | macos |
+| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, the result comment, and habit's commands under `/bin/bash` | macos |
 | `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place | macos |
 
 ## CI
@@ -345,6 +345,46 @@ item failed or missing, 2 stopped before any write).
   3. After habit's steps, `live.py probe --state <dir>/prepared.json --probe <name>... --post`
      posts the result comment, naming the commit. The owner probes need one run without
      `--post` between habit's two owner-script runs (`probes/owner.py`).
+
+## The gate's live check
+
+`tests/live/probes/gate.py` holds the gate's probes (#41 §8): `gate-trigger`, `gate-reruns`,
+`gate-source` and `gate-rulesets`, run together, with the input `owner_report` that every check
+takes. Its docstring gives the setup, the probe PRs and what each assertion reads.
+
+- **Three steps after habit's merge and owner-script run:** `live.py probe` without `--post`
+  sets the check up as the agent account; habit runs `gate-rulesets`' one command; then
+  `live.py probe --post` judges. The setup writes the targets of habit's command to
+  `gate_targets.txt` in the check directory.
+- **The attempts stay with habit.** The agent's direct push to the default branch, its
+  force-push and its merges are habit's command, run as the agent account with `gh`. Claude
+  Code's auto mode refused them to the agent on 2026-10-30. The probes never push to the
+  default branch, force-push or merge.
+- **The private sandbox (#53)** takes the same probes, unchanged: `prepare --sandbox private`
+  and the same `--probe` names. They read the repository, default branch and confirmed checks
+  from the context, and `gate-trigger` expects the event policy skipped (`已跳过`) there.
+- **GitHub's facts they rely on**, read on 2026-10-30 from `Habit130/governance-sandbox`,
+  and from github/docs at `6cbe641`:
+  - A `pull_request_target` run's `head_sha` is the PR head. Its job checks out the default
+    branch, whose commit the gate's log line names. The job's own check run and the
+    script's posted one are both `governance-gate` from GitHub Actions (app 15368), in
+    different check suites.
+  - A body edit (`edited`) runs the gate again on the same head. The first run's failing
+    check run stays on the head, but a merge rejection then names no required check.
+  - Skip instructions in a commit message don't stop `pull_request_target`
+    (`skip-workflow-runs.md`). With no app pinned, a same-name check and status must both
+    pass (`troubleshooting-required-status-checks.md`).
+  - GraphQL's `isRequired` reads `true` for the agent's same-name status, so it is no
+    evidence of what satisfies a pinned check. The agent's own merge state always reads
+    `BLOCKED`, because the Merge ruleset restricts updates.
+  - The rejections, quoted:
+    - A direct push gets `GH013` with one `- ` line per rule: `Changes must be made
+      through a pull request.`, `Required status check "governance-gate" was not set by
+      the expected GitHub app.` and `Cannot update this protected ref.`
+    - A force-push to another branch gets `Cannot force-push to this branch`.
+    - A merge gets HTTP 405, `Repository rule violations found`, with
+      `Required status check "governance-gate" is failing.` while the gate fails, and
+      `Cannot update this protected ref.`
 
 ## Operational constraints
 
