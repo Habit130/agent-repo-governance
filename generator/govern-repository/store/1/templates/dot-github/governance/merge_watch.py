@@ -17,8 +17,8 @@ On `push` to the default branch, for each pushed commit:
   miss, `missing-review`, listing each missing review by its Merge summary kind
   (`docs/agents/review.md`), or `merge-summary`:
   - `bugbot`, at every tier: a completed `Cursor Bugbot` check run from the `cursor` app on
-    the head, its conclusion `success` or `neutral`. At low and medium a completed Codex
-    marker for the head counts instead;
+    the head, its conclusion `success`, `neutral` or `failure`. At low and medium a
+    completed Codex marker for the head counts instead;
   - `codex`, at high: a `codex-review-state:v1` marker in a `chatgpt-codex-connector[bot]`
     comment whose `code_review.commit_sha` is the head and `code_review.status` `completed`;
   - `reviewer`, at medium and high: the agent account's newest `Reviewer` status on the head
@@ -65,7 +65,9 @@ RECORD = ".github/governance/record.yml"
 
 BUGBOT_CHECK = "Cursor Bugbot"
 BUGBOT_APP = "cursor"
-BUGBOT_COMPLETED = ("success", "neutral")
+# Cursor sets one of these on a review it finished: findings leave it neutral, or failure when
+# configured to fail on them. A run GitHub cancelled, timed out or marked stale is no review.
+BUGBOT_COMPLETED = ("success", "neutral", "failure")
 CODEX_LOGIN = "chatgpt-codex-connector[bot]"
 CODEX_MARKER = re.compile(r"<!-- codex-review-state:v1 (\{.*?\}) -->", re.S)
 REVIEWER_CONTEXT = "Reviewer"

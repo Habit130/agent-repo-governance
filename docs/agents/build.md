@@ -279,7 +279,10 @@ yields a false miss record; it never blocks anything and is never a required che
     named by its file path.
   - `workflow_run` fires only for a workflow file on the default branch, its `branches`
     filter names the branch the triggering run ran on, and chaining stops at three levels.
-  - Bugbot's check run comes from the app `cursor` (PR #85's head `bfec87b`); the Codex
+  - Bugbot's check run comes from the app `cursor` (PR #85's head `bfec87b`), and Cursor
+    concludes a finished review `success`, `neutral` (findings, a newer commit's
+    cancellation, or an internal error) or `failure` (findings, when set to fail on them),
+    and never `skipped` (Cursor's Bugbot docs, CI check statuses, read 2026-10-30); the Codex
     review bot keeps one summary comment per PR by `chatgpt-codex-connector[bot]`, edited in
     place, holding `<!-- codex-review-state:v1 {...} -->` (PRs #66 to #85).
   - The list endpoint `commits/{ref}/statuses` gives each status's `creator`, newest first;
