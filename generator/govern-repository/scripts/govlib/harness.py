@@ -28,10 +28,11 @@ SUPPORTED = (
 )
 
 # What marks a harness the generator never runs in: variable names, or name prefixes that end
-# in `_`. The homes a user may export for every shell (`CODEX_HOME`, `DSH_HOME`) don't count.
+# in `_`. The homes a user may export for every shell (`CODEX_HOME`, `DSH_HOME`, `DSH_AGENTS_HOME`)
+# don't count.
 FOREIGN = (
     ("the Codex harness", ("CODEX_SANDBOX", "CODEX_THREAD_ID", "CODEX_CI", "CODEX_MANAGED_BY_NPM", "CODEX_MANAGED_BY_BUN")),
-    ("deepseekharness", ("DSH_PROFILE", "DSH_PERMISSION_MODE", "DSH_SESSION_ID", "DSH_AGENTS_HOME")),
+    ("deepseekharness", ("DSH_PROFILE", "DSH_PERMISSION_MODE", "DSH_SESSION_ID")),
 )
 
 
