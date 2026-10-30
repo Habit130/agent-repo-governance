@@ -1,0 +1,24 @@
+{
+  "description": "Homes a user may export in every shell, CODEX_HOME, DSH_HOME and DSH_AGENTS_HOME, don't mark a harness: Claude Code still passes.",
+  "extra_env": {
+    "CODEX_HOME": "{home}/.codex",
+    "DSH_HOME": "{home}/.dsh",
+    "DSH_AGENTS_HOME": "{home}/.agents"
+  },
+  "expect": {
+    "preconditions": {
+      "exit": 0,
+      "harness": {
+        "passed": true,
+        "harness": "Claude Code",
+        "markers": [
+          "CLAUDECODE"
+        ]
+      }
+    }
+  },
+  "harness": "claude-code",
+  "run": [
+    "preconditions"
+  ]
+}

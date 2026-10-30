@@ -61,6 +61,21 @@ for _name in gs.case_names():
     _add_case(_name)
 
 
+class HarnessProbes(unittest.TestCase):
+    """Each harness's shell, as probed by name, is judged as #44 §6 and ADR 0013 require."""
+
+    def test_only_claude_code_and_opencode_pass(self):
+        from govlib import harness
+
+        with open(os.path.join(support.FIXTURES, "generator", "harness-probes.json")) as handle:
+            probes = json.load(handle)["harnesses"]
+        self.assertEqual(sorted(probes), ["Claude Code", "OpenCode", "deepseekharness", "the Codex harness"])
+        for name, probe in sorted(probes.items()):
+            judged = harness.judge(dict((variable, "set") for variable in probe["names"]))
+            self.assertEqual(judged["passed"], probe["passes"], (name, judged))
+            self.assertEqual(judged["harness"], name, judged)
+
+
 class DriftTarget(unittest.TestCase):
     """Drift's #41 §7 target is the spec's, as `tests/target_state.py` writes it, not the owner script's."""
 

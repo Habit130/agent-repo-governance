@@ -4,7 +4,8 @@ A case under `tests/fixtures/generator/cases/` is one JSON file:
 
 - `harness`: `claude-code`, `opencode`, `codex`, `dsh`, `claude-code+codex`, `claude-code+opencode`
   or `none`: which harness variables the run's environment holds. Every other harness variable
-  is removed first, so the case reads the same in any session and in CI.
+  is removed first, so the case reads the same in any session and in CI. `extra_env` adds
+  variables on top, `{home}` standing for the fixture home.
 - `store`: `released` (versions 1 to 3, all released, built from version 1's real templates
   with a line added to `docs/agents/review.md` at each later version), `unreleased` (version 1
   without its change note) or `missing-skill` (`released`, relying on one more skill than the
@@ -51,13 +52,17 @@ from target_state import TARGET_SETTINGS, target_ruleset
 CASES = os.path.join(support.FIXTURES, "generator", "cases")
 TALLY_CONFIRMED = materialized.tally_fixture()["confirmed"]
 RELIED_ON = [name for name in ms.MACHINE_NAMES if name != "govern-repository"]
+# Each harness's own variables, as its shell's probe named them (`harness-probes.json`); the
+# values are the fixture's own, since the probes recorded names only.
 HARNESS_VARIABLES = {
-    "claude-code": {"CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli"},
-    "opencode": {"OPENCODE": "1"},
-    "codex": {"CODEX_SANDBOX": "seatbelt", "CODEX_THREAD_ID": "fixture"},
-    "dsh": {"DSH_PROFILE": "desktop"},
+    "claude-code": {"CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "CLAUDE_CODE_SESSION_ID": "fixture", "AI_AGENT": "fixture"},
+    "opencode": {"OPENCODE": "1", "OPENCODE_SESSION_ID": "fixture", "OPENCODE_TERMINAL": "1", "AGENT": "fixture", "AI_AGENT": "fixture"},
+    "codex": {"CODEX_CI": "1", "CODEX_SANDBOX": "seatbelt", "CODEX_SESSION_ID": "fixture", "CODEX_SHELL": "1",
+              "CODEX_THREAD_ID": "fixture", "CODEX_VERSION": "fixture"},
+    "dsh": {"DSH_HOME": "/fixture/.dsh", "DSH_PROFILE": "desktop", "DSH_PROFILE_DIR": "/fixture/.dsh/profiles/desktop",
+            "DSH_SESSION_ID": "fixture", "DSH_SHELL": "1"},
 }
-HARNESS_PREFIXES = ("CLAUDE", "OPENCODE", "CODEX_", "DSH_", "AI_AGENT")
+HARNESS_PREFIXES = ("CLAUDE", "OPENCODE", "CODEX_", "DSH_", "AI_AGENT", "AGENT")
 RULESET_IDS = {"Gate": 7001, "Merge": 7002, "History": 7003}
 
 # Credential shapes, assembled here so no committed file carries one GitHub's push protection
@@ -314,6 +319,7 @@ def case_env(case, home, scratch, gh_recording):
             del env[variable]
     for harness in case.get("harness", "claude-code").split("+"):
         env.update(HARNESS_VARIABLES.get(harness, {}))
+    env.update((key, value.replace("{home}", home)) for key, value in case.get("extra_env", {}).items())
     return env
 
 

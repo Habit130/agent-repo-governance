@@ -46,7 +46,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
 | `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the result comment, and habit's commands under `/bin/bash` | macos |
-| `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place | macos |
+| `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place | macos |
 
 ## CI
 
@@ -100,9 +100,11 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
   modules' docstrings define the facts: `govlib/preconditions.py`, `drift.py`,
   `inspection.py`, `workflows.py`.
   - **The harness comes first** in all four, and a refusal prints the harness facts under
-    `harness` with exit 2. `govlib/harness.py` passes only `CLAUDECODE=1` (Claude Code) or
-    `OPENCODE=1` (OpenCode), alone and with no Codex harness or deepseekharness variable set,
-    from each harness's shell probed by name on 2026-10-29 (#50's PR).
+    `harness` with exit 2. `govlib/harness.py` passes only when `CLAUDECODE` (Claude Code)
+    or `OPENCODE` (OpenCode) is set, not both, and no `CODEX_…` or `DSH_…` variable is, the
+    homes `CODEX_HOME`, `DSH_HOME` and `DSH_AGENTS_HOME` aside. Each harness's shell was
+    probed by name on 2026-10-29, and the names are recorded in
+    `tests/fixtures/generator/harness-probes.json` with each harness's version.
   - **`preconditions`** reports every §6.1 item together with habit's checklist. It runs the
     installed machine check, `~/.agents/governance/machine/scripts/machine.py check --home`,
     and reads the managed skills from `~/.agents/governance/installed.json`.
