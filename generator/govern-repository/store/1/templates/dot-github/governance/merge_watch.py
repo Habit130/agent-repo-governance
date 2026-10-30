@@ -38,7 +38,10 @@ run's commit, unless a `red-default-branch` record is already open.
 
 A format it can't read, or a GitHub read that fails, counts that review or fact as absent, so
 it yields a false miss record, never a blocked merge. A record whose title and `Observed:`
-line an open record already has isn't opened again, so a rerun adds nothing.
+line an open record already has isn't opened again, so a rerun adds nothing. Two runs at once
+can each read no open record, so two workflows failing together may open two
+`red-default-branch` records: a concurrency group would cancel a pending run and lose its
+record instead.
 
 The `Risk:` and `Reverts:` lines and the record are read with the gate script's parser,
 imported from beside this file. Python 3's standard library at the 3.9 level, plus `gh`.
@@ -58,6 +61,7 @@ import gate  # noqa: E402
 LABEL = "miss"
 FOUND_BY = "Merge watch"
 WORKFLOW = ".github/workflows/merge-watch.yml"
+RECORD = ".github/governance/record.yml"
 
 BUGBOT_CHECK = "Cursor Bugbot"
 BUGBOT_APP = "cursor"
@@ -91,8 +95,9 @@ def _read(read, path, default):
         return default
 
 
-def record(title, merged_pr, kind, category, observed):
+def record(merged_pr, kind, category, observed):
     """One miss record: its title, its six field lines and the `miss` label."""
+    title = "Miss: %s, %s" % (kind, category)
     if merged_pr is not None:
         title += " in #%d" % merged_pr
     lines = (
@@ -155,10 +160,10 @@ def _codex(comments, head):
             continue
         for match in CODEX_MARKER.finditer(comment.get("body") or ""):
             try:
-                review = json.loads(match.group(1)).get("code_review") or {}
+                review = json.loads(match.group(1)).get("code_review")
             except (ValueError, AttributeError):
                 continue
-            if review.get("commit_sha") == head and review.get("status") == "completed":
+            if isinstance(review, dict) and review.get("commit_sha") == head and review.get("status") == "completed":
                 return True
     return False
 
@@ -231,12 +236,12 @@ def _judge_pull(read, repository, agent_account, pull, squash):
         except ReadError:
             reverted = None
         records.append(record(
-            "Miss: escape, revert", reverted["number"] if reverted else None, "escape", "revert",
+            reverted["number"] if reverted else None, "escape", "revert",
             "#%d, merged as %s, reverted %s, and its body had a `Reverts:` line." % (number, squash, reverts["sha"]),
         ))
     elif reverts is not None:
         records.append(record(
-            "Miss: escape, revert", None, "escape", "revert",
+            None, "escape", "revert",
             "#%d, merged as %s, has a `Reverts:` line that doesn't read (%s), so the reverted PR is unknown."
             % (number, squash, reverts),
         ))
@@ -248,7 +253,7 @@ def _judge_pull(read, repository, agent_account, pull, squash):
     missing = missing_reviews(read, repository, agent_account, tier, head, number)
     if missing:
         records.append(record(
-            "Miss: process miss, missing-review", number, "process miss", "missing-review",
+            number, "process miss", "missing-review",
             "Merged head %s, %s, lacks: %s." % (head, declared, ", ".join(missing)),
         ))
     return records
@@ -266,7 +271,7 @@ def _on_push(event, read, repository, default_branch, agent_account):
             records.extend(_judge_pull(read, repository, agent_account, pull, sha))
         elif not in_history:
             records.append(record(
-                "Miss: process miss, push-without-pr", None, "process miss", "push-without-pr",
+                None, "process miss", "push-without-pr",
                 "Commit %s was pushed to %s with no merged PR." % (sha, default_branch),
             ))
     return records
@@ -289,7 +294,7 @@ def _on_workflow_run(event, read, repository, default_branch, open_records):
     except ReadError:
         pull = None
     return [record(
-        "Miss: escape, red-default-branch", pull["number"] if pull else None, "escape", "red-default-branch",
+        pull["number"] if pull else None, "escape", "red-default-branch",
         "Workflow %s failed on its push-triggered run %s at commit %s." % (run.get("name"), run.get("html_url"), sha),
     )]
 
@@ -367,11 +372,11 @@ def main(argv=None):
         event = json.load(handle)
     event_name = os.environ["GITHUB_EVENT_NAME"]
     try:
-        with open(os.path.join(os.getcwd(), *gate.RECORD.split("/")), "rb") as handle:
+        with open(os.path.join(os.getcwd(), *RECORD.split("/")), "rb") as handle:
             agent_account = gate.parse_record(handle.read())["agent_account"]
     except (OSError, gate.RecordError) as error:
         agent_account = None
-        print("UNREADABLE %s: %s; no comment or status counts as the agent account's" % (gate.RECORD, error))
+        print("UNREADABLE %s: %s; no comment or status counts as the agent account's" % (RECORD, error))
     github = GitHub()
     records = decide(event_name, event, agent_account, github)
     failed = agent_account is None or bool(github.unreadable)

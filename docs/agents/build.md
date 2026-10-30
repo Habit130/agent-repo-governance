@@ -231,8 +231,9 @@ the governed repository's. Both register in the `parser-fixtures` suite.
 
 - **The gate script's interface.** In a governed repository it is
   `.github/governance/gate.py`, and a script beside it, such as Merge watch's
-  `merge_watch.py` or the owner script's embedded Python, runs `import gate`. A script run by path finds it on its own
-  directory; embedded Python first puts `.github/governance/` on `sys.path`. Set
+  `merge_watch.py` or the owner script's embedded Python, runs `import gate`. A script run
+  by path finds it on its own directory; embedded Python first puts `.github/governance/`
+  on `sys.path`. Set
   `sys.dont_write_bytecode = True` before the import, so no `__pycache__` lands in the
   governed tree. The module's docstring gives the gate's rules and the pattern rules.
   - `parse_record(data)` takes the record's bytes and returns it in the shape
@@ -273,8 +274,9 @@ yields a false miss record; it never blocks anything and is never a required che
   - `on.workflow_run.workflows` takes the patterns of the workflow syntax's Filter pattern
     cheat sheet ("You can use special characters in path, branch, tag, and workflow name
     filters"): `**` matches any characters, `/` included, and `!` at a pattern's start
-    negates the positive patterns before it. `["**", "!merge-watch"]` matches every workflow but Merge
-    watch, whose `name:` is `merge-watch`; a workflow without one is named by its file path.
+    negates the positive patterns before it. `["**", "!merge-watch"]` matches every
+    workflow but Merge watch, whose `name:` is `merge-watch`; a workflow without one is
+    named by its file path.
   - `workflow_run` fires only for a workflow file on the default branch, its `branches`
     filter names the branch the triggering run ran on, and chaining stops at three levels.
   - Bugbot's check run comes from the app `cursor` (PR #85's head `bfec87b`); the Codex
