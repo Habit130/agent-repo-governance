@@ -1,0 +1,57 @@
+{
+  "description": "An open PR in the miss listing is no record, so a red run still records.",
+  "event_name": "workflow_run",
+  "event": {
+    "action": "completed",
+    "workflow_run": {
+      "name": "ci",
+      "path": ".github/workflows/ci.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "main",
+      "head_sha": "7ab00effd19abcee0295a00633ae25c001d7e22e",
+      "html_url": "https://github.com/Habit130/tally/actions/runs/101"
+    },
+    "repository": {
+      "full_name": "Habit130/tally",
+      "default_branch": "main"
+    }
+  },
+  "github": {
+    "repos/Habit130/tally/commits/7ab00effd19abcee0295a00633ae25c001d7e22e/pulls": [
+      {
+        "number": 43,
+        "state": "closed",
+        "merged_at": "2026-10-30T02:25:44Z",
+        "merge_commit_sha": "7ab00effd19abcee0295a00633ae25c001d7e22e",
+        "base": {
+          "ref": "main"
+        },
+        "head": {
+          "sha": "1a954628a960aaef81d7b2d4521929579f3541e6"
+        },
+        "user": {
+          "login": "Habit098"
+        },
+        "body": "## Summary\n\nA change.\n\nRisk: low — a reason\n"
+      }
+    ],
+    "repos/Habit130/tally/issues?labels=miss&state=open": [
+      {
+        "number": 12,
+        "title": "A PR",
+        "pull_request": {
+          "url": "x"
+        },
+        "body": "Category: red-default-branch\n"
+      }
+    ]
+  },
+  "expected": [
+    {
+      "title": "Miss: escape, red-default-branch in #43",
+      "body": "Merged PR: #43\nKind: escape\nCategory: red-default-branch\nObserved: Workflow ci failed on its push-triggered run https://github.com/Habit130/tally/actions/runs/101 at commit 7ab00effd19abcee0295a00633ae25c001d7e22e.\nFound by: Merge watch\nBug issue: none\n"
+    }
+  ]
+}

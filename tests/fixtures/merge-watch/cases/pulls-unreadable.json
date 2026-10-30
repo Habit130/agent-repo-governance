@@ -1,0 +1,29 @@
+{
+  "description": "GitHub's PR list for the pushed commit can't be read: a false push-without-pr record, never a blocked merge.",
+  "event_name": "push",
+  "event": {
+    "ref": "refs/heads/main",
+    "before": "51de2b835bd35a67eb32dbcd3d77d4b96e5aa39d",
+    "after": "d712851bb7a20adccc269087d34a32b43559135f",
+    "commits": [
+      {
+        "id": "d712851bb7a20adccc269087d34a32b43559135f",
+        "distinct": true,
+        "message": "a change"
+      }
+    ],
+    "repository": {
+      "full_name": "Habit130/tally",
+      "default_branch": "main"
+    }
+  },
+  "github": {
+    "repos/Habit130/tally/issues?labels=miss&state=open": []
+  },
+  "expected": [
+    {
+      "title": "Miss: process miss, push-without-pr",
+      "body": "Merged PR: none\nKind: process miss\nCategory: push-without-pr\nObserved: Commit d712851bb7a20adccc269087d34a32b43559135f was pushed to main with no merged PR.\nFound by: Merge watch\nBug issue: none\n"
+    }
+  ]
+}

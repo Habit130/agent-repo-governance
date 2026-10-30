@@ -1,0 +1,89 @@
+{
+  "description": "A merged PR with a Reverts line records an escape naming the reverted commit's PR.",
+  "event_name": "push",
+  "event": {
+    "ref": "refs/heads/main",
+    "before": "51de2b835bd35a67eb32dbcd3d77d4b96e5aa39d",
+    "after": "f77695ae7ad3ec2fa6e918b510913320e4ad7ea5",
+    "commits": [
+      {
+        "id": "f77695ae7ad3ec2fa6e918b510913320e4ad7ea5",
+        "distinct": true,
+        "message": "a change"
+      }
+    ],
+    "repository": {
+      "full_name": "Habit130/tally",
+      "default_branch": "main"
+    }
+  },
+  "github": {
+    "repos/Habit130/tally/commits/f77695ae7ad3ec2fa6e918b510913320e4ad7ea5/pulls": [
+      {
+        "number": 42,
+        "state": "closed",
+        "merged_at": "2026-10-30T02:25:44Z",
+        "merge_commit_sha": "f77695ae7ad3ec2fa6e918b510913320e4ad7ea5",
+        "base": {
+          "ref": "main"
+        },
+        "head": {
+          "sha": "1a954628a960aaef81d7b2d4521929579f3541e6"
+        },
+        "user": {
+          "login": "Habit098"
+        },
+        "body": "## Summary\n\nReverts #37.\n\nRisk: low — a pure revert\nReverts: efa717b8a554d0b91c81dd0f20d03455a951892e\n"
+      }
+    ],
+    "repos/Habit130/tally/commits/1a954628a960aaef81d7b2d4521929579f3541e6/check-runs?check_name=Cursor%20Bugbot&filter=all": [
+      {
+        "name": "Cursor Bugbot",
+        "status": "completed",
+        "conclusion": "success",
+        "head_sha": "1a954628a960aaef81d7b2d4521929579f3541e6",
+        "app": {
+          "slug": "cursor",
+          "owner": {
+            "login": "cursor"
+          }
+        }
+      }
+    ],
+    "repos/Habit130/tally/commits/1a954628a960aaef81d7b2d4521929579f3541e6/statuses": [],
+    "repos/Habit130/tally/issues/42/comments": [
+      {
+        "user": {
+          "login": "Habit098",
+          "type": "User"
+        },
+        "body": "## Merge summary: low at 1a95462\nRequired reviews: self-verification=clear, bugbot=clear\n\nThe tier, the verdict and the seven items follow.\n"
+      }
+    ],
+    "repos/Habit130/tally/issues?labels=miss&state=open": [],
+    "repos/Habit130/tally/commits/efa717b8a554d0b91c81dd0f20d03455a951892e/pulls": [
+      {
+        "number": 37,
+        "state": "closed",
+        "merged_at": "2026-10-30T02:25:44Z",
+        "merge_commit_sha": "efa717b8a554d0b91c81dd0f20d03455a951892e",
+        "base": {
+          "ref": "main"
+        },
+        "head": {
+          "sha": "2cf11ad4315c552fd519552c0880afbc14e0f71c"
+        },
+        "user": {
+          "login": "Habit098"
+        },
+        "body": "## Summary\n\nA change.\n\nRisk: medium — a reason\n"
+      }
+    ]
+  },
+  "expected": [
+    {
+      "title": "Miss: escape, revert in #37",
+      "body": "Merged PR: #37\nKind: escape\nCategory: revert\nObserved: #42, merged as f77695ae7ad3ec2fa6e918b510913320e4ad7ea5, reverted efa717b8a554d0b91c81dd0f20d03455a951892e, and its body had a `Reverts:` line.\nFound by: Merge watch\nBug issue: none\n"
+    }
+  ]
+}

@@ -34,10 +34,11 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `store` | Version 1's manifest, the change-note parser fixtures, released and installed versions | linux |
 | `render` | Rendering's placeholders, confirmed values and unreleased versions, into a temporary directory and a worktree | linux |
 | `compare` | Exact comparison naming each difference | linux |
-| `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; each fixed file's notice, the Markdown form an HTML comment on line 1 (`MARKDOWN_NOTICE`); the mixed files' markers, well formed at version 1, with their notice as the first line inside them (`MIXED_NOTICE`) and their skeleton text after the end marker left uncompared; `AGENTS.md`'s sections in order and its bytes within `AGENTS_BUDGET`; `.cursor/BUGBOT.md` equal to its notice, a blank line and `AGENTS.md`'s Code Review Rules section, heading included; every path pointer in a Markdown file version 1 writes naming a file version 1 writes, with what stays outside in `UNROUTED`; no root `CLAUDE.md`, `AGENTS.override.md` or `.codex/` written; the `build.md` skeleton written with no notice and left uncompared; the role files' skill lists against #41 §13 and the relied-on list; the PR template's comment lines, continuation lines included, none starting with `Risk:` or `Reverts:`, and its one `Risk:` line, once filled, read by both parsers; `triage-labels.md` against the manifest's labels; planted mismatches failing; later templates' seam-3 checks join it | linux |
+| `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; each fixed file's notice, the Markdown form an HTML comment on line 1 (`MARKDOWN_NOTICE`); the mixed files' markers, well formed at version 1, with their notice as the first line inside them (`MIXED_NOTICE`) and their skeleton text after the end marker left uncompared; `AGENTS.md`'s sections in order and its bytes within `AGENTS_BUDGET`; `.cursor/BUGBOT.md` equal to its notice, a blank line and `AGENTS.md`'s Code Review Rules section, heading included; every path pointer in a Markdown file version 1 writes naming a file version 1 writes, with what stays outside in `UNROUTED`; no root `CLAUDE.md`, `AGENTS.override.md` or `.codex/` written; the `build.md` skeleton written with no notice and left uncompared; the role files' skill lists against #41 §13 and the relied-on list; the PR template's comment lines, continuation lines included, none starting with `Risk:` or `Reverts:`, and its one `Risk:` line, once filled, read by both parsers; `triage-labels.md` against the manifest's labels; Merge watch's workflow and script with the notice, their mode and exact comparison; planted mismatches failing; later templates' seam-3 checks join it | linux |
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
 | `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
+| `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/` | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
@@ -229,8 +230,8 @@ script, `generator/govern-repository/store/1/templates/dot-github/governance/gat
 the governed repository's. Both register in the `parser-fixtures` suite.
 
 - **The gate script's interface.** In a governed repository it is
-  `.github/governance/gate.py`, and a script beside it, such as Merge watch's or the owner
-  script's embedded Python, runs `import gate`. A script run by path finds it on its own
+  `.github/governance/gate.py`, and a script beside it, such as Merge watch's
+  `merge_watch.py` or the owner script's embedded Python, runs `import gate`. A script run by path finds it on its own
   directory; embedded Python first puts `.github/governance/` on `sys.path`. Set
   `sys.dont_write_bytecode = True` before the import, so no `__pycache__` lands in the
   governed tree. The module's docstring gives the gate's rules and the pattern rules.
@@ -256,6 +257,33 @@ the governed repository's. Both register in the `parser-fixtures` suite.
   `tests/suites/parsers.py`. A parser registers as one more `Parser` there, whose adapters
   return the shapes that file's docstring gives, so registering changes no fixture or
   expected result. A record that doesn't parse expects only "doesn't parse".
+
+## Merge watch
+
+Version 1's fixed templates `.github/workflows/merge-watch.yml` and
+`generator/govern-repository/store/1/templates/dot-github/governance/merge_watch.py` (#41 §9).
+The script's docstring gives what it records, from which facts, and how an unreadable fact
+yields a false miss record; it never blocks anything and is never a required check.
+
+- **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
+  answers a REST path with GitHub's list, every page joined, or raises `ReadError`. Its
+  output is the records to open. A new case joins `tests/fixtures/merge-watch/cases/` and is
+  never renamed; the suite's docstring gives a case's shape.
+- **GitHub's facts it relies on**, from github/docs at `6cbe641`, read 2026-10-30:
+  - `on.workflow_run.workflows` takes the patterns of the workflow syntax's Filter pattern
+    cheat sheet ("You can use special characters in path, branch, tag, and workflow name
+    filters"): `**` matches any characters, `/` included, and `!` at a pattern's start
+    negates the positive patterns before it. `["**", "!merge-watch"]` matches every workflow but Merge
+    watch, whose `name:` is `merge-watch`; a workflow without one is named by its file path.
+  - `workflow_run` fires only for a workflow file on the default branch, its `branches`
+    filter names the branch the triggering run ran on, and chaining stops at three levels.
+  - Bugbot's check run comes from the app `cursor` (PR #85's head `bfec87b`); the Codex
+    review bot keeps one summary comment per PR by `chatgpt-codex-connector[bot]`, edited in
+    place, holding `<!-- codex-review-state:v1 {...} -->` (PRs #66 to #85).
+  - The list endpoint `commits/{ref}/statuses` gives each status's `creator`, newest first;
+    the combined `commits/{ref}/status` doesn't, so the script reads the list (GitHub's REST
+    reference for commit statuses, read 2026-10-30).
+- **The live check** is #61's, through the live-check runner.
 
 ## The owner script and live checks
 

@@ -1,0 +1,50 @@
+{
+  "description": "High with no review at all: one record lists every missing review in the Merge summary's kind order.",
+  "event_name": "push",
+  "event": {
+    "ref": "refs/heads/main",
+    "before": "51de2b835bd35a67eb32dbcd3d77d4b96e5aa39d",
+    "after": "f77695ae7ad3ec2fa6e918b510913320e4ad7ea5",
+    "commits": [
+      {
+        "id": "f77695ae7ad3ec2fa6e918b510913320e4ad7ea5",
+        "distinct": true,
+        "message": "a change"
+      }
+    ],
+    "repository": {
+      "full_name": "Habit130/tally",
+      "default_branch": "main"
+    }
+  },
+  "github": {
+    "repos/Habit130/tally/commits/f77695ae7ad3ec2fa6e918b510913320e4ad7ea5/pulls": [
+      {
+        "number": 42,
+        "state": "closed",
+        "merged_at": "2026-10-30T02:25:44Z",
+        "merge_commit_sha": "f77695ae7ad3ec2fa6e918b510913320e4ad7ea5",
+        "base": {
+          "ref": "main"
+        },
+        "head": {
+          "sha": "1a954628a960aaef81d7b2d4521929579f3541e6"
+        },
+        "user": {
+          "login": "Habit098"
+        },
+        "body": "## Summary\n\nA change.\n\nRisk: high — a reason\n"
+      }
+    ],
+    "repos/Habit130/tally/commits/1a954628a960aaef81d7b2d4521929579f3541e6/check-runs?check_name=Cursor%20Bugbot&filter=all": [],
+    "repos/Habit130/tally/commits/1a954628a960aaef81d7b2d4521929579f3541e6/statuses": [],
+    "repos/Habit130/tally/issues/42/comments": [],
+    "repos/Habit130/tally/issues?labels=miss&state=open": []
+  },
+  "expected": [
+    {
+      "title": "Miss: process miss, missing-review in #42",
+      "body": "Merged PR: #42\nKind: process miss\nCategory: missing-review\nObserved: Merged head 1a954628a960aaef81d7b2d4521929579f3541e6, declared high, lacks: bugbot, codex, reviewer, merge-summary.\nFound by: Merge watch\nBug issue: none\n"
+    }
+  ]
+}
