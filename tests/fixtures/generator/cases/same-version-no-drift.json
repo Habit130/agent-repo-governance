@@ -1,0 +1,65 @@
+{
+  "description": "#25: a record at the installed version with nothing drifted is Repair with no drift: nothing to write.",
+  "expect": {
+    "preconditions": {
+      "exit": 0,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": true
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "no drift: one Chinese message, nothing written",
+      "drift": {
+        "checked": true,
+        "version": 3,
+        "differences": [],
+        "markers": [],
+        "in_files": false,
+        "in_github": false,
+        "github": {
+          "drift": false,
+          "rulesets": [
+            {
+              "name": "Gate",
+              "state": "in place"
+            },
+            {
+              "name": "Merge",
+              "state": "in place"
+            },
+            {
+              "name": "History",
+              "state": "in place"
+            }
+          ],
+          "other_rulesets": [],
+          "branch_protection": {
+            "classic_protection": false
+          },
+          "settings": [],
+          "uncertain": []
+        }
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  }
+}

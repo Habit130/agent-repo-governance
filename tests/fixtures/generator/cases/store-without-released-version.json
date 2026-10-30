@@ -1,0 +1,31 @@
+{
+  "description": "An installed store with no released version stops the run.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "not checked",
+        "versions": "fail",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "install",
+        "review bots"
+      ]
+    },
+    "mode": {
+      "exit": 2
+    }
+  },
+  "harness": "claude-code",
+  "run": [
+    "preconditions",
+    "mode"
+  ],
+  "store": "unreleased"
+}

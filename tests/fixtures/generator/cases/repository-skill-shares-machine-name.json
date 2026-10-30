@@ -1,0 +1,31 @@
+{
+  "description": "#24: a repository skill sharing a machine skill's name is flagged; another isn't.",
+  "expect": {
+    "inspect": {
+      "harness_files": {
+        "skills": [
+          {
+            "path": ".agents/skills/alpha-check/SKILL.md",
+            "name": "alpha-check",
+            "shares_machine_skill_name": true
+          },
+          {
+            "path": ".agents/skills/release-notes/SKILL.md",
+            "name": "release-notes",
+            "shares_machine_skill_name": false
+          }
+        ]
+      }
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      ".agents/skills/alpha-check/SKILL.md": "---\nname: alpha-check\ndescription: The repository's own.\n---\n\nBody.\n",
+      ".agents/skills/release-notes/SKILL.md": "---\nname: release-notes\ndescription: Writes release notes.\n---\n\nBody.\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

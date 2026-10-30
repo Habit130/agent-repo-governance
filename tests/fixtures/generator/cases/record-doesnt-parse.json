@@ -1,0 +1,58 @@
+{
+  "description": "#25 addition: a record that doesn't parse is rebuilt as at Initialize, its confirmed values proposed again.",
+  "expect": {
+    "preconditions": {
+      "exit": 0,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": true
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Initialize",
+      "outcome": "rebuild as at Initialize",
+      "record": {
+        "present": true,
+        "parses": false
+      },
+      "drift": {
+        "checked": false,
+        "record_parses": false,
+        "in_files": true
+      }
+    },
+    "inspect": {
+      "record": {
+        "present": true,
+        "parses": false
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3,
+    "edits": [
+      {
+        "path": ".github/governance/record.yml",
+        "replace": [
+          "version: 3\n",
+          "version: [3]\n"
+        ]
+      }
+    ]
+  }
+}

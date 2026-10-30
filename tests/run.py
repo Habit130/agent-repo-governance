@@ -49,6 +49,7 @@ SUITES = (
     ("standins", "test_standins", "macos"),
     ("owner", "test_owner", "macos"),
     ("live-runner", "test_live_runner", "macos"),
+    ("generator-core", "test_generator_core", "macos"),
     ("machine-install", "test_machine_install", "macos"),
     ("machine-check", "test_machine_check", "macos"),
     ("machine-list", "test_machine_list", "macos"),

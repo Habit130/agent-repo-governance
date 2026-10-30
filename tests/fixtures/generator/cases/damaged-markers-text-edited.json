@@ -1,0 +1,50 @@
+{
+  "description": "#25: .claude/CLAUDE.md's begin marker removed and a line between the markers edited: its governance part is rebuilt as at Initialize.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "drift": {
+        "in_files": true,
+        "differences": [],
+        "markers": [
+          {
+            "path": ".claude/CLAUDE.md",
+            "problems": [
+              "missing"
+            ],
+            "generator_text_intact": false,
+            "begin_lines": [],
+            "repair": "rebuild as at Initialize"
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3,
+    "edits": [
+      {
+        "path": ".claude/CLAUDE.md",
+        "replace": [
+          "<!-- governance:begin v3 -->\n",
+          ""
+        ]
+      },
+      {
+        "path": ".claude/CLAUDE.md",
+        "replace": [
+          "@../AGENTS.md",
+          "@../AGENTS.md (edited)"
+        ]
+      }
+    ]
+  },
+  "run": [
+    "mode"
+  ]
+}

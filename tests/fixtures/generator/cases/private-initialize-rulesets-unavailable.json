@@ -1,0 +1,40 @@
+{
+  "description": "#17 split: a private repository at Initialize where GitHub won't list rulesets. It fails closed until #53.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "fail",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": false
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Initialize"
+    },
+    "inspect": {
+      "github": {
+        "visibility": "private",
+        "rulesets": null,
+        "unreadable": [
+          "rulesets: Upgrade to GitHub Pro or make this repository public to enable this feature."
+        ]
+      }
+    }
+  },
+  "github": {
+    "private": true,
+    "rulesets_forbidden": true
+  },
+  "harness": "claude-code"
+}

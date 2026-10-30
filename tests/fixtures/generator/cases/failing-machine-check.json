@@ -1,0 +1,27 @@
+{
+  "description": "A failing machine check stops the run.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "fail",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "install",
+        "review bots"
+      ]
+    }
+  },
+  "harness": "claude-code",
+  "home": "failing",
+  "run": [
+    "preconditions"
+  ]
+}

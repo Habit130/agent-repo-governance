@@ -1,0 +1,30 @@
+{
+  "description": "OpenCode passes the harness precondition.",
+  "expect": {
+    "preconditions": {
+      "exit": 0,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": true,
+      "harness": {
+        "passed": true,
+        "harness": "OpenCode"
+      }
+    }
+  },
+  "harness": "opencode",
+  "run": [
+    "preconditions"
+  ]
+}

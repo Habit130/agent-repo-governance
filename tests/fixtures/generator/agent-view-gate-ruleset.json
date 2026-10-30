@@ -1,0 +1,32 @@
+{
+  "description": "The Gate ruleset as GET /repos/{owner}/{repo}/rulesets/{id} returned it to the agent account Habit098, read from Habit130/governance-sandbox on 2026-10-29 with its record confirming the check `test`; only the fields drift reads are kept. GitHub returns bypass_actors as null to an account without admin, and adds pull_request parameters the owner script never sends.",
+  "checks": ["test"],
+  "ruleset": {
+    "name": "Gate",
+    "target": "branch",
+    "enforcement": "active",
+    "source_type": "Repository",
+    "current_user_can_bypass": "never",
+    "bypass_actors": null,
+    "conditions": {"ref_name": {"exclude": [], "include": ["~DEFAULT_BRANCH"]}},
+    "rules": [
+      {"type": "deletion"},
+      {"type": "non_fast_forward"},
+      {"type": "pull_request", "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "require_extra_approval_for_unattributed_changes": true,
+        "allowed_merge_methods": ["squash"]
+      }},
+      {"type": "required_status_checks", "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [{"context": "governance-gate", "integration_id": 15368}, {"context": "test"}]
+      }}
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "description": "#24: a .codex/ directory is reported among the harness files.",
+  "expect": {
+    "inspect": {
+      "harness_files": {
+        "files": {
+          ".codex": [
+            ".codex/config.toml"
+          ],
+          ".dsh": [
+            ".dsh/settings.json"
+          ],
+          "opencode.json": [
+            "opencode.json"
+          ],
+          ".claude": []
+        }
+      }
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      ".codex/config.toml": "model = \"o4\"\n",
+      ".dsh/settings.json": "{}\n",
+      "opencode.json": "{}\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

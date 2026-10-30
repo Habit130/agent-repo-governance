@@ -46,6 +46,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
 | `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the result comment, and habit's commands under `/bin/bash` | macos |
+| `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place | macos |
 
 ## CI
 
@@ -66,9 +67,10 @@ or the pre-merge check confirms both jobs are green on the head.
 ## The generator's command line
 
 `generator/govern-repository/scripts/govern.py` is the generator's one entry. Its
-subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`)
-print JSON and exit 0 on good facts, 1 when exact comparison finds differences, and 2 on a
-refusal, with the reason under `error`.
+subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`, and
+the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
+and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
+the mode is stop; and 2 on a refusal, with the reason under `error`.
 
 - **Exact comparison in a governed worktree** is one command:
   `python3 generator/govern-repository/scripts/govern.py compare --worktree <path>`. It reads
@@ -83,13 +85,59 @@ refusal, with the reason under `error`.
   which are the repository's own, and skeletons, which become repository-owned content.
 - **Rendering a fixed part** writes the whole template when the target is absent, replaces
   the one well-formed marker block when there is one, and refuses anything else. A skeleton
-  is written only when its target is absent. Repairing or rebuilding markers is #50's.
+  is written only when its target is absent. `mode` reports damaged markers; restoring or
+  rebuilding them is the write phase's (#52).
 - **One template per target path.** A mixed file's template holds its fixed part between the
   markers and its skeleton text after them. The record template ends at its `confirmed:`
   key, and rendering writes the confirmed values below it. Rendering refuses confirmed
   values, or a template, whose record wouldn't parse.
 - **Writes stay inside the destination.** Rendering and materializing refuse a target whose
   parent is a symlink or not a directory before writing anything.
+- **The mechanical core** (#44 §6.1 to §6.3) runs before habit's confirmation and writes
+  nothing, to GitHub or to the checkout, except `accept-invitation`. Each takes `--worktree`
+  (default: the current directory); `preconditions` and `inspect` take `--home` (default: ~),
+  `preconditions` and `mode` take `--store` (default: the store beside the entry). The
+  modules' docstrings define the facts: `govlib/preconditions.py`, `drift.py`,
+  `inspection.py`, `workflows.py`.
+  - **The harness comes first** in all four, and a refusal prints the harness facts under
+    `harness` with exit 2. `govlib/harness.py` passes only when `CLAUDECODE` (Claude Code)
+    or `OPENCODE` (OpenCode) is set, not both, and no `CODEX_…` or `DSH_…` variable is, the
+    homes `CODEX_HOME`, `DSH_HOME` and `DSH_AGENTS_HOME` aside. Each harness's shell was
+    probed by name on 2026-10-29, and the names are recorded in
+    `tests/fixtures/generator/harness-probes.json` with each harness's version.
+  - **`preconditions`** reports every §6.1 item together with habit's checklist. It runs the
+    installed machine check, `~/.agents/governance/machine/scripts/machine.py check --home`,
+    and reads the managed skills from `~/.agents/governance/installed.json`.
+  - **`mode`** gives the mode and, at Upgrade and Repair, drift against the record's version:
+    exact comparison with GitHub's default branch, the markers with whether the generator's
+    text between them is intact, and GitHub state against `govlib/target.py`, which Seam A
+    checks against `tests/target_state.py`.
+  - **`accept-invitation`** accepts the agent account's pending invitation to the
+    repository, the one write before habit's answer.
+  - **No credential value is printed** (#41 §10). `inspect` names each credential shape it
+    finds by type and location, and the entry passes every JSON it prints through
+    `govlib/secrets.py`'s `redact`, which replaces each shape with its type, so a command's
+    text, a title or an error carries none. A private key is redacted from its header to its end
+    marker, or to the text's end without one, and in a document's shell block its lines are
+    never read as commands.
+- **GitHub's facts the core relies on**, as the agent account, a write collaborator, read on
+  2026-10-29 from Habit130/governance-sandbox and Habit130/agent-repo-governance, and from
+  GitHub's REST reference pages for rules, branches and invitations the same day:
+  - `GET repos/{r}` gives `permissions` and the five merge settings; `security_and_analysis`
+    is null, and `actions/permissions` and `actions/permissions/workflow` answer 403. That is
+    the blind spot the owner script checks.
+  - `GET repos/{r}/rulesets/{id}` returns `bypass_actors` as null (the reference: "only
+    returned if the user making the API request has write access to the ruleset"), and adds
+    `pull_request` parameters the owner script never sends.
+  - `GET repos/{r}/rules/branches/{b}` lists each active rule on the branch with its
+    `ruleset_id`; rules of `evaluate` or `disabled` rulesets aren't returned, so whether such
+    a ruleset applies is reported as unknown unless its patterns name the branch outright.
+  - `GET repos/{r}/branches/{b}` returns `protection.enabled`, undocumented: `true` on
+    python/cpython's `main`, which has classic protection and no ruleset, and `false` on the
+    two repositories above, protected by rulesets only. It is the classic-protection fact;
+    `.../protection` needs admin.
+  - `GET user/repository_invitations` lists the agent's open invitations;
+    `PATCH user/repository_invitations/{id}` accepts one and answers 204.
 - **The change note** opens with `urgency: urgent` or `urgency: when convenient`, then
   `must-act: yes` or `must-act: no`, then a blank line and the plain-Chinese body. Its parser
   and fixtures: `govlib/store.py` and `tests/fixtures/change-notes/`.

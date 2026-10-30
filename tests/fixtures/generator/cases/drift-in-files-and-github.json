@@ -1,0 +1,52 @@
+{
+  "description": "Repair with drift both in a fixed file and in GitHub state: the outcome restores the files and then hands over the owner-script command, dropping neither.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "Repair through the Upgrade flow, restoring the drift in files, then a ready owner-script command for the drift in GitHub state",
+      "drift": {
+        "in_files": true,
+        "in_github": true,
+        "differences": [
+          {
+            "path": "docs/agents/review.md",
+            "kind": "content"
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "rulesets": [
+      {
+        "as_target": "Gate",
+        "changes": {
+          "enforcement": "disabled"
+        }
+      },
+      {
+        "as_target": "Merge"
+      },
+      {
+        "as_target": "History"
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3,
+    "edits": [
+      {
+        "path": "docs/agents/review.md",
+        "replace": [
+          "Version 3 of Seam A's synthetic store adds this line.",
+          "Edited by hand."
+        ]
+      }
+    ]
+  },
+  "run": [
+    "mode"
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "description": "#25: a record two versions behind is Upgrade straight to the installed version, every change note after the record's shown.",
+  "expect": {
+    "preconditions": {
+      "exit": 0,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": true
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Upgrade",
+      "record": {
+        "version": 1
+      },
+      "change_notes": [
+        {
+          "version": 2,
+          "urgency": "urgent"
+        },
+        {
+          "version": 3,
+          "urgency": "when convenient"
+        }
+      ],
+      "skipped_versions": [
+        2
+      ],
+      "drift": {
+        "checked": true,
+        "version": 1,
+        "in_files": false,
+        "in_github": false
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 1
+  }
+}

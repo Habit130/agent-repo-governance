@@ -1,0 +1,58 @@
+{
+  "description": "#25: the Gate ruleset disabled, everything else in place: drift in GitHub state only, so a ready owner-script command follows.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "a ready owner-script command, then re-verification",
+      "drift": {
+        "in_files": false,
+        "in_github": true,
+        "github": {
+          "drift": true,
+          "rulesets": [
+            {
+              "name": "Gate",
+              "id": 7001,
+              "state": "differs",
+              "differences": [
+                "enforcement is 'disabled', not 'active'"
+              ]
+            },
+            {
+              "name": "Merge",
+              "state": "in place"
+            },
+            {
+              "name": "History",
+              "state": "in place"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "github": {
+    "rulesets": [
+      {
+        "as_target": "Gate",
+        "changes": {
+          "enforcement": "disabled"
+        }
+      },
+      {
+        "as_target": "Merge"
+      },
+      {
+        "as_target": "History"
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode"
+  ]
+}

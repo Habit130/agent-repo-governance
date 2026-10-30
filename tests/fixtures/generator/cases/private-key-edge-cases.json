@@ -1,0 +1,55 @@
+{
+  "description": "#41 \u00a710: a private key's header and body in one script line with no end marker are redacted to the end of the text, and a key header named in a document's prose doesn't stop the commands in its later shell block from being found.",
+  "expect": {
+    "inspect": {
+      "exit": 0,
+      "credentials": [
+        {
+          "type": "private key",
+          "path": "CONTRIBUTING.md",
+          "line": 1
+        },
+        {
+          "type": "private key",
+          "path": "package.json",
+          "line": 5
+        }
+      ],
+      "commands": {
+        "manifests": [
+          {
+            "path": "package.json",
+            "commands": [
+              {
+                "command": "npm run deploy",
+                "runs": "printf '<redacted private key>"
+              }
+            ]
+          }
+        ],
+        "documents": [
+          {
+            "path": "CONTRIBUTING.md",
+            "line": 4,
+            "command": "npm run build"
+          },
+          {
+            "path": "CONTRIBUTING.md",
+            "line": 5,
+            "command": "npm test"
+          }
+        ]
+      }
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      "package.json": "{\n  \"name\": \"tally\",\n  \"version\": \"0.4.0\",\n  \"scripts\": {\n    \"deploy\": \"printf '<planted:private-key>\\\\n<planted:private-key-body>' > key && ./deploy\"\n  }\n}\n",
+      "CONTRIBUTING.md": "Deploy keys start with <planted:private-key> and never go in the tree.\n\n```sh\nnpm run build\nnpm test\n```\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

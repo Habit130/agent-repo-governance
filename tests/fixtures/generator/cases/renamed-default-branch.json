@@ -1,0 +1,36 @@
+{
+  "description": "#44 §4: the default branch renamed on GitHub after Initialize shows as drift in files that substitute it, and the checkout's stale origin/HEAD is reported.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "default_branch": {
+        "github": "trunk",
+        "checkout": "main"
+      },
+      "outcome": "Repair through the Upgrade flow, restoring the drift in files",
+      "drift": {
+        "in_files": true,
+        "in_github": false,
+        "markers": [],
+        "differences": [
+          {
+            "path": ".github/workflows/governance-gate.yml",
+            "kind": "content"
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "default_branch": "trunk",
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode"
+  ]
+}

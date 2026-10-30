@@ -1,0 +1,30 @@
+{
+  "description": "#24: a nested AGENTS.md is found and marked nested.",
+  "expect": {
+    "inspect": {
+      "instructions": {
+        "instructions": [
+          {
+            "path": "AGENTS.md",
+            "nested": false
+          },
+          {
+            "path": "packages/core/AGENTS.md",
+            "name": "AGENTS.md",
+            "nested": true
+          }
+        ]
+      }
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      "packages/core/AGENTS.md": "# Core package rules\n\nRun the core tests before committing.\n",
+      "AGENTS.md": "# Root rules\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "description": "#25: a record newer than the installed version stops, and habit is told to run the install.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "pass",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "fail",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "install",
+        "review bots"
+      ],
+      "passed": false
+    },
+    "mode": {
+      "exit": 1,
+      "mode": "stop",
+      "outcome": "stop",
+      "record": {
+        "version": 4
+      },
+      "drift": {
+        "checked": false
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3,
+    "edits": [
+      {
+        "path": ".github/governance/record.yml",
+        "replace": [
+          "version: 3\n",
+          "version: 4\n"
+        ]
+      }
+    ]
+  }
+}
