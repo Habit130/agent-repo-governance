@@ -498,6 +498,17 @@ sys.exit(97)
         self.assertFalse(missing.passed)
         self.assertIn("rerun habit's command", missing.detail)
 
+    def test_sibling_probes_do_not_advise_rerun_after_the_command_stops(self):
+        result, _, _, headers = self.command(success=0)
+        context = self.context(inputs={"gate_attempts": result.stdout})
+        context.remember("gate_setup", gate_setup())
+        for name in ("gate-trigger", "gate-reruns"):
+            (stopped,) = self.results(name, context)
+            self.assertFalse(stopped.passed)
+            self.assertIn(headers[0], stopped.detail)
+            self.assertIn("stop as for a product question", stopped.detail)
+            self.assertNotIn("rerun", stopped.detail)
+
 
 class GateProbes(ProbeCase):
     def gate_context(self, visibility="public", setup=None, attempts=None, report="public-from-nothing"):

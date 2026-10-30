@@ -333,8 +333,15 @@ def _violations(output):
     return [line.strip() for line in message.splitlines()[1:] if line.strip()]
 
 
+def _stopped_after(found):
+    return next((match.group(1) for output, _ in found.values() for match in [_STOP.search(output)] if match), None)
+
+
 def _attempt(found, header):
     if header not in found:
+        stopped = _stopped_after(found)
+        if stopped:
+            raise ProbeError("`== %s` skipped after %s went through; stop as for a product question" % (header, stopped))
         raise ProbeError("habit's gate_attempts output has no section `== %s`: rerun habit's command for it" % header)
     return found[header]
 
@@ -475,7 +482,7 @@ def rulesets(context):
     src, branch = setup["source"], context.default_branch
     account, _ = _attempt(found, "account")
     results = [Result("habit's attempts ran as the agent account", account.strip() == AGENT, "gh user: %s" % account.strip())]
-    stopped = next((match.group(1) for output, _ in found.values() for match in [_STOP.search(output)] if match), None)
+    stopped = _stopped_after(found)
 
     def rejection(header, assertion, rejected):
         if header not in found and stopped:
