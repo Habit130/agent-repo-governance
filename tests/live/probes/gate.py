@@ -14,8 +14,8 @@ Run the four together. A check takes three steps after habit's merge and owner-s
    again. An attempt that stops fails its run; the next run tries afresh under new branch
    names, and `gate-trigger` names the stopped attempts.
 2. habit runs `gate-rulesets`' one command, as the agent account (`gh`, never `ghm`): a
-   direct push of the source commit to the default branch, a force-push of the source
-   branch, and the merge of each probe PR at its head. The harness keeps these attempts
+   direct push of the source commit to the default branch, a force-push of the default
+   branch and of the source branch, and the merge of each probe PR at its head. The harness keeps these attempts
    with habit; the probes never push to the default branch, force-push or merge.
 3. `live.py probe --post` judges what step 1 read, habit's output, and the refs and PRs as
    they are then.
@@ -46,6 +46,7 @@ EVENT = "pull_request_target"
 ACTIONS_APP = 15368
 GOOD_RISK = "Risk: low — one file under live-checks, written by the gate's live check"
 BAD_RISK = "Risk: none — a tier the gate refuses, on purpose"
+ROLES = ("trigger", "edit", "failing")
 TARGETS = "gate_targets.txt"
 ATTEMPTS = "gate_attempts"
 WAIT_SECONDS = 600
@@ -122,11 +123,14 @@ def _read_run(context, run, head):
 
 
 def _await_run(context, head, seen):
-    """The first completed gate run on head that isn't in seen; ProbeError after WAIT_SECONDS."""
+    """The first completed run of the gate's workflow on head that isn't in seen; ProbeError after WAIT_SECONDS.
+
+    It reads every event's runs, so the trigger is what GitHub ran, judged by `gate-trigger`.
+    """
     deadline = time.time() + WAIT_SECONDS
     while True:
         try:
-            runs = (context.api("repos/%s/actions/runs?head_sha=%s&event=%s&per_page=100" % (context.repository, head, EVENT))
+            runs = (context.api("repos/%s/actions/runs?head_sha=%s&per_page=100" % (context.repository, head))
                     or {}).get("workflow_runs") or []
         except ProbeError as error:
             # A read that fails while waiting is retried until the deadline, which names it.
@@ -187,10 +191,10 @@ def _act(context):
                                          "creator": (s.get("creator") or {}).get("login")} for s in statuses],
                            "gate_check_runs": gate_runs.get("total_count", 0)}
         seen = set()
-        for role, risk in (("trigger", GOOD_RISK), ("edit", BAD_RISK), ("failing", BAD_RISK)):
+        for role, risk in zip(ROLES, (GOOD_RISK, BAD_RISK, BAD_RISK)):
             number = _open(context, "%s-%s" % (prefix, role), risk)
             setup["pulls"][role] = {"number": number, "branch": "%s-%s" % (prefix, role), "stages": []}
-        for role in ("trigger", "edit", "failing"):
+        for role in ROLES:
             setup["pulls"][role]["stages"].append({"step": "opened", "head": heads[role], "at": None,
                                                    "run": _await_run(context, heads[role], seen)})
         edit = setup["pulls"]["edit"]
@@ -211,7 +215,7 @@ def _act(context):
 
 def _targets(setup):
     lines = ["source %s %s" % (setup["source"]["commit"], setup["source"]["branch"])]
-    for role in ("trigger", "edit", "failing"):
+    for role in ROLES:
         pull = setup["pulls"][role]
         lines.append("merge %d %s" % (pull["number"], pull["stages"][-1]["head"]))
     return "\n".join(lines) + "\n"
@@ -221,22 +225,31 @@ def _attempts(count):
     return "%d earlier attempt%s stopped" % (count, "" if count == 1 else "s")
 
 
-def _setup(context):
-    """The setup's observations, read back once one attempt has completed; otherwise a fresh attempt.
+# The check directories whose setup stopped in this `live.py probe` run, with why: the other
+# gate probes of the run fail with it instead of attempting again.
+_STOPPED_THIS_RUN = {}
 
-    A stopped attempt fails its run and is recorded under `stopped`; the next run sets up
-    afresh under new branch names, and `gate-trigger` names the stopped attempts.
+
+def _setup(context):
+    """The setup's observations, read back once one attempt has completed; otherwise one fresh attempt per run.
+
+    A stopped attempt fails every gate probe of its run and is recorded under `stopped`; the
+    next run sets up afresh under new branch names, and `gate-trigger` names the stopped attempts.
     """
     setup = context.recall("gate_setup") or {}
     if "pulls" in setup:
         return setup
+    if context.directory in _STOPPED_THIS_RUN:
+        raise ProbeError(_STOPPED_THIS_RUN[context.directory])
     stopped = list(setup.get("stopped") or [])
     try:
         setup = _act(context)
-    except ProbeError as error:
-        context.remember("gate_setup", {"stopped": stopped + [str(error)]})
-        raise ProbeError("the gate probes' setup stopped: %s (%s); the next `live.py probe` run sets up afresh"
-                         % (error, _attempts(len(stopped))))
+    except Exception as error:  # Any failure leaves sandbox writes behind, so it is recorded.
+        reason = str(error) if isinstance(error, ProbeError) else "%s: %s" % (type(error).__name__, error)
+        context.remember("gate_setup", {"stopped": stopped + [reason]})
+        _STOPPED_THIS_RUN[context.directory] = ("the gate probes' setup stopped: %s (%s); the next `live.py probe` run sets up afresh"
+                                                % (reason, _attempts(len(stopped))))
+        raise ProbeError(_STOPPED_THIS_RUN[context.directory])
     setup["stopped"] = stopped
     context.remember("gate_setup", setup)
     with open(os.path.join(context.directory, TARGETS), "w") as handle:
@@ -256,6 +269,9 @@ ATTEMPTS_COMMAND = (
     "echo \"== account\"; gh api user --jq .login; echo \"exit=$?\"; "
     "git clone -q --filter=blob:none \"$u\" \"$d/s\"; "
     "echo \"== push $c to $b\"; git -C \"$d/s\" push \"$u\" \"$c:refs/heads/$b\" 2>&1; echo \"exit=$?\"; "
+    "echo \"== force-push $b\"; git -C \"$d/s\" checkout -q --detach \"origin/$b\" "
+    "&& git -C \"$d/s\" commit -q --amend -m \"Live check: a force-push attempt\" "
+    "&& git -C \"$d/s\" push --force \"$u\" \"HEAD:refs/heads/$b\" 2>&1; echo \"exit=$?\"; "
     "echo \"== force-push $s\"; git -C \"$d/s\" checkout -q --detach \"origin/$s\" "
     "&& git -C \"$d/s\" commit -q --amend -m \"Live check: a force-push attempt\" "
     "&& git -C \"$d/s\" push --force \"$u\" \"HEAD:refs/heads/$s\" 2>&1; echo \"exit=$?\"; "
@@ -352,9 +368,8 @@ def trigger(context):
     results = [
         Result("the gate's run on the probe PR's head is %s from %s" % (EVENT, WORKFLOW),
                run["event"] == EVENT and run["path"] == WORKFLOW and run["head_sha"] == opened["head"],
-               _run_detail(run) + ("; %d earlier setup attempt%s stopped first: %s" % (
-                   len(setup.get("stopped") or []), "" if len(setup.get("stopped") or []) == 1 else "s",
-                   " | ".join(setup["stopped"])) if setup.get("stopped") else "")),
+               _run_detail(run) + ("; %s first: %s" % (_attempts(len(setup["stopped"])).replace("attempt", "setup attempt"),
+                                                         " | ".join(setup["stopped"])) if setup.get("stopped") else "")),
         Result("the gate judged by the default branch's checkout", run["judged"] == [opened["head"], setup["default_head"]],
                "log: %s; the default branch was at %s" % (
                    "governance-gate on %s, judged by the default branch at %s" % tuple(run["judged"]) if run["judged"]
@@ -372,7 +387,8 @@ def trigger(context):
     items, _ = report_items(context.input("owner_report"))
     status, detail = items.get("pull_request_target 事件策略", (None, "not reported"))
     if context.visibility == "public":
-        results.append(Result("the owner report shows the event policy in place", status in ("已就位", "已设置"),
+        results.append(Result("the owner report shows the event policy in place, for the gate's workflow only",
+                              status in ("已就位", "已设置") and EVENT in detail and WORKFLOW in detail,
                               "%s：%s" % (status, detail) if status else detail))
         results.append(Result("the gate's %s run completed on the head under the policy and posted its result there" % EVENT,
                               run["conclusion"] == "success" and _from_actions(run["posted"], "success"),
@@ -448,10 +464,13 @@ def rulesets(context):
     pushed, code = _attempt(found, "push %s to %s" % (src["commit"], branch))
     results.append(Result("the agent's direct push to %s is rejected" % branch,
                           code not in (None, 0) and "[remote rejected]" in pushed and "GH013" in pushed, _quote(_violations(pushed))))
-    forced, code = _attempt(found, "force-push %s" % src["branch"])
-    results.append(Result("the agent's force-push is rejected", code not in (None, 0) and "Cannot force-push to this branch" in forced,
-                          "%s: %s" % (src["branch"], _quote(_violations(forced)))))
-    for role in ("trigger", "edit", "failing"):
+    # The default branch's force-push meets Gate's rule; the source branch's meets History's alone.
+    for ref in (branch, src["branch"]):
+        forced, code = _attempt(found, "force-push %s" % ref)
+        results.append(Result("the agent's force-push to %s is rejected" % ref,
+                              code not in (None, 0) and "Cannot force-push to this branch" in _violations(forced),
+                              _quote(_violations(forced))))
+    for role in ROLES:
         pull = setup["pulls"][role]
         output, code = _merge(found, pull)
         violations = _violations(output)
@@ -463,7 +482,7 @@ def rulesets(context):
     sha = (ref.get("object") or {}).get("sha")
     results.append(Result("the force-pushed branch didn't move", sha == src["commit"], "before %s, now %s" % (src["commit"], sha)))
     merged = []
-    for role in ("trigger", "edit", "failing"):
+    for role in ROLES:
         number = setup["pulls"][role]["number"]
         if context.api("repos/%s/pulls/%d" % (context.repository, number)).get("merged"):
             merged.append("#%d" % number)

@@ -308,13 +308,24 @@ UPDATE = "Cannot update this protected ref."
 FAILING = 'Required status check "governance-gate" is failing.'
 
 
-def gate_attempts(push=PUSH_VIOLATIONS, edit=(UPDATE,), push_exit=1, account="Habit098"):
-    """habit's command's output, in the shape the public sandbox printed on 2026-10-30."""
+FORCED = ("Changes must be made through a pull request.", "Cannot force-push to this branch", "Cannot update this protected ref.")
+MERGED = '{"sha":"%s","merged":true,"message":"Pull Request successfully merged"}\n' % ("9" * 40)
+
+
+def gate_attempts(push=PUSH_VIOLATIONS, edit=(UPDATE,), push_exit=1, account="Habit098", through=False):
+    """habit's command's output, in the shape the public sandbox printed on 2026-10-30; through: forced and merged."""
+    def merge(*violations):
+        return (MERGED, 0) if through else (merge_rejection(*violations), 1)
+
+    def forced(ref, *violations):
+        return ("+ %s...%s HEAD -> %s (forced update)\n" % ("8" * 7, "9" * 7, ref), 0) if through else (push_rejection(ref, *violations), 1)
+
     sections = [("account", account + "\n", 0), ("push %s to main" % SOURCE, push_rejection("main", *push), push_exit),
-                ("force-push %s" % SOURCE_BRANCH, push_rejection(SOURCE_BRANCH, "Cannot force-push to this branch"), 1),
-                ("merge %d at %s" % (PULLS["trigger"], HEADS["pushed"]), merge_rejection(UPDATE), 1),
-                ("merge %d at %s" % (PULLS["edit"], HEADS["edit"]), merge_rejection(*edit), 1),
-                ("merge %d at %s" % (PULLS["failing"], HEADS["failing"]), merge_rejection(FAILING, UPDATE), 1)]
+                ("force-push main",) + forced("main", *FORCED),
+                ("force-push %s" % SOURCE_BRANCH,) + forced(SOURCE_BRANCH, "Cannot force-push to this branch"),
+                ("merge %d at %s" % (PULLS["trigger"], HEADS["pushed"]),) + merge(UPDATE),
+                ("merge %d at %s" % (PULLS["edit"], HEADS["edit"]),) + merge(*edit),
+                ("merge %d at %s" % (PULLS["failing"], HEADS["failing"]),) + merge(FAILING, UPDATE)]
     text = "".join("== %s\n%sexit=%d\n" % section for section in sections)
     return text + "== after\n%s\trefs/heads/main\n%s\trefs/heads/%s\n" % (DEFAULT_HEAD, SOURCE, SOURCE_BRANCH)
 
@@ -403,30 +414,58 @@ class GateProbes(ProbeCase):
 
     def test_an_attempt_that_went_through_fails_the_rulesets_probe(self):
         self.with_github(sandbox_now(self.path("gh.json"), main=SOURCE, merged=(PULLS["trigger"],)))
-        through = gate_attempts(push=(), push_exit=0, account="Habit130")
+        through = gate_attempts(push=(), push_exit=0, account="Habit130", through=True)
         failed = self.failed_by(self.gate_context(attempts=through))
         self.assertEqual(failed["gate-rulesets"], ["habit's attempts ran as the agent account",
-                                                   "the agent's direct push to main is rejected", "main didn't move",
-                                                   "no probe PR merged"])
+                                                   "the agent's direct push to main is rejected",
+                                                   "the agent's force-push to main is rejected",
+                                                   "the agent's force-push to %s is rejected" % SOURCE_BRANCH,
+                                                   "the agent's merge of probe PR #4 (trigger) is rejected",
+                                                   "the agent's merge of probe PR #5 (edit) is rejected",
+                                                   "the agent's merge of probe PR #6 (failing) is rejected",
+                                                   "main didn't move", "no probe PR merged"])
+
+    def test_a_missing_agent_status_on_the_source_commit_fails_the_source_probe(self):
+        self.with_github(sandbox_now(self.path("gh.json")))
+        setup = gate_setup()
+        setup["source"]["statuses"] = [s for s in setup["source"]["statuses"] if s["context"] != "governance-gate"]
+        failed = self.failed_by(self.gate_context(setup=setup))
+        self.assertEqual(failed["gate-source"], ["the source commit carries the agent's success status for every required check"])
+
+    def test_a_gate_run_from_another_trigger_fails_the_trigger_probe(self):
+        self.with_github(sandbox_now(self.path("gh.json")))
+        setup = gate_setup()
+        setup["pulls"]["trigger"]["stages"][0]["run"]["event"] = "pull_request"
+        failed = self.failed_by(self.gate_context(setup=setup))
+        self.assertEqual(failed["gate-trigger"][:2], [
+            "the gate's run on the probe PR's head is pull_request_target from .github/workflows/governance-gate.yml",
+            "its result lands on the head as governance-gate check runs from GitHub Actions: the job's and the script's posted one"])
+
+    def test_a_missing_event_policy_fails_the_trigger_probe(self):
+        self.with_github(sandbox_now(self.path("gh.json")))
+        failed = self.failed_by(self.gate_context(report="event-policy-api-cannot-create"))
+        self.assertEqual(failed["gate-trigger"], ["the owner report shows the event policy in place, for the gate's workflow only"])
 
     def test_a_missing_attempts_output_or_a_stopped_setup_fails_each_probe_instead_of_skipping(self):
         failed = self.failed_by(self.gate_context(attempts=False))
         for name in GATE_PROBES:
             self.assertEqual(failed[name], ["%s ran" % name], name)
 
-    def test_a_stopped_setup_fails_its_run_is_recorded_and_the_next_run_sets_up_afresh(self):
-        self.with_github(self.path("nothing.json"))
+    def test_a_stopped_setup_is_attempted_once_per_run_recorded_and_fails_every_gate_probe(self):
         with open(self.path("nothing.json"), "w") as handle:
             json.dump({"tool": "gh", "calls": []}, handle)
+        self.with_github(self.path("nothing.json"))
         earlier = "`gh pr create --repo` failed: Post \"https://api.github.com/graphql\": EOF"
         stopped = self.gate_context(setup={"stopped": [earlier]})
-        for count, name in enumerate(GATE_PROBES, 2):
+        for name in GATE_PROBES:
             (result,) = self.results(name, stopped)
             self.assertFalse(result.passed)
             self.assertIn("repos/%s/commits/main" % PUBLIC, result.detail)
-            self.assertIn("1 earlier attempt stopped" if count == 2 else "%d earlier attempts stopped" % (count - 1), result.detail)
-            self.assertEqual(len(stopped.recall("gate_setup")["stopped"]), count)
-            self.assertEqual(stopped.recall("gate_setup")["stopped"][0], earlier)
+            self.assertIn("1 earlier attempt stopped", result.detail)
+            self.assertIn("the next `live.py probe` run sets up afresh", result.detail)
+        recorded = stopped.recall("gate_setup")["stopped"]
+        self.assertEqual(len(recorded), 2)
+        self.assertEqual(recorded[0], earlier)
         self.assertFalse(os.path.exists(os.path.join(stopped.directory, "gate_targets.txt")))
 
     def test_a_setup_after_stopped_attempts_names_them_in_the_trigger_probe(self):
