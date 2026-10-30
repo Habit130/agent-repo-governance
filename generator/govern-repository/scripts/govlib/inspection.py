@@ -117,6 +117,7 @@ def _github(gh, repository, data, branch):
                 "enforcement": r.get("enforcement"),
                 "conditions": r.get("conditions"),
                 "applies_to_default_branch": github.ruleset_applies(r, branch, applying),
+                "unreadable": r.get("unreadable"),
             }
             for r in rulesets
         ],

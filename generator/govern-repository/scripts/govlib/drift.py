@@ -93,6 +93,10 @@ def github_drift(gh, repository, data, branch, checks):
             continue
         ruleset = candidates[0]
         chosen.add(ruleset.get("id"))
+        if "unreadable" in ruleset:
+            found["rulesets"].append({"name": name, "id": ruleset.get("id"), "state": "unreadable", "differences": []})
+            found["unreadable"].append("ruleset %s: %s" % (name, ruleset["unreadable"]))
+            continue
         differences = target.ruleset_differences(ruleset, name, checks)
         found["rulesets"].append(
             {"name": name, "id": ruleset.get("id"), "state": "differs" if differences else "in place", "differences": differences}
@@ -119,12 +123,14 @@ def github_drift(gh, repository, data, branch, checks):
     found["settings"] = differing
     found["unreadable"].extend("setting %s" % key for key in unreadable)
     found["drift"] = bool(
-        any(r["state"] != "in place" for r in found["rulesets"])
+        any(r["state"] in ("missing", "differs") for r in found["rulesets"])
         or any(r["applies_to_default_branch"] for r in found["other_rulesets"])
         or (found["branch_protection"] or {}).get("classic_protection")
         or differing
     )
-    found["uncertain"] = [r["name"] for r in found["other_rulesets"] if r["applies_to_default_branch"] is None]
+    found["uncertain"] = [r["name"] for r in found["rulesets"] if r["state"] == "unreadable"] + [
+        r["name"] for r in found["other_rulesets"] if r["applies_to_default_branch"] is None
+    ]
     return found
 
 
@@ -212,6 +218,11 @@ def outcome(mode, found, drift):
         return "rebuild as at Initialize" if found["present"] else "Initialize"
     if mode == "Upgrade":
         return "Upgrade, handling any drift with the version change"
+    if drift["in_files"] and drift["in_github"]:
+        return (
+            "Repair through the Upgrade flow, restoring the drift in files, "
+            "then a ready owner-script command for the drift in GitHub state"
+        )
     if drift["in_files"]:
         return "Repair through the Upgrade flow, restoring the drift in files"
     if drift["in_github"]:

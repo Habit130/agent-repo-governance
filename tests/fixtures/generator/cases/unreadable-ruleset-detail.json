@@ -1,0 +1,70 @@
+{
+  "description": "One ruleset's own read fails: it is reported as unreadable and uncertain, and the run still gives its facts instead of stopping.",
+  "expect": {
+    "mode": {
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "no drift: one Chinese message, nothing written",
+      "drift": {
+        "in_github": false,
+        "github": {
+          "rulesets": [
+            {
+              "name": "Gate",
+              "id": 7001,
+              "state": "unreadable"
+            },
+            {
+              "name": "Merge",
+              "state": "in place"
+            },
+            {
+              "name": "History",
+              "state": "in place"
+            }
+          ],
+          "uncertain": [
+            "Gate"
+          ],
+          "unreadable": [
+            "ruleset Gate: Not Found"
+          ]
+        }
+      }
+    },
+    "inspect": {
+      "exit": 0,
+      "github": {
+        "rulesets": [
+          {
+            "id": 7001,
+            "name": "Gate",
+            "unreadable": "Not Found"
+          },
+          {
+            "id": 7002,
+            "unreadable": null
+          },
+          {
+            "id": 7003,
+            "unreadable": null
+          }
+        ]
+      }
+    }
+  },
+  "github": {
+    "rulesets": "target",
+    "failing_rulesets": [
+      7001
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode",
+    "inspect"
+  ]
+}

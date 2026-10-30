@@ -23,7 +23,7 @@ A case under `tests/fixtures/generator/cases/` is one JSON file:
   - `checkout_branch`: the branch `origin/HEAD` names in the checkout (default `main`).
 - `github`: the agent account's view: `owner`, `private`, `default_branch`, `permissions`,
   `invitations`, `empty`, `settings`, `labels`, `pulls`, `classic_protection`,
-  `rulesets_forbidden`, and `rulesets`: `target` (the three as #41 §7 has them, for the
+  `rulesets_forbidden`, `failing_rulesets` (ids whose own read fails), and `rulesets`: `target` (the three as #41 §7 has them, for the
   record's checks) or a list of `{"as_target": name, "changes": {...}}` and full bodies with
   an `id`. GitHub returns `bypass_actors` as null to the agent, as it did on 2026-10-29.
 - `run`: the subcommands run, in order (default `preconditions`, `mode`, `inspect`).
@@ -294,7 +294,10 @@ def recording(case, path):
         shown = [agent_view(body, ruleset_id, name) for ruleset_id, body in rulesets]
         calls.append(ow.ok(api("/rulesets?includes_parents=false&per_page=100"), [ow.listed(r) for r in shown]))
         for ruleset in shown:
-            calls.append(ow.ok(api("/rulesets/%d" % ruleset["id"]), ruleset))
+            if ruleset["id"] in github.get("failing_rulesets", []):
+                calls.append(ow.http_error(api("/rulesets/%d" % ruleset["id"]), 404, "Not Found"))
+            else:
+                calls.append(ow.ok(api("/rulesets/%d" % ruleset["id"]), ruleset))
     if not github.get("empty"):
         rules = []
         for ruleset_id, body in rulesets:
