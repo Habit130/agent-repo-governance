@@ -114,6 +114,10 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     checks against `tests/target_state.py`.
   - **`accept-invitation`** accepts the agent account's pending invitation to the
     repository, the one write before habit's answer.
+  - **No credential value is printed** (#41 §10). `inspect` names each credential shape it
+    finds by type and location, and the entry passes every JSON it prints through
+    `govlib/secrets.py`'s `redact`, which replaces each shape with its type, so a command's
+    text, a title or an error carries none. A private key's lines are never read as commands.
 - **GitHub's facts the core relies on**, as the agent account, a write collaborator, read on
   2026-10-29 from Habit130/governance-sandbox and Habit130/agent-repo-governance, and from
   GitHub's REST reference pages for rules, branches and invitations the same day:

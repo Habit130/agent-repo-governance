@@ -22,7 +22,7 @@ import json
 import os
 import re
 
-from govlib import GovernError, checkout, github, harness, workflows
+from govlib import GovernError, checkout, github, harness, secrets, workflows
 from govlib.preconditions import installed_skills
 
 INSTRUCTION_NAMES = ("AGENTS.md", "AGENTS.override.md", "CLAUDE.md", "CLAUDE.local.md")
@@ -58,18 +58,6 @@ _FENCE = re.compile(r"^\s*(```|~~~)\s*([A-Za-z0-9_-]*)")
 SHELL_FENCES = ("", "sh", "bash", "shell", "console", "zsh", "terminal")
 COMMAND_DOCS = re.compile(r"(^|/)(readme|contributing|development|hacking|building|testing)[^/]*\.(md|rst|txt)$|^docs/agents/build\.md$", re.I)
 
-# Credential shapes, by the type habit hears; the value is never kept.
-CREDENTIALS = (
-    ("GitHub token", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22,})")),
-    ("AWS access key ID", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
-    ("Slack token", re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}")),
-    ("private key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
-    ("Anthropic API key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}")),
-    ("OpenAI API key", re.compile(r"\bsk-(?!ant-)(?:proj-)?[A-Za-z0-9_-]{20,}")),
-    ("Google API key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}")),
-)
-
-
 def _text(root, path):
     data = checkout.read(root, path)
     if data is None:
@@ -88,9 +76,7 @@ def credentials(root, paths):
         if text is None:
             continue
         for number, line in enumerate(text.splitlines(), 1):
-            for kind, pattern in CREDENTIALS:
-                if pattern.search(line):
-                    found.append({"type": kind, "path": path, "line": number})
+            found.extend({"type": kind, "path": path, "line": number} for kind in secrets.kinds(line))
     return found
 
 
@@ -227,8 +213,12 @@ def commands(root, paths):
             manifests.append(entry)
         if COMMAND_DOCS.search(path):
             text = _text(root, path) or ""
-            fence = None
+            fence, key = None, False
             for number, line in enumerate(text.splitlines(), 1):
+                # A private key's body is its value too, so its lines never become commands.
+                if key or secrets.KEY_BEGIN.search(line):
+                    key = not secrets.KEY_END.search(line)
+                    continue
                 match = _FENCE.match(line)
                 if match and fence is None:
                     fence = match.group(2).lower()

@@ -17,8 +17,9 @@ A case under `tests/fixtures/generator/cases/` is one JSON file:
   - `empty`: a checkout with no commit;
   - `governed_at`: a version rendered into it with tally's confirmed values, for the branch
     `rendered_branch` (default `main`);
-  - `files`: `{path: text or null}` written or removed after that, where `<planted:TYPE>`
-    becomes a credential shape built here at test time, so no committed file holds one;
+  - `files`: `{path: text or null}` written or removed after that, where `<planted:NAME>`
+    becomes a credential shape built here at test time (`PLANTED`), so no committed file holds
+    one; the stand-in GitHub's answers plant them the same way;
   - `edits`: `[{"path", "replace": [old, new]}]` or `[{"path", "mode"}]`, applied after that;
   - `checkout_branch`: the branch `origin/HEAD` names in the checkout (default `main`).
 - `github`: the agent account's view: `owner`, `private`, `default_branch`, `permissions`,
@@ -70,6 +71,8 @@ RULESET_IDS = {"Gate": 7001, "Merge": 7002, "History": 7003}
 PLANTED = {
     "github-token": "gh" + "p_" + "Z" * 36,
     "private-key": "-----BEGIN " + "RSA PRIVATE KEY-----",
+    "private-key-body": "MIIE" + "Q" * 60,
+    "private-key-end": "-----END " + "RSA PRIVATE KEY-----",
 }
 
 _cache = {}
@@ -308,7 +311,8 @@ def recording(case, path):
     for invitation in github.get("invitations", []):
         calls.append(ow.call(["api", "--method", "PATCH", "user/repository_invitations/%d" % invitation["id"]]))
     with open(path, "w") as handle:
-        json.dump({"description": "Seam A's stand-in GitHub, written by generator_support.py.", "tool": "gh", "calls": calls}, handle)
+        handle.write(_plant(json.dumps({"description": "Seam A's stand-in GitHub, written by generator_support.py.",
+                                        "tool": "gh", "calls": calls})))
     return path
 
 

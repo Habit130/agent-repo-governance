@@ -27,6 +27,7 @@ from govlib import (  # noqa: E402
     owner,
     preconditions,
     render,
+    secrets,
     store,
     storedform,
 )
@@ -35,7 +36,8 @@ DEFAULT_STORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 
 
 def emit(facts, code=0):
-    sys.stdout.write(json.dumps(facts, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+    """Print the facts, every credential shape in them replaced by its type (#41 §10)."""
+    sys.stdout.write(json.dumps(secrets.redact(facts), indent=2, sort_keys=True, ensure_ascii=False) + "\n")
     return code
 
 
