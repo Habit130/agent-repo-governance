@@ -3,8 +3,10 @@
 The live check itself runs against the sandboxes and is its own evidence. Here the owner
 script's probes read reports the owner script printed in Seam D, and the agent account's view
 of a sandbox through the stand-in GitHub; the gate's probes judge a recorded setup and habit's
-output in the shape the public sandbox printed; habit's commands run against the stand-in with the
-`ghm` tripwire first on the path.
+output in the shape the public sandbox printed; Merge watch's probes run through `probe.run`
+against `MergeWatchSandbox`, a small GitHub of their own, with the real script judging the
+Merge summary they post; habit's commands run against the stand-in with the `ghm` tripwire
+first on the path.
 """
 
 import json
@@ -29,7 +31,13 @@ if LIVE not in sys.path:
 
 import live  # noqa: E402
 import probes  # noqa: E402
+from probes import merge_watch as watch_probes  # noqa: E402
 from probes import owner as owner_probes  # noqa: E402
+
+GOVERNANCE = os.path.join(support.REAL_STORE, "1", "templates", "dot-github", "governance")
+if GOVERNANCE not in sys.path:
+    sys.path.insert(0, GOVERNANCE)
+import merge_watch as merge_watch_script  # noqa: E402
 
 PUBLIC, PRIVATE = "Habit130/governance-sandbox", "Habit130/governance-sandbox-private"
 COMMIT = "c" * 40
@@ -98,13 +106,15 @@ class Registry(unittest.TestCase):
     def test_the_gate_and_owner_probes_register_in_the_one_shape(self):
         known = probes.registered()
         self.assertEqual(list(known), ["gate-trigger", "gate-reruns", "gate-source", "gate-rulesets",
-                                       "owner-report", "owner-state", "owner-rerun", "owner-private-secret"])
+                                       "merge-watch-clean", "merge-watch-miss", "owner-report", "owner-state", "owner-rerun", "owner-private-secret"])
         for name in ("gate-trigger", "gate-reruns", "gate-source", "gate-rulesets"):
             self.assertEqual(known[name].sandboxes, ("public", "private"))
         for probe in known.values():
             self.assertIsInstance(probe, probes.Probe)
             self.assertTrue(set(probe.sandboxes) <= {"public", "private"})
         self.assertEqual(known["owner-private-secret"].sandboxes, ("private",))
+        for name in ("merge-watch-clean", "merge-watch-miss"):
+            self.assertEqual(known[name].sandboxes, ("public", "private"))
 
     def test_a_probe_that_raises_or_returns_nothing_fails_instead_of_passing(self):
         def raising(context):
@@ -648,6 +658,368 @@ class GateProbes(ProbeCase):
         results = self.results("gate-trigger", context)
         self.assertEqual(self.failed(results), [])
         self.assertIn("the owner report skips the event policy on a private repository", [r.assertion for r in results])
+
+
+RENDER_HEAD, RENDER_SQUASH, CLEAN_SQUASH = "a" * 40, "b" * 40, "9" * 40
+CLEAN_HEAD = "d" * 40
+CODEX_BOT = "chatgpt-codex-connector[bot]"
+
+
+class MergeWatchSandbox(probes.Context):
+    """A sandbox as GitHub answers Merge watch's probes: only what they read and write."""
+
+    def __init__(self, directory, repository=PUBLIC, visibility="public"):
+        fixture = live.seed_fixture()
+        probes.Context.__init__(self, repository, visibility, "main", fixture["confirmed"], COMMIT, 3, directory)
+        self.comments, self.statuses, self.check_runs, self.issues, self.runs, self.logs = [], [], [], [], {}, {}
+        self.pulls = {3: {"number": 3, "merged": True, "head": {"sha": RENDER_HEAD}, "merge_commit_sha": RENDER_SQUASH,
+                          "merged_at": "2026-10-31T01:00:00Z"}}
+        self.writes = []
+        self.answer_bugbot_on = None  # The request number after which Bugbot's check appears.
+        self.answer_codex = False
+        self.log_error = "HTTP 404"
+
+    def gh(self, args, stdin=None):
+        args = list(args)
+        if args[:1] == ["pr"] and args[1] == "comment":
+            body = stdin if stdin is not None else args[args.index("--body") + 1]
+            self.comments.append({"user": {"login": "Habit098"}, "body": body})
+            self.writes.append(("comment", body))
+            return 0, "https://github.com/%s/pull/%s#issuecomment-%d\n" % (self.repository, args[2], len(self.comments)), ""
+        if args[:3] == ["api", "--method", "POST"]:
+            fields = dict(item.split("=", 1) for item in args[4:] if "=" in item)
+            self.statuses.insert(0, {"context": fields["context"], "state": fields["state"], "creator": {"login": "Habit098"}})
+            self.writes.append(("status", args[3], fields["context"]))
+            return 0, "{}", ""
+        if args[:2] == ["api", "--allow-escape-sequences"]:
+            job = int(args[2].split("/")[-2])
+            return (0, self.logs[job], "") if job in self.logs else (1, "", self.log_error)
+        return self.read(args[1])
+
+    def read(self, path):
+        path = path.split("repos/%s/" % self.repository, 1)[1]
+        requests = [c for c in self.comments if c["body"] == watch_probes.BUGBOT_REQUEST]
+        if self.answer_bugbot_on and len(requests) >= self.answer_bugbot_on and not self.check_runs:
+            self.check_runs.append({"name": "Cursor Bugbot", "app": {"slug": "cursor"}, "status": "completed", "conclusion": "neutral"})
+        if self.answer_codex and not [c for c in self.comments if c["user"]["login"] == CODEX_BOT]:
+            self.comments.append(codex_marker())
+        if path.startswith("issues/") and "/comments" in path:
+            answer = self.comments
+        elif "/check-runs" in path:
+            answer = {"check_runs": self.check_runs}
+        elif "/statuses" in path:
+            answer = self.statuses
+        elif path.startswith("issues?"):
+            answer = self.issues
+        elif path.startswith("pulls/"):
+            answer = self.pulls[int(path.split("/")[1])]
+        elif path.startswith("actions/runs?"):
+            sha = path.split("head_sha=")[1].split("&")[0]
+            answer = {"workflow_runs": self.runs.get(sha, [])}
+        elif path.startswith("actions/runs/"):
+            answer = {"jobs": [{"id": int(path.split("/")[2]), "name": "merge-watch"}]}
+        else:
+            return 1, "", "HTTP 404 %s" % path
+        return 0, json.dumps(answer), ""
+
+    def merge(self):
+        self.pulls[7].update({"merged": True, "merge_commit_sha": CLEAN_SQUASH, "merged_at": "2026-10-31T03:00:00Z"})
+
+    def watch_run(self, sha, run_id, line, conclusion="success", event="push", path=".github/workflows/merge-watch.yml"):
+        self.runs[sha] = [{"id": run_id, "event": event, "path": path, "status": "completed", "conclusion": conclusion,
+                           "head_sha": sha}]
+        self.logs[run_id] = ("2026-10-31T01:01:00.1Z ##[group]Run python3 .github/governance/merge_watch.py --post\n"
+                             "2026-10-31T01:01:01.2Z %s\n" % line)
+
+
+def codex_marker(head=CLEAN_HEAD, status="completed"):
+    return {"user": {"login": CODEX_BOT},
+            "body": 'Reviewed.\n<!-- codex-review-state:v1 {"code_review": {"commit_sha": "%s", "status": "%s"}} -->' % (head, status)}
+
+
+RENDER_OBSERVED = "Merged head %s, declared high, lacks: bugbot, codex, reviewer, merge-summary." % RENDER_HEAD
+
+
+def miss_issue(number=3, observed=RENDER_OBSERVED, labels=("miss",), author="github-actions[bot]", lines=None):
+    body = lines or ["Merged PR: #%d" % number, "Kind: process miss", "Category: missing-review", "Observed: %s" % observed,
+                     "Found by: Merge watch", "Bug issue: none"]
+    return {"number": 21, "title": "Miss: process miss, missing-review in #%d" % number, "body": "\n".join(body) + "\n",
+            "labels": [{"name": name} for name in labels], "user": {"login": author}, "created_at": "2026-10-31T01:01:02Z",
+            "html_url": "https://github.com/%s/issues/21" % PUBLIC}
+
+
+class MergeWatchProbes(support.TempDirCase):
+    def setUp(self):
+        support.TempDirCase.setUp(self)
+        self.sandbox = MergeWatchSandbox(tempfile.mkdtemp(prefix="check-", dir=self.tmp))
+        for name, value in (("BUGBOT_WAIT_SECONDS", -1), ("CODEX_WAIT_SECONDS", -1), ("RUN_WAIT_SECONDS", -1), ("POLL_SECONDS", 0)):
+            patcher = mock.patch.object(watch_probes, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+        def opened(context):
+            context.pulls[7] = {"number": 7, "merged": False, "head": {"sha": CLEAN_HEAD}, "merge_commit_sha": None}
+            return {"pull": 7, "branch": "live/merge-watch-3-x", "head": CLEAN_HEAD}
+        patcher = mock.patch.object(watch_probes, "_open_pull", opened)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def clean(self):
+        return probes.run(probes.registered()["merge-watch-clean"], self.sandbox)
+
+    def miss(self):
+        return probes.run(probes.registered()["merge-watch-miss"], self.sandbox)
+
+    def failed(self, results):
+        return [r.assertion for r in results if not r.passed]
+
+    def target(self, name):
+        path = os.path.join(self.sandbox.directory, name)
+        if not os.path.isfile(path):
+            return None
+        with open(path) as handle:
+            return handle.read()
+
+    def request_codex(self):
+        self.sandbox.comments.append({"user": {"login": "Habit130"}, "body": watch_probes.CODEX_REQUEST})
+
+    def to_ready(self):
+        self.clean()
+        self.request_codex()
+        self.sandbox.answer_bugbot_on, self.sandbox.answer_codex = 1, True
+        return self.clean()
+
+    def test_the_first_run_requests_bugbot_posts_the_reviewer_status_and_hands_habit_the_codex_target(self):
+        results = self.clean()
+        self.assertEqual(self.sandbox.writes, [("comment", watch_probes.BUGBOT_REQUEST),
+                                               ("status", "repos/%s/statuses/%s" % (PUBLIC, CLEAN_HEAD), "Reviewer")])
+        self.assertEqual(self.target(watch_probes.CODEX_TARGET), "7 %s\n" % CLEAN_HEAD)
+        self.assertIsNone(self.target(watch_probes.MERGE_TARGET))
+        self.assertTrue(self.failed(results))
+        self.assertIn("Codex", " ".join(r.detail for r in results))
+
+    def test_a_second_run_before_habits_request_writes_nothing_more(self):
+        self.clean()
+        before = list(self.sandbox.writes)
+        self.clean()
+        self.assertEqual(self.sandbox.writes, before)
+
+    def test_with_every_fact_on_the_head_the_summary_goes_up_and_the_real_script_finds_nothing_missing(self):
+        results = self.to_ready()
+        self.assertEqual(self.target(watch_probes.MERGE_TARGET), "7 %s\n" % CLEAN_HEAD)
+        self.assertEqual(self.failed(results), ["habit merged the PR at the ready head"])
+        self.assertIn("ready for habit's merge", " ".join(r.assertion for r in results if r.passed))
+        summaries = [w[1] for w in self.sandbox.writes if w[0] == "comment" and w[1].startswith("## Merge summary")]
+        self.assertEqual(len(summaries), 1)
+        self.assertEqual(summaries[0].split("\n")[:2], [
+            "## Merge summary: high at %s" % CLEAN_HEAD[:7],
+            "Required reviews: self-verification=clear, bugbot=clear, codex=clear, reviewer=clear"])
+
+        def read(path):
+            path = path.split("repos/%s/" % PUBLIC, 1)[1]
+            if path.startswith("issues/"):
+                return self.sandbox.comments
+            return self.sandbox.statuses if "/statuses" in path else self.sandbox.check_runs
+        self.assertEqual(merge_watch_script.missing_reviews(read, PUBLIC, "Habit098", "high", CLEAN_HEAD, 7), [])
+
+    def test_no_comment_on_a_sandbox_pr_but_the_two_requests_writes_a_review_trigger(self):
+        self.to_ready()
+        for kind, *rest in self.sandbox.writes:
+            if kind == "comment" and rest[0] != watch_probes.BUGBOT_REQUEST:
+                self.assertNotIn("@cursor", rest[0])
+                self.assertNotIn("@codex", rest[0])
+
+    def test_bugbot_silent_after_one_retry_stops_with_both_requests_and_no_more_are_sent(self):
+        self.clean()
+        self.request_codex()
+        results = self.clean()
+        self.assertEqual(len(self.failed(results)), 1)
+        self.assertIn("no completed Cursor Bugbot check", results[0].detail)
+        self.assertIn("2 requests", results[0].detail)
+        self.clean()
+        self.assertEqual(len([w for w in self.sandbox.writes if w == ("comment", watch_probes.BUGBOT_REQUEST)]), 2)
+        self.assertIsNone(self.target(watch_probes.MERGE_TARGET))
+
+    def test_bugbot_answering_the_retry_counts(self):
+        self.clean()
+        self.request_codex()
+        self.sandbox.answer_bugbot_on, self.sandbox.answer_codex = 2, True
+        self.assertEqual(self.failed(self.clean()), ["habit merged the PR at the ready head"])
+
+    def test_a_bugbot_check_from_another_app_or_cancelled_is_not_an_answer(self):
+        self.clean()
+        self.request_codex()
+        self.sandbox.answer_codex = True
+        self.sandbox.check_runs.extend([
+            {"name": "Cursor Bugbot", "app": {"slug": "other"}, "status": "completed", "conclusion": "success"},
+            {"name": "Cursor Bugbot", "app": {"slug": "cursor"}, "status": "completed", "conclusion": "cancelled"}])
+        self.assertIn("no completed Cursor Bugbot check", self.clean()[0].detail)
+
+    def test_a_codex_marker_not_completed_or_for_another_head_times_out_and_quotes_the_bot(self):
+        self.clean()
+        self.request_codex()
+        self.sandbox.answer_bugbot_on = 1
+        self.sandbox.comments.append(codex_marker(status="in_progress"))
+        self.sandbox.comments.append(codex_marker(head="e" * 40))
+        results = self.clean()
+        self.assertIn("no completed Codex marker for %s" % CLEAN_HEAD[:12], results[0].detail)
+        self.assertIn("Reviewed.", results[0].detail)
+        self.assertIsNone(self.target(watch_probes.MERGE_TARGET))
+
+    def merged(self):
+        self.to_ready()
+        self.sandbox.merge()
+
+    def test_a_clean_merge_passes_on_merge_watchs_own_run(self):
+        self.merged()
+        self.sandbox.watch_run(CLEAN_SQUASH, 41, "No miss in this push event.")
+        results = self.clean()
+        self.assertEqual(self.failed(results), [])
+        details = " ".join(r.detail for r in results)
+        self.assertIn("run 41, event push", details)
+        self.assertIn("No miss in this push event.", details)
+        self.assertEqual(len(results), 8)
+
+    def test_merge_watchs_run_decides_clean_not_the_agents_reading(self):
+        for line, conclusion in (("MISS Miss: process miss, missing-review in #7. Merged head d lacks: codex.", "success"),
+                                 ("UNREADABLE repos/x: HTTP 403", "failure"),
+                                 ("No miss in this push event.", "failure")):
+            self.setUp()
+            self.merged()
+            self.sandbox.watch_run(CLEAN_SQUASH, 41, line, conclusion=conclusion)
+            self.assertTrue(self.failed(self.clean()), line)
+
+    def test_a_record_naming_the_clean_pr_fails(self):
+        self.merged()
+        self.sandbox.watch_run(CLEAN_SQUASH, 41, "No miss in this push event.")
+        self.sandbox.issues.append(miss_issue(number=7))
+        self.assertEqual(self.failed(self.clean()), ["no miss record names the PR"])
+
+    def test_no_merge_watch_run_on_the_squash_commit_fails_on_the_timeout(self):
+        self.merged()
+        self.assertIn("no completed merge-watch push run on %s" % CLEAN_SQUASH[:12], self.clean()[-1].detail)
+
+    def test_a_log_that_cant_be_read_fails_with_the_reason_and_no_signed_url(self):
+        self.merged()
+        self.sandbox.watch_run(CLEAN_SQUASH, 41, "No miss in this push event.")
+        del self.sandbox.logs[41]
+        self.sandbox.log_error = 'Get "https://logs.example/job.txt?sig=secret": net/http: TLS handshake timeout'
+        detail = self.clean()[-1].detail
+        self.assertIn("run 41's log couldn't be read: TLS handshake timeout", detail)
+        self.assertNotIn("sig=secret", detail)
+
+    def test_a_run_from_another_trigger_is_not_the_push_run(self):
+        self.merged()
+        self.sandbox.watch_run(CLEAN_SQUASH, 41, "No miss in this push event.", event="workflow_run")
+        self.assertTrue(self.failed(self.clean()))
+
+    def recorded_miss(self, **kwargs):
+        self.sandbox.watch_run(RENDER_SQUASH, 40, "MISS %s. %s" % ("Miss: process miss, missing-review in #3", RENDER_OBSERVED))
+        self.sandbox.issues.append(miss_issue(**kwargs))
+
+    def test_the_render_prs_record_passes_in_the_miss_record_format(self):
+        self.recorded_miss()
+        results = self.miss()
+        self.assertEqual(self.failed(results), [])
+        details = " ".join(r.detail for r in results)
+        self.assertIn("https://github.com/%s/issues/21" % PUBLIC, details)
+        self.assertIn("run 40, event push", details)
+
+    def test_bodies_with_crlf_line_ends_read_as_the_script_reads_them(self):
+        self.recorded_miss()
+        self.sandbox.issues[0]["body"] = self.sandbox.issues[0]["body"].replace("\n", "\r\n")
+        self.assertEqual(self.failed(self.miss()), [])
+        self.to_ready()
+        for comment in self.sandbox.comments:
+            comment["body"] = comment["body"].replace("\n", "\r\n")
+        self.sandbox.merge()
+        self.sandbox.watch_run(CLEAN_SQUASH, 41, "No miss in this push event.")
+        self.assertEqual(self.failed(self.clean()), [])
+
+    def test_a_record_out_of_format_fails(self):
+        cases = (
+            dict(labels=("miss", "needs-triage")),
+            dict(author="Habit098"),
+            dict(lines=["Kind: process miss", "Merged PR: #3", "Category: missing-review", "Observed: %s" % RENDER_OBSERVED,
+                        "Found by: Merge watch", "Bug issue: none"]),
+            dict(observed="Merged head %s, declared high, lacks: bugbot, codex." % RENDER_HEAD),
+        )
+        for case in cases:
+            self.setUp()
+            self.recorded_miss(**case)
+            self.assertTrue(self.failed(self.miss()), case)
+
+    def test_a_record_for_another_head_is_not_this_checks(self):
+        self.recorded_miss(observed=RENDER_OBSERVED.replace(RENDER_HEAD, "e" * 40))
+        self.assertTrue(self.failed(self.miss()))
+
+    def test_no_record_fails(self):
+        self.sandbox.watch_run(RENDER_SQUASH, 40, "No miss in this push event.")
+        results = self.miss()
+        self.assertTrue(self.failed(results))
+        self.assertIn("no miss record", " ".join(r.detail for r in results))
+
+    def test_the_private_sandbox_takes_the_same_probes_from_the_context(self):
+        self.sandbox = MergeWatchSandbox(tempfile.mkdtemp(prefix="check-", dir=self.tmp), PRIVATE, "private")
+        self.merged()
+        self.sandbox.watch_run(CLEAN_SQUASH, 41, "No miss in this push event.")
+        self.assertEqual(self.failed(self.clean()), [])
+        for _, _, line in watch_probes.habits_commands(self.sandbox):
+            self.assertIn("--repo %s " % PRIVATE, line)
+            self.assertNotIn("--repo %s " % PUBLIC, line)
+
+
+class MergeWatchCommands(support.TempDirCase):
+    """habit's two probe commands, under /bin/bash with `ghm` as the shell function it is."""
+
+    def lines(self):
+        directory = tempfile.mkdtemp(prefix="check-", dir=self.tmp)
+        return directory, MergeWatchSandbox(directory), dict((label.split(",")[0], line) for _, label, line in
+                                                             watch_probes.habits_commands(MergeWatchSandbox(directory)))
+
+    def run_line(self, line):
+        log = self.path("ghm.log")
+        script = 'ghm() { printf "%%s\\n" "$*" >> %s; }\n%s\n' % (log, line)
+        result = subprocess.run(["/bin/bash", "-c", script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                universal_newlines=True, stdin=subprocess.DEVNULL)
+        calls = []
+        if os.path.isfile(log):
+            with open(log) as handle:
+                calls = handle.read().splitlines()
+        return result.stdout, calls
+
+    def test_each_is_one_line_at_the_top_level_so_ghm_stays_a_function(self):
+        _, _, lines = self.lines()
+        self.assertEqual(sorted(lines), ["Codex review bot request", "Pinned merge"])
+        for line in lines.values():
+            self.assertNotIn("\n", line)
+            self.assertNotIn("/bin/bash", line)
+            self.assertNotIn(" gh ", line)
+
+    def test_neither_runs_ghm_before_its_target_exists_and_each_says_why(self):
+        _, _, lines = self.lines()
+        for line in lines.values():
+            output, calls = self.run_line(line)
+            self.assertEqual(calls, [])
+            self.assertIn("live.py probe", output)
+
+    def test_the_pinned_merge_names_the_ready_head_only_once_a_run_wrote_it(self):
+        directory, _, lines = self.lines()
+        with open(os.path.join(directory, watch_probes.MERGE_TARGET), "w") as handle:
+            handle.write("7 %s\n" % CLEAN_HEAD)
+        _, calls = self.run_line(lines["Pinned merge"])
+        self.assertEqual(calls, ["pr merge 7 --repo %s --admin --squash --match-head-commit %s" % (PUBLIC, CLEAN_HEAD)])
+
+    def test_the_codex_request_is_habits_on_the_probe_pr(self):
+        directory, _, lines = self.lines()
+        with open(os.path.join(directory, watch_probes.CODEX_TARGET), "w") as handle:
+            handle.write("7 %s\n" % CLEAN_HEAD)
+        _, calls = self.run_line(lines["Codex review bot request"])
+        self.assertEqual(calls, ["pr comment 7 --repo %s --body %s" % (PUBLIC, watch_probes.CODEX_REQUEST)])
+
+    def test_the_merge_label_says_not_to_merge_before_ready(self):
+        labels = [label for _, label, _ in watch_probes.habits_commands(MergeWatchSandbox(self.tmp))]
+        self.assertIn("reports ready", labels[1])
 
 
 class Comment(unittest.TestCase):

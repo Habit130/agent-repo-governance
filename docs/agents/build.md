@@ -46,7 +46,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, personal skills' Codex problems only reported, and the Codex key detector's shapes | macos |
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
-| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets` | macos |
+| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets` | macos |
 | `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place | macos |
 
 ## CI
@@ -288,7 +288,7 @@ yields a false miss record; it never blocks anything and is never a required che
   - The list endpoint `commits/{ref}/statuses` gives each status's `creator`, newest first;
     the combined `commits/{ref}/status` doesn't, so the script reads the list (GitHub's REST
     reference for commit statuses, read 2026-10-30).
-- **The live check** is #61's, through the live-check runner.
+- **The live check** is below, under Merge watch's live check.
 
 ## The owner script and live checks
 
@@ -394,6 +394,50 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
     - A merge gets HTTP 405, `Repository rule violations found`, with
       `Required status check "governance-gate" is failing.` while the gate fails, and
       `Cannot update this protected ref.`
+
+## Merge watch's live check
+
+`tests/live/probes/merge_watch.py` holds Merge watch's probes (#41 §9, seam 4):
+`merge-watch-clean` for a head with every review, and `merge-watch-miss` for a planted miss.
+Its docstring gives each step and what each assertion reads.
+
+- **The planted miss is the render PR.** It is declared high and nothing reviews it, so its
+  merge always leaves a `missing-review` record, and `merge-watch-miss` judges that record.
+  Miss records in a sandbox count nowhere (#44 §12).
+- **Two sandbox merges, in this order after `prepare --probe merge-watch-clean --probe
+  merge-watch-miss`:**
+  1. habit merges the render PR and runs the owner-script command.
+  2. `live.py probe` without `--post` opens the probe PR, requests Bugbot, posts the agent's
+     `Reviewer` status and writes `merge_watch_codex.txt`.
+  3. habit runs the printed Codex review bot request.
+  4. `live.py probe` waits for both bots, posts the Merge summary and reports `READY`. Give
+     it 40 minutes in the background: two 15-minute waits for Bugbot and 10 for the Codex
+     review bot. It
+     writes `merge_watch_merge.txt` only on `READY`.
+  5. habit runs the printed pinned merge, which refuses until that file exists.
+  6. `live.py probe --post` judges. Each sandbox PR's head is fixed by then; a new head would
+     reset all four facts.
+- **Merge watch's run decides CRIT-1, not the agent's reading.** A failed read counts as
+  absent, so a push run that says `No miss in this push event.`, with no `UNREADABLE` line,
+  has read all four facts with its own token.
+- **A bot that doesn't answer stops the check.** After one Bugbot request and one retry, or
+  a Codex wait that runs out, the run fails naming what came back. That is an environment
+  blocker and never a reduction. The Merge summary lists every kind as `clear`, so no kind
+  counts without being read.
+- **Reading a run's log.** GitHub redirects it to Azure Blob Storage. On 2026-10-31 `gh` 2.98
+  timed out in the TLS handshake with that host from habit's machine, while `curl` reached
+  it, and `GODEBUG=tlsmlkem=0` cleared it. When the probes report that a log couldn't be
+  read with `TLS handshake timeout`, run `live.py probe` with that variable set.
+- **Not covered:** `workflow_run`. Planting a red default branch would take a new sandbox
+  workflow, and neither #41's seam 4 nor #61's criteria ask for it.
+- **The private sandbox (#53)** takes the same probes, unchanged: `prepare --sandbox private`
+  and the same `--probe` names. They read the repository and default branch from the
+  context, and habit's commands name that repository.
+- **GitHub's facts they rely on**, from github/docs at `85c3298`, read 2026-10-31:
+  `github-token-scope-descriptions.md` lists `contents`, `pull-requests`, `issues`, `checks`,
+  `statuses` and `actions` as the permissions behind what the script reads and writes, and
+  sets every unlisted permission to `none`. A run's log comes from
+  `actions/jobs/<id>/logs`, the gate's read, through `gh api --allow-escape-sequences`.
 
 ## Operational constraints
 
