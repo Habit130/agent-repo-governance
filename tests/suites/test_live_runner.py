@@ -905,7 +905,7 @@ class MergeWatchProbes(support.TempDirCase):
         del self.sandbox.logs[41]
         self.sandbox.log_error = 'Get "https://logs.example/job.txt?sig=secret": net/http: TLS handshake timeout'
         detail = self.clean()[-1].detail
-        self.assertIn("run 41's log couldn't be read: net/http: TLS handshake timeout", detail)
+        self.assertIn("run 41's log couldn't be read: TLS handshake timeout", detail)
         self.assertNotIn("sig=secret", detail)
 
     def test_a_run_from_another_trigger_is_not_the_push_run(self):
