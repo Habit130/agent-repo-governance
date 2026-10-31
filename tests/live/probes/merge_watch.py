@@ -236,8 +236,11 @@ def _outcomes(context, run):
     job = next((j for j in jobs if j.get("name") == "merge-watch"), None)
     if job is None:
         return []
-    code, log, _ = context.gh(["api", "--allow-escape-sequences", "repos/%s/actions/jobs/%s/logs" % (context.repository, job["id"])])
-    return _OUTCOME.findall(log) if code == 0 else []
+    code, log, err = context.gh(["api", "--allow-escape-sequences", "repos/%s/actions/jobs/%s/logs" % (context.repository, job["id"])])
+    if code != 0:
+        # gh's message holds the log's signed URL, so only its last clause leaves here.
+        raise ProbeError("run %s's log couldn't be read: %s" % (run["id"], err.strip().rsplit(": ", 1)[-1]))
+    return _OUTCOME.findall(log)
 
 
 def _await_run(context, commit):

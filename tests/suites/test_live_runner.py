@@ -677,6 +677,7 @@ class MergeWatchSandbox(probes.Context):
         self.writes = []
         self.answer_bugbot_on = None  # The request number after which Bugbot's check appears.
         self.answer_codex = False
+        self.log_error = "HTTP 404"
 
     def gh(self, args, stdin=None):
         args = list(args)
@@ -692,7 +693,7 @@ class MergeWatchSandbox(probes.Context):
             return 0, "{}", ""
         if args[:2] == ["api", "--allow-escape-sequences"]:
             job = int(args[2].split("/")[-2])
-            return (0, self.logs[job], "") if job in self.logs else (1, "", "HTTP 404")
+            return (0, self.logs[job], "") if job in self.logs else (1, "", self.log_error)
         return self.read(args[1])
 
     def read(self, path):
@@ -897,6 +898,15 @@ class MergeWatchProbes(support.TempDirCase):
     def test_no_merge_watch_run_on_the_squash_commit_fails_on_the_timeout(self):
         self.merged()
         self.assertIn("no completed merge-watch push run on %s" % CLEAN_SQUASH[:12], self.clean()[-1].detail)
+
+    def test_a_log_that_cant_be_read_fails_with_the_reason_and_no_signed_url(self):
+        self.merged()
+        self.sandbox.watch_run(CLEAN_SQUASH, 41, "No miss in this push event.")
+        del self.sandbox.logs[41]
+        self.sandbox.log_error = 'Get "https://logs.example/job.txt?sig=secret": net/http: TLS handshake timeout'
+        detail = self.clean()[-1].detail
+        self.assertIn("run 41's log couldn't be read: net/http: TLS handshake timeout", detail)
+        self.assertNotIn("sig=secret", detail)
 
     def test_a_run_from_another_trigger_is_not_the_push_run(self):
         self.merged()

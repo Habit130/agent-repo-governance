@@ -411,7 +411,8 @@ Its docstring gives each step and what each assertion reads.
      `Reviewer` status and writes `merge_watch_codex.txt`.
   3. habit runs the printed Codex review bot request.
   4. `live.py probe` waits for both bots, posts the Merge summary and reports `READY`. Give
-     it 30 minutes in the background, since Bugbot alone can take two 15-minute waits. It
+     it 40 minutes in the background: two 15-minute waits for Bugbot and 10 for the Codex
+     review bot. It
      writes `merge_watch_merge.txt` only on `READY`.
   5. habit runs the printed pinned merge, which refuses until that file exists.
   6. `live.py probe --post` judges. Each sandbox PR's head is fixed by then; a new head would
@@ -423,6 +424,10 @@ Its docstring gives each step and what each assertion reads.
   a Codex wait that runs out, the run fails naming what came back. That is an environment
   blocker and never a reduction. The Merge summary lists every kind as `clear`, so no kind
   counts without being read.
+- **Reading a run's log.** GitHub redirects it to Azure Blob Storage. On 2026-10-31 `gh` 2.98
+  timed out in the TLS handshake with that host from habit's machine, while `curl` reached
+  it, and `GODEBUG=tlsmlkem=0` cleared it. When the probes report that a log couldn't be
+  read with `TLS handshake timeout`, run `live.py probe` with that variable set.
 - **Not covered:** `workflow_run`. Planting a red default branch would take a new sandbox
   workflow, and neither #41's seam 4 nor #61's criteria ask for it.
 - **The private sandbox (#53)** takes the same probes, unchanged: `prepare --sandbox private`
