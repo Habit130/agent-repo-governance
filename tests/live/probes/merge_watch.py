@@ -66,6 +66,10 @@ def _login(item):
     return (item.get("user") or item.get("creator") or {}).get("login") or ""
 
 
+def _lines(item):
+    return (item.get("body") or "").replace("\r\n", "\n").split("\n")
+
+
 # Setup, as the agent account.
 
 
@@ -163,7 +167,7 @@ def _title(head):
 
 def _summary(comments, head):
     for comment in reversed(comments):
-        lines = (comment.get("body") or "").split("\n")
+        lines = _lines(comment)
         if _login(comment).lower() == AGENT.lower() and lines[0] == _title(head):
             return "%s; %s" % (lines[0], lines[1]) if lines[1:2] == [REVIEWS] else None
     return None
@@ -306,10 +310,10 @@ def miss(context):
                       _run_detail(run, outcomes))]
     observed_prefix = "Observed: Merged head %s," % head
     found = [issue for issue in _records(context) if issue.get("title") == title
-             and any(line.startswith(observed_prefix) for line in (issue.get("body") or "").split("\n"))]
+             and any(line.startswith(observed_prefix) for line in _lines(issue))]
     if not found:
         return results + [Result("a miss record names the render PR's head", False, "no miss record titled %r names %s" % (title, head))]
-    issue, lines = found[0], found[0]["body"].split("\n")
+    issue, lines = found[0], _lines(found[0])
     labels = [label.get("name") for label in issue.get("labels") or []]
     observed = _OBSERVED.match(lines[3]) if len(lines) > 3 else None
     lacks = set(observed.group(2).split(", ")) if observed else set()

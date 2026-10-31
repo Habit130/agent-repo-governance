@@ -925,6 +925,17 @@ class MergeWatchProbes(support.TempDirCase):
         self.assertIn("https://github.com/%s/issues/21" % PUBLIC, details)
         self.assertIn("run 40, event push", details)
 
+    def test_bodies_with_crlf_line_ends_read_as_the_script_reads_them(self):
+        self.recorded_miss()
+        self.sandbox.issues[0]["body"] = self.sandbox.issues[0]["body"].replace("\n", "\r\n")
+        self.assertEqual(self.failed(self.miss()), [])
+        self.to_ready()
+        for comment in self.sandbox.comments:
+            comment["body"] = comment["body"].replace("\n", "\r\n")
+        self.sandbox.merge()
+        self.sandbox.watch_run(CLEAN_SQUASH, 41, "No miss in this push event.")
+        self.assertEqual(self.failed(self.clean()), [])
+
     def test_a_record_out_of_format_fails(self):
         cases = (
             dict(labels=("miss", "needs-triage")),
