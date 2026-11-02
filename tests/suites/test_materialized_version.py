@@ -44,6 +44,11 @@ TRACKER_FILES = (
 BUILD_SKELETON = "docs/agents/build.md"
 # triage-labels.md gives each label the generator creates, with the manifest's description.
 TRIAGE_LABELS = "docs/agents/triage-labels.md"
+# Required roles are independent of the manifest (#79); categories are not states.
+TRIAGE_ROLES = {
+    "Category": ("bug", "enhancement"),
+    "State": ("needs-triage", "needs-info", "ready-for-agent", "ready-for-human", "wontfix"),
+}
 # The PR template (#41 §1): the gate reads every body line that starts with `Risk:` or
 # `Reverts:`, inside HTML comments too (#41 §8), so no comment line may start that way.
 PR_TEMPLATE = ".github/PULL_REQUEST_TEMPLATE.md"
@@ -180,6 +185,22 @@ def label_mismatches(text, labels):
         for label in labels
         if not any("`%s`" % label["name"] in row and label["description"] in row for row in rows)
     ]
+
+
+def triage_role_failures(text, labels):
+    """Required category/state roles must be provisioned and mapped to their own labels."""
+    failures = []
+    for kind, roles in TRIAGE_ROLES.items():
+        section = level_two_section(text, "## %s roles" % kind, TRIAGE_LABELS)
+        rows = [[cell.strip() for cell in line.strip("|").split("|")]
+                for line in section.split("\n") if line.startswith("|")]
+        for role in roles:
+            if sum(label["name"] == role for label in labels) != 1:
+                failures.append("manifest must provision %s once" % role)
+            matches = [row for row in rows if row[0] == "`%s`" % role]
+            if len(matches) != 1 or len(matches[0]) < 2 or matches[0][1] != "`%s`" % role:
+                failures.append("%s role %s must map to its own label once" % (kind, role))
+    return failures
 
 
 def marker_failures(text, where):
@@ -408,6 +429,31 @@ class MaterializedVersionOne(support.TempDirCase):
         labels = store.Store(support.REAL_STORE).manifest(1)["labels"]
         text = support.read_text(os.path.join(self.worktree, *TRIAGE_LABELS.split("/")))
         self.assertEqual(label_mismatches(text, labels), [])
+
+    def test_triage_mapping_independently_requires_two_categories_and_five_states(self):
+        labels = store.Store(support.REAL_STORE).manifest(1)["labels"]
+        self.assertEqual(triage_role_failures(self.text(TRIAGE_LABELS), labels), [])
+
+    def test_each_missing_or_wrong_category_mapping_fails_even_with_joint_omissions(self):
+        labels = store.Store(support.REAL_STORE).manifest(1)["labels"]
+        text = self.text(TRIAGE_LABELS)
+        for category in ("bug", "enhancement"):
+            row = next(line for line in text.splitlines() if line.startswith("| `%s` |" % category))
+            missing_mapping = text.replace(row + "\n", "")
+            missing_label = [label for label in labels if label["name"] != category]
+            mapping_failure = "Category role %s must map to its own label once" % category
+            provision_failure = "manifest must provision %s once" % category
+            cells = row.split("|")
+            cells[2] = " `needs-triage` "
+            wrong_mapping = text.replace(row, "|".join(cells))
+            for mutation, mapped, provisioned, expected in (
+                ("manifest only", text, missing_label, [provision_failure]),
+                ("mapping only", missing_mapping, labels, [mapping_failure]),
+                ("both missing", missing_mapping, missing_label, [provision_failure, mapping_failure]),
+                ("wrong mapping", wrong_mapping, labels, [mapping_failure]),
+            ):
+                with self.subTest(category=category, mutation=mutation):
+                    self.assertEqual(triage_role_failures(mapped, provisioned), expected)
 
     def test_a_planted_label_description_fails_the_label_check(self):
         labels = store.Store(support.REAL_STORE).manifest(1)["labels"]

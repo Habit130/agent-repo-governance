@@ -39,6 +39,8 @@
     "writing-for-agents"
   ],
   "labels": [
+    {"name": "bug", "color": "d73a4a", "description": "Something isn't working"},
+    {"name": "enhancement", "color": "a2eeef", "description": "New feature or request"},
     {"name": "needs-triage", "color": "D4C5F9", "description": "Maintainer needs to evaluate this issue"},
     {"name": "needs-info", "color": "D876E3", "description": "Waiting on reporter for more information"},
     {"name": "ready-for-agent", "color": "0E8A16", "description": "Fully specified, ready for an AFK agent"},
