@@ -83,6 +83,38 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
   `python3 generator/govern-repository/scripts/govern.py compare --worktree <path>`. It reads
   the repository and default branch from the worktree's `origin`, and compares the installed
   version unless `--version` names another.
+- **Literal default branches** use Git's rules, not a punctuation allowlist. Both render
+  and compare run `git check-ref-format refs/heads/<name>` as an argument vector without
+  a shell, plus Git's branch-only leading-`-` and `HEAD` restrictions. They never use
+  `--branch`, which expands `@{-n}` using checkout history, or normalize the spelling.
+  A name containing the exact substring `${{` is explicitly unsupported: both commands
+  return exit 2 and a JSON `error` identifying the unsupported Actions-expression marker
+  before writes. This is the chosen support boundary, not a claim of platform
+  impossibility; no expression-based encoding (including a static string expression) is
+  generated. Dollar signs and braces without that substring remain supported.
+- **Branch filter encoding has two layers.** In the Gate and Merge watch workflow templates,
+  a bare `@@default_branch@@` on its own six-space-indented list-item line represents one
+  complete filter scalar. Actions `+` and leading `!` are escaped with backslashes, then
+  JSON-compatible double quoting encodes the YAML scalar (quotes, backslashes and YAML
+  line breaks included). For example `release+stable` becomes YAML `"release\\+stable"`,
+  whose decoded filter is `release\+stable`. Gate's one filter and Merge watch's two
+  filters use the same path in rendering and comparison. Prose uses retain the unescaped
+  literal name; ordinary `main` retains its previous rendered bytes. Substitution is a
+  single pass: inserted values never become template source. The existing three token
+  names and unknown/leftover-token refusal remain unchanged, and render plans every file
+  before writing any of them.
+  `tests/fixtures/stores/branch-names.json` records S-2's miss, hand-written expected
+  filters and nearby nonmatches, invalid Git names, unsupported marker inputs and token
+  safeguards. The `render` suite exercises both real CLIs against synthetic and real v1
+  stores, plants mismatches at all three filter sites, and keeps complete no-write
+  snapshots including `.git` and its objects.
+  Primary sources read 2026-11-02: [Git naming and shorthand rules](https://git-scm.com/docs/git-check-ref-format#_description),
+  [Git's branch-only checks](https://github.com/git/git/blob/master/refs.c) (`check_branch_ref`),
+  [Actions branch filters and filter grammar](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#filter-pattern-cheat-sheet),
+  [YAML quoted scalar escapes](https://yaml.org/spec/1.2.2/#73-flow-scalar-styles).
+  Git forbids the filter operators `*`, `?`, `[` and backslash in literal branch names;
+  `+` repeats the preceding character, and leading `!` negates a filter. YAML quoting
+  alone does not escape those filter operators.
 - **Unreleased versions** are rendered or compared only with `--allow-unreleased`, which a
   test, scenario or live-check runner passes for its own run. The generator's procedure
   never passes it.

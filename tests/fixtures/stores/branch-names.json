@@ -1,0 +1,26 @@
+{
+  "miss": "AC-45-v1 S-2 (#64): Git-valid literal branch names were refused; all three workflow filters need contextual encoding.",
+  "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#filter-pattern-cheat-sheet, read 2026-11-02. Backslash escapes filter operators; YAML quoting is a separate layer.",
+  "accepted": [
+    {"branch": "main", "filter": "main", "nonmatches": ["Main", "main/child", "mains"]},
+    {"branch": "release+stable", "filter": "release\\+stable", "nonmatches": ["releasestable", "releaseestable", "release++stable"]},
+    {"branch": "!stable", "filter": "\\!stable", "nonmatches": ["stable", "!!stable", "other"]},
+    {"branch": "team/release+stable", "filter": "team/release\\+stable", "nonmatches": ["team/releasestable", "team/releaseestable", "other/release+stable"]},
+    {"branch": "quote'branch", "filter": "quote'branch", "nonmatches": ["quotebranch", "quote\"branch", "quote'branch/child"]},
+    {"branch": "quote\"branch", "filter": "quote\"branch", "nonmatches": ["quotebranch", "quote'branch", "quote\"branch/child"]},
+    {"branch": "topic/$dollar", "filter": "topic/$dollar", "nonmatches": ["topic/dollar", "topic/$dollars"]},
+    {"branch": "topic/{braces}", "filter": "topic/{braces}", "nonmatches": ["topic/braces", "topic/{brace}"]},
+    {"branch": "topic/${one}", "filter": "topic/${one}", "nonmatches": ["topic/{one}", "topic/$one"]},
+    {"branch": "topic/$(touch-owned);echo", "filter": "topic/$(touch-owned);echo", "nonmatches": ["topic/owned", "other/$(touch-owned);echo"]},
+    {"branch": "topic/close]bang!", "filter": "topic/close]bang!", "nonmatches": ["topic/closebang!", "topic/close]bang"]},
+    {"branch": "@", "filter": "@", "nonmatches": ["@@", "main"]},
+    {"branch": "发布/稳定+", "filter": "发布/稳定\\+", "nonmatches": ["发布/稳定", "发布/稳定定"]},
+    {"branch": "topic/🚀", "filter": "topic/🚀", "nonmatches": ["topic/rocket", "topic/🚀🚀"]},
+    {"branch": "topic/line\u0085end", "filter": "topic/line\u0085end", "nonmatches": ["topic/lineend", "topic/line/end"]},
+    {"branch": "topic/line\u2028end", "filter": "topic/line\u2028end", "nonmatches": ["topic/lineend", "topic/line/end"]},
+    {"branch": "@@-@@", "filter": "@@-@@", "nonmatches": ["@-@", "@@-@@/child"]}
+  ],
+  "invalid": ["-stable", "HEAD", "two words", "a..b", "a.lock/next", "a@{b", "", "/main", "main/", ".hidden", "a//b", "a\\b", "a*b", "a?b", "a[b", "line\nbreak"],
+  "unsupported": ["${{x}}", "topic/${{x}}", "topic/${{unterminated"],
+  "tokens": ["@@version@@", "topic/@@unknown@@", "topic/@@leftover"]
+}

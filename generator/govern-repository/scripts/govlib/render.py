@@ -12,8 +12,10 @@ Per class, into a temporary directory or a target worktree's top level:
 - skeleton: written only when the target is absent, since what is there is repository-owned.
 """
 
+import json
 import os
 import re
+import subprocess
 
 from govlib import GovernError, record, storedform
 from govlib.store import StoreError
@@ -28,7 +30,11 @@ BEGIN = re.compile(r"^<!-- governance:begin v[1-9][0-9]* -->$")
 END = "<!-- governance:end -->"
 
 _REPOSITORY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$")
-_BRANCH = re.compile(r"^[A-Za-z0-9._/-]+$")
+
+# In these workflows a bare default-branch token occupies one complete filter scalar.
+# Other uses (including prose in synthetic stores) retain the original literal value.
+BRANCH_FILTER_WORKFLOWS = (".github/workflows/governance-gate.yml", ".github/workflows/merge-watch.yml")
+BRANCH_FILTER_SCALAR = re.compile(r"^(      - )@@default_branch@@$", re.M)
 
 
 class RenderError(GovernError):
@@ -61,18 +67,26 @@ def select_version(store, version=None, allow_unreleased=False):
 
 
 def check_values(version, repository, default_branch):
+    """Validate literal Git names, with an explicit unsupported '${{' boundary.
+
+    This support limit is not a claim of platform impossibility. Neither consumer generates
+    expression-based encodings; the entry retains sole ownership of JSON error output.
+    """
     if not isinstance(repository, str) or not _REPOSITORY.match(repository):
         raise RenderError("repository %r is not an owner/name pair" % (repository,))
     branch = default_branch
-    if (
-        not isinstance(branch, str)
-        or not _BRANCH.match(branch)
-        or branch.startswith(("-", "/", "."))
-        or branch.endswith(("/", ".", ".lock"))
-        or ".." in branch
-        or "//" in branch
-    ):
+    if not isinstance(branch, str) or branch.startswith("-") or branch == "HEAD" or "\0" in branch:
         raise RenderError("default branch %r is not a branch name" % (branch,))
+    # --branch expands @{-n} against checkout history. A full ref is checked literally;
+    # leading '-' and HEAD are the additional branch-only restrictions in Git's rules.
+    checked = subprocess.run(
+        ["git", "check-ref-format", "refs/heads/" + branch],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    if checked.returncode != 0:
+        raise RenderError("default branch %r is not a branch name" % (branch,))
+    if "${{" in branch:
+        raise RenderError("default branch %r contains the unsupported Actions-expression marker '${{'" % (branch,))
     return {"version": str(version), "repository": repository, "default_branch": branch}
 
 
@@ -80,7 +94,7 @@ def _line_of(text, offset):
     return text.count("\n", 0, offset) + 1
 
 
-def substitute(text, values, where):
+def substitute(text, values, where, branch_scalar=None):
     """Replace every known token; refuse an unknown or leftover one."""
 
     def replace(match):
@@ -90,6 +104,13 @@ def substitute(text, values, where):
                 "%s line %d has the unknown token %s; the only tokens are %s"
                 % (where, _line_of(text, match.start()), match.group(0), ", ".join("@@%s@@" % n for n in NAMES))
             )
+        if name == "default_branch" and branch_scalar is not None:
+            start = text.rfind("\n", 0, match.start()) + 1
+            end = text.find("\n", match.end())
+            if end == -1:
+                end = len(text)
+            if BRANCH_FILTER_SCALAR.fullmatch(text[start:end]):
+                return branch_scalar
         return values[name]
 
     rendered = TOKEN.sub(replace, text)
@@ -213,9 +234,29 @@ def _read_template(store, version, path):
 
 
 def template_text(store, version, entry, values):
-    """One template with its tokens substituted and its structure checked."""
+    """One template with contextual scalar encoding, tokens and structure checked.
+
+    In the two workflow templates a bare branch token on its own list-item line represents
+    a complete YAML filter scalar. Escape Actions '+' and leading '!' first, then quote
+    for YAML. All other token uses stay literal. Both rendering and comparison use this
+    path; unknown/leftover-token checks still run on the final substituted text.
+    """
     where = "version %d's template for %s" % (version, entry["path"])
-    text = substitute(_read_template(store, version, entry["path"]), values, where)
+    text = _read_template(store, version, entry["path"])
+    scalar = None
+    if entry["path"] in BRANCH_FILTER_WORKFLOWS:
+        pattern = values["default_branch"].replace("+", "\\+")
+        if pattern.startswith("!"):
+            pattern = "\\" + pattern
+        # JSON's double-quoted scalar is a YAML subset. Keep printable Unicode (including
+        # non-BMP characters), but escape YAML line breaks and non-printable C1 characters.
+        scalar = json.dumps(pattern, ensure_ascii=False)
+        scalar = "".join(
+            "\\u%04x" % ord(char) if 0x7f <= ord(char) <= 0x9f or char in "\u2028\u2029" else char
+            for char in scalar
+        )
+    # Substitute once: a token-like branch value must never become template source.
+    text = substitute(text, values, where, branch_scalar=scalar)
     if entry["class"] == "fixed part":
         find_block(text, where)
     if entry["class"] == "record":

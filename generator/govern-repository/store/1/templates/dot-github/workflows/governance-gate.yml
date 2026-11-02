@@ -9,7 +9,7 @@ on:
   pull_request_target:
     types: [opened, edited, synchronize, reopened]
     branches:
-      - "@@default_branch@@"
+      - @@default_branch@@
 
 # Read on contents and pull requests, plus posting the verdict as a check run on the head.
 permissions:
