@@ -18,7 +18,9 @@
     {"branch": "topic/🚀", "filter": "topic/🚀", "nonmatches": ["topic/rocket", "topic/🚀🚀"]},
     {"branch": "topic/line\u0085end", "filter": "topic/line\u0085end", "nonmatches": ["topic/lineend", "topic/line/end"]},
     {"branch": "topic/line\u2028end", "filter": "topic/line\u2028end", "nonmatches": ["topic/lineend", "topic/line/end"]},
-    {"branch": "@@-@@", "filter": "@@-@@", "nonmatches": ["@-@", "@@-@@/child"]}
+    {"branch": "@@-@@", "filter": "@@-@@", "nonmatches": ["@-@", "@@-@@/child"]},
+    {"branch": "topic/\ufffe", "filter": "topic/\ufffe", "scalar": "\"topic/\\ufffe\"", "nonmatches": ["topic/", "topic/end"]},
+    {"branch": "topic/\uffff", "filter": "topic/\uffff", "scalar": "\"topic/\\uffff\"", "nonmatches": ["topic/", "topic/end"]}
   ],
   "invalid": ["-stable", "HEAD", "two words", "a..b", "a.lock/next", "a@{b", "", "/main", "main/", ".hidden", "a//b", "a\\b", "a*b", "a?b", "a[b", "line\nbreak"],
   "unsupported": ["${{x}}", "topic/${{x}}", "topic/${{unterminated"],

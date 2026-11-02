@@ -187,6 +187,8 @@ class Rendering(RenderCase):
                     scalars = re.findall(r"^    branches:\n      - (.+)$", text, re.M)
                     self.assertEqual(len(scalars), count, (path, text))
                     for scalar in scalars:
+                        if "scalar" in case:
+                            self.assertEqual(scalar, case["scalar"])
                         pattern = json.loads(scalar)
                         self.assertEqual(pattern, case["filter"])
                         self.assertTrue(literal_filter_matches(pattern, branch))

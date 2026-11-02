@@ -249,10 +249,10 @@ def template_text(store, version, entry, values):
         if pattern.startswith("!"):
             pattern = "\\" + pattern
         # JSON's double-quoted scalar is a YAML subset. Keep printable Unicode (including
-        # non-BMP characters), but escape YAML line breaks and non-printable C1 characters.
+        # non-BMP characters), but escape YAML line breaks, C1 and BMP noncharacters.
         scalar = json.dumps(pattern, ensure_ascii=False)
         scalar = "".join(
-            "\\u%04x" % ord(char) if 0x7f <= ord(char) <= 0x9f or char in "\u2028\u2029" else char
+            "\\u%04x" % ord(char) if 0x7f <= ord(char) <= 0x9f or char in "\u2028\u2029\ufffe\uffff" else char
             for char in scalar
         )
     # Substitute once: a token-like branch value must never become template source.
