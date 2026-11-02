@@ -77,7 +77,7 @@ Used by `wayfinder`. The **map** is one issue, and its **child** issues are its 
 
 A miss is governance letting through something its rules should have stopped. Each one gets
 one issue labelled `miss`, in the repository where it happened. Who records which miss is in
-the role files; this section is how.
+the role files and `AGENTS.md`, Secrets; this section is how.
 
 - **Open one.** First list the open records:
   `gh issue list --repo @@repository@@ --label miss --state open --json number,title,body`.
