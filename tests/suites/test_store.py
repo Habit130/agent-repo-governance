@@ -138,6 +138,33 @@ class Versions(support.TempDirCase):
 
 
 class VersionManifest(support.TempDirCase):
+    def test_cli_checks_relied_on_skill_shapes_without_writes(self):
+        with open(os.path.join(support.FIXTURES, "stores", "relied-on-skills.json")) as handle:
+            cases = json.load(handle)
+        for outcome in ("refused", "accepted"):
+            for skills in cases[outcome]:
+                with self.subTest(outcome=outcome, skills=skills):
+                    templates = self.edited(lambda manifest, root: manifest.update(relied_on_skills=skills))
+                    before = self.snapshot(templates.root)
+                    code, out, err = support.run_cli(support.GOVERN, ["store", "--store", templates.root])
+                    self.assertEqual(code, 2 if outcome == "refused" else 0, (out, err))
+                    facts = json.loads(out)
+                    if outcome == "refused":
+                        self.assertTrue(facts["error"])
+                    else:
+                        self.assertEqual(facts["versions"], [1])
+                    self.assertEqual(err, "")
+                    self.assertEqual(self.snapshot(templates.root), before)
+
+    def snapshot(self, root):
+        files = {}
+        for parent, _, names in os.walk(root):
+            for name in names:
+                path = os.path.join(parent, name)
+                with open(path, "rb") as handle:
+                    files[os.path.relpath(path, root)] = (handle.read(), support.file_mode(path))
+        return files
+
     def test_version_one_lists_the_relied_on_skills_and_the_labels(self):
         manifest = store.Store(support.REAL_STORE).manifest(1)
         self.assertEqual(set(manifest["relied_on_skills"]), RELIED_ON)
