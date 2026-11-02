@@ -17,6 +17,8 @@ Run the four together. A check takes three steps after habit's merge and owner-s
    direct push of the source commit to the default branch, a force-push of the default
     branch and of the source branch, and the merge of each probe PR at its head. The harness keeps these attempts
     with habit; the probes never push to the default branch, force-push or merge.
+    The command is a quoted invocation of `tests/live/gate_attempts.py`; that standalone
+    Python entry owns preparation, attempts and the output protocol, not probe execution.
    The first push or merge that exits 0 stops every later attempt and exits 3. Its section
    keeps `exit=0` and prints `stop-after: <attempt>` plus Chinese advice; `== account`
    remains, and `== after` reads the refs after the stop. habit then stops as for a product
@@ -37,6 +39,7 @@ import datetime
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -267,38 +270,11 @@ def _setup(context):
 # Step 2: habit's command.
 
 
-ATTEMPTS_COMMAND = (
-    "/bin/bash -c '"
-    "u=https://github.com/{repository}.git; r={repository}; b={branch}; t=\"{targets}\"; "
-    "if [ ! -f \"$t\" ]; then echo \"没有 ${{t}}：先运行一次不带 --post 的 live.py probe\"; exit 2; fi; "
-    "d=\"$(mktemp -d)\"; trap \"rm -rf \\\"\\$d\\\"\" EXIT; "
-    "after() {{ echo \"== after\"; git ls-remote \"$u\" \"refs/heads/$b\" \"refs/heads/$s\"; }}; "
-    "attempt_exit() {{ echo \"exit=$1\"; if [ \"$1\" -eq 0 ]; then echo \"stop-after: $2\"; "
-    "echo \"尝试已成功：$2；停止后续尝试，按产品问题停止，不要重跑命令\"; after; exit 3; fi; }}; "
-    "never_reached() {{ echo \"never-reached: $2\"; echo \"准备失败，未到达 GitHub，不是拒绝\"; echo \"exit=$1\"; }}; "
-    "while read -r k a z; do if [ \"$k\" = source ]; then c=$a; s=$z; fi; done < \"$t\"; "
-    "echo \"== account\"; gh api user --jq .login; echo \"exit=$?\"; "
-    "git clone -q --filter=blob:none \"$u\" \"$d/s\"; cloned=$?; "
-    "echo \"== push $c to $b\"; if [ \"$cloned\" -eq 0 ]; then "
-    "git -C \"$d/s\" push \"$u\" \"$c:refs/heads/$b\" 2>&1; attempt_exit $? \"push $c to $b\"; "
-    "else never_reached \"$cloned\" \"push $c to $b\"; fi; "
-    "echo \"== force-push $b\"; if [ \"$cloned\" -eq 0 ] && git -C \"$d/s\" checkout -q --detach \"origin/$b\" "
-    "&& git -C \"$d/s\" commit -q --amend -m \"Live check: a force-push attempt\"; then "
-    "git -C \"$d/s\" push --force \"$u\" \"HEAD:refs/heads/$b\" 2>&1; attempt_exit $? \"force-push $b\"; "
-    "else never_reached $? \"force-push $b\"; fi; "
-    "echo \"== force-push $s\"; if [ \"$cloned\" -eq 0 ] && git -C \"$d/s\" checkout -q --detach \"origin/$s\" "
-    "&& git -C \"$d/s\" commit -q --amend -m \"Live check: a force-push attempt\"; then "
-    "git -C \"$d/s\" push --force \"$u\" \"HEAD:refs/heads/$s\" 2>&1; attempt_exit $? \"force-push $s\"; "
-    "else never_reached $? \"force-push $s\"; fi; "
-    "while read -r k n h; do if [ \"$k\" = merge ]; then echo \"== merge $n at $h\"; "
-    "gh api --method PUT \"repos/$r/pulls/$n/merge\" -f merge_method=squash -f sha=\"$h\" < /dev/null 2>&1; "
-    "attempt_exit $? \"merge $n at $h\"; fi; done < \"$t\"; after'"
-)
-
-
 def attempts_commands(context):
-    line = ATTEMPTS_COMMAND.format(repository=context.repository, branch=context.default_branch,
-                                   targets=os.path.join(context.directory, TARGETS))
+    """Print only an invocation; gate_attempts.py owns the habit-only protocol."""
+    entry = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gate_attempts.py")
+    line = shlex.join(["/usr/bin/python3", entry, "--repository", context.repository,
+                       "--branch", context.default_branch, "--targets", os.path.join(context.directory, TARGETS)])
     return [(ATTEMPTS, "the agent's direct push, force-push and merges, as the agent account (gh), after the first "
              "`live.py probe` run, which opens the gate's probe PRs", line)]
 

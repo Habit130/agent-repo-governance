@@ -11,6 +11,7 @@ first on the path.
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,7 @@ import live  # noqa: E402
 import probes  # noqa: E402
 from probes import merge_watch as watch_probes  # noqa: E402
 from probes import owner as owner_probes  # noqa: E402
+from probes import gate as gate_probes  # noqa: E402
 
 GOVERNANCE = os.path.join(support.REAL_STORE, "1", "templates", "dot-github", "governance")
 if GOVERNANCE not in sys.path:
@@ -357,7 +359,7 @@ GATE_PROBES = ("gate-trigger", "gate-reruns", "gate-source", "gate-rulesets")
 class GateAttemptsCommand(ProbeCase):
     """Run the real command only with test-local git AND gh; no sandbox is contacted."""
 
-    def command(self, success=None, preparation=None):
+    def command(self, success=None, preparation=None, capture=False, missing=False, quoted=False):
         root = tempfile.mkdtemp(prefix="attempts-", dir=self.tmp)
         binary = os.path.join(root, "bin")
         os.mkdir(binary)
@@ -418,35 +420,81 @@ sys.exit(97)
                                     "ATTEMPT_LOG": log_path, "ATTEMPT_PLAN": plan_path})
         for tool in ("git", "gh"):
             self.assertEqual(shutil.which(tool, path=env["PATH"]), os.path.join(binary, tool))
-        context = probes.Context(PUBLIC, "public", "main", {}, COMMIT, 7, root)
+        check = os.path.join(root, "check ' quoted") if quoted else root
+        if quoted:
+            os.mkdir(check)
+        context = probes.Context(PUBLIC, "public", "main", {}, COMMIT, 7, check)
         targets = "source %s %s\n" % (SOURCE, SOURCE_BRANCH)
         targets += "".join("merge %d %s\n" % (PULLS[role], HEADS["pushed" if role == "trigger" else role])
                            for role in ("trigger", "edit", "failing"))
-        with open(os.path.join(root, "gate_targets.txt"), "w") as handle:
-            handle.write(targets)
-        (_, _, line), = probes.registered()["gate-rulesets"].commands(context)
-        result = subprocess.run(["/bin/bash", "-c", line[len("/bin/bash -c '"):-1]], env=env, cwd=root,
+        if not missing:
+            with open(os.path.join(check, "gate_targets.txt"), "w") as handle:
+                handle.write(targets)
+        if quoted:
+            entry_dir = os.path.join(root, "entry ' quoted")
+            os.makedirs(os.path.join(entry_dir, "probes"))
+            shutil.copyfile(os.path.join(LIVE, "gate_attempts.py"), os.path.join(entry_dir, "gate_attempts.py"))
+            with mock.patch.object(gate_probes, "__file__", os.path.join(entry_dir, "probes", "gate.py")):
+                (_, _, line), = probes.registered()["gate-rulesets"].commands(context)
+        else:
+            (_, _, line), = probes.registered()["gate-rulesets"].commands(context)
+        if capture:
+            line += " 2>&1 | tee " + os.path.join(root, "capture.txt")
+        result = subprocess.run(["/bin/bash", "-c", line], env=env, cwd=root,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True,
                                 stdin=subprocess.DEVNULL, timeout=30)
-        with open(log_path) as handle:
-            log = [json.loads(line) for line in handle]
+        if capture:
+            with open(os.path.join(root, "capture.txt")) as handle:
+                self.assertEqual(handle.read(), result.stdout)
+        log = []
+        if os.path.exists(log_path):
+            with open(log_path) as handle:
+                log = [json.loads(line) for line in handle]
         self.assertNotIn("unrecorded call", result.stdout + result.stderr)
         self.assertTrue(all(entry["executable"] == os.path.join(binary, entry["args"][0]) for entry in log))
         calls = [entry["args"] for entry in log]
         self.assertTrue(all(call in [entry["args"] for entry in plan] for call in calls))
         return result, calls, writes, headers
 
+    def test_quoted_entry_and_targets_paths_work_from_an_unrelated_cwd(self):
+        result, calls, writes, _ = self.command(quoted=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual([call for call in calls if call in writes], writes)
+        self.assertEqual(self.failed(self.judge(result.stdout)), [])
+
     def test_the_first_success_stops_every_later_write_and_still_prints_account_and_after(self):
         for index in range(6):
             with self.subTest(attempt=index):
                 result, calls, writes, headers = self.command(success=index)
                 self.assertEqual([call for call in calls if call in writes], writes[:index + 1])
-                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.returncode, 3)
+                self.assertEqual([line for line in result.stdout.splitlines() if line.startswith("exit=")],
+                                 ["exit=0"] + ["exit=1"] * index + ["exit=0"])
                 self.assertIn("stop-after: " + headers[index], result.stdout)
                 self.assertIn("== account\nHabit098\nexit=0\n", result.stdout)
                 self.assertIn("== after\n", result.stdout)
                 self.assertGreater(result.stdout.index("== after"), result.stdout.index("stop-after:"))
                 self.assertEqual(calls[-1][1], "ls-remote")
+
+    def test_missing_targets_exit_before_any_git_or_gh_call(self):
+        result, calls, _, _ = self.command(missing=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(calls, [])
+        self.assertIn("先运行一次不带 --post 的 live.py probe", result.stdout)
+
+    def test_runner_capture_preserves_stop_protocol_even_when_tee_exits_zero(self):
+        for index in range(6):
+            with self.subTest(attempt=index):
+                result, calls, writes, headers = self.command(success=index, capture=True)
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual([call for call in calls if call in writes], writes[:index + 1])
+                self.assertIn("stop-after: " + headers[index], result.stdout)
+                self.assertIn("== account\nHabit098\nexit=0\n", result.stdout)
+                self.assertIn("== after\n", result.stdout)
+                results = self.judge(result.stdout)
+                self.assertTrue(all(r.passed for r in results[:index + 1]))
+                self.assertTrue(all(not r.passed for r in results[index + 1:7]))
+                self.assertTrue(all(r.passed for r in results[7:]))
 
     def judge(self, output):
         scratch = self.with_github(sandbox_now(self.path("judge.json")))
@@ -477,11 +525,15 @@ sys.exit(97)
         for preparation in ("clone", "checkout", "amend"):
             with self.subTest(preparation=preparation):
                 result, calls, writes, headers = self.command(preparation=preparation)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 skipped = [0, 1, 2] if preparation == "clone" else [1, 2]
                 self.assertEqual([call for call in calls if call in writes],
                                  [call for index, call in enumerate(writes) if index not in skipped])
                 self.assertNotIn("stop-after:", result.stdout)
                 self.assertIn("never-reached:", result.stdout)
+                self.assertIn("准备失败，未到达 GitHub，不是拒绝", result.stdout)
+                self.assertEqual([line for line in result.stdout.splitlines() if line.startswith("exit=")],
+                                 ["exit=0"] + ["exit=1"] * 6)
                 self.assertIn("== after\n", result.stdout)
                 results = self.judge(result.stdout)
                 self.assertEqual([index for index, r in enumerate(results[1:7]) if not r.passed], skipped)
@@ -1052,8 +1104,7 @@ class HabitsCommands(support.TempDirCase):
         home = ms.make_home(self.path("home"))
         scratch = self.path("scratch")
         env = ms.machine_env(home, scratch, gh_recording=recording)
-        self.assertTrue(line.startswith("/bin/bash -c '") and line.endswith("'"))
-        result = subprocess.run(["/bin/bash", "-c", line[len("/bin/bash -c '"):-1]], env=env, stdout=subprocess.PIPE,
+        result = subprocess.run(["/bin/bash", "-c", line], env=env, stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE, universal_newlines=True, stdin=subprocess.DEVNULL)
         return result, environment.read_log(scratch), scratch
 
@@ -1095,10 +1146,10 @@ class HabitsCommands(support.TempDirCase):
             context = probes.Context(repository, visibility, "main", {}, COMMIT, 7, "/check dir")
             (name, _, line), = probes.registered()["gate-rulesets"].commands(context)
             self.assertEqual(name, "gate_attempts")
-            self.assertTrue(line.startswith("/bin/bash -c '") and line.endswith("'"))
-            self.assertEqual(subprocess.run(["/bin/bash", "-n", "-c", line[len("/bin/bash -c '"):-1]]).returncode, 0)
-            self.assertIn("u=https://github.com/%s.git; r=%s; b=main;" % (repository, repository), line)
-            self.assertIn('t="/check dir/gate_targets.txt"', line)
+            self.assertEqual(subprocess.run(["/bin/bash", "-n", "-c", line]).returncode, 0)
+            self.assertEqual(shlex.split(line), ["/usr/bin/python3", os.path.join(LIVE, "gate_attempts.py"),
+                                               "--repository", repository, "--branch", "main",
+                                               "--targets", "/check dir/gate_targets.txt"])
             self.assertNotIn("ghm", line)
         for name in ("gate-trigger", "gate-reruns", "gate-source"):
             self.assertEqual(probes.registered()[name].commands(context), [])
