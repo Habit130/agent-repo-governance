@@ -108,7 +108,7 @@ def validate_manifest(manifest, version):
     if not isinstance(skills, list):
         raise StoreError("version %d's relied-on skills must be a list without repeats" % version)
     for skill in skills:
-        if not isinstance(skill, str) or not _SKILL_NAME.match(skill):
+        if not isinstance(skill, str) or not _SKILL_NAME.fullmatch(skill):
             raise StoreError("version %d's relied-on skill %r isn't a lowercase-hyphenated name" % (version, skill))
     if len(set(skills)) != len(skills):
         raise StoreError("version %d's relied-on skills must be a list without repeats" % version)
