@@ -73,6 +73,12 @@ the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`
 and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
 the mode is stop; and 2 on a refusal, with the reason under `error`.
 
+- **Relied-on skill names** in a version manifest must be a list of unique lowercase,
+  hyphenated strings. Each entry's type and spelling are checked before deduplicating;
+  objects and lists receive the same JSON refusal as other malformed entries, with no
+  traceback or store writes. `tests/fixtures/stores/relied-on-skills.json` records the
+  S-1 miss and the rejected and accepted CLI inputs; the `store` suite also checks stderr
+  and snapshots every fixture-store file's bytes and mode.
 - **Exact comparison in a governed worktree** is one command:
   `python3 generator/govern-repository/scripts/govern.py compare --worktree <path>`. It reads
   the repository and default branch from the worktree's `origin`, and compares the installed

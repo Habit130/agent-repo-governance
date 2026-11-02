@@ -77,7 +77,7 @@ def parse_change_note(data):
 
 
 def validate_manifest(manifest, version):
-    """Check a parsed manifest's shape; return it."""
+    """Check a parsed manifest's shape; validate skill types before deduplicating."""
     if not isinstance(manifest, dict) or set(manifest) != _MANIFEST_KEYS:
         raise StoreError("version %d's manifest must hold exactly %s" % (version, ", ".join(sorted(_MANIFEST_KEYS))))
     if manifest["version"] != version:
@@ -105,11 +105,13 @@ def validate_manifest(manifest, version):
         raise StoreError("version %d has %d record templates; a version has at most one" % (version, records))
 
     skills = manifest["relied_on_skills"]
-    if not isinstance(skills, list) or len(set(skills)) != len(skills):
+    if not isinstance(skills, list):
         raise StoreError("version %d's relied-on skills must be a list without repeats" % version)
     for skill in skills:
         if not isinstance(skill, str) or not _SKILL_NAME.match(skill):
             raise StoreError("version %d's relied-on skill %r isn't a lowercase-hyphenated name" % (version, skill))
+    if len(set(skills)) != len(skills):
+        raise StoreError("version %d's relied-on skills must be a list without repeats" % version)
 
     labels = manifest["labels"]
     if not isinstance(labels, list):
