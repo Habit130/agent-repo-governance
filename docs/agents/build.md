@@ -408,6 +408,12 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   sets the check up as the agent account; habit runs `gate-rulesets`' one command; then
   `live.py probe --post` judges. The setup writes the targets of habit's command to
   `gate_targets.txt` in the check directory.
+- **The entry is `tests/live/gate_attempts.py`.** `gate-rulesets` prints a thin shell
+  invocation of `/usr/bin/python3` with `--repository`, `--branch` and `--targets` pointing
+  at the existing targets file. The entry owns preparation, dispatch, stop classification
+  and the final ref read; subprocess argument vectors are separate from shell quoting.
+  Absolute entry paths and quoted values let the command run from an unrelated directory.
+  Importing, setting up or judging a probe never invokes the entry.
 - **The attempts stay with habit.** The agent's direct push to the default branch, its
   force-push and its merges are habit's command, run as the agent account with `gh`. Claude
   Code's auto mode refused them to the agent on 2026-10-30. The probes never push to the
@@ -421,6 +427,14 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   or amend failure prints `never-reached:`: the push never reached GitHub, so it is neither
   a success nor a rejection; later attempts still run. When every attempt is rejected,
   the command keeps its section headers and `exit=` lines, prints no stop and exits 0.
+- **Offline coverage** in `live-runner` executes the same generated invocation under bash
+  with test-local `git` and `gh`, verifies every call's executable and complete arguments,
+  and judges the captured protocol. It covers all six success positions, preparation
+  failures, missing targets (exit 2 before tool calls), healthy rejections and quoted paths.
+  It also appends the runner's unchanged `2>&1 | tee` capture decoration: the output's
+  stop marker, not the outer pipeline status, tells the judge which attempts were skipped.
+  These stand-in runs make no claim about live protection behavior; real attempts remain
+  habit-only.
 - **The private sandbox (#53)** takes the same probes, unchanged: `prepare --sandbox private`
   and the same `--probe` names. They read the repository, default branch and confirmed checks
   from the context, and `gate-trigger` expects the event policy skipped (`已跳过`) there.
