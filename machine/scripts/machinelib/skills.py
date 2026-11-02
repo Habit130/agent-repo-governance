@@ -296,7 +296,8 @@ def _read_mappings(text):
     lines included, are unclear. So is a value's next line, which may only continue a plain
     scalar, or start one under an empty key: one that isn't plain text, holds `: `, or follows
     a comment that ended the scalar. A sequence item's path ends with ITEM and its index; block
-    scalars are skipped.
+    scalars are skipped. Their first nonblank content line fixes the content indentation:
+    deeper lines may return to it, but content below it remains unclear.
     """
     text = text.replace("\r\n", "\n")
     if text.startswith("\ufeff") or "\r" in text or _REFUSED.search(text):
@@ -338,7 +339,8 @@ def _read_mappings(text):
             if spaces > block[0]:
                 if block[1] is None and block[2] > spaces or block[1] is not None and spaces < block[1]:
                     raise _Unclear()
-                block[1] = spaces
+                if block[1] is None:
+                    block[1] = spaces
                 continue
             block = None
         if "\t" in raw[:len(raw) - len(raw.lstrip(_BLANKS))]:

@@ -225,6 +225,20 @@ the layout; `install.py`'s docstring gives the steps.
   reads as user-only. `tests/fixtures/machine/codex-policy-shapes.json` is the shared shape
   set; a new shape the detector reads as `false` joins it and its real recording,
   `codex-prompt-input-policy-shapes.json`, re-recorded with the shape's skill.
+  A block scalar's first nonblank content line fixes its content indentation for the
+  whole scalar: deeper lines may return to it, but a line below it (even above the
+  key's indentation) is `unclear`. Leading-blank, tab and hidden-policy refusals remain.
+  AC-75-v1 fixes AC-71's Acceptance A1 miss with `block-indent-increase-and-return`
+  (`false`, hidden) and `block-below-initial-indent` (`unclear`, listed). The generated
+  `PolicyShapes` tests exercise both consumers and copies' byte-preserving acceptance
+  or refusal. The 2026-11-02 recording uses the installed ChatGPT CLI,
+  `codex-cli 0.166.0-alpha.5.1`, invoked as
+  `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex debug prompt-input x`
+  through `Home.run_codex`: synthetic HOME, XDG configuration/state/data/cache and
+  TMPDIR, plus disposable CODEX_HOME and cwd, all inside scratch space. No model,
+  authentication or network call is needed. All 130 shared shapes are present as
+  inputs; `no-policy` is the listable control, and no old shape changes visibility.
+  The recording normalizes only home, disposable CODEX_HOME and cwd paths as above.
 - **Seam C suites** build the source tree from this checkout's `machine/` and generator with
   synthetic copies (`tests/suites/machine_support.py`), so the real recordings stay true
   when the copies change. They pass the Codex stand-in or a missing path, never the app,
