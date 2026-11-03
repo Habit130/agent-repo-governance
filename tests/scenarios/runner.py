@@ -134,7 +134,7 @@ def judge(evidence, expect):
         judgment["class: %s" % rule["match"]] = rule["class"] in _class_of(facts, rule["match"])
         if rule["class"] == "carried":
             judgment["carried into the files: %s" % rule["match"]] = rule["match"] in text
-    if evidence.get("build_md") is not None:
+    if evidence.get("build_md") is not None and expect.get("mode") == "Initialize":  # Upgrade keeps the repository's.
         judgment["build.md holds no skeleton placeholder"] = "<command>" not in evidence["build_md"]
     for path in expect.get("removed_paths", []):
         judgment["removed: %s" % path] = path not in evidence.get("paths", [])

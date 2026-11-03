@@ -85,6 +85,15 @@ class PastTheStandIn(support.TempDirCase):
         self.assertEqual(runner.past_the_stand_in(caught + plain), caught)
 
 
+class BuildMd(unittest.TestCase):
+    def test_a_skeleton_build_md_fails_only_at_initialize(self):
+        found = evidence(build_md="| `<command>` |")
+        self.assertFalse(runner.judge(found, dict(EXPECT, mode="Initialize"))["judgment"][
+            "build.md holds no skeleton placeholder"])
+        self.assertNotIn("build.md holds no skeleton placeholder",
+                         runner.judge(found, dict(EXPECT, mode="Upgrade"))["judgment"])
+
+
 class PrOpened(unittest.TestCase):
     def test_a_recorded_pr_counts_whether_or_not_the_runner_stopped_the_harness(self):
         self.assertTrue(runner.pr_opened([{"args": ["api", "user"]}, {"args": ["pr", "create", "--title", "t"]}]))
