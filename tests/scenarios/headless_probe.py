@@ -17,6 +17,7 @@ import uuid
 sys.dont_write_bytecode = True
 REPO = Path(__file__).resolve().parents[2]
 PRIMARY = REPO.parent / "agent-repo-governance"
+MODEL = "xai/grok-4.7"
 FIRST_PROMPT = "Call the `skill` tool with id `govern-repository`, then follow that skill's instructions exactly."
 sys.path.insert(0, str(REPO / "tests"))
 from standins import environment
@@ -90,6 +91,16 @@ def opencode_checks(result, session, expected, skill_directory=None):
     return checks
 
 
+def stored_models(session, cwd, env, output):
+    """provider/model of each stored assistant message; `--format json` events carry neither."""
+    export = call(["opencode", "session", "export", "--standalone", session], cwd, env, output)
+    try:
+        return ["%s/%s" % (message["model"]["providerID"], message["model"]["id"])
+                for message in json.loads(export.stdout)["messages"] if message["type"] == "assistant"]
+    except (KeyError, TypeError, ValueError):
+        return []
+
+
 def report(stage, checks):
     for name, passed in checks.items():
         print("%s %s: %s" % ("Pass" if passed else "Fail", stage, name), flush=True)
@@ -120,20 +131,35 @@ def main():
         save(source / "govern-repository" / "SKILL.md", skill)
         env["OPENCODE_CONFIG_CONTENT"] = json.dumps({
             "$schema": "https://opencode.ai/config.json", "skills": [str(source)]})
+        models = call(["opencode", "models", "--standalone"], checkout, env, scratch / "models")
+        if MODEL not in models.stdout.splitlines():
+            save(scratch / "result.json", json.dumps({"harness": args.harness, "passed": False, "stage": "precheck"}))
+            print("STOP precheck: %s not listed (exit %s)" % (MODEL, models.returncode))
+            return 1
+        print("Pass precheck: %s listed" % MODEL, flush=True)
         session = "ses_" + uuid.uuid4().hex[:26]
-        common = ["opencode", "run", "--standalone", "--format", "json", "--session", session]
+        common = ["opencode", "run", "--standalone", "--format", "json", "--model", MODEL, "--session", session]
         first = call(common + [FIRST_PROMPT], checkout, env, scratch / "first")
         print("First turn exit: %s" % first.returncode, flush=True)
         print(first.stderr, file=sys.stderr, flush=True)
         results = {"first": opencode_checks(first, session, "habit，是否继续 resume probe？\n" + str(checkout),
                                             source / "govern-repository")}
-        record = {"harness": args.harness, "session": session, "prompts": [FIRST_PROMPT], "checks": results}
+        turns = {"first": stored_models(session, checkout, env, scratch / "export-first")}
+        print("First turn models: %s" % turns["first"], flush=True)
+        results["first"]["every assistant message on the pinned model"] = bool(turns["first"]) and set(
+            turns["first"]) == {MODEL}
+        record = {"harness": args.harness, "session": session, "prompts": [FIRST_PROMPT], "models": turns,
+                  "checks": results}
         if report("first", results["first"]):
             prompt = "继续 resume probe"
             second = call(common + [prompt], checkout, env, scratch / "second")
             print("Resumed turn exit: %s" % second.returncode, flush=True)
             print(second.stderr, file=sys.stderr, flush=True)
             results["second"] = opencode_checks(second, session, nonce)
+            turns["second"] = stored_models(session, checkout, env, scratch / "export-second")
+            print("Stored models after the second turn: %s" % turns["second"], flush=True)
+            results["second"]["every assistant message on the pinned model"] = len(
+                turns["second"]) > len(turns["first"]) and set(turns["second"]) == {MODEL}
             results["second"]["marker absent from the prompt"] = nonce not in prompt
             record["prompts"].append(prompt)
             report("second", results["second"])
