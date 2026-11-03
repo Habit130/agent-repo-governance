@@ -16,6 +16,8 @@ import uuid
 
 sys.dont_write_bytecode = True
 REPO = Path(__file__).resolve().parents[2]
+PRIMARY = REPO.parent / "agent-repo-governance"
+FIRST_PROMPT = "Call the `skill` tool with id `govern-repository`, then follow that skill's instructions exactly."
 sys.path.insert(0, str(REPO / "tests"))
 from standins import environment
 
@@ -33,32 +35,72 @@ def save(path, value):
     path.write_text(value, encoding="utf-8")
 
 
+def as_text(value):
+    return value.decode("utf-8", "replace") if isinstance(value, bytes) else (value or "")
+
+
 def call(command, cwd, env, output):
     # OpenCode v2.2.2 run/run.ts prefers PWD to process.cwd(). Keep both in sync.
     child_env = dict(env, PWD=str(cwd))
-    result = subprocess.run(command, cwd=str(cwd), env=child_env, stdin=subprocess.DEVNULL,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=240)
+    try:
+        result = subprocess.run(command, cwd=str(cwd), env=child_env, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=240)
+    except subprocess.TimeoutExpired as expired:
+        # A timeout is a failed attempt: keep what arrived and let the assertions refuse it.
+        result = subprocess.CompletedProcess(command, -1, as_text(expired.stdout), as_text(expired.stderr))
     save(output.with_suffix(".stdout"), result.stdout)
     save(output.with_suffix(".stderr"), result.stderr)
     return result
 
 
-def opencode_result(result, session, expected):
+def opencode_checks(result, session, expected, skill_directory=None):
+    """One named Pass/Fail per diagnostic assertion; exit 0 alone is never a Pass.
+
+    In v2.2.5 noninteractive runs a refused permission is not an event: it warns
+    `auto-rejecting` and fails the tool, so both are inspected. skill_directory is the
+    first turn's selected source; without it, the turn must not touch the skill tool.
+    """
     try:
         events = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
     except ValueError:
-        return False
-    text = "".join(event.get("part", {}).get("text", "") for event in events if event.get("type") == "text")
-    ids = set(event["sessionID"] for event in events if "sessionID" in event)
-    return result.returncode == 0 and ids == {session} and text.strip() == expected and not any(
-        event.get("type") in ("error", "permission") for event in events)
+        return {"output is JSON events": False}
+    tools = [event.get("part", {}) for event in events if event.get("type") == "tool_use"]
+    skills = [tool for tool in tools if tool.get("tool") == "skill"]
+    last_tool = max((index for index, event in enumerate(events) if event.get("type") == "tool_use"), default=-1)
+    text = "".join(event.get("part", {}).get("text", "") for event in events[last_tool + 1:]
+                   if event.get("type") == "text")
+    states = [tool.get("state", {}) for tool in tools]
+    checks = {
+        "harness exit 0": result.returncode == 0,
+        "one session ID": set(event["sessionID"] for event in events if "sessionID" in event) == {session},
+        "reply after the last tool call": text.strip() == expected,
+        "no error events": not any(event.get("type") in ("error", "permission") for event in events),
+        "no permission refusal": "auto-rejecting" not in result.stdout + result.stderr,
+        "every tool completed": all(state.get("status") == "completed" for state in states),
+        "tools outside the delivery repository": not any(
+            place in json.dumps(tool, ensure_ascii=False) for tool in tools for place in (str(REPO), str(PRIMARY))),
+    }
+    if skill_directory is None:
+        checks["no skill reload"] = not skills
+    else:
+        state = skills[0].get("state", {}) if len(skills) == 1 else {}
+        checks["skill tool called once with the ID"] = state.get("input", {}).get("id") == "govern-repository"
+        checks["run-only source selected"] = state.get("metadata", {}).get("metadata", {}).get(
+            "directory") == str(skill_directory)
+    return checks
+
+
+def report(stage, checks):
+    for name, passed in checks.items():
+        print("%s %s: %s" % ("Pass" if passed else "Fail", stage, name), flush=True)
+    return all(checks.values())
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("harness", choices=["claude", "opencode"])
     args = parser.parse_args()
-    scratch = Path(tempfile.mkdtemp(prefix="ac52-resume-", dir=os.environ.get("AC52_PROBE_TMPDIR")))
+    scratch = Path(tempfile.mkdtemp(prefix="ac52-resume-", dir=os.environ.get("AC52_PROBE_TMPDIR"))).resolve()
     print("Evidence directory: %s" % scratch, flush=True)
     checkout = scratch / "repository"
     checkout.mkdir()
@@ -80,20 +122,27 @@ def main():
             "$schema": "https://opencode.ai/config.json", "skills": [str(source)]})
         session = "ses_" + uuid.uuid4().hex[:26]
         common = ["opencode", "run", "--standalone", "--format", "json", "--session", session]
-        first = call(common + ["@govern-repository"], checkout, env, scratch / "first")
+        first = call(common + [FIRST_PROMPT], checkout, env, scratch / "first")
         print("First turn exit: %s" % first.returncode, flush=True)
-        print(first.stdout, flush=True)
         print(first.stderr, file=sys.stderr, flush=True)
-        if not opencode_result(first, session, "habit，是否继续 resume probe？\n" + str(checkout)):
-            save(scratch / "result.json", json.dumps({"harness": args.harness, "passed": False, "stage": "first"}))
-            return 1
-        second = call(common + ["继续 resume probe"], checkout, env, scratch / "second")
-        print("Resumed turn exit: %s" % second.returncode, flush=True)
-        print(second.stdout, flush=True)
-        print(second.stderr, file=sys.stderr, flush=True)
-        passed = opencode_result(second, session, nonce)
-        save(scratch / "result.json", json.dumps({"harness": args.harness, "session": session, "passed": passed}))
-        print("PASS resume and run-only skill" if passed else "STOP resume probe failed")
+        results = {"first": opencode_checks(first, session, "habit，是否继续 resume probe？\n" + str(checkout),
+                                            source / "govern-repository")}
+        record = {"harness": args.harness, "session": session, "prompts": [FIRST_PROMPT], "checks": results}
+        if report("first", results["first"]):
+            prompt = "继续 resume probe"
+            second = call(common + [prompt], checkout, env, scratch / "second")
+            print("Resumed turn exit: %s" % second.returncode, flush=True)
+            print(second.stderr, file=sys.stderr, flush=True)
+            results["second"] = opencode_checks(second, session, nonce)
+            results["second"]["marker absent from the prompt"] = nonce not in prompt
+            record["prompts"].append(prompt)
+            report("second", results["second"])
+        results["isolation"] = {"zero stand-in calls": not environment.read_log(str(scratch))}
+        report("isolation", results["isolation"])
+        passed = "second" in results and all(all(checks.values()) for checks in results.values())
+        record["passed"] = passed
+        save(scratch / "result.json", json.dumps(record, ensure_ascii=False, indent=2))
+        print("PASS diagnostic assertions" if passed else "STOP diagnostic failed")
         return 0 if passed else 1
     plugin = scratch / "plugin"
     save(plugin / ".claude-plugin" / "plugin.json", json.dumps({"name": "ac52-probe", "version": "0.0.1"}))
