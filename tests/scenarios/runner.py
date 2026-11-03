@@ -200,6 +200,17 @@ def claude_models(text):
     return main, sub, cost
 
 
+def claude_tokens(text):
+    """Token use summed over a Claude turn's distinct messages, which a stopped turn still records."""
+    usage = {}
+    for event in events(text):
+        message = event.get("message") or {}
+        if event.get("type") == "assistant" and message.get("id") and message.get("usage"):
+            usage[message["id"]] = message["usage"]
+    keys = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens")
+    return dict((key, sum(u.get(key) or 0 for u in usage.values())) for key in keys)
+
+
 def on_pinned_claude_model(main, sub):
     """Every main-thread message on the pinned model, and Opus nowhere, subagents included."""
     return bool(main) and set(main) == {CLAUDE_MODEL} and not any("opus" in m for m in sub)
@@ -245,15 +256,20 @@ def git(cwd, *args):
                           universal_newlines=True, check=True).stdout
 
 
-def accepting_calls(repository):
-    """The stand-in's answers to the calls whose text the run writes, and to its plain reads."""
+def accepting_calls(repository, labels=()):
+    """The stand-in's answers to the calls whose text the run writes, and to its plain reads.
+
+    Issue and label reads answer with what the run created, so a run that checks its own writes
+    sees them; labels: the repository's existing labels, as GitHub's objects."""
     urls = {("issue", "create"): "https://github.com/%s/issues/1\n" % repository,
             ("pr", "create"): "https://github.com/%s/pull/2\n" % repository}
     calls = [{"accepts": list(call), "stdout": urls.get(call, "")} for call in WRITE_CALLS + READ_CALLS]
     for call in calls:
         if call["accepts"] == ["issue", "view"]:
             call["created_issue"] = True  # The Builder's reviewer reads the issue as its spec.
-    return calls
+        if call["accepts"] == ["label", "list"]:
+            call["labels"] = list(labels)
+    return calls + [{"accepts": ["api", "repos/%s/labels" % repository], "labels": list(labels)}]
 
 
 def build(scratch, spec, harness):
@@ -275,7 +291,7 @@ def build(scratch, spec, harness):
     repository = case.get("repository", {}).get("name", "Habit130/tally")
     with open(str(recording)) as handle:
         served = json.load(handle)
-    served["calls"] = accepting_calls(repository) + served["calls"]
+    served["calls"] = accepting_calls(repository, spec.get("github", {}).get("labels") or []) + served["calls"]
     with open(str(recording), "w") as handle:
         json.dump(served, handle)
     env = probe.clean_environment(scratch)
@@ -426,7 +442,11 @@ def one_run(name, spec, harness, base, number):
         for part in ("first", "second"):
             m, s_, c = claude_models(Path(str(scratch / part) + ".stdout").read_bytes().decode("utf-8", "replace"))
             main, sub, cost = main + m, sub + s_, cost + c
-        result.update({"models": sorted(set(main)), "subagent_models": sorted(set(sub)), "cost_usd": round(cost, 2)})
+        tokens = dict((part, claude_tokens(Path(str(scratch / part) + ".stdout").read_bytes().decode("utf-8", "replace")))
+                      for part in ("first", "second"))
+        # cost_usd counts only turns that ended on their own; the runner stops the second at the PR.
+        result.update({"models": sorted(set(main)), "subagent_models": sorted(set(sub)), "cost_usd": round(cost, 2),
+                       "tokens": tokens})
         result["judgment"]["every assistant message on the pinned model"] = on_pinned_claude_model(main, sub)
     refused = any("auto-rejecting" in Path(str(scratch / turn) + part).read_bytes().decode("utf-8", "replace")
                   for turn in ("first", "second") for part in (".stdout", ".stderr"))

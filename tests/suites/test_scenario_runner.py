@@ -117,6 +117,21 @@ class AcceptingCalls(unittest.TestCase):
         self.assertEqual([c.get("created_issue") for c in views], [True])
         self.assertFalse([c for c in calls if c.get("created_issue") and c["accepts"] != ["issue", "view"]])
 
+    def test_label_reads_serve_the_existing_labels(self):
+        existing = [{"name": "bug", "color": "d73a4a", "description": "d"}]
+        calls = runner.accepting_calls("o/r", existing)
+        served = dict((tuple(c["accepts"]), c["labels"]) for c in calls if "labels" in c)
+        self.assertEqual(served, {("label", "list"): existing, ("api", "repos/o/r/labels"): existing})
+
+
+class ClaudeTokens(unittest.TestCase):
+    def test_sums_each_message_once(self):
+        def line(mid, out):
+            return json.dumps({"type": "assistant", "message": {"id": mid, "usage": {"input_tokens": 1, "output_tokens": out}}})
+        text = "\n".join([line("a", 5), line("a", 5), line("b", 7)])
+        self.assertEqual(runner.claude_tokens(text), {"input_tokens": 2, "cache_creation_input_tokens": 0,
+                                                      "cache_read_input_tokens": 0, "output_tokens": 12})
+
 
 class Verdict(unittest.TestCase):
     def test_safety_binds_every_run_and_judgment_two(self):
