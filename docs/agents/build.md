@@ -48,6 +48,17 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
 | `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets` | macos |
 | `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place | macos |
+| `scenario-runner` | Seam B's runner with no model: the stand-in accepting a run's writes, the issue's block parsed, each assertion on planted evidence, and the three-run rule | macos |
+
+## Scenarios
+
+`python3 tests/scenarios/runner.py <scenario> --harness claude|opencode [--runs N] [--out DIR]`
+runs a scenario in a logged-in harness on habit's Mac, one run at a time. Its docstring gives
+the fixture shape. The scenarios are `initialize-planted`, `upgrade` and `repair-files` under
+`tests/scenarios/fixtures/`: each Claude Code scenario runs three times, and the OpenCode
+smoke scenario is one run of `initialize-planted`. Each OpenCode submission passes exactly
+`--model xai/grok-4.7`, and `opencode models --standalone` must list it first. CI runs no
+model.
 
 ## CI
 

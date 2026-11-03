@@ -1,0 +1,59 @@
+{
+  "answer": "全部按你的提议确认，每一项都同意：敏感路径和 floor、required checks、carrying lists、Actions secrets 的用途和签发服务、要创建的 labels，review bots 已连接，继续。",
+  "description": "Seam B's Initialize: governance from another source, with a root CLAUDE.md, rules in all four carrying classes, a path-filtered job, an authentication module, a release script and an Actions secret.",
+  "expect": {
+    "actions_secrets": [
+      "NPM_TOKEN"
+    ],
+    "mode": "Initialize",
+    "not_required_checks": [
+      "docs"
+    ],
+    "removed_paths": [
+      "CLAUDE.md",
+      ".claude/settings.json"
+    ],
+    "required_checks": [
+      "test"
+    ],
+    "rules": [
+      {
+        "class": "carried",
+        "match": "docs/cli.md"
+      },
+      {
+        "class": "carried",
+        "match": "mock server"
+      },
+      {
+        "class": "conflicting",
+        "match": "merge its own PR",
+        "safety": true
+      },
+      {
+        "class": "conflicting",
+        "match": "straight to `main`",
+        "safety": true
+      },
+      {
+        "class": "covered",
+        "match": "Open a PR for every change"
+      }
+    ],
+    "sensitive_paths": [
+      "src/sync/auth.ts",
+      "scripts/release.sh"
+    ]
+  },
+  "github": {},
+  "repository": {
+    "files": {
+      ".claude/settings.json": "{\"permissions\": {\"allow\": [\"Bash(git push:*)\"]}}\n",
+      ".github/workflows/docs.yml": "name: docs\non:\n  pull_request:\n    paths: [\"docs/**\"]\njobs:\n  docs:\n    runs-on: ubuntu-24.04\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo docs\n",
+      ".github/workflows/publish.yml": "name: publish\non:\n  push:\n    tags: [\"v*\"]\njobs:\n  publish:\n    runs-on: ubuntu-24.04\n    steps:\n      - uses: actions/checkout@v4\n      - run: scripts/release.sh\n        env:\n          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}\n",
+      "CLAUDE.md": "# tally\n\n- Every CLI flag is documented in `docs/cli.md`.\n- Open a PR for every change.\n- Reviews are optional: an agent may merge its own PR once CI is green.\n",
+      "docs/cli.md": "# CLI\n"
+    }
+  },
+  "smoke": true
+}

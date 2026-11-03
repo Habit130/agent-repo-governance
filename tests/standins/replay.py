@@ -11,7 +11,9 @@ A recording is {"tool": ..., "calls": [{"args": [...], "stdout": ..., "stderr": 
 "exit": ..., "stdin"?: ..., "once"?: true}]}. `${NAME}` in recorded arguments expands from
 the environment, so a recording can name paths inside a throwaway home. A call with a
 recorded "stdin" matches only that input. A "once" call answers one time, by the log, then
-the next match answers. The Codex stand-in replays only `codex execpolicy check`
+the next match answers. An entry with "accepts" instead of "args" answers any call starting
+with those arguments, for calls that hold text a run wrote: a body the call names by
+`--body-file` or `-F`, or sends on stdin with `-`, goes into the log under "body". The Codex stand-in replays only `codex execpolicy check`
 and `codex debug prompt-input`.
 """
 
@@ -53,12 +55,27 @@ def load(tool):
     calls = recording.get("calls", [])
     if tool == "codex":
         for call in calls:
-            if call["args"][:2] not in CODEX_COMMANDS:
+            if call.get("args", [])[:2] not in CODEX_COMMANDS:
                 raise ValueError(
                     "the Codex stand-in replays only `codex execpolicy check` and `codex debug prompt-input`, "
-                    "and %s records `codex %s`" % (path, " ".join(call["args"]))
+                    "and %s records `codex %s`" % (path, " ".join(call.get("args", [])))
                 )
     return calls
+
+
+def body_of(args):
+    """The text a call hands over by file or stdin, or None."""
+    for flag in ("--body-file", "-F"):
+        if flag in args[:-1]:
+            name = args[args.index(flag) + 1]
+            if name == "-":
+                return sys.stdin.read()
+            try:
+                with open(name, encoding="utf-8") as handle:
+                    return handle.read()
+            except (OSError, ValueError) as error:
+                return "unreadable: %s" % error
+    return None
 
 
 def served():
@@ -80,7 +97,18 @@ def main(argv):
         log({"tool": tool, "args": args, "recorded": False, "error": str(error)})
         return fail(tool, str(error))
 
-    candidates = [(index, call) for index, call in enumerate(calls) if [expand(a) for a in call["args"]] == args]
+    for index, call in enumerate(calls):
+        if "accepts" in call and args[: len(call["accepts"])] == call["accepts"]:
+            entry = {"tool": tool, "args": args, "recorded": True, "call": index}
+            body = body_of(args)
+            if body is not None:
+                entry["body"] = body
+            log(entry)
+            sys.stdout.write(call.get("stdout", ""))
+            return int(call.get("exit", 0))
+
+    candidates = [(index, call) for index, call in enumerate(calls)
+                  if "args" in call and [expand(a) for a in call["args"]] == args]
     if any(call.get("once") for _, call in candidates):
         answered = served()
         candidates = [(index, call) for index, call in candidates if not (call.get("once") and index in answered)]

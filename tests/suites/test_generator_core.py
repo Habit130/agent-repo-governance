@@ -131,13 +131,14 @@ class ScenarioSettings(support.TempDirCase):
         worktree = support.init_repo(self.path("r"))
         support.git(worktree, "remote", "add", "origin", self.path("bare.git"))
         self.assertIn("isn't a GitHub repository", self.compare(worktree, {})["error"])
-        self.assertEqual(self.compare(worktree, {"GOVERN_SCENARIO_REPOSITORY": "Habit130/tally"}).get("repository"), "Habit130/tally")
+        facts = self.compare(worktree, {"GOVERN_SCENARIO_REPOSITORY": "Habit130/tally"})
+        self.assertEqual(facts.get("repository"), "Habit130/tally", facts)
 
     def compare(self, worktree, extra):
         env = dict(os.environ, **extra)
         env.pop("GOVERN_SCENARIO_REPOSITORY", None) if not extra else None
         result = subprocess.run([sys.executable, support.GOVERN, "compare", "--worktree", worktree, "--default-branch", "main",
-                                 "--allow-unreleased"],
+                                 "--store", gs.build_store("released")],
                                 env=env, stdout=subprocess.PIPE, universal_newlines=True)
         return json.loads(result.stdout)
 

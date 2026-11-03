@@ -154,6 +154,22 @@ class CodexStandIn(StandInCase):
         self.assertEqual(answers[2].stdout, b"second\n")
         self.assertEqual([c["call"] for c in self.calls()], [0, 1, 1])
 
+    def test_an_accepting_entry_logs_the_body_and_a_stray_call_still_fails(self):
+        recording = self.path("gh-accept.json")
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [{"accepts": ["issue", "create"], "stdout": "url\n"}]}, handle)
+        body = self.path("body.md")
+        with open(body, "w") as handle:
+            handle.write("text the run wrote")
+        env = dict(self.env, STANDIN_GH_RECORDING=recording)
+        written = subprocess.run(["gh", "issue", "create", "--title", "t", "--body-file", body], env=env, stdout=subprocess.PIPE)
+        stray = subprocess.run(["gh", "issue", "delete", "1"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual((written.returncode, written.stdout), (0, b"url\n"))
+        self.assertNotEqual(stray.returncode, 0)
+        self.assertEqual(self.calls()[0]["body"], "text the run wrote")
+        self.assertFalse(self.calls()[1]["recorded"])
+        self.assert_nothing_reached_the_real_tools()
+
     def test_refuses_a_recording_beyond_execpolicy_check_and_debug_prompt_input(self):
         recording = self.path("codex-exec.json")
         with open(recording, "w") as handle:

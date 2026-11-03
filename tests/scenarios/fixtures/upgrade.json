@@ -1,0 +1,13 @@
+{
+  "answer": "确认按这个版本升级，没有需要调整的地方，继续。",
+  "description": "Seam B's Upgrade: a repository governed at version 2, with version 3 installed.",
+  "expect": {
+    "mode": "Upgrade"
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "repository": {
+    "governed_at": 2
+  }
+}

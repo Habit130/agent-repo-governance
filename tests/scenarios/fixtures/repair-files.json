@@ -1,0 +1,22 @@
+{
+  "answer": "确认恢复，继续。",
+  "description": "Seam B's Repair with drift in files: a fixed file edited at the record's version.",
+  "expect": {
+    "mode": "Repair"
+  },
+  "github": {
+    "rulesets": "target"
+  },
+  "repository": {
+    "edits": [
+      {
+        "path": "docs/agents/review.md",
+        "replace": [
+          "Version 3 of Seam A's synthetic store adds this line.",
+          "Edited by hand."
+        ]
+      }
+    ],
+    "governed_at": 3
+  }
+}
