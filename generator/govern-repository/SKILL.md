@@ -134,14 +134,14 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 2. Make your own worktree on a new branch from the latest `origin` default branch.
 3. Render: `<entry> render --dest <worktree> --repository <owner/name> --default-branch
    <branch> --confirmed <file>`, the file holding JSON with `sensitive_paths` and
-   `required_checks`. Upgrade keeps the confirmed values habit didn't change. Remove a target
-   first where `mode` says to rebuild it or a version path holds another file: render replaces
-   fixed files, and a mixed file with no well-formed markers is taken back to the version's.
-   Before removing a mixed file whose `drift.markers` entry says `rebuild as at Initialize`,
-   copy out its repository-owned content: the text after the end marker, or, with that marker
-   gone, every line that isn't the version's governance text. Once rendered, put it back after
-   the end marker unchanged. Exact comparison doesn't check that part, so compare it with the
-   copy yourself.
+   `required_checks`. Upgrade keeps the confirmed values habit didn't change. When `mode`
+   listed `drift.markers`, first run `<entry> mend-markers --worktree <worktree>`: it gives each
+   mixed file one well-formed marker block at the record's version, restoring the markers or
+   rebuilding the governance part as `repair` says, and keeps the file's repository-owned
+   content. Quote each `dropped` line in a comment on the issue. A refusal ends the run like
+   any exit 2.
+   Remove a target first only where a version path holds another file, never a mixed file
+   with governance markers: render replaces fixed files, and writes a removed mixed file whole.
 4. Write the repository-owned content: `AGENTS.md`'s "This repository" section, with the
    carried rules and any repository-specific review expectation; the Claude Code notes in
    `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands it ran, each marked as working

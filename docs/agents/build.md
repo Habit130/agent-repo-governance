@@ -86,9 +86,17 @@ or the pre-merge check confirms both jobs are green on the head.
 
 `generator/govern-repository/scripts/govern.py` is the generator's one entry. Its
 subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`,
-`handover`, `identity`, and the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
+`handover`, `identity`, `mend-markers`, and the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
 and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
 the mode is stop; and 2 on a refusal, with the reason under `error`.
+
+- **Damaged markers** are mended before rendering: `mend-markers --worktree <path>` gives each
+  fixed part's file whose markers `mode` reports damaged one well-formed block at the record's
+  version, so `render` can fill it. Intact governance text gets its markers back; edited text
+  is rebuilt, keeping the text before the begin marker and the repository's own part from
+  the line the template puts after its end marker, or from the one end marker left. It lists
+  each file's `repair` and the non-version lines it `dropped`, refuses (writing nothing) when
+  the repository's own part can't be told apart, and is tested in `generator-core`.
 
 - **Relied-on skill names** in a version manifest must be a list of unique lowercase,
   hyphenated strings. Each entry's type and spelling are checked before deduplicating;

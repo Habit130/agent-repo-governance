@@ -95,6 +95,36 @@ def cmd_compare(args):
     return emit(facts, 0 if facts["ok"] else 1)
 
 
+def cmd_mend_markers(args):
+    root = checkout.toplevel(args.worktree)
+    if root is None:
+        raise GovernError("%s isn't inside a git checkout" % args.worktree)
+    found = checkout.read_record(root)
+    if not found.get("parses"):
+        raise GovernError("the record is missing or doesn't parse, so there is no version to mend the markers at")
+    version = found["version"]
+    source = store.Store(args.store)
+    values = render.check_values(version, args.repository or compare.repository_from_origin(root),
+                                 args.default_branch or compare.default_branch_from_origin(root))
+    planned, mended = [], []
+    for entry in source.manifest(version)["templates"]:
+        data = checkout.read(root, entry["path"]) if entry["class"] == "fixed part" else None
+        if data is None:
+            continue
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            raise GovernError("%s is not UTF-8, so its markers can't be mended" % entry["path"])
+        result = render.mend(text, render.template_text(source, version, entry, values), entry["path"])
+        if result is not None:
+            planned.append((entry["path"], result[0]))
+            mended.append({"path": entry["path"], "repair": result[1], "dropped": result[2]})
+    for path, text in planned:  # Written only once every file is mended, so a refusal writes nothing.
+        with open(os.path.join(root, *path.split("/")), "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+    return emit({"ok": True, "version": version, "mended": mended})
+
+
 def add_version_arguments(parser):
     parser.add_argument("--store", default=DEFAULT_STORE)
     parser.add_argument("--version", type=int, help="default: the installed version")
@@ -199,6 +229,15 @@ def build_parser():
     comparing.add_argument("--repository", help="owner/name; default: from the worktree's origin")
     comparing.add_argument("--default-branch", help="default: origin's HEAD in the worktree")
     comparing.set_defaults(run=cmd_compare)
+
+    mending = commands.add_parser(
+        "mend-markers", help="give each fixed part's file with damaged markers one well-formed block, at the record's version"
+    )
+    mending.add_argument("--store", default=DEFAULT_STORE)
+    mending.add_argument("--worktree", default=".", help="default: the current directory")
+    mending.add_argument("--repository", help="owner/name; default: from the worktree's origin")
+    mending.add_argument("--default-branch", help="default: origin's HEAD in the worktree")
+    mending.set_defaults(run=cmd_mend_markers)
 
     materialize = commands.add_parser(
         "materialize", help="decode a stored tree into a temporary directory or a worktree"

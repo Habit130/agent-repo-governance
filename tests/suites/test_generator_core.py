@@ -174,6 +174,97 @@ class SkillFiles(unittest.TestCase):
         self.assertEqual(again["identity"], facts["identity"])
 
 
+class MendMarkers(support.TempDirCase):
+    """Damaged markers become one well-formed block that `render` can fill, keeping the repository's own text."""
+
+    OWNED = "## This repository\n\n- An owned rule the repository wrote.\n"
+    NOTES = "## Claude Code notes\n\n- An owned Claude Code note.\n"
+
+    def governed(self, edits):
+        store = gs.build_store("released")
+        owned = [{"path": "AGENTS.md", "replace": ["## This repository\n", self.OWNED]},
+                 {"path": ".claude/CLAUDE.md", "replace": ["## Claude Code notes\n", self.NOTES]}]
+        worktree = gs.build_repository(self.tmp, {"repository": {"governed_at": 3, "edits": owned + edits}}, store)
+        return worktree, store
+
+    def mend(self, worktree, store):
+        return support.govern(["mend-markers", "--worktree", worktree, "--store", store])
+
+    def render_and_compare(self, worktree, store):
+        confirmed = self.path("confirmed.json")
+        with open(confirmed, "w") as handle:
+            json.dump(gs.TALLY_CONFIRMED, handle)
+        code, facts = support.govern(["render", "--store", store, "--version", "3", "--dest", worktree,
+                                      "--repository", "Habit130/tally", "--default-branch", "main", "--confirmed", confirmed])
+        self.assertEqual(code, 0, facts)
+        code, facts = support.govern(["compare", "--store", store, "--version", "3", "--worktree", worktree])
+        self.assertEqual((code, facts["differences"]), (0, []), facts)
+
+    def after_end(self, worktree, path):
+        return support.read_text(os.path.join(worktree, *path.split("/"))).split("<!-- governance:end -->\n")[1]
+
+    def test_intact_text_gets_its_markers_back(self):
+        worktree, store = self.governed([{"path": "AGENTS.md", "replace": ["<!-- governance:end -->\n", ""]}])
+        owned = self.after_end_of(worktree)
+        code, facts = self.mend(worktree, store)
+        self.assertEqual(code, 0, facts)
+        self.assertEqual([(m["path"], m["repair"], m["dropped"]) for m in facts["mended"]],
+                         [("AGENTS.md", "restore the markers", [])])
+        self.render_and_compare(worktree, store)
+        self.assertEqual(self.after_end(worktree, "AGENTS.md"), owned)
+
+    def after_end_of(self, worktree):
+        """AGENTS.md's text after the governance text, with its end marker gone."""
+        text = support.read_text(os.path.join(worktree, "AGENTS.md"))
+        return text[text.index("\n" + self.OWNED):]
+
+    def test_duplicated_markers_around_intact_text_are_restored(self):
+        worktree, store = self.governed([{"path": "AGENTS.md", "replace": ["# AGENTS.md\n", "<!-- governance:end -->\n# AGENTS.md\n"]}])
+        code, facts = self.mend(worktree, store)
+        self.assertEqual(code, 0, facts)
+        self.assertEqual([m["repair"] for m in facts["mended"]], ["restore the markers"])
+        self.render_and_compare(worktree, store)
+        self.assertTrue(self.after_end(worktree, "AGENTS.md").startswith("\n" + self.OWNED))
+
+    def test_edited_text_without_its_end_marker_is_rebuilt_and_the_owned_part_kept(self):
+        worktree, store = self.governed([{"path": "AGENTS.md", "replace": ["<!-- governance:end -->\n", ""]},
+                                         {"path": "AGENTS.md", "replace": ["# AGENTS.md\n", "# AGENTS.md (edited)\n"]}])
+        owned = self.after_end_of(worktree)
+        code, facts = self.mend(worktree, store)
+        self.assertEqual(code, 0, facts)
+        self.assertEqual([(m["path"], m["repair"], m["dropped"]) for m in facts["mended"]],
+                         [("AGENTS.md", "rebuild as at Initialize", ["# AGENTS.md (edited)"])])
+        self.render_and_compare(worktree, store)
+        self.assertNotIn("(edited)", support.read_text(os.path.join(worktree, "AGENTS.md")))
+        self.assertEqual(self.after_end(worktree, "AGENTS.md"), owned)
+
+    def test_edited_text_without_its_begin_marker_is_rebuilt_and_the_owned_part_kept(self):
+        worktree, store = self.governed([{"path": ".claude/CLAUDE.md", "replace": ["<!-- governance:begin v3 -->\n", ""]},
+                                         {"path": ".claude/CLAUDE.md", "replace": ["@../AGENTS.md", "@../AGENTS.md (edited)"]}])
+        code, facts = self.mend(worktree, store)
+        self.assertEqual(code, 0, facts)
+        self.assertEqual([(m["path"], m["repair"]) for m in facts["mended"]], [(".claude/CLAUDE.md", "rebuild as at Initialize")])
+        self.render_and_compare(worktree, store)
+        self.assertNotIn("(edited)", support.read_text(os.path.join(worktree, ".claude", "CLAUDE.md")))
+        self.assertTrue(self.after_end(worktree, ".claude/CLAUDE.md").startswith("\n" + self.NOTES))
+
+    def test_owned_text_that_cant_be_told_apart_is_a_refusal_that_writes_nothing(self):
+        worktree, store = self.governed([{"path": "AGENTS.md", "replace": ["<!-- governance:end -->\n", ""]},
+                                         {"path": "AGENTS.md", "replace": ["# AGENTS.md\n", "# AGENTS.md (edited)\n"]},
+                                         {"path": "AGENTS.md", "replace": ["## This repository\n", "## Ours\n"]}])
+        before = gs.tree_snapshot(worktree)
+        code, facts = self.mend(worktree, store)
+        self.assertEqual(code, 2, facts)
+        self.assertIn("AGENTS.md", facts["error"])
+        self.assertEqual(gs.tree_snapshot(worktree), before)
+
+    def test_well_formed_markers_are_left_alone(self):
+        worktree, store = self.governed([])
+        before = gs.tree_snapshot(worktree)
+        self.assertEqual(self.mend(worktree, store), (0, {"ok": True, "version": 3, "mended": []}))
+        self.assertEqual(gs.tree_snapshot(worktree), before)
+
+
 class ScenarioSettings(support.TempDirCase):
     def test_the_runners_repository_setting_names_a_local_origin(self):
         worktree = support.init_repo(self.path("r"))

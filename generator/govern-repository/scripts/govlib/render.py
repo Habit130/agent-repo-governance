@@ -141,6 +141,54 @@ def find_block(text, where):
     return begins[0][0], ends[0][1]
 
 
+def mend(text, template, where):
+    """A fixed part's file with damaged markers, given one well-formed marker block that `render` can fill.
+
+    Returns None when the markers are well formed, else (text, repair, dropped). Every marker
+    line is set aside first. When the template's text between its markers is still there as one
+    run of lines, the markers go back around it and nothing else changes ("restore the
+    markers"). Otherwise the governance part is rebuilt ("rebuild as at Initialize"): the text
+    before the first begin marker is kept, the repository's own part is kept from the line the
+    template puts first after its end marker, or else from the one end marker on, and the
+    version's block goes between. `dropped` lists the non-blank lines left out that aren't the
+    version's text. A file whose own part can't be told apart is refused.
+    """
+    lines = text.splitlines(True)
+    if lines and not lines[-1].endswith("\n"):
+        lines[-1] += "\n"
+    begins = [i for i, line in enumerate(lines) if BEGIN.match(line.rstrip("\n"))]
+    ends = [i for i, line in enumerate(lines) if line.rstrip("\n") == END]
+    if len(begins) == 1 and len(ends) == 1 and begins[0] < ends[0]:
+        return None
+    start, end = find_block(template, "%s's template" % where)
+    block = template[start:end].splitlines(True)
+    inner = block[1:-1]
+    marked = set(begins + ends)
+    kept = [line for i, line in enumerate(lines) if i not in marked]
+    for at in range(len(kept) - len(inner) + 1) if inner else ():
+        if kept[at:at + len(inner)] == inner:
+            return "".join(kept[:at] + block + kept[at + len(inner):]), "restore the markers", []
+    after = template[end:]
+    anchor = next((line + "\n" for line in after.splitlines() if line.strip()), None)
+    prefix = lines[:begins[0]] if begins and not any(e < begins[0] for e in ends) else []
+    if anchor is not None and anchor in lines[len(prefix):]:
+        cut = lines.index(anchor, len(prefix))
+        tail = after[:after.index(anchor)] + "".join(lines[cut:])
+    elif len(ends) == 1 and not any(b > ends[0] for b in begins):
+        cut = ends[0] + 1
+        tail = "".join(lines[cut:])
+    else:
+        raise MarkerError(
+            "%s's markers are damaged and the version's text between them was changed, and neither its end "
+            "marker nor the line %r the version puts after it is left, so its own content can't be told apart"
+            % (where, (anchor or "").rstrip("\n"))
+        )
+    version_lines = set(line for line in inner if line.strip())
+    dropped = [line.rstrip("\n") for i, line in enumerate(lines[len(prefix):cut], len(prefix))
+               if i not in marked and line.strip() and line not in version_lines]
+    return "".join(prefix + block) + tail, "rebuild as at Initialize", dropped
+
+
 def _quoted(value):
     return '"%s"' % value.replace("\\", "\\\\").replace('"', '\\"')
 
