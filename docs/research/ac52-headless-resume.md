@@ -153,3 +153,35 @@ the probe passes no `--model`, so
 [Model.default](https://github.com/anomalyco/opencode/blob/v2.2.5/packages/core/src/model.ts#L300-L305)
 falls back to the first available text model. The interface's recent-model list is not
 consulted by that path. Paid providers are connected, so sign-in is not the cause.
+
+## AC-52-v3 diagnostic: explicit skill-tool load on a pinned model
+
+Ran once on 2026-11-03 UTC under OpenCode v2.2.5, at probe commit `e247082`. The handoff
+allowed one fresh session and at most two submissions, each with `--model xai/grok-4.7`.
+The probe now lists models with `opencode models --standalone` in its own clean environment
+before any submission, and stops unless the exact line `xai/grok-4.7` appears. It reads each
+turn's model from `opencode session export`, because `--format json` events carry none.
+
+The precheck passed, and session `ses_4d185999469d4b76af4db49f6f` passed every assertion.
+
+- **First submission:** the model called `skill` once with ID `govern-repository`; the tool
+  completed and reported the run-only source's directory. The reply after the tool call was
+  exactly the Chinese confirmation, followed by the temporary repository's absolute path.
+- **Second submission:** `继续 resume probe` in the same session returned exactly the private
+  marker, which was not in the prompt, with no tool call and so no skill reload.
+- **Model:** all three stored assistant messages ran on provider `xai`, model `grok-4.7`. The
+  store also records `variant: default`, though the flag named no variant.
+- **Failure signals:** exit 0 on both turns, stderr empty, no error event, no stored message
+  error, no `auto-rejecting` warning, and no stand-in call log.
+
+This is the first real v2.2.5 skill-tool event, and `a1ff88d`'s assertions read its shape
+without change. The selected directory is `state.metadata.metadata.directory`.
+
+**Establishes:** on this model, an explicit request for the `skill` tool by ID loads a run-only
+skill that has `disable-model-invocation: true`, in the right directory, and the same session
+recalls it on resume. So the scratch source registers and the permission check allows the load.
+
+**Does not establish:** that a bare skill mention or the normal invocation works in a CLI run,
+that other models or any unpinned run behave the same, or that one run is repeatable. The
+hypothesis that CLI text lacks structured skill loading was not tested, because this run sent
+no bare mention. CRIT-1's normal invocation evidence, CRIT-5/7/8 and Seam B stay unmet.
