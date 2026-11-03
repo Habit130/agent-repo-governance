@@ -51,9 +51,10 @@ OPENCODE_PERMISSION = {"skill": "allow", "bash": "allow", "edit": "allow", "read
 WRITE_CALLS = (("issue", "create"), ("issue", "edit"), ("issue", "comment"), ("label", "create"), ("pr", "create"),
                ("pr", "edit"), ("pr", "comment"))
 READ_CALLS = (("issue", "view"), ("issue", "list"), ("pr", "view"), ("pr", "list"), ("label", "list"), ("secret", "list"))
-# A shell command that runs gh by an existing path, `command gh` or ghm passes the stand-in.
+# A shell command that runs gh by an existing path, `command -p gh` (the default PATH, not the
+# run's) or ghm passes the stand-in. Plain `command gh` still looks gh up on the run's PATH.
 GH_PATH = re.compile(r"(?:^|[\s;&|(`\"'])(/[^\s;&|)`\"']*/gh)(?=[\s;&|)`\"']|$)", re.M)
-GH_BYPASS = re.compile(r"(?:^|[;&|(]\s*|\s)(?:command\s+gh|ghm)\s+\S", re.M)
+GH_BYPASS = re.compile(r"(?:^|[;&|(]\s*|\s)(?:command\s+-p\s+gh|ghm)\s+\S", re.M)
 BLOCK = re.compile(r"```govern-facts\n(.*?)\n```", re.S)
 BLOCK_KEYS = {"rules", "sensitive_paths", "required_checks", "actions_secrets", "labels_to_create", "nested_agents_md",
               "generator_identity"}

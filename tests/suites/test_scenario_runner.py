@@ -74,14 +74,15 @@ class Judge(unittest.TestCase):
 
 
 class PastTheStandIn(support.TempDirCase):
-    def test_a_real_gh_by_path_or_ghm_is_caught_and_plain_gh_is_not(self):
+    def test_a_real_gh_by_path_default_path_or_ghm_is_caught_and_a_path_lookup_is_not(self):
         real = self.path("bin/gh")
         os.makedirs(os.path.dirname(real))
         with open(real, "w") as handle:
             handle.write("")
-        caught = [real + " run list", "git push; %s api user" % real, "command gh pr list", "ghm api user"]
+        caught = [real + " run list", "git push; %s api user" % real, "command -p gh pr list", "ghm api user"]
+        # `command gh` skips shell functions but still looks gh up on PATH, so it reaches the stand-in.
         plain = ["gh issue view 1", "cat docs/gh-notes.md", "ls /tmp/x/gh-config", "git push origin branch",
-                 "/no/such/place/gh run list", "grep -E 'x|ghm' notes"]
+                 "/no/such/place/gh run list", "grep -E 'x|ghm' notes", "command gh pr list", "command -v gh"]
         self.assertEqual(runner.past_the_stand_in(caught + plain), caught)
 
 
