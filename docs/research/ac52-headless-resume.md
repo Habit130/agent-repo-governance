@@ -185,3 +185,21 @@ recalls it on resume. So the scratch source registers and the permission check a
 that other models or any unpinned run behave the same, or that one run is repeatable. The
 hypothesis that CLI text lacks structured skill loading was not tested, because this run sent
 no bare mention. CRIT-1's normal invocation evidence, CRIT-5/7/8 and Seam B stay unmet.
+
+## AC-52-v4 results
+
+Read and run 2026-11-03 (UTC). Primary evidence is on #52.
+
+- **OpenCode's entry.** On v2.2.5, `@govern-repository` in the interface on a private server
+  listed and attached a run-only skill with `disable-model-invocation: true` and
+  `metadata: {opencode/autoinvoke: false}`.
+  [skill-file.ts](https://github.com/anomalyco/opencode/blob/v2.2.5/packages/core/src/config/plugin/skill-file.ts)
+  reads that key, which wins over the top-level flag;
+  [instructions.ts](https://github.com/anomalyco/opencode/blob/v2.2.5/packages/core/src/skill/instructions.ts)
+  leaves such a skill out of the model's list only.
+- **Claude Code's resume** passed on 2.1.316 with the directory assertion, on a session-only
+  plugin directory with a namespaced invocation.
+- **Unattended permissions.** A Claude Code scenario names its tools with `--tools` and
+  `--allowedTools`. An OpenCode scenario names them under `permission` in its own
+  `OPENCODE_CONFIG_CONTENT`, without `--auto`. Neither refused a step, and user settings
+  stayed unchanged.

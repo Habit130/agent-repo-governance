@@ -123,8 +123,13 @@ def judge(evidence, expect):
         "the record parses": bool(evidence["record_parses"]),
     }
     for rule in expect.get("rules", []):
-        if not rule.get("safety"):
-            judgment["class: %s" % rule["match"]] = rule["class"] in _class_of(facts, rule["match"])
+        if rule.get("safety"):
+            continue
+        judgment["class: %s" % rule["match"]] = rule["class"] in _class_of(facts, rule["match"])
+        if rule["class"] == "carried":
+            judgment["carried into the files: %s" % rule["match"]] = rule["match"] in text
+    if evidence.get("build_md") is not None:
+        judgment["build.md holds no skeleton placeholder"] = "<command>" not in evidence["build_md"]
     for path in expect.get("removed_paths", []):
         judgment["removed: %s" % path] = path not in evidence.get("paths", [])
     patterns = [p.get("pattern") for p in facts.get("sensitive_paths", [])]
@@ -260,7 +265,8 @@ def build(scratch, spec, harness):
     else:
         env["OPENCODE_CONFIG_CONTENT"] = json.dumps({
             "$schema": "https://opencode.ai/config.json", "skills": [str(source.parent)], "permission": OPENCODE_PERMISSION})
-    return {"worktree": worktree, "bare": bare, "env": env, "store": store, "repository": repository}
+    labels = [label["name"] for label in spec.get("github", {}).get("labels", [])]
+    return {"worktree": worktree, "bare": bare, "env": env, "store": store, "repository": repository, "labels": labels}
 
 
 def harness_command(harness, session, scratch, prompt, resume):
@@ -318,6 +324,11 @@ def collect(built, scratch, first_calls, session_ok):
     for path in ("AGENTS.md", ".claude/CLAUDE.md"):
         if (checkout / path).is_file():
             evidence["files"][path] = (checkout / path).read_text(encoding="utf-8")
+    if (checkout / "docs/agents/build.md").is_file():
+        evidence["build_md"] = (checkout / "docs/agents/build.md").read_text(encoding="utf-8")
+    with open(os.path.join(built["store"], "3", "manifest.json")) as handle:
+        labels = [label["name"] for label in json.load(handle)["labels"]]
+    evidence["missing_labels"] = [name for name in labels if name not in built["labels"]]
     env = dict(built["env"])
     compared = subprocess.run([sys.executable, str(GOVERN), "compare", "--worktree", str(checkout), "--default-branch", "main"],
                               env=env, stdout=subprocess.PIPE, universal_newlines=True)
@@ -367,6 +378,9 @@ def one_run(name, spec, harness, base, number):
         models = probe.stored_models(session, worktree, env, scratch / "export")
         result["models"] = sorted(set(models))
         result["judgment"]["every assistant message on the pinned model"] = bool(models) and set(models) == {MODEL}
+    refused = any("auto-rejecting" in Path(str(scratch / turn) + part).read_bytes().decode("utf-8", "replace")
+                  for turn in ("first", "second") for part in (".stdout", ".stderr"))
+    result["judgment"]["no permission refusal"] = not refused
     return result
 
 
