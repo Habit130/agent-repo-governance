@@ -199,6 +199,32 @@ class CodexStandIn(StandInCase):
         self.assertEqual(gh("issue", "view", "2", "--json", "body")[0], 1)
         self.assert_nothing_reached_the_real_tools()
 
+    def test_a_label_list_entry_serves_the_existing_labels_and_those_the_run_created(self):
+        recording = self.path("gh-labels.json")
+        existing = [{"name": "bug", "color": "d73a4a", "description": "Something isn't working"}]
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [{"accepts": ["label", "create"]},
+                                               {"accepts": ["label", "list"], "labels": existing},
+                                               {"accepts": ["api", "repos/o/r/labels"], "labels": existing}]}, handle)
+        env = dict(self.env, STANDIN_GH_RECORDING=recording)
+
+        def gh(*args):
+            done = subprocess.run(["gh"] + list(args), env=env, stdout=subprocess.PIPE, universal_newlines=True)
+            return done.returncode, done.stdout
+
+        gh("label", "create", "miss", "--repo", "o/r", "--color", "B60205", "--description", "Miss record")
+        code, plain = gh("label", "list", "--repo", "o/r")
+        self.assertEqual(code, 0)
+        self.assertEqual([line.split("\t")[0] for line in plain.splitlines()], ["bug", "miss"])
+        self.assertEqual(json.loads(gh("label", "list", "--json", "name,color")[1]),
+                         [{"name": "bug", "color": "d73a4a"}, {"name": "miss", "color": "B60205"}])
+        self.assertEqual(gh("label", "list", "--json", "name", "--jq", "length")[1], "2\n")
+        self.assertEqual(gh("label", "list", "--json", "name", "-q", ".[].name")[1], "bug\nmiss\n")
+        self.assertEqual(gh("api", "repos/o/r/labels", "--paginate", "--jq", ".[].name")[1], "bug\nmiss\n")
+        self.assertEqual([l["name"] for l in json.loads(gh("api", "repos/o/r/labels")[1])], ["bug", "miss"])
+        self.assertNotEqual(gh("api", "repos/o/r/labels", "--method", "POST", "-f", "name=x")[0], 0)
+        self.assert_nothing_reached_the_real_tools()
+
     def test_refuses_a_recording_beyond_execpolicy_check_and_debug_prompt_input(self):
         recording = self.path("codex-exec.json")
         with open(recording, "w") as handle:

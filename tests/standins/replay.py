@@ -16,7 +16,10 @@ with those arguments, for calls that hold text a run wrote: a body the call name
 `--body-file` or `-F`, or sends on stdin with `-`, goes into the log under "body". An
 accepting `issue view` entry with "created_issue": true serves the issues the log shows the
 run creating, numbered from 1 in order, with their later `issue edit` title and body: plain,
-as `--json` fields, or one field by `--jq .<field>`; a number the run never created fails. The Codex stand-in replays only `codex execpolicy check`
+as `--json` fields, or one field by `--jq .<field>`; a number the run never created fails.
+An accepting `label list` or `api repos/<repo>/labels` entry with "labels" serves those
+labels and then the ones the log shows the run creating: plain, as `--json` fields or the API's
+objects, or by `--jq` `length` or `.[].<field>`; an `api` call that writes fails. The Codex stand-in replays only `codex execpolicy check`
 and `codex debug prompt-input`.
 """
 
@@ -129,6 +132,36 @@ def view_issue(args):
     return json.dumps(answer) + "\n", 0
 
 
+WRITE_FLAGS = ("--method", "-X", "--input", "-f", "-F", "--field", "--raw-field")
+
+
+def list_labels(call, args):
+    """(stdout, exit) for a label read: the recorded labels, then the ones the run created."""
+    if args[:1] == ["api"] and any(flag in args for flag in WRITE_FLAGS):
+        return "", 1
+    labels = [dict(label) for label in call["labels"]]
+    path = os.environ.get("STANDIN_LOG")
+    if path and os.path.exists(path):
+        with open(path) as handle:
+            for line in handle:
+                entry = json.loads(line) if line.strip() else {}
+                made = entry.get("args") or []
+                if entry.get("recorded") and made[:2] == ["label", "create"] and len(made) > 2 and \
+                        made[2] not in [label["name"] for label in labels]:
+                    labels.append({"name": made[2], "color": _flag(made, "--color", "-c") or "",
+                                   "description": _flag(made, "--description", "-d") or ""})
+    fields, query = _flag(args, "--json"), _flag(args, "--jq", "-q")
+    if args[:1] == ["label"] and fields is None:
+        return "".join("%s\t%s\t#%s\n" % (l["name"], l["description"], l["color"]) for l in labels), 0
+    if fields is not None:
+        labels = [dict((name, label.get(name, "")) for name in fields.split(",")) for label in labels]
+    if query == "length":
+        return "%d\n" % len(labels), 0
+    if query and query.startswith(".[]."):
+        return "".join("%s\n" % label.get(query[4:], "") for label in labels), 0
+    return json.dumps(labels) + "\n", 0
+
+
 def served():
     """Which recorded calls the log shows as already answered."""
     path = os.environ.get("STANDIN_LOG")
@@ -154,8 +187,8 @@ def main(argv):
             body = body_of(args)
             if body is not None:
                 entry["body"] = body
-            if call.get("created_issue"):
-                out, code = view_issue(args)
+            if call.get("created_issue") or "labels" in call:
+                out, code = view_issue(args) if call.get("created_issue") else list_labels(call, args)
                 log(entry)
                 sys.stdout.write(out)
                 return code
