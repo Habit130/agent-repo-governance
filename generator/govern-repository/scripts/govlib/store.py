@@ -227,7 +227,7 @@ class Store(object):
 def directory_hash(root):
     """A directory's content hash: each file's relative path, executable bit and bytes, in order."""
     digest = hashlib.sha256()
-    for base, dirs, names in sorted(os.walk(root)):
+    for base, dirs, names in os.walk(root):
         dirs[:] = sorted(d for d in dirs if d != "__pycache__")
         for name in sorted(names):
             if name.endswith(".pyc"):

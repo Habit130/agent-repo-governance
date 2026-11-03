@@ -86,7 +86,7 @@ def _github(gh, repository, data, branch):
     pulls = gh.get("repos/%s/pulls?state=open&per_page=100" % repository)
     rulesets, message = github.rulesets(gh, repository)
     rules = gh.get(github.branch_rules_path(repository, branch))
-    applying = set(rule.get("ruleset_id") for rule in rules.data or []) if rules.ok else set()
+    applying = set(rule.get("ruleset_id") for rule in rules.data or []) if rules.ok else None
     protection = gh.get(github.branch_path(repository, branch))
     facts = {
         "owner": {"login": owner.get("login"), "type": owner.get("type")},
@@ -118,7 +118,8 @@ def _github(gh, repository, data, branch):
              "draft": bool(p.get("draft"))}
             for p in pulls.data or []
         ] if pulls.ok else None,
-        "unreadable": [what for what, response in (("labels", labels), ("open pull requests", pulls), ("the default branch", protection))
+        "unreadable": [what for what, response in (("labels", labels), ("open pull requests", pulls), ("the default branch", protection),
+                                                       ("the rules on the default branch", rules))
                        if not response.ok] + ([] if rulesets is not None else ["rulesets: %s" % message]),
     }
     return facts
@@ -205,6 +206,7 @@ def commands(root, paths):
                 except (ValueError, AttributeError):
                     scripts = {}
                     entry["unreadable"] = True
+                    entry["extraction"] = "unsupported"
                 entry["commands"] = [{"command": "npm run %s" % key, "runs": value} for key, value in sorted(scripts.items())
                                      if isinstance(value, str)]
             elif MANIFESTS[name] in ("make", "just"):
@@ -242,7 +244,7 @@ def run(worktree, home, env=None):
     if root is None:
         raise GovernError("%s isn't inside a git checkout" % worktree)
     repository = checkout.repository(root)
-    gh = github.GitHub(env)
+    gh = github.Retried(env)
     data = gh.require("repos/%s" % repository, "the repository")
     branch = data.get("default_branch")
     paths = checkout.tracked(root)

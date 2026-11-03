@@ -27,13 +27,14 @@ in English and no code, diffs or paths. It names its sender and target.
 1. Run `<entry> preconditions`. On a failed item, or a step only habit can take, give habit
    the one checklist. Items that block the run wait until habit says they are done. A step
    that can wait, such as the review bots, goes into the confirmation instead.
-2. Run `<entry> mode`, saving its report. On mode `stop`, tell habit the reason and end.
+2. Run `<entry> mode`, saving its report. On mode `stop`, or when any subcommand exits 2, tell
+   habit the reason and end.
 3. Follow the report's `outcome`:
    - **no drift**: send one Chinese message saying so, and end. No issue, no PR.
    - **not proven, the inactive rulesets**: name each one under `drift.github.unplaced`, say
      it enforces nothing and needs no action, and end. Write nothing and hand no command.
    - **not proven, the unread items**, or **drift in GitHub state only**: go to section 6,
-     step 2. No issue, no PR.
+     step 2, naming any inactive ruleset under `unplaced` there too. No issue, no PR.
    - **anything else**: carry on. Inactive rulesets under `unplaced` are named in the
      confirmation, and unread items under `drift.github.unreadable` are named there as
      unverified. "No drift" is said only for the no-drift outcome.
@@ -88,7 +89,7 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   merge; and anything unverified.
 - **Repair with drift** holds only the drift found, how it is restored, and anything unverified.
 
-An item habit's answer leaves open gets one follow-up about that item only. Assume no answer.
+An item habit's answer leaves open gets one follow-up about that item only, and stays open until habit answers it.
 
 ## 4. The issue
 
@@ -132,12 +133,17 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 
 ## 6. After merge
 
+A run with no issue and no PR starts at step 2 and reports only to habit.
+
 1. Wait on the PR as the role file says. Confirm the default-branch CI run is green, or note
    that the repository has no CI.
 2. Run `<entry> handover --mode-facts <saved mode report>`, adding
    `--required-checks-changed` when habit's answer changed them. When `owner_command` is true,
    give habit `<entry> owner-command --repository <owner/name>`'s command, with each of the
    report's `lines` verbatim beside it and each unverified item named. Hand it once per run.
-3. After habit's run, rerun `<entry> mode` once and read back as the agent account what it can.
-   Report in English on the issue and in Chinese to habit, with whatever stays unread beside
-   habit's owner-script report. The run then ends.
+   When it is false, the run ends here with the Chinese report.
+3. After habit's run, fetch `origin` and run `<entry> mode` once in a temporary worktree of the
+   default branch's head. It reads the rulesets and readable settings as the agent account, and
+   `<entry> preconditions` reads your own permission. Report on the issue in English,
+   where there is one, and to habit in Chinese, with whatever stays unread beside habit's
+   owner-script report. The run then ends.

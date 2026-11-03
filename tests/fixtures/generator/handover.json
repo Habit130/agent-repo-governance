@@ -100,13 +100,13 @@
     "owner_command": true
   },
   {
-    "case": "Repair changing required checks by a restore never counts",
+    "case": "Repair changing the required checks",
     "mode": "Repair",
     "owner_script_changed": false,
     "required_checks_changed": true,
     "in_github": false,
     "failed_reads": false,
     "rulesets_unread": false,
-    "owner_command": false
+    "owner_command": true
   }
 ]

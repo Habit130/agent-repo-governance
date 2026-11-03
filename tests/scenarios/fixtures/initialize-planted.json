@@ -54,6 +54,5 @@
       "CLAUDE.md": "# tally\n\n- Every CLI flag is documented in `docs/cli.md`.\n- Open a PR for every change.\n- Reviews are optional: an agent may merge its own PR once CI is green.\n",
       "docs/cli.md": "# CLI\n"
     }
-  },
-  "smoke": true
+  }
 }

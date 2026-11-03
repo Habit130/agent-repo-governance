@@ -85,6 +85,15 @@ class Handover(support.TempDirCase):
                 self.assertEqual(code, 0, facts)
                 self.assertEqual(facts["owner_command"], row["owner_command"], facts)
 
+    def test_a_file_that_isnt_a_mode_report_is_a_refusal(self):
+        name = os.path.join(self.tmp, "bad.json")
+        for text in ("[]", '{"drift": []}', '{"drift": {"github": 1}}'):
+            with open(name, "w") as handle:
+                handle.write(text)
+            code, facts = support.govern(["handover", "--mode-facts", name])
+            self.assertEqual(code, 2, facts)
+            self.assertIn("isn't a `mode` report", facts["error"])
+
     def test_the_line_says_what_the_command_does(self):
         row = {"mode": "Repair", "owner_script_changed": False, "required_checks_changed": False,
                "in_github": False, "failed_reads": True, "rulesets_unread": False}
@@ -122,7 +131,18 @@ class SkillFiles(unittest.TestCase):
         code, facts = support.govern(["identity"])
         self.assertEqual(code, 0, facts)
         self.assertRegex(facts["identity"], "^[0-9a-f]{64}$")
-        code, again = support.govern(["identity"])
+        cache = os.path.join(self.SKILL, "scripts", "__pycache__")
+        made = not os.path.isdir(cache)
+        os.makedirs(cache, exist_ok=True)
+        planted = os.path.join(cache, "planted.cpython-39.pyc")
+        with open(planted, "w") as handle:
+            handle.write("bytecode")
+        try:
+            code, again = support.govern(["identity"])
+        finally:
+            os.remove(planted)
+            if made:
+                os.rmdir(cache)
         self.assertEqual(again["identity"], facts["identity"])
 
 

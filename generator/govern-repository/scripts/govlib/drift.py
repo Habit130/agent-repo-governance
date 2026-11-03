@@ -168,12 +168,11 @@ def owner_script_changed(source, older, newer):
 def handover(mode, owner_changed, required_checks_changed, in_github, unreadable, rulesets_unread):
     """Whether habit gets the ready owner-script command, and the lines that say what it does.
 
-    Always at Initialize. At Upgrade, when the owner script, the target state or the required
-    checks changed. At Upgrade and Repair, when GitHub state drifted or a read stayed failed.
+    Always at Initialize. At Upgrade and Repair, when the owner script, the target state or the
+    required checks changed, GitHub state drifted, or a read stayed failed.
     An inactive ruleset the agent can't place never gets it.
     """
-    changed = mode == "Upgrade" and (owner_changed or required_checks_changed)
-    command = mode == "Initialize" or changed or bool(in_github) or bool(unreadable)
+    command = mode == "Initialize" or any((owner_changed, required_checks_changed, in_github, unreadable))
     lines = [AT_TARGET_LINE] if command else []
     if command and rulesets_unread:
         lines.append(LIST_UNREAD_LINE)

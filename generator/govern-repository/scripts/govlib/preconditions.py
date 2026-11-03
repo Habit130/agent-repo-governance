@@ -171,7 +171,7 @@ def run(worktree, home, store_root, env=None):
     judged = harness.require(env)
 
     result = Run()
-    gh = github.GitHub(env)
+    gh = github.Retried(env)
     root = checkout.toplevel(worktree)
     repository = data = None
     if root is None:

@@ -131,7 +131,11 @@ def cmd_identity(args):
 
 
 def cmd_handover(args):
-    facts = drift.handover_from(read_json(args.mode_facts), args.required_checks_changed)
+    report = read_json(args.mode_facts)
+    found = report.get("drift", {}) if isinstance(report, dict) else None
+    if not isinstance(found, dict) or not isinstance(found.get("github", {}), dict):
+        raise GovernError("%s isn't a `mode` report" % args.mode_facts)
+    facts = drift.handover_from(report, args.required_checks_changed)
     facts["ok"] = True
     return emit(facts)
 

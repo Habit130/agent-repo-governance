@@ -1,6 +1,29 @@
 {
   "description": "CRIT-10: with the rules read failed, an active ruleset whose patterns don't name the branch reads as unknown, not as not applying.",
   "expect": {
+    "inspect": {
+      "exit": 0,
+      "github": {
+        "rulesets": [
+          {
+            "name": "Gate"
+          },
+          {
+            "name": "Merge"
+          },
+          {
+            "name": "History"
+          },
+          {
+            "applies_to_default_branch": null,
+            "name": "legacy main"
+          }
+        ],
+        "unreadable": [
+          "the rules on the default branch"
+        ]
+      }
+    },
     "mode": {
       "drift": {
         "github": {
@@ -68,6 +91,7 @@
     "governed_at": 3
   },
   "run": [
-    "mode"
+    "mode",
+    "inspect"
   ]
 }

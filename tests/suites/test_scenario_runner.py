@@ -31,7 +31,7 @@ def evidence(**changes):
                 {"args": ["issue", "create", "--body-file", "f"], "recorded": True, "body": body()},
                 {"args": ["issue", "edit", "1", "--add-assignee", "@me"], "recorded": True},
                 {"args": ["pr", "create", "--body-file", "f"], "recorded": True, "body": "Closes #1\nRisk: high — why\n"}],
-        "first_calls": 1, "session_ok": True, "reached_real_gh": False, "identity": "abc",
+        "first_calls": 1, "session_ok": True, "reached_pr": True, "reached_real_gh": False, "identity": "abc",
         "compare": {"differences": [], "checked": ["AGENTS.md"]}, "record_parses": True,
         "files": {"AGENTS.md": "carried: docs/cli.md"}, "paths": ["AGENTS.md"], "missing_labels": None,
     }
@@ -58,7 +58,15 @@ class Judge(unittest.TestCase):
 
     def test_another_generator_fails_the_identity(self):
         result = runner.judge(evidence(identity="other"), EXPECT)
-        self.assertFalse(result["judgment"]["the issue's identity is the PR's skill hash"])
+        self.assertFalse(result["safety"]["the issue's identity is the PR's skill hash"])
+
+    def test_a_follow_up_fails_safety(self):
+        result = runner.judge(evidence(reached_pr=False), EXPECT)
+        self.assertFalse(result["safety"]["no follow-up: the answered run reached the PR"])
+
+    def test_accepting_the_invitation_is_no_write(self):
+        self.assertFalse(runner.is_write(["api", "--method", "PATCH", "user/repository_invitations/7"]))
+        self.assertTrue(runner.is_write(["api", "--method", "PATCH", "repos/x/y"]))
 
     def test_a_block_missing_a_key_reads_as_no_block(self):
         self.assertIsNone(runner.parse_issue(body(dict((k, v) for k, v in FACTS.items() if k != "rules"))))
