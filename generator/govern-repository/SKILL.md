@@ -38,11 +38,19 @@ in English and no code, diffs or paths. It names its sender and target.
    - **anything else**: carry on. Inactive rulesets under `unplaced` are named in the
      confirmation, and unread items under `drift.github.unreadable` are named there as
      unverified. "No drift" is said only for the no-drift outcome.
+
+   `drift.github.owner_script_checks` is the accepted blind spot: settings the agent account
+   can never read, which the owner script checks. They are never unverified, unread or drift,
+   and never decide whether habit gets the owner-script command.
 4. Run `<entry> inspect`.
 
 ## 2. Judgment
 
-Every entry below ends up in the confirmation and the issue.
+At Initialize, or a rebuilt record, make every entry below; each ends up in the issue, and
+in the confirmation as its items allow. At Upgrade, sort only the rules in
+repository-owned content, to find what conflicts with the new fixed rules, and run no
+commands: confirmed values and repository-owned content stay as they are, apart from a
+conflict habit confirms. At Repair, make none of them.
 
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
@@ -63,7 +71,10 @@ Every entry below ends up in the confirmation and the issue.
   uncertain, under its reported `name`. Name every other job and why it can't be required.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
   worktree of your own, so the checkout stays untouched. A manifest whose `extraction` is
-  `unsupported` has its commands read from the file by you. Record which worked.
+  `unsupported` has its commands read from the file by you. Record each command you ran and
+  whether it worked, with the cause of a failure. A failing command is a fact for `build.md`
+  and the issue, never a question or an option for habit: the run never changes the
+  repository's code, build or CI configuration to make one pass, which is separate work.
 - **Actions secrets.** For each name under `ci.secrets`, propose its purpose and issuing
   service from the step that uses it. A name you can't place is asked about, never guessed.
 - **Credentials.** A credential the inspection names is reported by type and location. Its
@@ -89,6 +100,10 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   merge; and anything unverified.
 - **Repair with drift** holds only the drift found, how it is restored, and anything unverified.
 
+Each list is closed. Not asked: the wording of fixed content, the build and test commands
+and their results, and the substitutions. Nothing outside a list's items becomes a question
+or an option for habit; a fact the run found that fits no item goes into the issue.
+
 An item habit's answer leaves open gets one follow-up about that item only, and stays open until habit answers it.
 
 ## 4. The issue
@@ -107,7 +122,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
   generator_identity: the identity subcommand's "identity"
   ```
 
-- acceptance criteria and verification commands, exact comparison included.
+- acceptance criteria and verification commands: exact comparison and the repository's
+  commands that worked. A command that failed is listed as failing, outside Verification.
 
 ## 5. Writing
 
@@ -121,8 +137,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    fixed files, and a mixed file with no well-formed markers is taken back to the version's.
 4. Write the repository-owned content: `AGENTS.md`'s "This repository" section, with the
    carried rules and any repository-specific review expectation; the Claude Code notes in
-   `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands that worked, the CI and the
-   Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
+   `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands it ran, each marked as working
+   or failing with the cause, the CI and the Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
 5. Make the removals habit's answer leaves standing. Move the repository's own skills to
    `.agents/skills/`, with a `.claude/skills/` link.
 6. From here follow the version's `docs/agents/builder.md`, Steps, from step 5, with the issue
