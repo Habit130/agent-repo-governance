@@ -248,6 +248,31 @@ class MendMarkers(support.TempDirCase):
         self.assertNotIn("(edited)", support.read_text(os.path.join(worktree, ".claude", "CLAUDE.md")))
         self.assertTrue(self.after_end(worktree, ".claude/CLAUDE.md").startswith("\n" + self.NOTES))
 
+    def test_a_rebuild_leaves_no_stray_marker_in_the_owned_part(self):
+        worktree, store = self.governed([{"path": "AGENTS.md", "replace": ["<!-- governance:end -->\n", ""]},
+                                         {"path": "AGENTS.md", "replace": ["# AGENTS.md\n", "# AGENTS.md (edited)\n"]},
+                                         {"path": "AGENTS.md", "replace": [self.OWNED, self.OWNED + "<!-- governance:begin v3 -->\n"]}])
+        code, facts = self.mend(worktree, store)
+        self.assertEqual(code, 0, facts)
+        self.assertEqual([m["repair"] for m in facts["mended"]], ["rebuild as at Initialize"])
+        self.render_and_compare(worktree, store)
+        self.assertTrue(self.after_end(worktree, "AGENTS.md").startswith("\n" + self.OWNED))
+
+    def test_a_symlinked_parent_is_refused_before_anything_is_written(self):
+        worktree, store = self.governed([{"path": ".claude/CLAUDE.md", "replace": ["<!-- governance:end -->\n", ""]}])
+        outside = self.path("outside")
+        os.rename(os.path.join(worktree, ".claude"), outside)
+        os.symlink(outside, os.path.join(worktree, ".claude"))
+        with open(os.path.join(worktree, "AGENTS.md")) as handle:
+            agents = handle.read()
+        with open(os.path.join(worktree, "AGENTS.md"), "w") as handle:
+            handle.write(agents.replace("<!-- governance:end -->\n", ""))
+        before = (gs.tree_snapshot(worktree), support.read_text(os.path.join(outside, "CLAUDE.md")))
+        code, facts = self.mend(worktree, store)
+        self.assertEqual(code, 2, facts)
+        self.assertIn("symlink", facts["error"])
+        self.assertEqual((gs.tree_snapshot(worktree), support.read_text(os.path.join(outside, "CLAUDE.md"))), before)
+
     def test_owned_text_that_cant_be_told_apart_is_a_refusal_that_writes_nothing(self):
         worktree, store = self.governed([{"path": "AGENTS.md", "replace": ["<!-- governance:end -->\n", ""]},
                                          {"path": "AGENTS.md", "replace": ["# AGENTS.md\n", "# AGENTS.md (edited)\n"]},

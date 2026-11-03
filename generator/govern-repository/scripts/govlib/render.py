@@ -173,16 +173,17 @@ def mend(text, template, where):
     prefix = lines[:begins[0]] if begins and not any(e < begins[0] for e in ends) else []
     if anchor is not None and anchor in lines[len(prefix):]:
         cut = lines.index(anchor, len(prefix))
-        tail = after[:after.index(anchor)] + "".join(lines[cut:])
+        tail = after[:after.index(anchor)]
     elif len(ends) == 1 and not any(b > ends[0] for b in begins):
         cut = ends[0] + 1
-        tail = "".join(lines[cut:])
+        tail = ""
     else:
         raise MarkerError(
             "%s's markers are damaged and the version's text between them was changed, and neither its end "
             "marker nor the line %r the version puts after it is left, so its own content can't be told apart"
             % (where, (anchor or "").rstrip("\n"))
         )
+    tail += "".join(line for i, line in enumerate(lines[cut:], cut) if i not in marked)  # A stray marker goes too.
     version_lines = set(line for line in inner if line.strip())
     dropped = [line.rstrip("\n") for i, line in enumerate(lines[len(prefix):cut], len(prefix))
                if i not in marked and line.strip() and line not in version_lines]

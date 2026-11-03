@@ -117,10 +117,11 @@ def cmd_mend_markers(args):
             raise GovernError("%s is not UTF-8, so its markers can't be mended" % entry["path"])
         result = render.mend(text, render.template_text(source, version, entry, values), entry["path"])
         if result is not None:
-            planned.append((entry["path"], result[0]))
+            # The renderer's worktree boundary: a symlinked parent would send the write outside.
+            planned.append((storedform.check_target(root, entry["path"]), result[0]))
             mended.append({"path": entry["path"], "repair": result[1], "dropped": result[2]})
-    for path, text in planned:  # Written only once every file is mended, so a refusal writes nothing.
-        with open(os.path.join(root, *path.split("/")), "w", encoding="utf-8", newline="") as handle:
+    for full, text in planned:  # Written only once every file is mended, so a refusal writes nothing.
+        with open(full, "w", encoding="utf-8", newline="") as handle:
             handle.write(text)
     return emit({"ok": True, "version": version, "mended": mended})
 
