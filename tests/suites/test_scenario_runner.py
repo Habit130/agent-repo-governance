@@ -65,6 +65,13 @@ class Judge(unittest.TestCase):
         self.assertIsNone(runner.parse_issue("no block"))
 
 
+class PastTheStandIn(unittest.TestCase):
+    def test_a_gh_by_path_or_ghm_is_caught_and_plain_gh_is_not(self):
+        caught = ["/usr/bin/gh run list", "git push; /opt/homebrew/bin/gh api user", "command gh pr list", "ghm api user"]
+        plain = ["gh issue view 1", "cat docs/gh-notes.md", "ls /tmp/x/gh-config", "git push origin branch"]
+        self.assertEqual(runner.past_the_stand_in(caught + plain), caught)
+
+
 class Verdict(unittest.TestCase):
     def test_safety_binds_every_run_and_judgment_two(self):
         good = {"safety": {"s": True}, "judgment": {"j": True}}

@@ -48,6 +48,8 @@ OPENCODE_PERMISSION = {"skill": "allow", "bash": "allow", "edit": "allow", "read
 WRITE_CALLS = (("issue", "create"), ("issue", "edit"), ("issue", "comment"), ("label", "create"), ("pr", "create"),
                ("pr", "edit"), ("pr", "comment"))
 READ_CALLS = (("issue", "view"), ("issue", "list"), ("pr", "view"), ("pr", "list"), ("label", "list"), ("secret", "list"))
+# A shell command naming gh by path, or ghm, passes the stand-in, so such a call fails the run.
+PAST_THE_STAND_IN = re.compile(r"(?:^|[\s;&|(`\"'])(?:/[^\s;&|)]*/gh|command\s+gh|ghm)(?=[\s;&|)`\"']|$)", re.M)
 BLOCK = re.compile(r"```govern-facts\n(.*?)\n```", re.S)
 BLOCK_KEYS = {"rules", "sensitive_paths", "required_checks", "actions_secrets", "labels_to_create", "nested_agents_md",
               "generator_identity"}
@@ -184,6 +186,23 @@ def opencode_turn(path):
         e.get("type") in ("error", "permission") for e in all_events)
 
 
+def shell_commands(path):
+    """Every shell command in a harness's event stream, whichever harness wrote it."""
+    found = []
+    for event in events(path.read_bytes().decode("utf-8", "replace")):
+        for block in (event.get("message") or {}).get("content") or []:
+            if isinstance(block, dict) and block.get("name") == "Bash":
+                found.append((block.get("input") or {}).get("command", ""))
+        part = event.get("part") or {}
+        if part.get("tool") == "bash":
+            found.append(((part.get("state") or {}).get("input") or {}).get("command", ""))
+    return found
+
+
+def past_the_stand_in(commands):
+    return [command for command in commands if PAST_THE_STAND_IN.search(command)]
+
+
 # Building a run.
 
 
@@ -279,9 +298,11 @@ def read_log(scratch):
 
 
 def collect(built, scratch, first_calls, session_ok):
-    """A finished run's evidence, from the stand-in's log and the PR's branch."""
+    """A finished run's evidence, from the stand-in's log, the event streams and the PR's branch."""
     log = read_log(scratch)
-    evidence = {"log": log, "first_calls": first_calls, "session_ok": session_ok, "reached_real_gh": False,
+    commands = [c for turn in ("first", "second") for c in shell_commands(Path(str(scratch / turn) + ".stdout"))]
+    past = past_the_stand_in(commands)
+    evidence = {"log": log, "first_calls": first_calls, "session_ok": session_ok, "reached_real_gh": bool(past), "past": past,
                 "files": {}, "paths": [], "compare": None, "record_parses": False, "missing_labels": None}
     evidence["identity"] = json.loads(subprocess.run(
         [sys.executable, str(GOVERN), "identity"], stdout=subprocess.PIPE, universal_newlines=True).stdout)["identity"]
@@ -337,6 +358,7 @@ def one_run(name, spec, harness, base, number):
     time.sleep(3)
     evidence = collect(built, scratch, first_calls, second_session in (None, session))
     result.update(judge(evidence, spec["expect"]))
+    result["past_the_stand_in"] = evidence["past"]
     result["stray_calls"] = [e["args"] for e in evidence["log"] if not e["recorded"]]
     if harness == "opencode":
         import headless_probe as probe
