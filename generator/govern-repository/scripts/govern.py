@@ -32,7 +32,10 @@ from govlib import (  # noqa: E402
     storedform,
 )
 
-DEFAULT_STORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "store")
+SKILL_DIRECTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Only the scenario runner sets the GOVERN_SCENARIO_ settings (docs/agents/build.md).
+DEFAULT_STORE = os.environ.get("GOVERN_SCENARIO_STORE") or os.path.join(SKILL_DIRECTORY, "store")
+DEFAULT_HOME = os.environ.get("GOVERN_SCENARIO_HOME") or os.path.expanduser("~")
 
 
 def emit(facts, code=0):
@@ -123,6 +126,10 @@ def cmd_mode(args):
     return emit(facts, code)
 
 
+def cmd_identity(args):
+    return emit({"ok": True, "identity": store.directory_hash(SKILL_DIRECTORY)})
+
+
 def cmd_handover(args):
     facts = drift.handover_from(read_json(args.mode_facts), args.required_checks_changed)
     facts["ok"] = True
@@ -156,7 +163,7 @@ def cmd_accept_invitation(args):
 def add_core_arguments(parser, home=False, store_root=False):
     parser.add_argument("--worktree", default=".", help="the target repository's checkout; default: the current directory")
     if home:
-        parser.add_argument("--home", default=os.path.expanduser("~"), help="the machine home; default: ~")
+        parser.add_argument("--home", default=DEFAULT_HOME, help="the machine home; default: ~")
     if store_root:
         parser.add_argument("--store", default=DEFAULT_STORE, help="default: the store beside this entry")
 
@@ -207,6 +214,9 @@ def build_parser():
     mode = commands.add_parser("mode", help="the mode and the drift report")
     add_core_arguments(mode, store_root=True)
     mode.set_defaults(run=cmd_mode)
+
+    identity = commands.add_parser("identity", help="the content hash of the skill directory that runs")
+    identity.set_defaults(run=cmd_identity)
 
     hand = commands.add_parser("handover", help="whether habit gets the owner-script command, from a saved `mode` report")
     hand.add_argument("--mode-facts", required=True, help="a file holding `mode`'s JSON")

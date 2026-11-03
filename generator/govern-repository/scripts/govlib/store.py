@@ -6,6 +6,7 @@ released, `change-note.md`. A version is released when its change note is presen
 installed version is the highest released version in a store.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -221,3 +222,20 @@ class Store(object):
             "installed_version": released[-1] if released else None,
             "change_notes": {str(version): self.change_note(version) for version in released},
         }
+
+
+def directory_hash(root):
+    """A directory's content hash: each file's relative path, executable bit and bytes, in order."""
+    digest = hashlib.sha256()
+    for base, dirs, names in sorted(os.walk(root)):
+        dirs[:] = sorted(d for d in dirs if d != "__pycache__")
+        for name in sorted(names):
+            if name.endswith(".pyc"):
+                continue
+            full = os.path.join(base, name)
+            with open(full, "rb") as handle:
+                data = handle.read()
+            line = "%s %d %s\n" % (os.path.relpath(full, root), bool(os.stat(full).st_mode & 0o100),
+                                   hashlib.sha256(data).hexdigest())
+            digest.update(line.encode("utf-8"))
+    return digest.hexdigest()

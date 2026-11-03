@@ -32,6 +32,9 @@ def _git(worktree, *args):
 
 def repository_from_origin(worktree):
     """The owner/name a worktree's `origin` names on GitHub."""
+    # A scenario's origin is a local bare repository, so only its runner names the repository.
+    if os.environ.get("GOVERN_SCENARIO_REPOSITORY"):
+        return os.environ["GOVERN_SCENARIO_REPOSITORY"]
     url = _git(worktree, "remote", "get-url", "origin")
     match = _GITHUB_REMOTE.match(url or "")
     if not match:

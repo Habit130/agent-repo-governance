@@ -69,7 +69,7 @@ or the pre-merge check confirms both jobs are green on the head.
 
 `generator/govern-repository/scripts/govern.py` is the generator's one entry. Its
 subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`,
-`handover`, and the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
+`handover`, `identity`, and the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
 and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
 the mode is stop; and 2 on a refusal, with the reason under `error`.
 

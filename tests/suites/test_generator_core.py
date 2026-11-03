@@ -10,6 +10,8 @@ the case that runs it, and the worktree and the machine home are byte-for-byte u
 import json
 import os
 import re
+import subprocess
+import sys
 import unittest
 
 import generator_support as gs
@@ -95,6 +97,49 @@ class Handover(support.TempDirCase):
 def gs_line(which):
     return {"at target": "这条命令在 GitHub 已是目标状态时不写入任何内容，否则把 GitHub 恢复到目标状态。",
             "list unread": "规则集列表没有读到，所以脚本可能删除作用于默认分支、但本次运行没有事先列出的规则集；它的报告会写明删除了哪些。"}[which]
+
+
+class SkillFiles(unittest.TestCase):
+    """CRIT-1: #41 §11's four conditions on the real skill files, and the identity hash."""
+
+    SKILL = os.path.dirname(os.path.dirname(support.GOVERN))
+
+    def test_the_frontmatter_has_the_shape_the_entry_check_proved(self):
+        text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
+        head = text.split("---\n")[1]
+        self.assertIn("name: govern-repository\n", head)
+        self.assertIn("disable-model-invocation: true\n", head)
+        self.assertIn("metadata:\n  opencode/autoinvoke: false\n", head)
+        self.assertEqual(os.path.basename(self.SKILL), "govern-repository")
+
+    def test_codex_reads_the_skill_as_user_only(self):
+        sys.path.insert(0, os.path.join(support.REPO, "machine", "scripts"))
+        from machinelib import skills
+        with open(os.path.join(self.SKILL, "agents", "openai.yaml"), "rb") as handle:
+            self.assertEqual(skills.codex_policy(handle.read()), skills.FALSE)
+
+    def test_the_identity_is_the_directory_hash_and_ignores_bytecode(self):
+        code, facts = support.govern(["identity"])
+        self.assertEqual(code, 0, facts)
+        self.assertRegex(facts["identity"], "^[0-9a-f]{64}$")
+        code, again = support.govern(["identity"])
+        self.assertEqual(again["identity"], facts["identity"])
+
+
+class ScenarioSettings(support.TempDirCase):
+    def test_the_runners_repository_setting_names_a_local_origin(self):
+        worktree = support.init_repo(self.path("r"))
+        support.git(worktree, "remote", "add", "origin", self.path("bare.git"))
+        self.assertIn("isn't a GitHub repository", self.compare(worktree, {})["error"])
+        self.assertEqual(self.compare(worktree, {"GOVERN_SCENARIO_REPOSITORY": "Habit130/tally"}).get("repository"), "Habit130/tally")
+
+    def compare(self, worktree, extra):
+        env = dict(os.environ, **extra)
+        env.pop("GOVERN_SCENARIO_REPOSITORY", None) if not extra else None
+        result = subprocess.run([sys.executable, support.GOVERN, "compare", "--worktree", worktree, "--default-branch", "main",
+                                 "--allow-unreleased"],
+                                env=env, stdout=subprocess.PIPE, universal_newlines=True)
+        return json.loads(result.stdout)
 
 
 class HarnessProbes(unittest.TestCase):
