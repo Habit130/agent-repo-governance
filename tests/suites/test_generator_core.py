@@ -61,6 +61,42 @@ for _name in gs.case_names():
     _add_case(_name)
 
 
+class Handover(support.TempDirCase):
+    """CRIT-6 and CRIT-10's deterministic handover rule, through the one entry."""
+
+    def run_rule(self, row):
+        name = os.path.join(self.tmp, "mode.json")
+        with open(name, "w") as handle:
+            json.dump({"mode": row["mode"], "drift": {
+                "owner_script_changed": row["owner_script_changed"], "in_github": row["in_github"],
+                "github": {"unreadable": ["ruleset Gate: Not Found"] if row["failed_reads"] else [],
+                           "rulesets_unread": row["rulesets_unread"]}}}, handle)
+        args = ["handover", "--mode-facts", name]
+        return support.govern(args + (["--required-checks-changed"] if row["required_checks_changed"] else []))
+
+    def test_each_row_of_the_rule(self):
+        with open(os.path.join(support.FIXTURES, "generator", "handover.json")) as handle:
+            rows = json.load(handle)
+        for row in rows:
+            with self.subTest(row["case"]):
+                code, facts = self.run_rule(row)
+                self.assertEqual(code, 0, facts)
+                self.assertEqual(facts["owner_command"], row["owner_command"], facts)
+
+    def test_the_line_says_what_the_command_does(self):
+        row = {"mode": "Repair", "owner_script_changed": False, "required_checks_changed": False,
+               "in_github": False, "failed_reads": True, "rulesets_unread": False}
+        code, facts = self.run_rule(row)
+        self.assertEqual(facts["lines"], [gs_line("at target")], facts)
+        code, facts = self.run_rule(dict(row, rulesets_unread=True))
+        self.assertEqual(facts["lines"], [gs_line("at target"), gs_line("list unread")], facts)
+
+
+def gs_line(which):
+    return {"at target": "这条命令在 GitHub 已是目标状态时不写入任何内容，否则把 GitHub 恢复到目标状态。",
+            "list unread": "规则集列表没有读到，所以脚本可能删除作用于默认分支、但本次运行没有事先列出的规则集；它的报告会写明删除了哪些。"}[which]
+
+
 class HarnessProbes(unittest.TestCase):
     """Each harness's shell, as probed by name, is judged as #44 §6 and ADR 0013 require."""
 

@@ -8,9 +8,10 @@ JSON-lines log at STANDIN_LOG. A call outside the recording fails. It never runs
 or reaches the real tool.
 
 A recording is {"tool": ..., "calls": [{"args": [...], "stdout": ..., "stderr": ...,
-"exit": ..., "stdin"?: ...}]}. `${NAME}` in recorded arguments expands from the
-environment, so a recording can name paths inside a throwaway home. A call with a recorded
-"stdin" matches only that input. The Codex stand-in replays only `codex execpolicy check`
+"exit": ..., "stdin"?: ..., "once"?: true}]}. `${NAME}` in recorded arguments expands from
+the environment, so a recording can name paths inside a throwaway home. A call with a
+recorded "stdin" matches only that input. A "once" call answers one time, by the log, then
+the next match answers. The Codex stand-in replays only `codex execpolicy check`
 and `codex debug prompt-input`.
 """
 
@@ -60,6 +61,15 @@ def load(tool):
     return calls
 
 
+def served():
+    """Which recorded calls the log shows as already answered."""
+    path = os.environ.get("STANDIN_LOG")
+    if not path or not os.path.exists(path):
+        return set()
+    with open(path) as handle:
+        return set(json.loads(line).get("call") for line in handle if line.strip())
+
+
 def main(argv):
     tool, args = argv[1], argv[2:]
     if tool not in RECORDING_VARIABLES:
@@ -71,6 +81,9 @@ def main(argv):
         return fail(tool, str(error))
 
     candidates = [(index, call) for index, call in enumerate(calls) if [expand(a) for a in call["args"]] == args]
+    if any(call.get("once") for _, call in candidates):
+        answered = served()
+        candidates = [(index, call) for index, call in candidates if not (call.get("once") and index in answered)]
     stdin = None
     if any("stdin" in call for _, call in candidates):
         stdin = sys.stdin.read()

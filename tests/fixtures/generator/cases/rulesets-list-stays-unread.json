@@ -1,0 +1,50 @@
+{
+  "description": "CRIT-10: a rulesets list that stays unread reads as unread, not as three missing rulesets.",
+  "expect": {
+    "mode": {
+      "drift": {
+        "github": {
+          "drift": false,
+          "rulesets": [
+            {
+              "name": "Gate",
+              "state": "unread"
+            },
+            {
+              "name": "Merge",
+              "state": "unread"
+            },
+            {
+              "name": "History",
+              "state": "unread"
+            }
+          ],
+          "rulesets_unread": true,
+          "unreadable": [
+            "rulesets: Server Error"
+          ]
+        },
+        "handover": {
+          "owner_command": true
+        },
+        "in_github": false
+      },
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "not proven: the unread items named beside a ready owner-script command, then one more read"
+    }
+  },
+  "github": {
+    "failing_reads": {
+      "/rulesets?includes_parents=false&per_page=100": "always"
+    },
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode"
+  ]
+}

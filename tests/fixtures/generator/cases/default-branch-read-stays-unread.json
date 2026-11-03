@@ -1,0 +1,34 @@
+{
+  "description": "CRIT-10: a default-branch read that stays failed is unread, and the outcome doesn't read as no drift.",
+  "expect": {
+    "mode": {
+      "drift": {
+        "github": {
+          "unreadable": [
+            "the default branch main: Server Error"
+          ]
+        },
+        "handover": {
+          "owner_command": true
+        },
+        "in_github": false
+      },
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "not proven: the unread items named beside a ready owner-script command, then one more read"
+    }
+  },
+  "github": {
+    "failing_reads": {
+      "/branches/main": "always"
+    },
+    "rulesets": "target"
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode"
+  ]
+}

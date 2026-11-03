@@ -141,6 +141,19 @@ class CodexStandIn(StandInCase):
         self.assertEqual(self.calls(), [{"tool": "codex", "args": ["exec", "write a poem"], "recorded": False}])
         self.assert_nothing_reached_the_real_tools()
 
+    def test_a_once_answer_gives_way_to_the_next_match(self):
+        recording = self.path("gh-once.json")
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [
+                {"args": ["api", "x"], "stdout": "", "stderr": "failed\n", "exit": 1, "once": True},
+                {"args": ["api", "x"], "stdout": "second\n", "stderr": "", "exit": 0}]}, handle)
+        env = dict(self.env, STANDIN_GH_RECORDING=recording)
+        answers = [subprocess.run(["gh", "api", "x"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                   for _ in range(3)]
+        self.assertEqual([a.returncode for a in answers], [1, 0, 0])
+        self.assertEqual(answers[2].stdout, b"second\n")
+        self.assertEqual([c["call"] for c in self.calls()], [0, 1, 1])
+
     def test_refuses_a_recording_beyond_execpolicy_check_and_debug_prompt_input(self):
         recording = self.path("codex-exec.json")
         with open(recording, "w") as handle:

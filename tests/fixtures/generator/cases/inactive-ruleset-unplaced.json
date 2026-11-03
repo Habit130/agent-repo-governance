@@ -1,0 +1,62 @@
+{
+  "description": "CRIT-10: an inactive ruleset the agent read but can't place gets no retry and no command, is named, and keeps the outcome from reading as no drift.",
+  "expect": {
+    "mode": {
+      "drift": {
+        "github": {
+          "drift": false,
+          "unplaced": [
+            "paused"
+          ],
+          "unreadable": []
+        },
+        "handover": {
+          "owner_command": false
+        },
+        "in_github": false
+      },
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "not proven: the inactive rulesets named, with no command, nothing written"
+    }
+  },
+  "github": {
+    "rulesets": [
+      {
+        "as_target": "Gate"
+      },
+      {
+        "as_target": "Merge"
+      },
+      {
+        "as_target": "History"
+      },
+      {
+        "conditions": {
+          "ref_name": {
+            "exclude": [],
+            "include": [
+              "refs/heads/rel*"
+            ]
+          }
+        },
+        "enforcement": "disabled",
+        "id": 7103,
+        "name": "paused",
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ],
+        "target": "branch"
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode"
+  ]
+}

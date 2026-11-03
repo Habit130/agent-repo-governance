@@ -1,10 +1,10 @@
 {
-  "description": "One ruleset's own read fails: it is reported as unreadable and uncertain, and the run still gives its facts instead of stopping.",
+  "description": "One ruleset's own read stays failed after the retry: it is unread and uncertain, the outcome isn't no drift, and the run still gives its partial facts instead of stopping.",
   "expect": {
     "mode": {
       "exit": 0,
       "mode": "Repair",
-      "outcome": "no drift: one Chinese message, nothing written",
+      "outcome": "not proven: the unread items named beside a ready owner-script command, then one more read",
       "drift": {
         "in_github": false,
         "github": {
@@ -29,6 +29,9 @@
           "unreadable": [
             "ruleset Gate: Not Found"
           ]
+        },
+        "handover": {
+          "owner_command": true
         }
       }
     },

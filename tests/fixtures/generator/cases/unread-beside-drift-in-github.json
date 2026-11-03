@@ -1,0 +1,41 @@
+{
+  "description": "CRIT-10: drift found elsewhere still takes its own path, and the unread item is named with the same one command.",
+  "expect": {
+    "mode": {
+      "drift": {
+        "github": {
+          "unreadable": [
+            "the default branch main: Server Error"
+          ]
+        },
+        "handover": {
+          "owner_command": true
+        },
+        "in_github": true
+      },
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "a ready owner-script command, then re-verification; the unread items named beside it, then one more read"
+    }
+  },
+  "github": {
+    "failing_reads": {
+      "/branches/main": "always"
+    },
+    "rulesets": [
+      {
+        "as_target": "Gate"
+      },
+      {
+        "as_target": "Merge"
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode"
+  ]
+}

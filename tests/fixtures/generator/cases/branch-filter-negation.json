@@ -1,0 +1,31 @@
+{
+  "description": "#86 A2: a branch filter holding a `!` pattern is uncertain, never every-PR: GitHub applies a later negation after a positive match.",
+  "expect": {
+    "inspect": {
+      "ci": {
+        "workflows": [
+          {
+            "jobs": [
+              {
+                "every_pr": null,
+                "id": "test",
+                "uncertain": true
+              }
+            ],
+            "path": ".github/workflows/ci.yml"
+          }
+        ]
+      },
+      "exit": 0
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      ".github/workflows/ci.yml": "name: ci\non:\n  pull_request:\n    branches: [\"**\", \"!main\"]\njobs:\n  test:\n    name: Test suite\n    runs-on: ubuntu-24.04\n    steps:\n      - run: python3 -m unittest\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

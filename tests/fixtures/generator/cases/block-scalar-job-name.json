@@ -1,0 +1,31 @@
+{
+  "description": "#86 A5: a one-line folded job name is read as its text.",
+  "expect": {
+    "inspect": {
+      "ci": {
+        "workflows": [
+          {
+            "jobs": [
+              {
+                "id": "test",
+                "name": "Test suite",
+                "uncertain": false
+              }
+            ],
+            "path": ".github/workflows/ci.yml"
+          }
+        ]
+      },
+      "exit": 0
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      ".github/workflows/ci.yml": "name: ci\non:\n  pull_request:\njobs:\n  test:\n    name: >-\n      Test suite\n    runs-on: ubuntu-24.04\n    steps:\n      - run: python3 -m unittest\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

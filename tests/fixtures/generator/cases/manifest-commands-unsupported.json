@@ -1,0 +1,36 @@
+{
+  "description": "#86 A4: a recognized manifest whose commands aren't extracted says so, so an empty list means none. A credential planted in it reaches the output by type only: this route echoes no text from the manifest.",
+  "expect": {
+    "inspect": {
+      "commands": {
+        "manifests": [
+          {
+            "extraction": "extracted",
+            "path": "Makefile"
+          },
+          {
+            "extraction": "unsupported",
+            "path": "pyproject.toml"
+          },
+          {
+            "commands": [],
+            "extraction": "unsupported",
+            "path": "tox.ini",
+            "tool": "tox"
+          }
+        ]
+      },
+      "exit": 0
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      "Makefile": "test:\n\tpython3 -m unittest\n",
+      "tox.ini": "[testenv]\ncommands = python -m unittest discover -s tests\nsetenv = TOKEN=<planted:github-token>\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}
