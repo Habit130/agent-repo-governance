@@ -153,7 +153,7 @@ def cmd_accept_invitation(args):
     if root is None:
         raise GovernError("%s isn't inside a git checkout" % args.worktree)
     repository = checkout.repository(root)
-    gh = github.GitHub()
+    gh = github.Retried()
     invitations = gh.require("user/repository_invitations?per_page=100", "the agent account's invitations")
     pending = [item for item in invitations or [] if (item.get("repository") or {}).get("full_name") == repository]
     if not pending:

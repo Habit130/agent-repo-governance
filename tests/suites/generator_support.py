@@ -25,7 +25,7 @@ A case under `tests/fixtures/generator/cases/` is one JSON file:
 - `github`: the agent account's view: `owner`, `private`, `default_branch`, `permissions`,
   `invitations`, `empty`, `settings`, `labels`, `pulls`, `classic_protection`,
   `rulesets_forbidden`, `failing_rulesets` (ids whose own read fails), `failing_reads` (`{path
-  after repos/owner/name: "once" or "always"}`, each answering HTTP 500), `settings_once`
+  after repos/owner/name, or a path from user/: "once" or "always"}`, each answering HTTP 500), `settings_once`
   (settings the first repository read leaves out), and `rulesets`: `target` (the three as #41
   §7 has them, for the record's checks) or a list of `{"as_target": name, "changes": {...}}` and full bodies with
   an `id`. GitHub returns `bypass_actors` as null to the agent, as it did on 2026-10-29.
@@ -314,7 +314,8 @@ def recording(case, path):
         calls.append(ow.call(["api", "--method", "PATCH", "user/repository_invitations/%d" % invitation["id"]]))
     failing = []
     for suffix, how in sorted(github.get("failing_reads", {}).items()):
-        failing.append(dict(ow.http_error(api(suffix), 500, "Server Error"), once=how == "once"))
+        args = ["api", suffix] if suffix.startswith("user/") else api(suffix)  # The agent account's own reads.
+        failing.append(dict(ow.http_error(args, 500, "Server Error"), once=how == "once"))
     if github.get("settings_once"):
         partial = dict((key, value) for key, value in repo.items() if key not in github["settings_once"])
         failing.append(dict(ow.ok(api(""), partial), once=True))
