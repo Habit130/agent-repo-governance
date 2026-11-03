@@ -121,6 +121,34 @@ class SkillFiles(unittest.TestCase):
         self.assertIn("metadata:\n  opencode/autoinvoke: false\n", head)
         self.assertEqual(os.path.basename(self.SKILL), "govern-repository")
 
+    def test_every_outcome_begins_with_exactly_one_branch_of_step_3(self):
+        sys.path.insert(0, os.path.join(self.SKILL, "scripts"))
+        from govlib import drift
+        text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
+        step = text.split("3. Follow the report's `outcome`")[1].split("\n4. ")[0]
+        heads = [re.match(r"((?:`[^`]+`(?:,\s*|\s+or\s+)?)+)", " ".join(bullet.split()))
+                 for bullet in re.split(r"\n   - ", step)[1:]]
+        branches = [re.findall(r"`([^`]+)`", head.group(1)) if head else [] for head in heads]
+        ends = ["no drift", "inactive", "section 6", "carry on"]
+        routes = {}
+        for mode, present in (("Initialize", False), ("Initialize", True)):
+            routes[drift.outcome(mode, {"present": present}, {})] = "carry on"
+        for files in (False, True):
+            for in_github in (False, True):
+                for unread in ([], ["a read"]):
+                    for unplaced in ([], ["a ruleset"]):
+                        facts = {"in_files": files, "in_github": in_github,
+                                 "github": {"unreadable": unread, "unplaced": unplaced}}
+                        routes[drift.outcome("Upgrade", {"present": True}, facts)] = "carry on"
+                        want = ("carry on" if files else "section 6" if in_github or unread
+                                else "inactive" if unplaced else "no drift")
+                        routes[drift.outcome("Repair", {"present": True}, facts)] = want
+        for said, want in routes.items():
+            matched = [i for i, prefixes in enumerate(branches) if any(said.startswith(p) for p in prefixes)]
+            self.assertEqual(len(matched), 1, (said, branches))
+            self.assertIn(want, step.split("\n   - ")[1 + matched[0]], said)
+        self.assertEqual(len(branches), len(ends))
+
     def test_codex_reads_the_skill_as_user_only(self):
         sys.path.insert(0, os.path.join(support.REPO, "machine", "scripts"))
         from machinelib import skills

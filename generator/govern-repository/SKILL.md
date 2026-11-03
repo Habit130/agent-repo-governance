@@ -29,13 +29,15 @@ in English and no code, diffs or paths. It names its sender and target.
    that can wait, such as the review bots, goes into the confirmation instead.
 2. Run `<entry> mode`, saving its report. On mode `stop`, or when any subcommand exits 2, tell
    habit the reason and end.
-3. Follow the report's `outcome`:
-   - **no drift**: send one Chinese message saying so, and end. No issue, no PR.
-   - **not proven, the inactive rulesets**: name each one under `drift.github.unplaced`, say
+3. Follow the report's `outcome` by the words it begins with:
+   - `no drift`: send one Chinese message saying so, and end. No issue, no PR.
+   - `not proven: the inactive rulesets`: name each one under `drift.github.unplaced`, say
      it enforces nothing and needs no action, and end. Write nothing and hand no command.
-   - **not proven, the unread items**, or **drift in GitHub state only**: go to section 6,
-     step 2, naming any inactive ruleset under `unplaced` there too. No issue, no PR.
-   - **anything else**: carry on. Inactive rulesets under `unplaced` are named in the
+   - `not proven: the unread items` or `a ready owner-script command`, drift in GitHub state
+     only: go to section 6, step 2, naming any inactive ruleset under `unplaced` there too.
+     No issue, no PR.
+   - `Initialize`, `rebuild as at Initialize`, `Upgrade` or `Repair through the Upgrade
+     flow`: carry on. Inactive rulesets under `unplaced` are named in the
      confirmation, and unread items under `drift.github.unreadable` are named there as
      unverified. "No drift" is said only for the no-drift outcome.
 
@@ -135,6 +137,11 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    `required_checks`. Upgrade keeps the confirmed values habit didn't change. Remove a target
    first where `mode` says to rebuild it or a version path holds another file: render replaces
    fixed files, and a mixed file with no well-formed markers is taken back to the version's.
+   Before removing a mixed file whose `drift.markers` entry says `rebuild as at Initialize`,
+   copy out its repository-owned content: the text after the end marker, or, with that marker
+   gone, every line that isn't the version's governance text. Once rendered, put it back after
+   the end marker unchanged. Exact comparison doesn't check that part, so compare it with the
+   copy yourself.
 4. Write the repository-owned content: `AGENTS.md`'s "This repository" section, with the
    carried rules and any repository-specific review expectation; the Claude Code notes in
    `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands it ran, each marked as working
