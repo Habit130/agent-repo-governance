@@ -346,11 +346,16 @@ def collect(built, scratch, first_calls, session_ok, reached_pr):
     return evidence
 
 
+def pr_opened(log):
+    """Whether the stand-in recorded a PR, however the harness's turn ended."""
+    return any(entry["args"][:2] == ["pr", "create"] for entry in log)
+
+
 def second_session_lost(scratch, harness, session, spec, worktree, env, result):
     """Resume with the recorded answer; True when resuming failed, with #40's fallback recorded."""
     turn = claude_turn if harness == "claude" else opencode_turn
     code, stopped = run_turn(harness_command(harness, session, scratch, spec["answer"], True), worktree, env, scratch / "second",
-                             WRITING_SECONDS, lambda: any(e["args"][:2] == ["pr", "create"] for e in read_log(scratch)))
+                             WRITING_SECONDS, lambda: pr_opened(read_log(scratch)))
     second_session, reply, _ = turn(Path(str(scratch / "second") + ".stdout"))
     result.update({"second_exit": code, "second_stopped": stopped, "last_reply": reply})
     if second_session == session:
@@ -384,7 +389,7 @@ def one_run(name, spec, harness, base, number):
     if second_session_lost(scratch, harness, session, spec, worktree, env, result):
         return result
     time.sleep(3)
-    evidence = collect(built, scratch, first_calls, True, result["second_stopped"] == "the PR opened")
+    evidence = collect(built, scratch, first_calls, True, pr_opened(read_log(scratch)))
     result.update(judge(evidence, spec["expect"]))
     result["past_the_stand_in"] = evidence["past"]
     result["stray_calls"] = [e["args"] for e in evidence["log"] if not e["recorded"]]

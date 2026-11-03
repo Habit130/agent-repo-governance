@@ -85,6 +85,12 @@ class PastTheStandIn(support.TempDirCase):
         self.assertEqual(runner.past_the_stand_in(caught + plain), caught)
 
 
+class PrOpened(unittest.TestCase):
+    def test_a_recorded_pr_counts_whether_or_not_the_runner_stopped_the_harness(self):
+        self.assertTrue(runner.pr_opened([{"args": ["api", "user"]}, {"args": ["pr", "create", "--title", "t"]}]))
+        self.assertFalse(runner.pr_opened([{"args": ["pr", "view", "2"]}]))
+
+
 class Verdict(unittest.TestCase):
     def test_safety_binds_every_run_and_judgment_two(self):
         good = {"safety": {"s": True}, "judgment": {"j": True}}
