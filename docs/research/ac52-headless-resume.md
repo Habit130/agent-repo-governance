@@ -120,3 +120,30 @@ CRIT-9/10 red tests and Seam B remain unrun.
 
 The probe's later directory assertion has not been rerun under Claude Code;
 the successful original Claude Code result above remains narrower evidence.
+
+## AC-52-v2 diagnostic: provider limit before any model turn
+
+Ran once on 2026-11-02 under OpenCode v2.2.5, at probe commit `a1ff88d`. The handoff
+allowed one fresh session and at most two submissions. Source for the changes below is
+OpenCode v2.2.5
+[noninteractive.ts](https://github.com/anomalyco/opencode/blob/v2.2.5/packages/cli/src/run/noninteractive.ts)
+and [skill tool](https://github.com/anomalyco/opencode/blob/v2.2.5/packages/core/src/tool/plugin/skill.ts).
+
+The probe now asks for the `skill` tool by ID and reports one Pass or Fail per assertion:
+exit code, session ID, reply after the last tool call, error events, permission refusal,
+tool outcomes, location, tool input, selected source and stand-in calls. A noninteractive
+refusal is an `auto-rejecting` warning plus a failed tool, not a `permission` event, so
+both are inspected. The evidence directory is resolved because OpenCode reports canonical
+`/private/...` paths on macOS. These assertions were checked against synthetic events and
+the shapes in the earlier run logs, without a model.
+
+Session `ses_ad5c93ec2eac46b5bb2f078aa0` exited 1 on the first submission. Its only events
+were `step_start` and an `error` of type `provider.free-limit`, status 429, "Free usage
+limit reached", `retryAfterMs` 85325000 (about 23.7 hours). stderr was empty. No text, tool
+call, permission request or stand-in call occurred, so no second submission was sent.
+
+This is a provider failure, not a skill-loading result. The model produced no turn, so the
+explicit `skill` tool request is **untested**: the run neither confirms nor refutes the
+hypothesis that CLI text lacks structured skill loading, and it says nothing about
+registration of the scratch source or same-session recall. Why the configured model draws
+on the free limit was not examined.
