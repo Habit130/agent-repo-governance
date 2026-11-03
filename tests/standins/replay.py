@@ -13,7 +13,10 @@ the environment, so a recording can name paths inside a throwaway home. A call w
 recorded "stdin" matches only that input. A "once" call answers one time, by the log, then
 the next match answers. An entry with "accepts" instead of "args" answers any call starting
 with those arguments, for calls that hold text a run wrote: a body the call names by
-`--body-file` or `-F`, or sends on stdin with `-`, goes into the log under "body". The Codex stand-in replays only `codex execpolicy check`
+`--body-file` or `-F`, or sends on stdin with `-`, goes into the log under "body". An
+accepting `issue view` entry with "created_issue": true serves the issues the log shows the
+run creating, numbered from 1 in order, with their later `issue edit` title and body: plain,
+as `--json` fields, or one field by `--jq .<field>`; a number the run never created fails. The Codex stand-in replays only `codex execpolicy check`
 and `codex debug prompt-input`.
 """
 
@@ -78,6 +81,54 @@ def body_of(args):
     return None
 
 
+def _flag(args, *flags):
+    for flag in flags:
+        if flag in args[:-1]:
+            return args[args.index(flag) + 1]
+    return None
+
+
+def created_issues():
+    """{number: {"title", "body"}} for the issues the log shows the run creating and editing."""
+    path = os.environ.get("STANDIN_LOG")
+    issues = {}
+    if not path or not os.path.exists(path):
+        return issues
+    with open(path) as handle:
+        for line in handle:
+            entry = json.loads(line) if line.strip() else {}
+            args = entry.get("args") or []
+            if not entry.get("recorded") or args[:1] != ["issue"]:
+                continue
+            text = entry.get("body", _flag(args, "--body", "-b"))
+            if args[1:2] == ["create"]:
+                issues[str(len(issues) + 1)] = {"title": _flag(args, "--title", "-t") or "", "body": text or ""}
+            elif args[1:2] == ["edit"] and len(args) > 2 and _number(args[2]) in issues:
+                issue = issues[_number(args[2])]
+                issue["title"] = _flag(args, "--title", "-t") or issue["title"]
+                issue["body"] = issue["body"] if text is None else text
+    return issues
+
+
+def _number(reference):
+    return reference.rstrip("/").rsplit("/", 1)[-1].lstrip("#")
+
+
+def view_issue(args):
+    """(stdout, exit) for `issue view <number>` against the issues the run created."""
+    issue = created_issues().get(_number(args[2])) if len(args) > 2 else None
+    if issue is None:
+        return "", 1
+    fields = _flag(args, "--json")
+    if fields is None:
+        return "title:\t%s\nstate:\tOPEN\nnumber:\t%s\n--\n%s\n" % (issue["title"], _number(args[2]), issue["body"]), 0
+    answer = dict((name, issue.get(name, "OPEN" if name == "state" else "")) for name in fields.split(","))
+    query = _flag(args, "--jq", "-q")
+    if query and query.startswith(".") and query[1:] in answer:
+        return "%s\n" % answer[query[1:]], 0
+    return json.dumps(answer) + "\n", 0
+
+
 def served():
     """Which recorded calls the log shows as already answered."""
     path = os.environ.get("STANDIN_LOG")
@@ -103,6 +154,11 @@ def main(argv):
             body = body_of(args)
             if body is not None:
                 entry["body"] = body
+            if call.get("created_issue"):
+                out, code = view_issue(args)
+                log(entry)
+                sys.stdout.write(out)
+                return code
             log(entry)
             sys.stdout.write(call.get("stdout", ""))
             return int(call.get("exit", 0))
