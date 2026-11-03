@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -107,9 +108,41 @@ def report(stage, checks):
     return all(checks.values())
 
 
+ENTRY_LINE = "habit，@govern-repository 入口检查已加载。"
+ENTRY_SKILL = ("---\nname: govern-repository\ndescription: Probe the interface entry only.\n"
+               "disable-model-invocation: true\nmetadata:\n  opencode/autoinvoke: false\n---\n\n"
+               "This is the allocated AC-52 entry probe, not the production generator. "
+               "Make no tool calls and no file or GitHub writes. Reply with exactly this one line and "
+               "nothing else: " + ENTRY_LINE + "\n")
+
+
+def prepare_entry(scratch, checkout, env):
+    """Write habit's launcher for the interface check; this never starts the interface.
+
+    The launcher starts from habit's terminal, so it clears that terminal's harness and token
+    variables itself. `--standalone` keeps the background service, and the real login, away.
+    """
+    source = scratch / "skills"
+    save(source / "govern-repository" / "SKILL.md", ENTRY_SKILL)
+    config = json.dumps({"$schema": "https://opencode.ai/config.json", "skills": [str(source)], "model": MODEL})
+    variables = ("STANDIN_PYTHON", "STANDIN_LOG", "GH_CONFIG_DIR", "GH_PROMPT_DISABLED",
+                 "GH_NO_UPDATE_NOTIFIER", "PYTHONDONTWRITEBYTECODE")
+    launcher = ["#!/bin/bash", "set -eu", "unset %s" % " ".join(environment.TOKEN_VARIABLES),
+                "for name in $(compgen -e | grep -E '^(CLAUDE|OPENCODE|CODEX_|DSH_)|^(AI_AGENT|AGENT)$' || true); do",
+                '  unset "$name"', "done",
+                'export PATH=%s"$PATH"' % shlex.quote(environment.BIN + os.pathsep)]
+    launcher += ["export %s=%s" % (name, shlex.quote(env[name])) for name in variables]
+    launcher += ["export OPENCODE_CONFIG_CONTENT=%s" % shlex.quote(config), "cd %s" % shlex.quote(str(checkout)),
+                 'exec opencode "$@"']
+    save(scratch / "launch.sh", "\n".join(launcher) + "\n")
+    (scratch / "launch.sh").chmod(0o700)
+    print("Launcher: bash %s --standalone" % shlex.quote(str(scratch / "launch.sh")))
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("harness", choices=["claude", "opencode"])
+    parser.add_argument("harness", choices=["claude", "opencode", "opencode-entry"])
     args = parser.parse_args()
     scratch = Path(tempfile.mkdtemp(prefix="ac52-resume-", dir=os.environ.get("AC52_PROBE_TMPDIR"))).resolve()
     print("Evidence directory: %s" % scratch, flush=True)
@@ -117,6 +150,8 @@ def main():
     checkout.mkdir()
     env = clean_environment(scratch)
     subprocess.run(["git", "init", "-q", "-b", "main"], cwd=str(checkout), env=env, check=True)
+    if args.harness == "opencode-entry":
+        return prepare_entry(scratch, checkout, env)
     nonce = "AC52-" + uuid.uuid4().hex
     skill = ("---\nname: govern-repository\ndescription: Probe headless resume only.\n"
              "disable-model-invocation: true\n---\n\n"
