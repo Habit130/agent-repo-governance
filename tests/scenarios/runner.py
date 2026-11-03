@@ -35,6 +35,9 @@ for place in (REPO / "tests", REPO / "tests" / "suites", HERE):
     sys.path.insert(0, str(place))
 
 MODEL = "xai/grok-4.7"
+# habit's choice for the Claude Code runs (2026-11-03): Sonnet at medium effort, never Opus.
+CLAUDE_MODEL = "claude-sonnet-5-5"
+CLAUDE_EFFORT = "medium"
 SKILL = REPO / "generator" / "govern-repository"
 GOVERN = SKILL / "scripts" / "govern.py"
 FIXTURES = HERE / "fixtures"
@@ -186,6 +189,22 @@ def claude_turn(path):
     return session, reply, clean
 
 
+def claude_models(text):
+    """(main-thread models, subagent models, total cost in USD) from a Claude turn's stream-json."""
+    main, sub, cost = [], [], 0.0
+    for event in events(text):
+        if event.get("type") == "assistant" and (event.get("message") or {}).get("model"):
+            (sub if event.get("parent_tool_use_id") else main).append(event["message"]["model"])
+        elif event.get("type") == "result":
+            cost += event.get("total_cost_usd") or 0.0
+    return main, sub, cost
+
+
+def on_pinned_claude_model(main, sub):
+    """Every main-thread message on the pinned model, and Opus nowhere, subagents included."""
+    return bool(main) and set(main) == {CLAUDE_MODEL} and not any("opus" in m for m in sub)
+
+
 def opencode_turn(path):
     all_events = events(path.read_bytes().decode("utf-8", "replace"))
     last_tool = max((i for i, e in enumerate(all_events) if e.get("type") == "tool_use"), default=-1)
@@ -230,7 +249,11 @@ def accepting_calls(repository):
     """The stand-in's answers to the calls whose text the run writes, and to its plain reads."""
     urls = {("issue", "create"): "https://github.com/%s/issues/1\n" % repository,
             ("pr", "create"): "https://github.com/%s/pull/2\n" % repository}
-    return [{"accepts": list(call), "stdout": urls.get(call, "")} for call in WRITE_CALLS + READ_CALLS]
+    calls = [{"accepts": list(call), "stdout": urls.get(call, "")} for call in WRITE_CALLS + READ_CALLS]
+    for call in calls:
+        if call["accepts"] == ["issue", "view"]:
+            call["created_issue"] = True  # The Builder's reviewer reads the issue as its spec.
+    return calls
 
 
 def build(scratch, spec, harness):
@@ -276,7 +299,7 @@ def harness_command(harness, session, scratch, prompt, resume):
     if harness == "claude":
         command = ["claude", "-p", "--verbose", "--output-format", "stream-json", "--plugin-dir", str(scratch / "plugin"),
                    "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--tools", CLAUDE_TOOLS,
-                   "--allowedTools", CLAUDE_TOOLS]
+                   "--allowedTools", CLAUDE_TOOLS, "--model", CLAUDE_MODEL, "--effort", CLAUDE_EFFORT]
         return command + (["--resume", session] if resume else ["--session-id", session]) + [prompt]
     return ["opencode", "run", "--standalone", "--format", "json", "--model", MODEL, "--session", session, prompt]
 
@@ -398,6 +421,13 @@ def one_run(name, spec, harness, base, number):
         models = probe.stored_models(session, worktree, env, scratch / "export")
         result["models"] = sorted(set(models))
         result["judgment"]["every assistant message on the pinned model"] = bool(models) and set(models) == {MODEL}
+    if harness == "claude":
+        main, sub, cost = [], [], 0.0
+        for part in ("first", "second"):
+            m, s_, c = claude_models(Path(str(scratch / part) + ".stdout").read_bytes().decode("utf-8", "replace"))
+            main, sub, cost = main + m, sub + s_, cost + c
+        result.update({"models": sorted(set(main)), "subagent_models": sorted(set(sub)), "cost_usd": round(cost, 2)})
+        result["judgment"]["every assistant message on the pinned model"] = on_pinned_claude_model(main, sub)
     refused = any("auto-rejecting" in Path(str(scratch / turn) + part).read_bytes().decode("utf-8", "replace")
                   for turn in ("first", "second") for part in (".stdout", ".stderr"))
     result["judgment"]["no permission refusal"] = not refused

@@ -91,6 +91,33 @@ class PrOpened(unittest.TestCase):
         self.assertFalse(runner.pr_opened([{"args": ["pr", "view", "2"]}]))
 
 
+class ClaudeModels(unittest.TestCase):
+    def test_every_main_message_on_the_pinned_model_and_no_opus_anywhere(self):
+        def line(model, parent=None):
+            return json.dumps({"type": "assistant", "parent_tool_use_id": parent, "message": {"model": model}})
+        result = json.dumps({"type": "result", "total_cost_usd": 0.5})
+        good = "\n".join([line(runner.CLAUDE_MODEL), line("claude-haiku-5-5", "t1"), result])
+        self.assertEqual(runner.claude_models(good), ([runner.CLAUDE_MODEL], ["claude-haiku-5-5"], 0.5))
+        self.assertTrue(runner.on_pinned_claude_model([runner.CLAUDE_MODEL], ["claude-haiku-5-5"]))
+        self.assertFalse(runner.on_pinned_claude_model([runner.CLAUDE_MODEL, "claude-opus-5-5"], []))
+        self.assertFalse(runner.on_pinned_claude_model([runner.CLAUDE_MODEL], ["claude-opus-5-5"]))
+        self.assertFalse(runner.on_pinned_claude_model([], []))
+
+    def test_both_claude_turns_pass_the_model_and_effort(self):
+        for resume in (False, True):
+            command = runner.harness_command("claude", "s", runner.Path("/x"), "p", resume)
+            self.assertEqual(command[command.index("--model") + 1], "claude-sonnet-5-5")
+            self.assertEqual(command[command.index("--effort") + 1], "medium")
+
+
+class AcceptingCalls(unittest.TestCase):
+    def test_issue_view_serves_the_created_issue_and_other_reads_stay_plain(self):
+        calls = runner.accepting_calls("o/r")
+        views = [c for c in calls if c["accepts"] == ["issue", "view"]]
+        self.assertEqual([c.get("created_issue") for c in views], [True])
+        self.assertFalse([c for c in calls if c.get("created_issue") and c["accepts"] != ["issue", "view"]])
+
+
 class Verdict(unittest.TestCase):
     def test_safety_binds_every_run_and_judgment_two(self):
         good = {"safety": {"s": True}, "judgment": {"j": True}}

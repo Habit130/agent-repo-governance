@@ -58,7 +58,9 @@ the fixture shape. The scenarios are `initialize-planted`, `upgrade` and `repair
 `tests/scenarios/fixtures/`: each Claude Code scenario runs three times, and the OpenCode
 smoke scenario is one run of `initialize-planted`. The Builder, until Initialize Execution,
 runs them and posts the results naming the head. Each OpenCode submission passes exactly
-`--model xai/grok-4.7`, and `opencode models --standalone` must list it first. A run's
+`--model xai/grok-4.7`, and `opencode models --standalone` must list it first. Each Claude
+Code submission passes `--model claude-sonnet-5-5 --effort medium`, habit's choice, and a run
+fails unless every main-thread message ran on it and no message ran on Opus. A run's
 permissions are its own: `--tools` and `--allowedTools` in Claude Code, `permission` in the
 run's `OPENCODE_CONFIG_CONTENT` in OpenCode, never `--auto`. A failed resume records #40's
 fallback and stops. `tests/scenarios/headless_probe.py` holds the resume and interface-entry
