@@ -148,10 +148,11 @@ def mend(text, template, where):
     line is set aside first. When the template's text between its markers is still there as one
     run of lines, the markers go back around it and nothing else changes ("restore the
     markers"). Otherwise the governance part is rebuilt ("rebuild as at Initialize"): the text
-    before the first begin marker is kept, the repository's own part is kept from the line the
-    template puts first after its end marker, or else from the one end marker on, and the
+    before the first begin marker is kept (with no begin marker, only blank lines may come before
+    the version's first line), the repository's own part is kept from the line the template puts
+    first after its end marker, or else from the one end marker on, with no marker line, and the
     version's block goes between. `dropped` lists the non-blank lines left out that aren't the
-    version's text. A file whose own part can't be told apart is refused.
+    version's text. A file whose own text can't be told apart is refused.
     """
     lines = text.splitlines(True)
     if lines and not lines[-1].endswith("\n"):
@@ -170,7 +171,19 @@ def mend(text, template, where):
             return "".join(kept[:at] + block + kept[at + len(inner):]), "restore the markers", []
     after = template[end:]
     anchor = next((line + "\n" for line in after.splitlines() if line.strip()), None)
-    prefix = lines[:begins[0]] if begins and not any(e < begins[0] for e in ends) else []
+    version_lines = set(line for line in inner if line.strip())
+    if begins and not any(e < begins[0] for e in ends):
+        prefix = lines[:begins[0]]
+    else:
+        # No begin marker to bound the repository's own introduction: the governance part starts at
+        # the version's first line, and any other text above it can't be told apart.
+        first = next((i for i, line in enumerate(lines) if i not in marked and line in version_lines), len(lines))
+        if any(line.strip() and i not in marked for i, line in enumerate(lines[:first])):
+            raise MarkerError(
+                "%s has no begin marker before its end marker and text above the version's text, so where the "
+                "repository's own introduction ends can't be told apart" % where
+            )
+        prefix = []
     if anchor is not None and anchor in lines[len(prefix):]:
         cut = lines.index(anchor, len(prefix))
         tail = after[:after.index(anchor)]
@@ -184,7 +197,6 @@ def mend(text, template, where):
             % (where, (anchor or "").rstrip("\n"))
         )
     tail += "".join(line for i, line in enumerate(lines[cut:], cut) if i not in marked)  # A stray marker goes too.
-    version_lines = set(line for line in inner if line.strip())
     dropped = [line.rstrip("\n") for i, line in enumerate(lines[len(prefix):cut], len(prefix))
                if i not in marked and line.strip() and line not in version_lines]
     return "".join(prefix + block) + tail, "rebuild as at Initialize", dropped

@@ -95,8 +95,10 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
   version, so `render` can fill it. Intact governance text gets its markers back; edited text
   is rebuilt, keeping the text before the begin marker and the repository's own part from
   the line the template puts after its end marker, or from the one end marker left. It lists
-  each file's `repair` and the non-version lines it `dropped`, refuses (writing nothing) when
-  the repository's own part can't be told apart, and is tested in `generator-core`.
+  each file's `repair` and the non-version lines it `dropped`, and refuses, writing nothing,
+  when the repository's own text can't be told apart: with the begin marker gone, text above
+  the version's first line, or with the end marker gone, neither it nor the line after it left.
+  A path through a symlinked directory is refused too. It is tested in `generator-core`.
 
 - **Relied-on skill names** in a version manifest must be a list of unique lowercase,
   hyphenated strings. Each entry's type and spelling are checked before deduplicating;
