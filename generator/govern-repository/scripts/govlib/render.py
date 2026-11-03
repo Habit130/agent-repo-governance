@@ -233,6 +233,11 @@ def _read_template(store, version, path):
         raise RenderError("version %d's template for %s is not UTF-8" % (version, path))
 
 
+def template_source(store, version, path):
+    """A template as the store holds it, tokens unfilled."""
+    return _read_template(store, version, path)
+
+
 def template_text(store, version, entry, values):
     """One template with contextual scalar encoding, tokens and structure checked.
 

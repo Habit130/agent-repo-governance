@@ -195,7 +195,10 @@ def commands(root, paths):
             continue
         if name in MANIFESTS:
             text = _text(root, path) or ""
-            entry = {"path": path, "tool": MANIFESTS[name], "commands": []}
+            # Only these formats' commands are extracted, so elsewhere an empty list says nothing.
+            supported = name == "package.json" or MANIFESTS[name] in ("make", "just")
+            entry = {"path": path, "tool": MANIFESTS[name], "commands": [],
+                     "extraction": "extracted" if supported else "unsupported"}
             if name == "package.json":
                 try:
                     scripts = json.loads(text).get("scripts") or {}

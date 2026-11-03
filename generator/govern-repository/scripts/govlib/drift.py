@@ -17,12 +17,20 @@ installed version:
 - GitHub state: the rulesets and readable settings, read as the agent account and compared
   with #41 §7 plus the record's confirmed checks (`target.py`). The Actions setting, secret
   scanning, push protection and the Actions event policy are the owner script's to check.
+  Every read gets one retry. One that stays failed goes under `unreadable` and never reads as
+  something the run knows: an unread rulesets list isn't three missing rulesets, and an unread
+  rules list leaves "applies to the default branch" unknown. `unplaced` names an inactive
+  ruleset the agent read but can't place on the default branch, which no retry or owner-script
+  run would settle. Either keeps the outcome from reading as no drift.
 
 The record's confirmed values are not drift. Nothing here writes.
 """
 
 from govlib import GovernError, checkout, compare, github, harness, render, store as stores, target
 
+OWNER_SCRIPT = ".github/governance/owner.sh"
+AT_TARGET_LINE = "这条命令在 GitHub 已是目标状态时不写入任何内容，否则把 GitHub 恢复到目标状态。"
+LIST_UNREAD_LINE = "规则集列表没有读到，所以脚本可能删除作用于默认分支、但本次运行没有事先列出的规则集；它的报告会写明删除了哪些。"
 BLIND_SPOT = (
     "the Actions setting that lets Actions create or approve pull requests",
     "secret scanning",
@@ -74,22 +82,24 @@ def markers(text, template_text, where):
 
 
 def github_drift(gh, repository, data, branch, checks):
-    """The GitHub state's departures from #41 §7, as the agent account reads it."""
+    """The GitHub state's departures from #41 §7, as the agent account reads it through `gh`."""
     found = {"rulesets": [], "other_rulesets": [], "branch_protection": None, "settings": [], "unreadable": [],
-             "owner_script_checks": list(BLIND_SPOT)}
+             "rulesets_unread": False, "owner_script_checks": list(BLIND_SPOT)}
     rulesets, message = github.rulesets(gh, repository)
     if rulesets is None:
         found["unreadable"].append("rulesets: %s" % message)
+        found["rulesets_unread"] = True
         rulesets = []
     rules = gh.get(github.branch_rules_path(repository, branch))
-    applying = set(rule.get("ruleset_id") for rule in rules.data or []) if rules.ok else set()
+    applying = set(rule.get("ruleset_id") for rule in rules.data or []) if rules.ok else None
     if not rules.ok:
         found["unreadable"].append("the rules on %s: %s" % (branch, rules.message))
     chosen = set()
     for name in target.RULESET_NAMES:
         candidates = [r for r in rulesets if r.get("name") == name and r.get("target") == "branch"]
         if not candidates:
-            found["rulesets"].append({"name": name, "state": "missing", "differences": []})
+            state = "unread" if found["rulesets_unread"] else "missing"
+            found["rulesets"].append({"name": name, "state": state, "differences": []})
             continue
         ruleset = candidates[0]
         chosen.add(ruleset.get("id"))
@@ -104,6 +114,8 @@ def github_drift(gh, repository, data, branch, checks):
     for ruleset in rulesets:
         if ruleset.get("id") in chosen:
             continue
+        if "unreadable" in ruleset:
+            found["unreadable"].append("ruleset %s: %s" % (ruleset.get("name"), ruleset["unreadable"]))
         found["other_rulesets"].append(
             {
                 "name": ruleset.get("name"),
@@ -120,6 +132,10 @@ def github_drift(gh, repository, data, branch, checks):
     else:
         found["unreadable"].append("the default branch %s: %s" % (branch, response.message))
     differing, unreadable = target.settings_differences(data)
+    if unreadable:
+        again = gh.get("repos/%s" % repository)
+        if again.ok:
+            differing, unreadable = target.settings_differences(again.data or {})
     found["settings"] = differing
     found["unreadable"].extend("setting %s" % key for key in unreadable)
     found["drift"] = bool(
@@ -131,7 +147,37 @@ def github_drift(gh, repository, data, branch, checks):
     found["uncertain"] = [r["name"] for r in found["rulesets"] if r["state"] == "unreadable"] + [
         r["name"] for r in found["other_rulesets"] if r["applies_to_default_branch"] is None
     ]
+    unread_details = set(r.get("id") for r in rulesets if "unreadable" in r)
+    found["unplaced"] = [
+        r["name"] for r in found["other_rulesets"]
+        if r["applies_to_default_branch"] is None and r["enforcement"] != "active" and r["id"] not in unread_details
+    ]
     return found
+
+
+def owner_script_changed(source, older, newer):
+    """Whether the owner script, which holds the target state, differs between two versions."""
+    texts = []
+    for version in (older, newer):
+        if not any(e["path"] == OWNER_SCRIPT for e in source.manifest(version)["templates"]):
+            return True
+        texts.append(render.template_source(source, version, OWNER_SCRIPT))
+    return texts[0] != texts[1]
+
+
+def handover(mode, owner_changed, required_checks_changed, in_github, unreadable, rulesets_unread):
+    """Whether habit gets the ready owner-script command, and the lines that say what it does.
+
+    Always at Initialize. At Upgrade, when the owner script, the target state or the required
+    checks changed. At Upgrade and Repair, when GitHub state drifted or a read stayed failed.
+    An inactive ruleset the agent can't place never gets it.
+    """
+    changed = mode == "Upgrade" and (owner_changed or required_checks_changed)
+    command = mode == "Initialize" or changed or bool(in_github) or bool(unreadable)
+    lines = [AT_TARGET_LINE] if command else []
+    if command and rulesets_unread:
+        lines.append(LIST_UNREAD_LINE)
+    return {"owner_command": command, "lines": lines}
 
 
 def file_drift(source, root, repository, branch, version):
@@ -168,7 +214,7 @@ def run(worktree, store_root, env=None):
     if root is None:
         raise GovernError("%s isn't inside a git checkout" % worktree)
     repository = checkout.repository(root)
-    gh = github.GitHub(env)
+    gh = github.Retried(env)
     data = gh.require("repos/%s" % repository, "the repository")
     branch = data.get("default_branch")
     source = stores.Store(store_root)
@@ -199,6 +245,7 @@ def run(worktree, store_root, env=None):
         drift["checked"] = True
         drift["in_files"] = bool(drift["differences"] or drift["markers"])
         drift["in_github"] = drift["github"]["drift"]
+        drift["owner_script_changed"] = mode == "Upgrade" and owner_script_changed(source, version, installed)
     elif mode == "Initialize" and found["present"]:
         drift["reason"] = "the record doesn't parse, so its version is unknown and nothing is compared"
         drift["in_files"] = True
@@ -206,6 +253,7 @@ def run(worktree, store_root, env=None):
     else:
         drift["reason"] = "no record, so nothing to compare" if mode == "Initialize" else "the record is newer than the machine"
     facts["drift"] = drift
+    drift["handover"] = handover_from(facts, False)
     facts["outcome"] = outcome(mode, found, drift)
     return facts, 1 if mode == "stop" else 0
 
@@ -216,15 +264,32 @@ def outcome(mode, found, drift):
         return "stop"
     if mode == "Initialize":
         return "rebuild as at Initialize" if found["present"] else "Initialize"
+    github_facts = drift.get("github") or {}
+    unread = github_facts.get("unreadable")
     if mode == "Upgrade":
-        return "Upgrade, handling any drift with the version change"
+        changing = "Upgrade, handling any drift with the version change"
+        return changing + "; the unread items named beside a ready owner-script command, then one more read" if unread else changing
     if drift["in_files"] and drift["in_github"]:
-        return (
+        chosen = (
             "Repair through the Upgrade flow, restoring the drift in files, "
             "then a ready owner-script command for the drift in GitHub state"
         )
-    if drift["in_files"]:
-        return "Repair through the Upgrade flow, restoring the drift in files"
-    if drift["in_github"]:
-        return "a ready owner-script command, then re-verification"
-    return "no drift: one Chinese message, nothing written"
+    elif drift["in_files"]:
+        chosen = "Repair through the Upgrade flow, restoring the drift in files"
+    elif drift["in_github"]:
+        chosen = "a ready owner-script command, then re-verification"
+    elif unread:
+        return "not proven: the unread items named beside a ready owner-script command, then one more read"
+    elif github_facts.get("unplaced"):
+        return "not proven: the inactive rulesets named, with no command, nothing written"
+    else:
+        return "no drift: one Chinese message, nothing written"
+    return chosen + "; the unread items named beside it, then one more read" if unread else chosen
+
+
+def handover_from(facts, required_checks_changed):
+    """The handover rule on a `mode` report, with what only the answered run knows."""
+    drift = facts.get("drift") or {}
+    github_facts = drift.get("github") or {}
+    return handover(facts.get("mode"), drift.get("owner_script_changed"), required_checks_changed, drift.get("in_github"),
+                    github_facts.get("unreadable"), github_facts.get("rulesets_unread"))

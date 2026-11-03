@@ -1,5 +1,5 @@
 {
-  "description": "#17 split: a private repository at Upgrade whose rules aren't in effect, since GitHub won't list rulesets. It fails closed until #53.",
+  "description": "#17 split: a private repository at Upgrade whose rules aren't in effect, since GitHub won't list rulesets, so they read as unread (CRIT-10). It fails closed until #53.",
   "expect": {
     "preconditions": {
       "exit": 1,
@@ -22,20 +22,20 @@
       "exit": 0,
       "mode": "Upgrade",
       "drift": {
-        "in_github": true,
+        "in_github": false,
         "github": {
           "rulesets": [
             {
               "name": "Gate",
-              "state": "missing"
+              "state": "unread"
             },
             {
               "name": "Merge",
-              "state": "missing"
+              "state": "unread"
             },
             {
               "name": "History",
-              "state": "missing"
+              "state": "unread"
             }
           ],
           "unreadable": [

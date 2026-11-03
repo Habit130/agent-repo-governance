@@ -2,15 +2,17 @@
 
 The standard library has no YAML reader, so `read` takes the block subset workflows use:
 block mappings and sequences, plain and quoted scalars, one-line flow sequences, block scalars
-(skipped) and comments. Anything else, anchors and multi-line flow collections included,
+(one stripped line read as its text, any other skipped as `BLOCK`) and comments. Anything else, anchors and multi-line flow collections included,
 makes the workflow unreadable, and every judgment on it is flagged uncertain rather than
 guessed.
 
 A job counts as running, or reporting skipped, on every PR only when its workflow is
 triggered by `pull_request` or `pull_request_target` with no path filter, no branch filter
 that could leave out a PR into the default branch, and activity types that include opened,
-synchronize and reopened. A job-level `if:` reports skipped, so it counts. A matrix, a
-reusable workflow or a computed name changes the check's name, so it is flagged uncertain.
+synchronize and reopened. A job-level `if:` reports skipped, so it counts. A branch filter
+holding a `!` pattern is uncertain, since GitHub applies it after a positive match. A matrix, a
+reusable workflow, a computed name or a block scalar the reader skipped leaves the check's name
+in doubt, so it is flagged uncertain.
 """
 
 import re
@@ -20,6 +22,7 @@ DEFAULT_TYPES = ("opened", "synchronize", "reopened")
 _SECRET = re.compile(r"secrets\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)|secrets\s*\[\s*['\"]([^'\"]+)['\"]\s*\]")
 _GLOB = re.compile(r"[*?\[\]!+]")
 _BLOCK_SCALAR = re.compile(r"^[|>][+-]?[0-9]?[+-]?$")
+BLOCK = "<block>"
 
 
 class Unreadable(Exception):
@@ -56,9 +59,14 @@ def _lines(text):
         content = content.strip()
         value = content.split(": ", 1)[1].strip() if ": " in content else content[1:].strip() if content.startswith("- ") else ""
         if _BLOCK_SCALAR.match(value):
-            content = content[: len(content) - len(value)] + '"<block>"'
+            body = []
             while index < len(raw) and (not raw[index].strip() or len(raw[index]) - len(raw[index].lstrip(" ")) > indent):
+                body.append(raw[index].strip())
                 index += 1
+            texts = [line for line in body if line]
+            # _unquote takes the text between the outer quotes as it stands, so any text fits.
+            text = texts[0] if "-" in value and len(texts) == 1 else BLOCK
+            content = content[: len(content) - len(value)] + '"%s"' % text
         out.append((indent, content))
     return out
 
@@ -198,7 +206,10 @@ def pr_coverage(events, default_branch):
                 why.append("%s has a %s filter, so it doesn't run when no path matches" % (event, key))
         branches = _as_list(filters.get("branches"))
         if "branches" in filters:
-            if default_branch in branches or "**" in branches:
+            if any(b.startswith("!") for b in branches):
+                verdict = None if verdict else verdict
+                why.append("%s's branch filter %s holds a negation, which may leave out %s" % (event, branches, default_branch))
+            elif default_branch in branches or "**" in branches:
                 pass
             elif any(_GLOB.search(b) for b in branches):
                 verdict = None if verdict else verdict
@@ -255,6 +266,9 @@ def inspect(path, text, default_branch):
         name = job.get("name") if isinstance(job.get("name"), str) else job_id
         entry = {"id": job_id, "name": name, "every_pr": every, "reasons": list(reasons), "uncertain": every is None}
         flags = []
+        if name == BLOCK:
+            entry["name"] = job_id
+            flags.append("its name is a block scalar the reader didn't take as one line of text")
         if "${{" in name:
             flags.append("its name is computed")
         if isinstance(job.get("strategy"), dict) and "matrix" in job["strategy"]:

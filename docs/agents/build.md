@@ -68,8 +68,8 @@ or the pre-merge check confirms both jobs are green on the head.
 ## The generator's command line
 
 `generator/govern-repository/scripts/govern.py` is the generator's one entry. Its
-subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`, and
-the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
+subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`,
+`handover`, and the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
 and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
 the mode is stop; and 2 on a refusal, with the reason under `error`.
 
@@ -151,6 +151,14 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     exact comparison with GitHub's default branch, the markers with whether the generator's
     text between them is intact, and GitHub state against `govlib/target.py`, which Seam A
     checks against `tests/target_state.py`.
+  - **Every GitHub read in `mode` gets one retry** (`github.Retried`, CRIT-10). One that stays
+    failed sits under `drift.github.unreadable`, and an inactive ruleset the agent read but
+    can't place sits under `unplaced`; either keeps the outcome from reading as no drift.
+  - **`handover`** takes a saved `mode` report, `--mode-facts <file>`, and
+    `--required-checks-changed` when habit's answer changed them. It prints `owner_command`
+    and the Chinese lines habit hears with the command; `mode` reports the same rule under
+    `drift.handover` before the answer. It is the only place that rule lives, and
+    `tests/fixtures/generator/handover.json` holds its table.
   - **`accept-invitation`** accepts the agent account's pending invitation to the
     repository, the one write before habit's answer.
   - **No credential value is printed** (#41 §10). `inspect` names each credential shape it

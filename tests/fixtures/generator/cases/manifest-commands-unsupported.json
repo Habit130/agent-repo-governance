@@ -9,8 +9,8 @@
             "path": "Makefile"
           },
           {
-            "extraction": "unsupported",
-            "path": "pyproject.toml"
+            "extraction": "extracted",
+            "path": "package.json"
           },
           {
             "commands": [],

@@ -123,6 +123,12 @@ def cmd_mode(args):
     return emit(facts, code)
 
 
+def cmd_handover(args):
+    facts = drift.handover_from(read_json(args.mode_facts), args.required_checks_changed)
+    facts["ok"] = True
+    return emit(facts)
+
+
 def cmd_inspect(args):
     facts, code = inspection.run(args.worktree, args.home)
     facts["ok"] = code == 0
@@ -201,6 +207,11 @@ def build_parser():
     mode = commands.add_parser("mode", help="the mode and the drift report")
     add_core_arguments(mode, store_root=True)
     mode.set_defaults(run=cmd_mode)
+
+    hand = commands.add_parser("handover", help="whether habit gets the owner-script command, from a saved `mode` report")
+    hand.add_argument("--mode-facts", required=True, help="a file holding `mode`'s JSON")
+    hand.add_argument("--required-checks-changed", action="store_true", help="habit's answer changed the required checks")
+    hand.set_defaults(run=cmd_handover)
 
     inspect = commands.add_parser("inspect", help="the inspection facts")
     add_core_arguments(inspect, home=True)
