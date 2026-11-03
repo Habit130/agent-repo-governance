@@ -1,0 +1,5 @@
+{
+  "miss": "AC-45-v1 S-1: unhashable entries escaped the JSON refusal (issue #64).",
+  "refused": [null, {}, "tdd", [{}], [[]], [1], [null], [true], ["tdd", "tdd"], ["Code Review"], [""], ["-tdd"], ["tdd_"], ["tdd\n"]],
+  "accepted": [[], ["tdd"], ["tdd", "code-review"]]
+}

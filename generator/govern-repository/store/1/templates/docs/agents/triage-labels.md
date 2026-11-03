@@ -2,9 +2,21 @@
 
 # Triage labels
 
-The skills speak in five canonical triage roles. This table maps each role to the label this
-repository uses, with the label's meaning; the maintainer is habit. When a skill names a
-role, use its label from this table, and keep unrelated labels.
+The skills speak in two category roles and five state roles. Every triaged issue carries
+exactly one category role and one state role. These tables map each role to the label this
+repository uses, with the label's exact description; the maintainer is habit. When a skill
+names a role, use its label from these tables, and keep unrelated labels.
+
+## Category roles
+
+`bug` means something is broken; `enhancement` means a new feature or improvement.
+
+| Role in mattpocock/skills | Label here | Meaning |
+| --- | --- | --- |
+| `bug` | `bug` | Something isn't working |
+| `enhancement` | `enhancement` | New feature or request |
+
+## State roles
 
 | Role in mattpocock/skills | Label here | Meaning |
 | --- | --- | --- |

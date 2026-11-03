@@ -73,10 +73,48 @@ the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`
 and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
 the mode is stop; and 2 on a refusal, with the reason under `error`.
 
+- **Relied-on skill names** in a version manifest must be a list of unique lowercase,
+  hyphenated strings. Each entry's type and spelling are checked before deduplicating;
+  objects and lists receive the same JSON refusal as other malformed entries, with no
+  traceback or store writes. `tests/fixtures/stores/relied-on-skills.json` records the
+  S-1 miss and the rejected and accepted CLI inputs; the `store` suite also checks stderr
+  and snapshots every fixture-store file's bytes and mode.
 - **Exact comparison in a governed worktree** is one command:
   `python3 generator/govern-repository/scripts/govern.py compare --worktree <path>`. It reads
   the repository and default branch from the worktree's `origin`, and compares the installed
   version unless `--version` names another.
+- **Literal default branches** use Git's rules, not a punctuation allowlist. Both render
+  and compare run `git check-ref-format refs/heads/<name>` as an argument vector without
+  a shell, plus Git's branch-only leading-`-` and `HEAD` restrictions. They never use
+  `--branch`, which expands `@{-n}` using checkout history, or normalize the spelling.
+  A name containing the exact substring `${{` is explicitly unsupported: both commands
+  return exit 2 and a JSON `error` identifying the unsupported Actions-expression marker
+  before writes. This is the chosen support boundary, not a claim of platform
+  impossibility; no expression-based encoding (including a static string expression) is
+  generated. Dollar signs and braces without that substring remain supported.
+- **Branch filter encoding has two layers.** In the Gate and Merge watch workflow templates,
+  a bare `@@default_branch@@` on its own six-space-indented list-item line represents one
+  complete filter scalar. Actions `+` and leading `!` are escaped with backslashes, then
+  JSON-compatible double quoting encodes the YAML scalar (quotes, backslashes and YAML
+  line breaks included). For example `release+stable` becomes YAML `"release\\+stable"`,
+  whose decoded filter is `release\+stable`. Gate's one filter and Merge watch's two
+  filters use the same path in rendering and comparison. Prose uses retain the unescaped
+  literal name; ordinary `main` retains its previous rendered bytes. Substitution is a
+  single pass: inserted values never become template source. The existing three token
+  names and unknown/leftover-token refusal remain unchanged, and render plans every file
+  before writing any of them.
+  `tests/fixtures/stores/branch-names.json` records S-2's miss, hand-written expected
+  filters and nearby nonmatches, invalid Git names, unsupported marker inputs and token
+  safeguards. The `render` suite exercises both real CLIs against synthetic and real v1
+  stores, plants mismatches at all three filter sites, and keeps complete no-write
+  snapshots including `.git` and its objects.
+  Primary sources read 2026-11-02: [Git naming and shorthand rules](https://git-scm.com/docs/git-check-ref-format#_description),
+  [Git's branch-only checks](https://github.com/git/git/blob/master/refs.c) (`check_branch_ref`),
+  [Actions branch filters and filter grammar](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#filter-pattern-cheat-sheet),
+  [YAML quoted scalar escapes](https://yaml.org/spec/1.2.2/#73-flow-scalar-styles).
+  Git forbids the filter operators `*`, `?`, `[` and backslash in literal branch names;
+  `+` repeats the preceding character, and leading `!` negates a filter. YAML quoting
+  alone does not escape those filter operators.
 - **Unreleased versions** are rendered or compared only with `--allow-unreleased`, which a
   test, scenario or live-check runner passes for its own run. The generator's procedure
   never passes it.
@@ -187,6 +225,20 @@ the layout; `install.py`'s docstring gives the steps.
   reads as user-only. `tests/fixtures/machine/codex-policy-shapes.json` is the shared shape
   set; a new shape the detector reads as `false` joins it and its real recording,
   `codex-prompt-input-policy-shapes.json`, re-recorded with the shape's skill.
+  A block scalar's first nonblank content line fixes its content indentation for the
+  whole scalar: deeper lines may return to it, but a line below it (even above the
+  key's indentation) is `unclear`. Leading-blank, tab and hidden-policy refusals remain.
+  AC-75-v1 fixes AC-71's Acceptance A1 miss with `block-indent-increase-and-return`
+  (`false`, hidden) and `block-below-initial-indent` (`unclear`, listed). The generated
+  `PolicyShapes` tests exercise both consumers and copies' byte-preserving acceptance
+  or refusal. The 2026-11-02 recording uses the installed ChatGPT CLI,
+  `codex-cli 0.166.0-alpha.5.1`, invoked as
+  `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex debug prompt-input x`
+  through `Home.run_codex`: synthetic HOME, XDG configuration/state/data/cache and
+  TMPDIR, plus disposable CODEX_HOME and cwd, all inside scratch space. No model,
+  authentication or network call is needed. All 130 shared shapes are present as
+  inputs; `no-policy` is the listable control, and no old shape changes visibility.
+  The recording normalizes only home, disposable CODEX_HOME and cwd paths as above.
 - **Seam C suites** build the source tree from this checkout's `machine/` and generator with
   synthetic copies (`tests/suites/machine_support.py`), so the real recordings stay true
   when the copies change. They pass the Codex stand-in or a missing path, never the app,
@@ -356,6 +408,12 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   sets the check up as the agent account; habit runs `gate-rulesets`' one command; then
   `live.py probe --post` judges. The setup writes the targets of habit's command to
   `gate_targets.txt` in the check directory.
+- **The entry is `tests/live/gate_attempts.py`.** `gate-rulesets` prints a thin shell
+  invocation of `/usr/bin/python3` with `--repository`, `--branch` and `--targets` pointing
+  at the existing targets file. The entry owns preparation, dispatch, stop classification
+  and the final ref read; subprocess argument vectors are separate from shell quoting.
+  Absolute entry paths and quoted values let the command run from an unrelated directory.
+  Importing, setting up or judging a probe never invokes the entry.
 - **The attempts stay with habit.** The agent's direct push to the default branch, its
   force-push and its merges are habit's command, run as the agent account with `gh`. Claude
   Code's auto mode refused them to the agent on 2026-10-30. The probes never push to the
@@ -369,6 +427,14 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   or amend failure prints `never-reached:`: the push never reached GitHub, so it is neither
   a success nor a rejection; later attempts still run. When every attempt is rejected,
   the command keeps its section headers and `exit=` lines, prints no stop and exits 0.
+- **Offline coverage** in `live-runner` executes the same generated invocation under bash
+  with test-local `git` and `gh`, verifies every call's executable and complete arguments,
+  and judges the captured protocol. It covers all six success positions, preparation
+  failures, missing targets (exit 2 before tool calls), healthy rejections and quoted paths.
+  It also appends the runner's unchanged `2>&1 | tee` capture decoration: the output's
+  stop marker, not the outer pipeline status, tells the judge which attempts were skipped.
+  These stand-in runs make no claim about live protection behavior; real attempts remain
+  habit-only.
 - **The private sandbox (#53)** takes the same probes, unchanged: `prepare --sandbox private`
   and the same `--probe` names. They read the repository, default branch and confirmed checks
   from the context, and `gate-trigger` expects the event policy skipped (`已跳过`) there.

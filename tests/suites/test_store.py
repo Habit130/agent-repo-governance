@@ -20,6 +20,8 @@ RELIED_ON = {
 
 # The labels the generator creates (#41 §1), with this repository's live colors and descriptions.
 LABELS = [
+    ("bug", "d73a4a", "Something isn't working"),
+    ("enhancement", "a2eeef", "New feature or request"),
     ("needs-triage", "D4C5F9", "Maintainer needs to evaluate this issue"),
     ("needs-info", "D876E3", "Waiting on reporter for more information"),
     ("ready-for-agent", "0E8A16", "Fully specified, ready for an AFK agent"),
@@ -138,6 +140,33 @@ class Versions(support.TempDirCase):
 
 
 class VersionManifest(support.TempDirCase):
+    def test_cli_checks_relied_on_skill_shapes_without_writes(self):
+        with open(os.path.join(support.FIXTURES, "stores", "relied-on-skills.json")) as handle:
+            cases = json.load(handle)
+        for outcome in ("refused", "accepted"):
+            for skills in cases[outcome]:
+                with self.subTest(outcome=outcome, skills=skills):
+                    templates = self.edited(lambda manifest, root: manifest.update(relied_on_skills=skills))
+                    before = self.snapshot(templates.root)
+                    code, out, err = support.run_cli(support.GOVERN, ["store", "--store", templates.root])
+                    self.assertEqual(code, 2 if outcome == "refused" else 0, (out, err))
+                    facts = json.loads(out)
+                    if outcome == "refused":
+                        self.assertTrue(facts["error"])
+                    else:
+                        self.assertEqual(facts["versions"], [1])
+                    self.assertEqual(err, "")
+                    self.assertEqual(self.snapshot(templates.root), before)
+
+    def snapshot(self, root):
+        files = {}
+        for parent, _, names in os.walk(root):
+            for name in names:
+                path = os.path.join(parent, name)
+                with open(path, "rb") as handle:
+                    files[os.path.relpath(path, root)] = (handle.read(), support.file_mode(path))
+        return files
+
     def test_version_one_lists_the_relied_on_skills_and_the_labels(self):
         manifest = store.Store(support.REAL_STORE).manifest(1)
         self.assertEqual(set(manifest["relied_on_skills"]), RELIED_ON)
@@ -153,6 +182,21 @@ class VersionManifest(support.TempDirCase):
         self.assertEqual(code, 0, facts)
         self.assertEqual(facts["versions"][0], 1)
         self.assertNotIn(1, facts["released"])
+
+    def test_each_category_omission_fails_the_independent_label_expectation(self):
+        manifest = store.Store(support.REAL_STORE).manifest(1)
+        for category in ("bug", "enhancement"):
+            with self.subTest(category=category):
+                root = self.path("store-" + category)
+                shutil.copytree(support.REAL_STORE, root)
+                changed = dict(manifest, labels=[label for label in manifest["labels"] if label["name"] != category])
+                with open(os.path.join(root, "1", "manifest.json"), "w") as handle:
+                    json.dump(changed, handle)
+                labels = store.Store(root).manifest(1)["labels"]
+                actual = [(label["name"], label["color"], label["description"]) for label in labels]
+                self.assertEqual([entry for entry in LABELS if entry not in actual],
+                                 [entry for entry in LABELS if entry[0] == category])
+                self.assertNotEqual(actual, LABELS)
 
     def test_lists_each_template_with_target_path_class_and_mode(self):
         manifest = store.Store(FOUR_CLASSES).manifest(1)

@@ -570,6 +570,7 @@ class PolicyShapes(unittest.TestCase):
                 self.assertFalse(shown, shape["name"])
             elif shape["reading"] in ("absent", "other"):
                 self.assertTrue(shown, shape["name"])
+        self.assertIn("shape-block-below-initial-indent", listed)
 
 
 def _shapes():
@@ -598,6 +599,8 @@ def _copies_case(shape):
         files, added = copylib.expected_copy(upstream, "c" * 40, "skills/test/shape")
         self.assertEqual(added, shape["reading"] == "absent")
         self.assertTrue(copylib.has_codex_key(files[copylib.CODEX_FILE][1]))
+        if shape["reading"] == "false":
+            self.assertEqual(files[copylib.CODEX_FILE][1], data)
 
     return test
 

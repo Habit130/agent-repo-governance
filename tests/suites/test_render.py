@@ -2,7 +2,9 @@
 
 import json
 import os
+import re
 import shutil
+import subprocess
 import unittest
 
 import support
@@ -42,6 +44,48 @@ Reviews of `Habit130/tally` run against `main`.
 """
 
 
+def snapshot_tree(root):
+    """Every file, including .git and objects, with its bytes and mode; no exclusions."""
+    files = {}
+    for parent, directories, names in os.walk(root):
+        for name in directories + names:
+            path = os.path.join(parent, name)
+            relative = os.path.relpath(path, root)
+            if os.path.isdir(path):
+                files[relative] = ("directory", os.stat(path).st_mode)
+            else:
+                with open(path, "rb") as handle:
+                    files[relative] = (handle.read(), os.stat(path).st_mode)
+    return files
+
+
+def literal_filter_matches(pattern, branch):
+    """Independent documented Actions grammar restricted to Git-valid-name characters.
+
+    Git forbids *, ?, [, and backslash in a branch. Of the remaining characters only +
+    (one or more of the preceding character) and a leading ! (negation) are operators.
+    This oracle consumes escapes, not the production encoder, and fixture expectations
+    are hand-written. It is not a general Actions filter implementation.
+    """
+    # A negative pattern alone supplies no positive match (Actions requires a positive
+    # pattern too); none of our literal-name filters may become a negative pattern.
+    if pattern.startswith("!"):
+        return False
+    expression = ""
+    index = 0
+    while index < len(pattern):
+        char = pattern[index]
+        if char == "\\":
+            index += 1
+            expression += re.escape(pattern[index])
+        elif char == "+":
+            expression += "+"
+        else:
+            expression += re.escape(char)
+        index += 1
+    return re.fullmatch(expression, branch) is not None
+
+
 class RenderCase(support.TempDirCase):
     def store_copy(self, released=True):
         root = self.path("store")
@@ -72,6 +116,147 @@ class RenderCase(support.TempDirCase):
 
 
 class Rendering(RenderCase):
+    def test_invalid_names_and_token_values_refuse_both_clis_without_writes(self):
+        with open(os.path.join(support.FIXTURES, "stores", "branch-names.json")) as handle:
+            cases = json.load(handle)
+        target = support.init_repo(self.path("target"))
+        support.commit_tree(target, {"keep.txt": "keep\n"}, "initial")
+        before = snapshot_tree(target)
+        confirmed = self.confirmed_file(TALLY_CONFIRMED)
+        for kind in ("invalid", "tokens"):
+            for branch in cases[kind]:
+                with self.subTest(kind=kind, branch=branch):
+                    valid = subprocess.run(
+                        ["git", "check-ref-format", "--branch", branch], cwd=target,
+                        env=support.isolated_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    ).returncode == 0
+                    self.assertEqual(valid, kind == "tokens")
+                    values = ["--repository", "Habit130/tally", "--default-branch=" + branch,
+                              "--version", "1", "--allow-unreleased"]
+                    for command, destination in (("render", self.path("absent")), ("render", target), ("compare", target)):
+                        args = [command, "--store", support.REAL_STORE,
+                                "--dest" if command == "render" else "--worktree", destination] + values
+                        if command == "render":
+                            args += ["--confirmed", confirmed]
+                        code, out, err = support.run_cli(support.GOVERN, args)
+                        self.assertEqual(code, 2, (out, err))
+                        self.assertTrue(json.loads(out)["error"])
+                        self.assertEqual(err, "")
+                        self.assertFalse(os.path.exists(self.path("absent")))
+                        self.assertEqual(snapshot_tree(target), before)
+
+    def test_checkout_shorthand_is_not_expanded_by_either_cli(self):
+        target = support.init_repo(self.path("target"))
+        support.commit_tree(target, {"keep.txt": "keep\n"}, "initial")
+        support.git(target, "checkout", "-q", "-b", "previous")
+        support.git(target, "checkout", "-q", "main")
+        # Independently show why --branch would be unsafe in this real checkout history.
+        self.assertEqual(support.git(target, "check-ref-format", "--branch", "@{-1}").strip(), "previous")
+        before = snapshot_tree(target)
+        values = ["--repository", "Habit130/tally", "--default-branch=@{-1}", "--version", "1", "--allow-unreleased"]
+        for command, option in (("render", "--dest"), ("compare", "--worktree")):
+            code, out, err = support.run_cli(
+                support.GOVERN, [command, "--store", support.REAL_STORE, option, target] + values, cwd=target,
+            )
+            self.assertEqual(code, 2, (out, err))
+            self.assertIn("not a branch name", json.loads(out)["error"])
+            self.assertEqual(err, "")
+            self.assertEqual(snapshot_tree(target), before)
+
+    def test_real_store_literal_filters_and_planted_comparison_mismatches(self):
+        with open(os.path.join(support.FIXTURES, "stores", "branch-names.json")) as handle:
+            cases = json.load(handle)["accepted"]
+        paths = (".github/workflows/governance-gate.yml", ".github/workflows/merge-watch.yml")
+        main_workflows = {}
+        for index, case in enumerate(cases):
+            with self.subTest(branch=case["branch"]):
+                branch = case["branch"]
+                self.assertEqual(subprocess.run(
+                    ["git", "check-ref-format", "--branch", branch],
+                    env=support.isolated_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                ).returncode, 0)
+                dest = self.path("real-%d" % index)
+                values = ["--repository", "Habit130/tally", "--default-branch=" + branch,
+                          "--version", "1", "--allow-unreleased"]
+                code, facts = self.render(support.REAL_STORE, dest, values=values)
+                self.assertEqual(code, 0, facts)
+                for path, count in zip(paths, (1, 2)):
+                    text = support.read_text(os.path.join(dest, path))
+                    # JSON double-quoted scalars are a YAML subset; assert their decoded
+                    # values separately from the hand-written filter expectations.
+                    scalars = re.findall(r"^    branches:\n      - (.+)$", text, re.M)
+                    self.assertEqual(len(scalars), count, (path, text))
+                    for scalar in scalars:
+                        if "scalar" in case:
+                            self.assertEqual(scalar, case["scalar"])
+                        pattern = json.loads(scalar)
+                        self.assertEqual(pattern, case["filter"])
+                        self.assertTrue(literal_filter_matches(pattern, branch))
+                        for nonmatch in case["nonmatches"]:
+                            self.assertFalse(literal_filter_matches(pattern, nonmatch), (pattern, nonmatch))
+                    if branch == "main":
+                        main_workflows[path] = text
+                    else:
+                        # No substituted value changes anything but the three scalars:
+                        # events, permissions, executable text and expressions stay exact.
+                        normalized = re.sub(r"(^    branches:\n      - ).+$", r'\1"main"', text, flags=re.M)
+                        self.assertEqual(normalized, main_workflows[path])
+                args = ["compare", "--store", support.REAL_STORE, "--worktree", dest] + values
+                code, facts = support.govern(args)
+                self.assertEqual((code, facts.get("differences")), (0, []), facts)
+                for path in paths:
+                    full = os.path.join(dest, path)
+                    original = support.read_text(full)
+                    # Plant each of Merge watch's two locations independently.
+                    for match in re.finditer(r"^    branches:\n      - (.+)$", original, re.M):
+                        start, end = match.span(1)
+                        with open(full, "w") as handle:
+                            handle.write(original[:start] + '"wrong-branch"' + original[end:])
+                        code, facts = support.govern(args)
+                        self.assertEqual(code, 1, facts)
+                        self.assertEqual([(d["path"], d["kind"]) for d in facts["differences"]], [(path, "content")])
+                    with open(full, "w") as handle:
+                        handle.write(original)
+
+    def test_expression_markers_refuse_both_clis_before_writes(self):
+        with open(os.path.join(support.FIXTURES, "stores", "branch-names.json")) as handle:
+            cases = json.load(handle)["unsupported"]
+        target = support.init_repo(self.path("target"))
+        support.commit_tree(target, {"keep.txt": "keep\n"}, "initial")
+        before = snapshot_tree(target)
+        for branch in cases:
+            with self.subTest(branch=branch):
+                self.assertEqual(subprocess.run(
+                    ["git", "check-ref-format", "--branch", branch],
+                    env=support.isolated_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                ).returncode, 0)
+                values = ["--repository", "Habit130/tally", "--default-branch=" + branch,
+                          "--version", "1", "--allow-unreleased"]
+                for command, destination in (("render", self.path("absent")), ("render", target), ("compare", target)):
+                    args = [command, "--store", support.REAL_STORE,
+                            "--dest" if command == "render" else "--worktree", destination] + values
+                    code, out, err = support.run_cli(support.GOVERN, args)
+                    self.assertEqual(code, 2, (out, err))
+                    self.assertIn("unsupported Actions-expression marker", json.loads(out)["error"])
+                    self.assertEqual(err, "")
+                    self.assertFalse(os.path.exists(self.path("absent")))
+                    self.assertEqual(snapshot_tree(target), before)
+
+    def test_supported_special_names_remain_literal_in_prose_and_compare(self):
+        templates = self.store_copy()
+        with open(os.path.join(support.FIXTURES, "stores", "branch-names.json")) as handle:
+            cases = json.load(handle)["accepted"]
+        for index, case in enumerate(cases):
+            branch = case["branch"]
+            with self.subTest(branch=branch):
+                dest = self.path("special-%d" % index)
+                values = ["--repository", "Habit130/tally", "--default-branch=" + branch]
+                code, facts = self.render(templates, dest, values=values)
+                self.assertEqual(code, 0, facts)
+                self.assertIn("run against `%s`." % branch, support.read_text(os.path.join(dest, "docs/agents/review.md")))
+                code, facts = support.govern(["compare", "--store", templates, "--worktree", dest] + values)
+                self.assertEqual((code, facts.get("differences")), (0, []), facts)
+
     def test_renders_every_class_with_the_repositorys_values(self):
         dest = self.path("out")
         code, facts = self.render(self.store_copy(), dest)

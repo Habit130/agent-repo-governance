@@ -9,11 +9,11 @@ name: merge-watch
 on:
   push:
     branches:
-      - "@@default_branch@@"
+      - @@default_branch@@
   workflow_run:
     types: [completed]
     branches:
-      - "@@default_branch@@"
+      - @@default_branch@@
     workflows:
       - "**"
       - "!merge-watch"
