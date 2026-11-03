@@ -65,10 +65,15 @@ class Judge(unittest.TestCase):
         self.assertIsNone(runner.parse_issue("no block"))
 
 
-class PastTheStandIn(unittest.TestCase):
-    def test_a_gh_by_path_or_ghm_is_caught_and_plain_gh_is_not(self):
-        caught = ["/usr/bin/gh run list", "git push; /opt/homebrew/bin/gh api user", "command gh pr list", "ghm api user"]
-        plain = ["gh issue view 1", "cat docs/gh-notes.md", "ls /tmp/x/gh-config", "git push origin branch"]
+class PastTheStandIn(support.TempDirCase):
+    def test_a_real_gh_by_path_or_ghm_is_caught_and_plain_gh_is_not(self):
+        real = self.path("bin/gh")
+        os.makedirs(os.path.dirname(real))
+        with open(real, "w") as handle:
+            handle.write("")
+        caught = [real + " run list", "git push; %s api user" % real, "command gh pr list", "ghm api user"]
+        plain = ["gh issue view 1", "cat docs/gh-notes.md", "ls /tmp/x/gh-config", "git push origin branch",
+                 "/no/such/place/gh run list", "grep -E 'x|ghm' notes"]
         self.assertEqual(runner.past_the_stand_in(caught + plain), caught)
 
 
