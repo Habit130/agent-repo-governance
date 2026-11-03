@@ -145,5 +145,11 @@ call, permission request or stand-in call occurred, so no second submission was 
 This is a provider failure, not a skill-loading result. The model produced no turn, so the
 explicit `skill` tool request is **untested**: the run neither confirms nor refutes the
 hypothesis that CLI text lacks structured skill loading, and it says nothing about
-registration of the scratch source or same-session recall. Why the configured model draws
-on the free limit was not examined.
+registration of the scratch source or same-session recall.
+
+Later read-only checks found the cause of the limit. The session export names model
+`opencode/pulse-alpha-free`. The user configuration sets `small_model` but no `model`, and
+the probe passes no `--model`, so
+[Model.default](https://github.com/anomalyco/opencode/blob/v2.2.5/packages/core/src/model.ts#L300-L305)
+falls back to the first available text model. The interface's recent-model list is not
+consulted by that path. Paid providers are connected, so sign-in is not the cause.
