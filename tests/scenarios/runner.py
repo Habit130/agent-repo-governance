@@ -66,8 +66,23 @@ BLOCK_KEYS = {"rules", "sensitive_paths", "required_checks", "actions_secrets", 
 def is_write(args):
     if args[:3] == ["api", "--method", "PATCH"] and args[3:4] and args[3].startswith("user/repository_invitations/"):
         return False  # The one write before habit's answer, for an invitation the fixture sets up.
-    return tuple(args[:2]) in WRITE_CALLS or (args[:1] == ["api"] and any(
-        a in ("--method", "-X", "--input", "-f", "-F", "--field", "--raw-field") for a in args))
+    return tuple(args[:2]) in WRITE_CALLS or (args[:1] == ["api"] and api_method(args) != "GET")
+
+
+def api_method(args):
+    """`gh api`'s effective method: --method or -X, else POST once a field or --input is given, else GET."""
+    method, body = None, False
+    for at, arg in enumerate(args):
+        if arg in ("--method", "-X"):
+            method = args[at + 1] if at + 1 < len(args) else ""
+        elif arg.startswith("--method="):
+            method = arg[len("--method="):]
+        elif arg.startswith("-X") and len(arg) > 2:
+            method = arg[2:]
+        elif arg in ("--input", "-f", "-F", "--field", "--raw-field") or arg.startswith(
+                ("--input=", "--field=", "--raw-field=")) or (arg[:2] in ("-f", "-F") and len(arg) > 2):
+            body = True
+    return method.upper() if method is not None else "POST" if body else "GET"
 
 
 def parse_issue(body):

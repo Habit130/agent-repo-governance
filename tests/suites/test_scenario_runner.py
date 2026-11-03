@@ -68,6 +68,16 @@ class Judge(unittest.TestCase):
         self.assertFalse(runner.is_write(["api", "--method", "PATCH", "user/repository_invitations/7"]))
         self.assertTrue(runner.is_write(["api", "--method", "PATCH", "repos/x/y"]))
 
+    def test_an_api_call_is_a_write_by_its_effective_method(self):
+        # gh api --help: GET by default, POST once a field or --input is added, --method/-X overrides.
+        reads = [["api", "repos/x/y"], ["api", "repos/x/y", "--method", "GET"], ["api", "-X", "GET", "repos/x/y"],
+                 ["api", "-XGET", "repos/x/y"], ["api", "--method=get", "repos/x/y"],
+                 ["api", "search/issues", "--method", "GET", "-f", "q=x"], ["api", "repos/x/y", "--jq", ".name"]]
+        writes = [["api", "repos/x/y", "-f", "a=b"], ["api", "repos/x/y", "--input", "-"], ["api", "-X", "DELETE", "repos/x/y"],
+                  ["api", "--method=PUT", "repos/x/y"], ["api", "repos/x/y", "--raw-field", "a=b"], ["api", "repos/x/y", "-Fa=b"]]
+        self.assertEqual([a for a in reads if runner.is_write(a)], [])
+        self.assertEqual([a for a in writes if not runner.is_write(a)], [])
+
     def test_a_block_missing_a_key_reads_as_no_block(self):
         self.assertIsNone(runner.parse_issue(body(dict((k, v) for k, v in FACTS.items() if k != "rules"))))
         self.assertIsNone(runner.parse_issue("no block"))
