@@ -1,5 +1,5 @@
 {
-  "answer": "确认按这个版本升级，没有需要调整的地方，继续。",
+  "answer": "确认按这个版本升级，每一项都按你的提议：与新固定规则冲突的仓库内容按你的推荐处理，confirmed 值不变，review bots 已连接，继续。",
   "description": "Seam B's Upgrade: a repository governed at version 2, with version 3 installed.",
   "expect": {
     "mode": "Upgrade"
