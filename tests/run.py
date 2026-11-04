@@ -55,6 +55,7 @@ SUITES = (
     ("machine-install", "test_machine_install", "macos"),
     ("machine-check", "test_machine_check", "macos"),
     ("machine-list", "test_machine_list", "macos"),
+    ("machine-wizard", "test_machine_wizard", "macos"),
 )
 
 

@@ -45,6 +45,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-install` | Seam C: every install fixture of #44's Testing Decisions, the machine rules, forward-only refusals and the ready command against a local origin | macos |
 | `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, personal skills' Codex problems only reported, and the Codex key detector's shapes | macos |
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
+| `machine-wizard` | Seam C: the account wizard in a throwaway home against the stand-in GitHub, whose logins take effect there; the walkthrough's steps, calls and last line, the machine check's identity item on its end state, a rerun changing nothing, each stop and the next run picking up, planted credential shapes in every answer and file it reads, and `machine/wizard.sh` from a fresh clone of a local origin | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
 | `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets` | macos |
 | `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place; the handover rule, the skill files' four conditions and the identity hash, and the scenario settings | macos |
@@ -236,11 +237,12 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
 
 ## The machine area
 
-`machine/scripts/machine.py` is the one entry for the install, the machine check and the
-governed-repository list (#44 §8, §9). Its subcommands, `install --source <tree> --home
-<dir>`, `check` and `list`, print Chinese reports and exit 0 when nothing failed, 1 when an
-item or line failed, and 2 on a refusal that wrote nothing. `machinelib/__init__.py` names
-the layout; `install.py`'s docstring gives the steps.
+`machine/scripts/machine.py` is the one entry for the install, the machine check, the
+governed-repository list and the account wizard (#44 §8, §9). Its subcommands, `install
+--source <tree> --home <dir>`, `check`, `list` and `wizard`, print Chinese reports and exit 0
+when nothing failed, 1 when an item or line failed or the wizard stopped at a step, and 2 on a
+refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.py`'s and
+`wizard.py`'s docstrings give the steps.
 
 - **The ready command** is the one line in `machine/ready.sh`. habit runs it in Claude Code
   with the `!` prefix after a merge that changes the machine; agents never run it, the
@@ -251,6 +253,24 @@ the layout; `install.py`'s docstring gives the steps.
   ```
 
   The clone keeps history, since forward-only needs the installed commit to be an ancestor.
+- **The account wizard** runs once on a new machine, before the first install, from the one
+  line in `machine/wizard.sh`, which README.md and this file quote byte for byte. habit runs
+  it in a terminal, never with Claude Code's `!`, because its logins need the terminal; agents
+  never run it, `gh auth` commands or `ghm` against a real home:
+
+  ```text
+  /bin/bash -c 'set -eu; d="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone --quiet --depth 1 https://github.com/Habit130/agent-repo-governance.git "$d/src"; /usr/bin/python3 "$d/src/machine/scripts/machine.py" wizard'
+  ```
+
+  It reads each login with `gh auth status --hostname github.com --active --json hosts`. From
+  gh 2.98.0's source (`pkg/cmd/auth/status/status.go`, `internal/config/config.go`, read
+  2026-11-04): with `--json` it always exits 0, no login prints `{"hosts":{}}`, the token is
+  dropped from the output, a keychain token's `tokenSource` is `keyring`, a plain-text one's
+  the `hosts.yml` path, and `scopes` is the `X-OAuth-Scopes` header, comma-separated.
+  `gh auth login --web` stays interactive on a terminal and may ask whether to set up git's
+  credential; either answer is fine, since the wizard runs `gh auth setup-git` itself. The
+  `machine-wizard` suite never runs `ghm` or any `gh` inside a login shell: macOS's login
+  profile reorders PATH, so a real gh there could reach the keychain.
 - **Run on their own** from the installed copy: `/usr/bin/python3
   ~/.agents/governance/machine/scripts/machine.py check` and `... list`. The installed state
   is `~/.agents/governance/installed.json`; there the entry imports `govlib` from the

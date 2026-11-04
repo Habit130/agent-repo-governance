@@ -154,6 +154,41 @@ class CodexStandIn(StandInCase):
         self.assertEqual(answers[2].stdout, b"second\n")
         self.assertEqual([c["call"] for c in self.calls()], [0, 1, 1])
 
+    def test_an_answer_can_depend_on_a_file_and_leave_one_behind(self):
+        # A login takes effect in the throwaway state: the next read finds it, in the directory
+        # the call's GH_CONFIG_DIR names, and a file only the stand-in reads.
+        recording = self.path("gh-state.json")
+        state = "${GH_CONFIG_DIR}/standin-account"
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [
+                {"args": ["auth", "status"], "when": [{"path": state, "absent": True}], "stdout": "nobody\n"},
+                {"args": ["auth", "status"], "when": [{"path": state, "contains": "Habit098\n"}], "stdout": "Habit098\n"},
+                {"args": ["auth", "login"], "stdout": "", "effects": [{"path": state, "write": "Habit098\n"}]},
+                {"args": ["auth", "setup-git"], "effects": [{"path": "${HOME}/log", "append": "a\n"}]}]}, handle)
+        one, two = self.path("one"), self.path("two")
+
+        def gh(config, *args):
+            env = dict(self.env, STANDIN_GH_RECORDING=recording, GH_CONFIG_DIR=config)
+            result = subprocess.run(["gh"] + list(args), env=env, stdout=subprocess.PIPE, universal_newlines=True)
+            return result.returncode, result.stdout
+
+        self.assertEqual(gh(one, "auth", "status"), (0, "nobody\n"))
+        self.assertEqual(gh(one, "auth", "login"), (0, ""))
+        self.assertEqual(gh(one, "auth", "status"), (0, "Habit098\n"))
+        self.assertEqual(gh(two, "auth", "status"), (0, "nobody\n"))
+        with open(os.path.join(one, "standin-account")) as handle:
+            self.assertEqual(handle.read(), "Habit098\n")
+        gh(one, "auth", "setup-git")
+        gh(one, "auth", "setup-git")
+        with open(os.path.join(self.home, "log")) as handle:
+            self.assertEqual(handle.read(), "a\na\n")
+        # No condition holds: the call is stray.
+        with open(os.path.join(one, "standin-account"), "w") as handle:
+            handle.write("Someone\n")
+        self.assertEqual(gh(one, "auth", "status")[0], 1)
+        self.assertEqual(self.calls()[-1]["recorded"], False)
+        self.assert_nothing_reached_the_real_tools()
+
     def test_an_accepting_entry_logs_the_body_and_a_stray_call_still_fails(self):
         recording = self.path("gh-accept.json")
         with open(recording, "w") as handle:

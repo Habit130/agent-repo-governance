@@ -91,6 +91,34 @@ def _flag(args, *flags):
     return None
 
 
+def holds(call):
+    """Whether every condition under the entry's "when" holds."""
+    for condition in call.get("when", ()):
+        path = expand(condition["path"])
+        if condition.get("absent"):
+            if os.path.exists(path):
+                return False
+            continue
+        try:
+            with open(path, encoding="utf-8") as handle:
+                text = handle.read()
+        except OSError:
+            return False
+        if condition["contains"] not in text:
+            return False
+    return True
+
+
+def apply_effects(call):
+    for effect in call.get("effects", ()):
+        path = expand(effect["path"])
+        parent = os.path.dirname(path)
+        if parent and not os.path.isdir(parent):
+            os.makedirs(parent)
+        with open(path, "a" if "append" in effect else "w", encoding="utf-8") as handle:
+            handle.write(effect["append"] if "append" in effect else effect["write"])
+
+
 def created_issues():
     """{number: {"title", "body"}} for the issues the log shows the run creating and editing."""
     path = os.environ.get("STANDIN_LOG")
@@ -197,7 +225,7 @@ def main(argv):
             return int(call.get("exit", 0))
 
     candidates = [(index, call) for index, call in enumerate(calls)
-                  if "args" in call and [expand(a) for a in call["args"]] == args]
+                  if "args" in call and [expand(a) for a in call["args"]] == args and holds(call)]
     if any(call.get("once") for _, call in candidates):
         answered = served()
         candidates = [(index, call) for index, call in candidates if not (call.get("once") and index in answered)]
@@ -210,6 +238,7 @@ def main(argv):
             if stdin is not None:
                 entry["stdin"] = stdin
             log(entry)
+            apply_effects(call)
             sys.stdout.write(call.get("stdout", ""))
             sys.stderr.write(call.get("stderr", ""))
             return int(call.get("exit", 0))
