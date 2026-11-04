@@ -77,6 +77,14 @@ class GitHub(object):
         return self._call(["--method", "PATCH", "user/repository_invitations/%d" % invitation_id])
 
 
+class Retried(GitHub):
+    """GitHub whose failed reads get one more try within the run (CRIT-10)."""
+
+    def get(self, path):
+        response = super(Retried, self).get(path)
+        return response if response.ok else super(Retried, self).get(path)
+
+
 def branch_path(repository, branch):
     return "repos/%s/branches/%s" % (repository, quote(branch, safe=""))
 
@@ -104,10 +112,13 @@ def rulesets(github, repository):
 
 
 def ruleset_applies(ruleset, branch, applying):
-    """Whether a ruleset applies to the default branch: True, False, or None when the agent can't tell."""
+    """Whether a ruleset applies to the default branch: True, False, or None when the agent can't tell.
+
+    `applying` is the set of ruleset ids the branch's rules name, or None when that read failed.
+    """
     if ruleset.get("target") != "branch":
         return False
-    if ruleset.get("id") in applying:
+    if applying and ruleset.get("id") in applying:
         return True
     ref_name = (ruleset.get("conditions") or {}).get("ref_name") or {}
     names = ("~ALL", "~DEFAULT_BRANCH", branch, "refs/heads/" + branch)
@@ -116,5 +127,6 @@ def ruleset_applies(ruleset, branch, applying):
     if any(p in names for p in ref_name.get("include") or []):
         return True
     # GitHub lists the active rules on a branch, so an active ruleset that isn't listed
-    # doesn't apply; for one that isn't active, only its patterns could tell.
-    return False if ruleset.get("enforcement") == "active" else None
+    # doesn't apply; for one that isn't active, only its patterns could tell. A failed rules
+    # read (applying is None) lists nothing, so it tells nothing.
+    return False if ruleset.get("enforcement") == "active" and applying is not None else None

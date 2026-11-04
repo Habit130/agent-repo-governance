@@ -47,7 +47,24 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
 | `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets` | macos |
-| `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place | macos |
+| `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place; the handover rule, the skill files' four conditions and the identity hash, and the scenario settings | macos |
+| `scenario-runner` | Seam B's runner with no model: the stand-in accepting a run's writes, the issue's block parsed, each assertion on planted evidence, and the three-run rule | macos |
+
+## Scenarios
+
+`python3 tests/scenarios/runner.py <scenario> --harness claude|opencode [--runs N] [--out DIR]`
+runs a scenario in a logged-in harness on habit's Mac, one run at a time. Its docstring gives
+the fixture shape. The scenarios are `initialize-planted`, `upgrade` and `repair-files` under
+`tests/scenarios/fixtures/`: each Claude Code scenario runs three times, and the OpenCode
+smoke scenario is one run of `initialize-planted`. The Builder, until Initialize Execution,
+runs them and posts the results naming the head. Each OpenCode submission passes exactly
+`--model xai/grok-4.7`, and `opencode models --standalone` must list it first. Each Claude
+Code submission passes `--model claude-sonnet-5-5 --effort medium`, habit's choice, and a run
+fails unless every main-thread message ran on it and no message ran on Opus. A run's
+permissions are its own: `--tools` and `--allowedTools` in Claude Code, `permission` in the
+run's `OPENCODE_CONFIG_CONTENT` in OpenCode, never `--auto`. A failed resume records #40's
+fallback and stops. `tests/scenarios/headless_probe.py` holds the resume and interface-entry
+probes, and the runner reuses its clean environment. CI runs no model.
 
 ## CI
 
@@ -68,10 +85,20 @@ or the pre-merge check confirms both jobs are green on the head.
 ## The generator's command line
 
 `generator/govern-repository/scripts/govern.py` is the generator's one entry. Its
-subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`, and
-the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
+subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`,
+`handover`, `identity`, `mend-markers`, and the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
 and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
 the mode is stop; and 2 on a refusal, with the reason under `error`.
+
+- **Damaged markers** are mended before rendering: `mend-markers --worktree <path>` gives each
+  fixed part's file whose markers `mode` reports damaged one well-formed block at the record's
+  version, so `render` can fill it. Intact governance text gets its markers back; edited text
+  is rebuilt, keeping the text before the begin marker and the repository's own part from
+  the line the template puts after its end marker, or from the one end marker left. It lists
+  each file's `repair` and the non-version lines it `dropped`, and refuses, writing nothing,
+  when the repository's own text can't be told apart: with the begin marker gone, text above
+  the version's first line, or with the end marker gone, neither it nor the line after it left.
+  A path through a symlinked directory is refused too. It is tested in `generator-core`.
 
 - **Relied-on skill names** in a version manifest must be a list of unique lowercase,
   hyphenated strings. Each entry's type and spelling are checked before deduplicating;
@@ -116,8 +143,13 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
   `+` repeats the preceding character, and leading `!` negates a filter. YAML quoting
   alone does not escape those filter operators.
 - **Unreleased versions** are rendered or compared only with `--allow-unreleased`, which a
-  test, scenario or live-check runner passes for its own run. The generator's procedure
-  never passes it.
+  test or live-check runner passes for its own run. The generator's procedure never passes
+  it. A scenario needs none, since its synthetic store carries a change note.
+- **Scenario settings.** Three environment settings only the scenario runner sets:
+  `GOVERN_SCENARIO_STORE` and `GOVERN_SCENARIO_HOME` replace the `--store` and `--home`
+  defaults, and `GOVERN_SCENARIO_REPOSITORY` names the repository in place of a local
+  `origin`, which `git remote get-url` can't show as GitHub. Absent, the entry behaves as
+  without them, and the skill text names none of them, so no skill file changes for a run.
 - **Exact comparison** checks content and mode of every fixed file, every fixed part between
   its markers, and the record up to its one top-level `confirmed:` key, after which only
   indented values, blank lines and comments may follow. It leaves the confirmed values,
@@ -151,6 +183,14 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     exact comparison with GitHub's default branch, the markers with whether the generator's
     text between them is intact, and GitHub state against `govlib/target.py`, which Seam A
     checks against `tests/target_state.py`.
+  - **Every GitHub read in `mode` gets one retry** (`github.Retried`, CRIT-10). One that stays
+    failed sits under `drift.github.unreadable`, and an inactive ruleset the agent read but
+    can't place sits under `unplaced`; either keeps the outcome from reading as no drift.
+  - **`handover`** takes a saved `mode` report, `--mode-facts <file>`, and
+    `--required-checks-changed` when habit's answer changed them. It prints `owner_command`
+    and the Chinese lines habit hears with the command; `mode` reports the same rule under
+    `drift.handover` before the answer. It is the only place that rule lives, and
+    `tests/fixtures/generator/handover.json` holds its table.
   - **`accept-invitation`** accepts the agent account's pending invitation to the
     repository, the one write before habit's answer.
   - **No credential value is printed** (#41 §10). `inspect` names each credential shape it

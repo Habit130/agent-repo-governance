@@ -32,7 +32,10 @@ from govlib import (  # noqa: E402
     storedform,
 )
 
-DEFAULT_STORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "store")
+SKILL_DIRECTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Only the scenario runner sets the GOVERN_SCENARIO_ settings (docs/agents/build.md).
+DEFAULT_STORE = os.environ.get("GOVERN_SCENARIO_STORE") or os.path.join(SKILL_DIRECTORY, "store")
+DEFAULT_HOME = os.environ.get("GOVERN_SCENARIO_HOME") or os.path.expanduser("~")
 
 
 def emit(facts, code=0):
@@ -92,6 +95,37 @@ def cmd_compare(args):
     return emit(facts, 0 if facts["ok"] else 1)
 
 
+def cmd_mend_markers(args):
+    root = checkout.toplevel(args.worktree)
+    if root is None:
+        raise GovernError("%s isn't inside a git checkout" % args.worktree)
+    found = checkout.read_record(root)
+    if not found.get("parses"):
+        raise GovernError("the record is missing or doesn't parse, so there is no version to mend the markers at")
+    version = found["version"]
+    source = store.Store(args.store)
+    values = render.check_values(version, args.repository or compare.repository_from_origin(root),
+                                 args.default_branch or compare.default_branch_from_origin(root))
+    planned, mended = [], []
+    for entry in source.manifest(version)["templates"]:
+        data = checkout.read(root, entry["path"]) if entry["class"] == "fixed part" else None
+        if data is None:
+            continue
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            raise GovernError("%s is not UTF-8, so its markers can't be mended" % entry["path"])
+        result = render.mend(text, render.template_text(source, version, entry, values), entry["path"])
+        if result is not None:
+            # The renderer's worktree boundary: a symlinked parent would send the write outside.
+            planned.append((storedform.check_target(root, entry["path"]), result[0]))
+            mended.append({"path": entry["path"], "repair": result[1], "dropped": result[2]})
+    for full, text in planned:  # Written only once every file is mended, so a refusal writes nothing.
+        with open(full, "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+    return emit({"ok": True, "version": version, "mended": mended})
+
+
 def add_version_arguments(parser):
     parser.add_argument("--store", default=DEFAULT_STORE)
     parser.add_argument("--version", type=int, help="default: the installed version")
@@ -123,6 +157,20 @@ def cmd_mode(args):
     return emit(facts, code)
 
 
+def cmd_identity(args):
+    return emit({"ok": True, "identity": store.directory_hash(SKILL_DIRECTORY)})
+
+
+def cmd_handover(args):
+    report = read_json(args.mode_facts)
+    found = report.get("drift", {}) if isinstance(report, dict) else None
+    if not isinstance(found, dict) or not isinstance(found.get("github", {}), dict):
+        raise GovernError("%s isn't a `mode` report" % args.mode_facts)
+    facts = drift.handover_from(report, args.required_checks_changed)
+    facts["ok"] = True
+    return emit(facts)
+
+
 def cmd_inspect(args):
     facts, code = inspection.run(args.worktree, args.home)
     facts["ok"] = code == 0
@@ -136,7 +184,7 @@ def cmd_accept_invitation(args):
     if root is None:
         raise GovernError("%s isn't inside a git checkout" % args.worktree)
     repository = checkout.repository(root)
-    gh = github.GitHub()
+    gh = github.Retried()
     invitations = gh.require("user/repository_invitations?per_page=100", "the agent account's invitations")
     pending = [item for item in invitations or [] if (item.get("repository") or {}).get("full_name") == repository]
     if not pending:
@@ -150,7 +198,7 @@ def cmd_accept_invitation(args):
 def add_core_arguments(parser, home=False, store_root=False):
     parser.add_argument("--worktree", default=".", help="the target repository's checkout; default: the current directory")
     if home:
-        parser.add_argument("--home", default=os.path.expanduser("~"), help="the machine home; default: ~")
+        parser.add_argument("--home", default=DEFAULT_HOME, help="the machine home; default: ~")
     if store_root:
         parser.add_argument("--store", default=DEFAULT_STORE, help="default: the store beside this entry")
 
@@ -183,6 +231,15 @@ def build_parser():
     comparing.add_argument("--default-branch", help="default: origin's HEAD in the worktree")
     comparing.set_defaults(run=cmd_compare)
 
+    mending = commands.add_parser(
+        "mend-markers", help="give each fixed part's file with damaged markers one well-formed block, at the record's version"
+    )
+    mending.add_argument("--store", default=DEFAULT_STORE)
+    mending.add_argument("--worktree", default=".", help="default: the current directory")
+    mending.add_argument("--repository", help="owner/name; default: from the worktree's origin")
+    mending.add_argument("--default-branch", help="default: origin's HEAD in the worktree")
+    mending.set_defaults(run=cmd_mend_markers)
+
     materialize = commands.add_parser(
         "materialize", help="decode a stored tree into a temporary directory or a worktree"
     )
@@ -201,6 +258,14 @@ def build_parser():
     mode = commands.add_parser("mode", help="the mode and the drift report")
     add_core_arguments(mode, store_root=True)
     mode.set_defaults(run=cmd_mode)
+
+    identity = commands.add_parser("identity", help="the content hash of the skill directory that runs")
+    identity.set_defaults(run=cmd_identity)
+
+    hand = commands.add_parser("handover", help="whether habit gets the owner-script command, from a saved `mode` report")
+    hand.add_argument("--mode-facts", required=True, help="a file holding `mode`'s JSON")
+    hand.add_argument("--required-checks-changed", action="store_true", help="habit's answer changed the required checks")
+    hand.set_defaults(run=cmd_handover)
 
     inspect = commands.add_parser("inspect", help="the inspection facts")
     add_core_arguments(inspect, home=True)

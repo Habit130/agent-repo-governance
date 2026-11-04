@@ -1,0 +1,112 @@
+[
+  {
+    "case": "Initialize always hands it",
+    "mode": "Initialize",
+    "owner_script_changed": false,
+    "required_checks_changed": false,
+    "in_github": false,
+    "failed_reads": false,
+    "rulesets_unread": false,
+    "owner_command": true
+  },
+  {
+    "case": "Repair with no drift hands nothing",
+    "mode": "Repair",
+    "owner_script_changed": false,
+    "required_checks_changed": false,
+    "in_github": false,
+    "failed_reads": false,
+    "rulesets_unread": false,
+    "owner_command": false
+  },
+  {
+    "case": "Repair with drift in GitHub state",
+    "mode": "Repair",
+    "owner_script_changed": false,
+    "required_checks_changed": false,
+    "in_github": true,
+    "failed_reads": false,
+    "rulesets_unread": false,
+    "owner_command": true
+  },
+  {
+    "case": "Repair with a failed read",
+    "mode": "Repair",
+    "owner_script_changed": false,
+    "required_checks_changed": false,
+    "in_github": false,
+    "failed_reads": true,
+    "rulesets_unread": false,
+    "owner_command": true
+  },
+  {
+    "case": "Repair with the rulesets list unread",
+    "mode": "Repair",
+    "owner_script_changed": false,
+    "required_checks_changed": false,
+    "in_github": false,
+    "failed_reads": true,
+    "rulesets_unread": true,
+    "owner_command": true
+  },
+  {
+    "case": "Upgrade with nothing changed",
+    "mode": "Upgrade",
+    "owner_script_changed": false,
+    "required_checks_changed": false,
+    "in_github": false,
+    "failed_reads": false,
+    "rulesets_unread": false,
+    "owner_command": false
+  },
+  {
+    "case": "Upgrade changing the owner script or target state",
+    "mode": "Upgrade",
+    "owner_script_changed": true,
+    "required_checks_changed": false,
+    "in_github": false,
+    "failed_reads": false,
+    "rulesets_unread": false,
+    "owner_command": true
+  },
+  {
+    "case": "Upgrade changing the required checks",
+    "mode": "Upgrade",
+    "owner_script_changed": false,
+    "required_checks_changed": true,
+    "in_github": false,
+    "failed_reads": false,
+    "rulesets_unread": false,
+    "owner_command": true
+  },
+  {
+    "case": "Upgrade with drift in GitHub state",
+    "mode": "Upgrade",
+    "owner_script_changed": false,
+    "required_checks_changed": false,
+    "in_github": true,
+    "failed_reads": false,
+    "rulesets_unread": false,
+    "owner_command": true
+  },
+  {
+    "case": "Upgrade with a failed read",
+    "mode": "Upgrade",
+    "owner_script_changed": false,
+    "required_checks_changed": false,
+    "in_github": false,
+    "failed_reads": true,
+    "rulesets_unread": false,
+    "owner_command": true
+  },
+  {
+    "case": "Repair changing the required checks",
+    "mode": "Repair",
+    "owner_script_changed": false,
+    "required_checks_changed": true,
+    "in_github": false,
+    "failed_reads": false,
+    "rulesets_unread": false,
+    "owner_command": true
+  }
+]

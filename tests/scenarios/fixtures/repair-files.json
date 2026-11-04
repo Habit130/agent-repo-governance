@@ -1,0 +1,89 @@
+{
+  "answer": "确认恢复，继续。",
+  "description": "Seam B's Repair with drift in files: a fixed file edited at the record's version.",
+  "expect": {
+    "mode": "Repair"
+  },
+  "github": {
+    "rulesets": "target",
+    "labels": [
+      {
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "name": "needs-triage",
+        "color": "D4C5F9",
+        "description": "Maintainer needs to evaluate this issue"
+      },
+      {
+        "name": "needs-info",
+        "color": "D876E3",
+        "description": "Waiting on reporter for more information"
+      },
+      {
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Fully specified, ready for an AFK agent"
+      },
+      {
+        "name": "ready-for-human",
+        "color": "FBCA04",
+        "description": "Requires human implementation"
+      },
+      {
+        "name": "wontfix",
+        "color": "FFFFFF",
+        "description": "Will not be actioned"
+      },
+      {
+        "name": "wayfinder:map",
+        "color": "5319E7",
+        "description": "Wayfinder map: the index of a planning effort"
+      },
+      {
+        "name": "wayfinder:research",
+        "color": "1D76DB",
+        "description": "Wayfinder ticket: surface facts a decision waits on"
+      },
+      {
+        "name": "wayfinder:prototype",
+        "color": "FBCA04",
+        "description": "Wayfinder ticket: a rough artifact to react to"
+      },
+      {
+        "name": "wayfinder:grilling",
+        "color": "D93F0B",
+        "description": "Wayfinder ticket: a decision reached in conversation with habit"
+      },
+      {
+        "name": "wayfinder:task",
+        "color": "0E8A16",
+        "description": "Wayfinder ticket: work that must happen before a decision"
+      },
+      {
+        "name": "miss",
+        "color": "B60205",
+        "description": "Miss record: something governance should have stopped got through"
+      }
+    ]
+  },
+  "repository": {
+    "edits": [
+      {
+        "path": "docs/agents/review.md",
+        "replace": [
+          "Version 3 of Seam A's synthetic store adds this line.",
+          "Edited by hand."
+        ]
+      }
+    ],
+    "governed_at": 3
+  }
+}

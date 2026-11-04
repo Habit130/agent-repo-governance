@@ -1,0 +1,37 @@
+{
+  "description": "CRIT-10: a setting GitHub didn't return, on either read, is unread.",
+  "expect": {
+    "mode": {
+      "drift": {
+        "github": {
+          "unreadable": [
+            "setting allow_auto_merge"
+          ]
+        },
+        "handover": {
+          "owner_command": true
+        },
+        "in_github": false
+      },
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "not proven: the unread items named beside a ready owner-script command, then one more read"
+    }
+  },
+  "github": {
+    "rulesets": "target",
+    "settings": {
+      "allow_merge_commit": false,
+      "allow_rebase_merge": false,
+      "allow_squash_merge": true,
+      "delete_branch_on_merge": true
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode"
+  ]
+}

@@ -141,6 +141,67 @@ def find_block(text, where):
     return begins[0][0], ends[0][1]
 
 
+def mend(text, template, where):
+    """A fixed part's file with damaged markers, given one well-formed marker block that `render` can fill.
+
+    Returns None when the markers are well formed, else (text, repair, dropped). Every marker
+    line is set aside first. When the template's text between its markers is still there as one
+    run of lines, the markers go back around it and nothing else changes ("restore the
+    markers"). Otherwise the governance part is rebuilt ("rebuild as at Initialize"): the text
+    before the first begin marker is kept (with no begin marker, only blank lines may come before
+    the version's first line), the repository's own part is kept from the line the template puts
+    first after its end marker, or else from the one end marker on, with no marker line, and the
+    version's block goes between. `dropped` lists the non-blank lines left out that aren't the
+    version's text. A file whose own text can't be told apart is refused.
+    """
+    lines = text.splitlines(True)
+    if lines and not lines[-1].endswith("\n"):
+        lines[-1] += "\n"
+    begins = [i for i, line in enumerate(lines) if BEGIN.match(line.rstrip("\n"))]
+    ends = [i for i, line in enumerate(lines) if line.rstrip("\n") == END]
+    if len(begins) == 1 and len(ends) == 1 and begins[0] < ends[0]:
+        return None
+    start, end = find_block(template, "%s's template" % where)
+    block = template[start:end].splitlines(True)
+    inner = block[1:-1]
+    marked = set(begins + ends)
+    kept = [line for i, line in enumerate(lines) if i not in marked]
+    for at in range(len(kept) - len(inner) + 1) if inner else ():
+        if kept[at:at + len(inner)] == inner:
+            return "".join(kept[:at] + block + kept[at + len(inner):]), "restore the markers", []
+    after = template[end:]
+    anchor = next((line + "\n" for line in after.splitlines() if line.strip()), None)
+    version_lines = set(line for line in inner if line.strip())
+    if begins and not any(e < begins[0] for e in ends):
+        prefix = lines[:begins[0]]
+    else:
+        # No begin marker to bound the repository's own introduction: the governance part starts at
+        # the version's first line, and any other text above it can't be told apart.
+        first = next((i for i, line in enumerate(lines) if i not in marked and line in version_lines), len(lines))
+        if any(line.strip() and i not in marked for i, line in enumerate(lines[:first])):
+            raise MarkerError(
+                "%s has no begin marker before its end marker and text above the version's text, so where the "
+                "repository's own introduction ends can't be told apart" % where
+            )
+        prefix = []
+    if anchor is not None and anchor in lines[len(prefix):]:
+        cut = lines.index(anchor, len(prefix))
+        tail = after[:after.index(anchor)]
+    elif len(ends) == 1 and not any(b > ends[0] for b in begins):
+        cut = ends[0] + 1
+        tail = ""
+    else:
+        raise MarkerError(
+            "%s's markers are damaged and the version's text between them was changed, and neither its end "
+            "marker nor the line %r the version puts after it is left, so its own content can't be told apart"
+            % (where, (anchor or "").rstrip("\n"))
+        )
+    tail += "".join(line for i, line in enumerate(lines[cut:], cut) if i not in marked)  # A stray marker goes too.
+    dropped = [line.rstrip("\n") for i, line in enumerate(lines[len(prefix):cut], len(prefix))
+               if i not in marked and line.strip() and line not in version_lines]
+    return "".join(prefix + block) + tail, "rebuild as at Initialize", dropped
+
+
 def _quoted(value):
     return '"%s"' % value.replace("\\", "\\\\").replace('"', '\\"')
 
@@ -231,6 +292,11 @@ def _read_template(store, version, path):
         return data.decode("utf-8")
     except UnicodeDecodeError:
         raise RenderError("version %d's template for %s is not UTF-8" % (version, path))
+
+
+def template_source(store, version, path):
+    """A template as the store holds it, tokens unfilled."""
+    return _read_template(store, version, path)
 
 
 def template_text(store, version, entry, values):

@@ -1,0 +1,97 @@
+{
+  "description": "CRIT-10: with the rules read failed, an active ruleset whose patterns don't name the branch reads as unknown, not as not applying.",
+  "expect": {
+    "inspect": {
+      "exit": 0,
+      "github": {
+        "rulesets": [
+          {
+            "name": "Gate"
+          },
+          {
+            "name": "Merge"
+          },
+          {
+            "name": "History"
+          },
+          {
+            "applies_to_default_branch": null,
+            "name": "legacy main"
+          }
+        ],
+        "unreadable": [
+          "the rules on the default branch"
+        ]
+      }
+    },
+    "mode": {
+      "drift": {
+        "github": {
+          "drift": false,
+          "other_rulesets": [
+            {
+              "applies_to_default_branch": null,
+              "name": "legacy main"
+            }
+          ],
+          "uncertain": [
+            "legacy main"
+          ],
+          "unreadable": [
+            "the rules on main: Server Error"
+          ]
+        },
+        "handover": {
+          "owner_command": true
+        },
+        "in_github": false
+      },
+      "exit": 0,
+      "mode": "Repair",
+      "outcome": "not proven: the unread items named beside a ready owner-script command, then one more read"
+    }
+  },
+  "github": {
+    "failing_reads": {
+      "/rules/branches/main": "always"
+    },
+    "rulesets": [
+      {
+        "as_target": "Gate"
+      },
+      {
+        "as_target": "Merge"
+      },
+      {
+        "as_target": "History"
+      },
+      {
+        "conditions": {
+          "ref_name": {
+            "exclude": [],
+            "include": [
+              "refs/heads/ma*"
+            ]
+          }
+        },
+        "enforcement": "active",
+        "id": 7201,
+        "name": "legacy main",
+        "rules": [
+          {
+            "type": "deletion"
+          }
+        ],
+        "target": "branch"
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "mode",
+    "inspect"
+  ]
+}

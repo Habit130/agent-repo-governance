@@ -1,0 +1,5 @@
+interface:
+  display_name: "Govern repository"
+  short_description: "Initialize, upgrade or repair a repository's governance"
+policy:
+  allow_implicit_invocation: false

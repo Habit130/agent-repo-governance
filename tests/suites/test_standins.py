@@ -141,6 +141,90 @@ class CodexStandIn(StandInCase):
         self.assertEqual(self.calls(), [{"tool": "codex", "args": ["exec", "write a poem"], "recorded": False}])
         self.assert_nothing_reached_the_real_tools()
 
+    def test_a_once_answer_gives_way_to_the_next_match(self):
+        recording = self.path("gh-once.json")
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [
+                {"args": ["api", "x"], "stdout": "", "stderr": "failed\n", "exit": 1, "once": True},
+                {"args": ["api", "x"], "stdout": "second\n", "stderr": "", "exit": 0}]}, handle)
+        env = dict(self.env, STANDIN_GH_RECORDING=recording)
+        answers = [subprocess.run(["gh", "api", "x"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                   for _ in range(3)]
+        self.assertEqual([a.returncode for a in answers], [1, 0, 0])
+        self.assertEqual(answers[2].stdout, b"second\n")
+        self.assertEqual([c["call"] for c in self.calls()], [0, 1, 1])
+
+    def test_an_accepting_entry_logs_the_body_and_a_stray_call_still_fails(self):
+        recording = self.path("gh-accept.json")
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [{"accepts": ["issue", "create"], "stdout": "url\n"}]}, handle)
+        body = self.path("body.md")
+        with open(body, "w") as handle:
+            handle.write("text the run wrote")
+        env = dict(self.env, STANDIN_GH_RECORDING=recording)
+        written = subprocess.run(["gh", "issue", "create", "--title", "t", "--body-file", body], env=env, stdout=subprocess.PIPE)
+        stray = subprocess.run(["gh", "issue", "delete", "1"], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual((written.returncode, written.stdout), (0, b"url\n"))
+        self.assertNotEqual(stray.returncode, 0)
+        self.assertEqual(self.calls()[0]["body"], "text the run wrote")
+        self.assertFalse(self.calls()[1]["recorded"])
+        self.assert_nothing_reached_the_real_tools()
+
+    def test_an_issue_view_entry_serves_the_issue_the_run_created(self):
+        recording = self.path("gh-issue.json")
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [{"accepts": ["issue", "create"], "stdout": "url\n"},
+                                               {"accepts": ["issue", "edit"]},
+                                               {"accepts": ["issue", "view"], "created_issue": True}]}, handle)
+        body = self.path("body.md")
+        with open(body, "w") as handle:
+            handle.write("the spec\n- [ ] CRIT-1")
+        env = dict(self.env, STANDIN_GH_RECORDING=recording)
+
+        def gh(*args):
+            done = subprocess.run(["gh"] + list(args), env=env, stdout=subprocess.PIPE, universal_newlines=True)
+            return done.returncode, done.stdout
+
+        self.assertEqual(gh("issue", "view", "1", "--json", "body"), (1, ""))
+        gh("issue", "create", "--title", "Govern", "--body-file", body)
+        code, plain = gh("issue", "view", "1")
+        self.assertEqual(code, 0)
+        self.assertIn("Govern", plain)
+        self.assertIn("the spec\n- [ ] CRIT-1", plain)
+        self.assertEqual(json.loads(gh("issue", "view", "1", "--json", "title,body")[1]),
+                         {"title": "Govern", "body": "the spec\n- [ ] CRIT-1"})
+        self.assertEqual(gh("issue", "view", "1", "--json", "body", "-q", ".body")[1], "the spec\n- [ ] CRIT-1\n")
+        gh("issue", "edit", "1", "--body", "revised")
+        self.assertEqual(gh("issue", "view", "1", "--json", "body", "--jq", ".body")[1], "revised\n")
+        self.assertEqual(gh("issue", "view", "2", "--json", "body")[0], 1)
+        self.assert_nothing_reached_the_real_tools()
+
+    def test_a_label_list_entry_serves_the_existing_labels_and_those_the_run_created(self):
+        recording = self.path("gh-labels.json")
+        existing = [{"name": "bug", "color": "d73a4a", "description": "Something isn't working"}]
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [{"accepts": ["label", "create"]},
+                                               {"accepts": ["label", "list"], "labels": existing},
+                                               {"accepts": ["api", "repos/o/r/labels"], "labels": existing}]}, handle)
+        env = dict(self.env, STANDIN_GH_RECORDING=recording)
+
+        def gh(*args):
+            done = subprocess.run(["gh"] + list(args), env=env, stdout=subprocess.PIPE, universal_newlines=True)
+            return done.returncode, done.stdout
+
+        gh("label", "create", "miss", "--repo", "o/r", "--color", "B60205", "--description", "Miss record")
+        code, plain = gh("label", "list", "--repo", "o/r")
+        self.assertEqual(code, 0)
+        self.assertEqual([line.split("\t")[0] for line in plain.splitlines()], ["bug", "miss"])
+        self.assertEqual(json.loads(gh("label", "list", "--json", "name,color")[1]),
+                         [{"name": "bug", "color": "d73a4a"}, {"name": "miss", "color": "B60205"}])
+        self.assertEqual(gh("label", "list", "--json", "name", "--jq", "length")[1], "2\n")
+        self.assertEqual(gh("label", "list", "--json", "name", "-q", ".[].name")[1], "bug\nmiss\n")
+        self.assertEqual(gh("api", "repos/o/r/labels", "--paginate", "--jq", ".[].name")[1], "bug\nmiss\n")
+        self.assertEqual([l["name"] for l in json.loads(gh("api", "repos/o/r/labels")[1])], ["bug", "miss"])
+        self.assertNotEqual(gh("api", "repos/o/r/labels", "--method", "POST", "-f", "name=x")[0], 0)
+        self.assert_nothing_reached_the_real_tools()
+
     def test_refuses_a_recording_beyond_execpolicy_check_and_debug_prompt_input(self):
         recording = self.path("codex-exec.json")
         with open(recording, "w") as handle:
