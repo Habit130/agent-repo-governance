@@ -273,7 +273,8 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   2026-11-04): every matching `credential.helper` and `credential.<url>.helper`, system and
   global config in order, an empty value clearing the list; `fill` stops at the first helper
   that answers and `approve` stores to every one. So the step passes only when the list is
-  exactly gh's helper (AC-48's Acceptance A1). The
+  exactly gh's helper (AC-48's Acceptance A1). It reads outside any repository, so a
+  conditional include (`includeIf`) stays unseen; the step's line says so when one exists. The
   `machine-wizard` suite never runs `ghm` or any `gh` inside a login shell: macOS's login
   profile reorders PATH, so a real gh there could reach the keychain.
 - **Run on their own** from the installed copy: `/usr/bin/python3

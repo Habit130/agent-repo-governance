@@ -87,8 +87,11 @@ def helper_matches(key):
     url = key[len("credential."):-len(".helper")]
     if not url:
         return True
-    parsed = urlsplit(url if "://" in url else "https://" + url)
-    host = (parsed.hostname or "").lower()
+    try:
+        parsed = urlsplit(url if "://" in url else "https://" + url)
+        host = (parsed.hostname or "").lower()
+    except ValueError:
+        return True  # a key git might still match: counted, so the step stays strict
     return parsed.scheme.lower() == "https" and parsed.path in ("", "/") and fnmatch.fnmatchcase(HOST, host)
 
 
@@ -212,7 +215,9 @@ class Wizard(object):
 
         As git's credential.c builds them: every `credential.helper` and every
         `credential.<url>.helper` whose URL matches is taken in config order, and an empty
-        value clears the list so far. Read outside any repository, so no local config counts.
+        value clears the list so far. Read outside any repository, so no local config counts, and
+        a conditional include (`includeIf`) that applies only inside some repository can't be
+        seen; `includes_conditionally` says whether one exists.
         """
         scratch = tempfile.mkdtemp(prefix="wizard-")
         try:
@@ -220,8 +225,11 @@ class Wizard(object):
         finally:
             shutil.rmtree(scratch, True)
         helpers = []
+        self.includes_conditionally = False
         for entry in out.split("\0") if code == 0 else []:
             key, _, value = entry.partition("\n")
+            if key.lower().startswith("includeif."):
+                self.includes_conditionally = True
             if helper_matches(key):
                 helpers = helpers + [value] if value else []
         return helpers
@@ -233,15 +241,18 @@ class Wizard(object):
             helpers = self.credential_helpers()
             return len(helpers) == 1 and helpers[0].strip().endswith("gh auth git-credential")
 
+        note = ("；git 配置里有 includeIf 条件配置，wizard 看不到它在某些仓库里可能另加的 credential helper"
+                "，请 habit 自己确认")
+
         if through_gh():
-            return READY, "git 的 github.com credential 只经过 gh"
+            return READY, "git 的 github.com credential 只经过 gh" + (note if self.includes_conditionally else "")
         code, _, _ = self.gh(self.default_config, "auth", "setup-git", "--hostname", HOST)
         if code != 0:
             raise Stop("`gh auth setup-git` 没能把 git 的 credential 交给 gh。重跑 wizard 会从这一步继续。")
         if not through_gh():
-            raise Stop("运行 `gh auth setup-git` 之后，git 的 github.com credential 除了 gh 还会经过别的 credential helper。"
-                       "请 habit 删掉 ~/.gitconfig 里 gh 那一段之后的 `credential.helper` 设置，再重跑。")
-        return DONE, "git 的 github.com credential 现在只经过 gh"
+            raise Stop("运行 `gh auth setup-git` 之后，git 用于 github.com 的 credential helper 仍不只是 gh 的。"
+                       "请 habit 用 `git config --show-origin --get-regexp '^credential\\..*helper$'` 找出其余的设置并删掉，再重跑。")
+        return DONE, "git 的 github.com credential 现在只经过 gh" + (note if self.includes_conditionally else "")
 
     def commit_identity(self):
         code, out, _ = self.gh(self.default_config, "api", "user")

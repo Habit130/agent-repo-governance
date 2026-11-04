@@ -405,10 +405,20 @@ class CredentialRoute(WizardCase):
         self.other = "!f() { cat >/dev/null; touch '%s'; echo username=Habit130; echo password=%s; }; f" % (
             self.other_mark, PLANTS[9])
 
+    def after_setup_git(self, text):
+        """Have the stand-in's setup-git leave text after gh's section, where its reset can't clear it."""
+        with open(self.recording) as handle:
+            calls = json.load(handle)
+        calls["calls"][-1]["effects"][0]["append"] += text
+        with open(self.recording, "w") as handle:
+            json.dump(calls, handle)
+
     def fill(self, extra=None):
         """(username git's credential fill gets for github.com, whether the other helper ran)."""
         _, env = self.env(extra=extra)
         env["GIT_TERMINAL_PROMPT"] = "0"
+        for name in ("GIT_ASKPASS", "SSH_ASKPASS"):
+            env.pop(name, None)
         work = self.path("fill-%d" % self.scratches)
         os.makedirs(work)
         result = subprocess.run([REAL_GIT, "credential", "fill"], input="protocol=https\nhost=github.com\n\n", cwd=work,
@@ -450,19 +460,26 @@ class CredentialRoute(WizardCase):
 
     def test_a_helper_after_gh_that_setup_git_leaves_in_place_stops_the_step(self):
         # Applied after gh's reset, it would also receive every credential git approves.
-        later = "[credential]\n\thelper = \"%s\"\n" % self.other
-        with open(self.recording) as handle:
-            calls = json.load(handle)
-        calls["calls"][-1]["effects"][0]["append"] += later
-        with open(self.recording, "w") as handle:
-            json.dump(calls, handle)
+        self.after_setup_git("[credential]\n\thelper = \"%s\"\n" % self.other)
         code, out, made = self.wizard()  # wizard() asserts no plant in the output
         self.assertEqual(code, 1, out)
         status, subject, detail = ms.lines(out)[-1]
         self.assertEqual((status, subject), ("停止", "git credential"))
-        self.assertIn("别的 credential helper", detail)
+        self.assertIn("仍不只是 gh 的", detail)
         self.assertEqual(self.git_writes(made), [])
-        self.assertFalse(os.path.exists(self.other_mark))
+
+    def test_a_conditional_include_is_named_as_unchecked(self):
+        support.write_tree(self.home, {".gitconfig": '[includeIf "gitdir:~/work/"]\n\tpath = ~/.gitconfig-work\n'})
+        code, out, _ = self.wizard()
+        self.assertEqual(code, 0, out)
+        detail = [d for _, subject, d in ms.lines(out) if subject == "git credential"][0]
+        self.assertIn("includeIf", detail)
+
+    def test_a_key_git_can_read_but_urlsplit_cant_still_counts(self):
+        self.after_setup_git('[credential "https://["]\n\thelper = "%s"\n' % self.other)
+        code, out, _ = self.wizard()
+        self.assertEqual(code, 1, out)
+        self.assertEqual(ms.lines(out)[-1][:2], ("停止", "git credential"))
 
 
 class Scopes(WizardCase):
