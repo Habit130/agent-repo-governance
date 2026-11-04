@@ -1,12 +1,12 @@
 {
-  "description": "#17 split: a private repository at Initialize where rulesets are available. It fails closed until #53.",
+  "description": "#17 split: a private repository at Initialize where rulesets are available, so the rulesets read answers 200 and the private item passes (#53).",
   "expect": {
     "preconditions": {
-      "exit": 1,
+      "exit": 0,
       "items": {
         "directory": "pass",
         "repository": "pass",
-        "private": "fail",
+        "private": "pass",
         "collaborator": "pass",
         "machine check": "pass",
         "machine skill set": "pass",
@@ -16,7 +16,13 @@
       "checklist": [
         "review bots"
       ],
-      "passed": false
+      "passed": true,
+      "rules_in_effect": {
+        "read": "rulesets",
+        "case": "available",
+        "passed": true,
+        "habit_lines": []
+      }
     },
     "mode": {
       "exit": 0,

@@ -1,12 +1,12 @@
 {
-  "description": "#17 split: a private repository at Upgrade with its Gate and Merge rules in effect. It fails closed until #53.",
+  "description": "#17 split: a private repository at Upgrade with its Gate and Merge rules in effect, so the private item passes (#53).",
   "expect": {
     "preconditions": {
-      "exit": 1,
+      "exit": 0,
       "items": {
         "directory": "pass",
         "repository": "pass",
-        "private": "fail",
+        "private": "pass",
         "collaborator": "pass",
         "machine check": "pass",
         "machine skill set": "pass",
@@ -16,7 +16,14 @@
       "checklist": [
         "review bots"
       ],
-      "passed": false
+      "passed": true,
+      "rules_in_effect": {
+        "read": "rules",
+        "case": "in effect",
+        "passed": true,
+        "missing": [],
+        "habit_lines": []
+      }
     },
     "mode": {
       "exit": 0,

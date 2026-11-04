@@ -1,0 +1,50 @@
+{
+  "description": "#53 CRIT-2: a private repository at Repair whose rules read fails twice, so it stays unread after the one retry, the case can't be decided and the private item fails closed.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "fail",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": false,
+      "rules_in_effect": {
+        "read": "rules",
+        "case": "undecided",
+        "passed": false,
+        "habit_lines": [
+          "这次没能判断这个 private 仓库的规则是否生效：GitHub 的回答在重试一次后仍然没读到或读不懂，所以按未通过处理，运行停止。",
+          "解决办法：稍后再运行一次治理；在判断出规则生效之前，运行不会继续。"
+        ]
+      }
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Repair"
+    }
+  },
+  "github": {
+    "private": true,
+    "rulesets": "target",
+    "failing_reads": {
+      "/rules/branches/main": "always"
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "preconditions",
+    "mode"
+  ]
+}

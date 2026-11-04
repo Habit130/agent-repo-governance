@@ -93,12 +93,16 @@ def branch_rules_path(repository, branch):
     return "repos/%s/rules/branches/%s" % (repository, quote(branch, safe=""))
 
 
+def rulesets_list_path(repository):
+    return "repos/%s/rulesets?includes_parents=false&per_page=100" % repository
+
+
 def rulesets(github, repository):
     """Every ruleset of the repository itself, in full, or None when GitHub won't list them.
 
     A ruleset whose own read fails keeps what the list gave, with the reason under `unreadable`.
     """
-    listed = github.get("repos/%s/rulesets?includes_parents=false&per_page=100" % repository)
+    listed = github.get(rulesets_list_path(repository))
     if not listed.ok:
         return None, listed.message
     found = []

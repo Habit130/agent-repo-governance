@@ -1,5 +1,5 @@
 {
-  "description": "#17 split: a private repository at Upgrade whose rules aren't in effect, since GitHub won't list rulesets, so they read as unread (CRIT-10). It fails closed until #53.",
+  "description": "#17 split: a private repository at Upgrade whose rules aren't in effect: GitHub refuses the rulesets and rules reads with phase 1's 403, so they read as unread (CRIT-10) and the private item fails with the lapse remedies (#53).",
   "expect": {
     "preconditions": {
       "exit": 1,
@@ -16,7 +16,16 @@
       "checklist": [
         "review bots"
       ],
-      "passed": false
+      "passed": false,
+      "rules_in_effect": {
+        "read": "rules",
+        "case": "lapsed",
+        "passed": false,
+        "habit_lines": [
+          "GitHub 拒绝读取这个 private 仓库的规则：Habit130 的 GitHub Pro 不在生效状态，所以这里的 rulesets 不能用，规则没有生效。",
+          "解决办法二选一：续期 GitHub Education 学生认证，或者把这个仓库改为 public。"
+        ]
+      }
     },
     "mode": {
       "exit": 0,
@@ -39,7 +48,8 @@
             }
           ],
           "unreadable": [
-            "rulesets: Upgrade to GitHub Pro or make this repository public to enable this feature."
+            "rulesets: Upgrade to GitHub Pro or make this repository public to enable this feature.",
+            "the rules on main: Upgrade to GitHub Pro or make this repository public to enable this feature."
           ]
         }
       }
