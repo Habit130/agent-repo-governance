@@ -1,4 +1,4 @@
-"""The machine area (#44 §8, §9, #26): the install, the machine check, the governed-repository list and the account wizard.
+"""The machine area (#44 §8, §9, #26): the install, the machine check and the governed-repository list.
 
 Python 3's standard library at the 3.9 level only (ADR 0026). The library finds the
 generator's `govlib` beside it: in this repository at `generator/govern-repository/scripts`,
