@@ -132,8 +132,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 ## 5. Writing
 
 1. Create only the labels missing from GitHub, from the version manifest's `labels`, with
-   `gh label create <name> --color <color> --description <description>`. Every run does
-   this, Upgrade included, with no confirmation item.
+   `gh label create <name> --color <color> --description <description>`. Every run that
+   reaches Writing does this, Upgrade included, even when its confirmation names no labels.
 2. Make your own worktree on a new branch from the latest `origin` default branch.
 3. Render: `<entry> render --dest <worktree> --repository <owner/name> --default-branch
    <branch> --confirmed <file>`, the file holding JSON with `sensitive_paths` and
