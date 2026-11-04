@@ -22,7 +22,7 @@
         "case": "lapsed",
         "passed": false,
         "habit_lines": [
-          "GitHub 拒绝了这个 private 仓库的 rulesets 读取：Habit130 的 GitHub Pro 不在生效状态，所以这里的 rulesets 不能用，规则没有生效。",
+          "GitHub 拒绝读取这个 private 仓库的规则：Habit130 的 GitHub Pro 不在生效状态，所以这里的 rulesets 不能用，规则没有生效。",
           "解决办法二选一：续期 GitHub Education 学生认证，或者把这个仓库改为 public。"
         ]
       }

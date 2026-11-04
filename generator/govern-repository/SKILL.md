@@ -173,5 +173,6 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
    the rules are in effect: its `private` item and `rules_in_effect`. Report on the issue in
    English, where there is one, and to habit in Chinese, with whatever stays unread beside
    habit's owner-script report. When the `private` item fails, the issue records
-   `rules_in_effect.issue_line` and habit hears its `habit_lines` verbatim, with its `command`
-   beside them when there is one. The run then ends.
+   `rules_in_effect.issue_line` and habit hears its `habit_lines` verbatim. Its `command`, when
+   there is one, is a second hand-over of the owner-script command, since the first run left a
+   Gate or Merge rule out of effect. The run then ends.

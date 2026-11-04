@@ -21,9 +21,20 @@ force-push and merge attempts between GitHub Free and Pro (and in its lapse simu
   message (rate limits answer 403 too) or an answer that isn't a list of rules. It fails closed
   and never counts as a pass.
 
-Each case carries `issue_line`, the English line the issue records, and `habit_lines`, the
-Chinese lines habit hears verbatim, with governance terms and product names in English. Nothing
-here writes.
+The facts `check` returns:
+
+- `repository`, `read` (`rulesets` or `rules`) and `path`, the read made;
+- `case`, above, and `passed`, true for `available` and `in effect` only;
+- `missing`: the guarded rulesets (`Gate`, `Merge`) whose rule types the rules read lacks;
+- `issue_line`: the English line the issue records;
+- `habit_lines`: the Chinese lines habit hears verbatim, with governance terms and product
+  names in English; empty on a pass;
+- `owner_command`: whether habit gets the owner-script command for this case, true for
+  `ruleset missing` only, with the command under `command`.
+
+The rule types come from `target.py`, which holds version 1's target state; a later version
+that changes Gate's or Merge's rule types must check the record's version's types instead.
+Nothing here writes.
 """
 
 from govlib import MAINTAINER, github, owner, target
@@ -32,7 +43,7 @@ PRO_REFUSAL = "Upgrade to GitHub Pro or make this repository public to enable th
 GUARDED = ("Gate", "Merge")
 
 LAPSED_ZH = (
-    "GitHub 拒绝了这个 private 仓库的 rulesets 读取：%s 的 GitHub Pro 不在生效状态，所以这里的 rulesets 不能用，规则没有生效。" % MAINTAINER,
+    "GitHub 拒绝读取这个 private 仓库的规则：%s 的 GitHub Pro 不在生效状态，所以这里的 rulesets 不能用，规则没有生效。" % MAINTAINER,
     "解决办法二选一：续期 GitHub Education 学生认证，或者把这个仓库改为 public。",
 )
 MISSING_ZH = (
@@ -62,7 +73,7 @@ def _undecided(fact, why):
 
 
 def check(gh, repository, branch, initialize):
-    """The facts of one read: `read`, `path`, `case`, `passed`, `missing`, the lines and any command."""
+    """The facts of one read, as the module docstring lists them."""
     read = "rulesets" if initialize else "rules"
     path = github.rulesets_list_path(repository) if initialize else github.branch_rules_path(repository, branch)
     fact = {"repository": repository, "read": read, "path": path, "missing": [], "owner_command": False}
@@ -94,10 +105,11 @@ def check(gh, repository, branch, initialize):
                     issue_line="Rules in effect on %s: the rules on %s list every Gate and Merge rule type." % (repository, branch))
         return fact
     names = " and ".join(missing)
+    names_zh = "和".join(missing)
     types = sorted(set(t for name in missing for t in wanted[name]) - present)
     fact.update(case="ruleset missing", passed=False, missing=missing, owner_command=True,
                 command=owner.command(repository),
-                habit_lines=[MISSING_ZH[0] % names, MISSING_ZH[1]],
+                habit_lines=[MISSING_ZH[0] % names_zh, MISSING_ZH[1]],
                 issue_line="Rules not in effect on %s: the rules on %s lack the %s ruleset%s rule types (%s), so %s disabled "
                 "or gone. Remedy: habit reruns the owner script, which re-enables %s."
                 % (repository, branch, names, "'s" if len(missing) == 1 else "s'", ", ".join(types),

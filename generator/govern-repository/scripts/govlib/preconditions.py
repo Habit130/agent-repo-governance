@@ -89,7 +89,7 @@ def installed_skills(home):
         return None, "the installed state ~/%s can't be read: %s" % ("/".join(INSTALLED_STATE), error)
 
 
-def _repository_items(run, gh, repository, root):
+def _repository_items(run, gh, repository, found):
     """The repository's own facts; the repository's JSON and the private read's, or None when it can't be read."""
     response = gh.get("repos/%s" % repository)
     if not response.ok:
@@ -114,7 +114,7 @@ def _repository_items(run, gh, repository, root):
     if not data.get("private"):
         run.add("private", "pass", "the repository is public")
         return data, None
-    found = checkout.read_record(root)
+    # Initialize as `drift.decide` reads it: no record, or one that doesn't parse.
     initialize = not (found.get("present") and found.get("parses"))
     fact = rules.check(gh, repository, branch, initialize)
     run.add("private", "pass" if fact["passed"] else "fail", "the repository is private; " + fact["issue_line"])
@@ -177,6 +177,7 @@ def run(worktree, home, store_root, env=None):
     gh = github.Retried(env)
     root = checkout.toplevel(worktree)
     repository = data = in_effect = None
+    found = checkout.read_record(root) if root else {"present": False}
     if root is None:
         result.add("directory", "fail", "%s isn't inside a git checkout" % os.path.realpath(worktree))
     else:
@@ -186,7 +187,7 @@ def run(worktree, home, store_root, env=None):
         except GovernError as error:
             result.add("directory", "fail", str(error))
     if repository:
-        data, in_effect = _repository_items(result, gh, repository, root)
+        data, in_effect = _repository_items(result, gh, repository, found)
     else:
         result.add("repository", "not checked", "the directory names no GitHub repository")
         result.add("private", "not checked", "the directory names no GitHub repository")
@@ -212,7 +213,6 @@ def run(worktree, home, store_root, env=None):
             result.ask("install", "run the install %s, from a commit whose store has a released version" % READY)
         else:
             _skill_item(result, home, manifest)
-            found = checkout.read_record(root) if root else {"present": False}
             if found.get("parses") and found["version"] > installed:
                 result.add(
                     "versions",

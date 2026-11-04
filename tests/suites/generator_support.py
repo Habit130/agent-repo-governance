@@ -24,8 +24,12 @@ A case under `tests/fixtures/generator/cases/` is one JSON file:
   - `checkout_branch`: the branch `origin/HEAD` names in the checkout (default `main`).
 - `github`: the agent account's view: `owner`, `private`, `default_branch`, `permissions`,
   `invitations`, `empty`, `settings`, `labels`, `pulls`, `classic_protection`,
-  `rulesets_forbidden` (the rulesets and rules reads answer #17's 403), `failing_rulesets` (ids whose own read fails), `failing_reads` (`{path
-  after repos/owner/name, or a path from user/: "once" or "always"}`, each answering HTTP 500), `settings_once`
+  `rulesets_forbidden` (the rulesets and rules reads answer #17's 403, `PRO_REFUSAL`),
+  `failing_rulesets` (ids whose own read fails), `failing_reads` (`{path after
+  repos/owner/name, or a path from user/: "once" or "always"}`, each answering HTTP 500),
+  `refused_reads` (`{path after repos/owner/name: message}`, each always answering HTTP 403
+  with that message), `odd_reads` (`{path after repos/owner/name: JSON}`, each always
+  answering 200 with that JSON), `settings_once`
   (settings the first repository read leaves out), and `rulesets`: `target` (the three as #41
   §7 has them, for the record's checks) or a list of `{"as_target": name, "changes": {...}}` and full bodies with
   an `id`. GitHub returns `bypass_actors` as null to the agent, as it did on 2026-10-29.
@@ -67,6 +71,8 @@ HARNESS_VARIABLES = {
 }
 HARNESS_PREFIXES = ("CLAUDE", "OPENCODE", "CODEX_", "DSH_", "AI_AGENT", "AGENT")
 RULESET_IDS = {"Gate": 7001, "Merge": 7002, "History": 7003}
+# GitHub's refusal of the rulesets and rules reads on a private repository without Pro (#17).
+PRO_REFUSAL = "Upgrade to GitHub Pro or make this repository public to enable this feature."
 
 # Credential shapes, assembled here so no committed file carries one GitHub's push protection
 # would block. They match the inspection's shapes and are no one's credential.
@@ -293,8 +299,7 @@ def recording(case, path):
         }))
     rulesets = _rulesets(github, checks)
     if github.get("rulesets_forbidden"):
-        calls.append(ow.http_error(api("/rulesets?includes_parents=false&per_page=100"), 403,
-                                   "Upgrade to GitHub Pro or make this repository public to enable this feature."))
+        calls.append(ow.http_error(api("/rulesets?includes_parents=false&per_page=100"), 403, PRO_REFUSAL))
     else:
         shown = [agent_view(body, ruleset_id, name) for ruleset_id, body in rulesets]
         calls.append(ow.ok(api("/rulesets?includes_parents=false&per_page=100"), [ow.listed(r) for r in shown]))
@@ -311,8 +316,7 @@ def recording(case, path):
                               "ruleset_id": ruleset_id} for rule in body["rules"])
         if github.get("rulesets_forbidden"):
             # #17's phase 1 and lapse simulation: the rules read is refused like the rulesets read.
-            calls.append(ow.http_error(api("/rules/branches/%s" % quote(branch, safe="")), 403,
-                                       "Upgrade to GitHub Pro or make this repository public to enable this feature."))
+            calls.append(ow.http_error(api("/rules/branches/%s" % quote(branch, safe="")), 403, PRO_REFUSAL))
         else:
             calls.append(ow.ok(api("/rules/branches/%s" % quote(branch, safe="")), rules))
     for invitation in github.get("invitations", []):
@@ -321,6 +325,10 @@ def recording(case, path):
     for suffix, how in sorted(github.get("failing_reads", {}).items()):
         args = ["api", suffix] if suffix.startswith("user/") else api(suffix)  # The agent account's own reads.
         failing.append(dict(ow.http_error(args, 500, "Server Error"), once=how == "once"))
+    for suffix, message in sorted(github.get("refused_reads", {}).items()):
+        failing.append(dict(ow.http_error(api(suffix), 403, message), once=False))
+    for suffix, value in sorted(github.get("odd_reads", {}).items()):
+        failing.append(dict(ow.ok(api(suffix), value), once=False))
     if github.get("settings_once"):
         partial = dict((key, value) for key, value in repo.items() if key not in github["settings_once"])
         failing.append(dict(ow.ok(api(""), partial), once=True))
