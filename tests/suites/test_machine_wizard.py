@@ -468,6 +468,22 @@ class CredentialRoute(WizardCase):
         self.assertIn("仍不只是 gh 的", detail)
         self.assertEqual(self.git_writes(made), [])
 
+    def test_a_helper_for_every_https_host_after_gh_stops_the_step(self):
+        # Bugbot on 2aec3b6: an empty host is a pattern git applies to github.com too.
+        self.after_setup_git('[credential "https://"]\n\thelper = "%s"\n' % self.other)
+        code, out, _ = self.wizard()
+        self.assertEqual(code, 1, out)
+        self.assertEqual(ms.lines(out)[-1][:2], ("停止", "git credential"))
+        # git itself applies it: reject runs every helper for github.com, and the other one leaves its mark.
+        _, env = self.env()
+        work = self.path("reject")
+        os.makedirs(work)
+        for name in ("GIT_ASKPASS", "SSH_ASKPASS"):
+            env.pop(name, None)
+        subprocess.run([REAL_GIT, "credential", "reject"], input="protocol=https\nhost=github.com\nusername=x\npassword=y\n\n",
+                       cwd=work, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        self.assertTrue(os.path.exists(self.other_mark), "git didn't apply the empty-host helper to github.com")
+
     def test_a_conditional_include_is_named_as_unchecked(self):
         support.write_tree(self.home, {".gitconfig": '[includeIf "gitdir:~/work/"]\n\tpath = ~/.gitconfig-work\n'})
         code, out, _ = self.wizard()

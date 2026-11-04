@@ -92,7 +92,8 @@ def helper_matches(key):
         host = (parsed.hostname or "").lower()
     except ValueError:
         return True  # a key git might still match: counted, so the step stays strict
-    return parsed.scheme.lower() == "https" and parsed.path in ("", "/") and fnmatch.fnmatchcase(HOST, host)
+    # An empty host is a partial URL git applies to every https host, github.com included.
+    return parsed.scheme.lower() == "https" and parsed.path in ("", "/") and (not host or fnmatch.fnmatchcase(HOST, host))
 
 
 def shown(login):
