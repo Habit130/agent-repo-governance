@@ -268,7 +268,12 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   dropped from the output, a keychain token's `tokenSource` is `keyring`, a plain-text one's
   the `hosts.yml` path, and `scopes` is the `X-OAuth-Scopes` header, comma-separated.
   `gh auth login --web` stays interactive on a terminal and may ask whether to set up git's
-  credential; either answer is fine, since the wizard runs `gh auth setup-git` itself. The
+  credential; either answer is fine, since the wizard runs `gh auth setup-git` itself. Its
+  credential step builds github.com's helper list as git's `credential.c` does (read
+  2026-11-04): every matching `credential.helper` and `credential.<url>.helper`, system and
+  global config in order, an empty value clearing the list; `fill` stops at the first helper
+  that answers and `approve` stores to every one. So the step passes only when the list is
+  exactly gh's helper (AC-48's Acceptance A1). The
   `machine-wizard` suite never runs `ghm` or any `gh` inside a login shell: macOS's login
   profile reorders PATH, so a real gh there could reach the keychain.
 - **Run on their own** from the installed copy: `/usr/bin/python3

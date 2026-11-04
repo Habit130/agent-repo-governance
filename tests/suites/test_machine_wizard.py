@@ -35,9 +35,12 @@ UP_TO_MAINTAINER = [STATUS, AGENT_LOGIN, STATUS, SETUP_GIT, ["api", "user"], STA
 ALL_ACTING = ["agent account 登录", "git credential", "git commit 身份", "maintainer 配置", "ghm"]
 STATE = "${GH_CONFIG_DIR}/standin-account"
 ATTACHED = "stand-in login ran attached"
-CREDENTIAL_SECTION = (
-    '[credential "https://github.com"]\n\thelper = \n\thelper = !/opt/homebrew/bin/gh auth git-credential\n'
-)
+GH_HELPER = "!/opt/homebrew/bin/gh auth git-credential"
+
+
+def credential_section(helper=GH_HELPER):
+    """What `gh auth setup-git` writes for github.com: an empty reset, then gh's helper."""
+    return '[credential "https://github.com"]\n\thelper = \n\thelper = %s\n' % helper
 
 
 def _plant(n):
@@ -54,7 +57,8 @@ def status_entry(login, scopes="gist, read:org, repo, workflow", source="keyring
             "scopes": scopes, "gitProtocol": "https", "error": PLANTS[1], "token": PLANTS[2]}
 
 
-def recording(path, agent_login=AGENT, maintainer_login=MAINTAINER, agent_exit=0, maintainer_exit=0, extra=()):
+def recording(path, agent_login=AGENT, maintainer_login=MAINTAINER, agent_exit=0, maintainer_exit=0, extra=(),
+              helper=GH_HELPER):
     """The stand-in GitHub for the wizard: which account each login yields, or its failure."""
     calls = list(extra)
     calls.append({"args": STATUS, "when": [{"path": STATE, "absent": True}], "exit": 0,
@@ -72,7 +76,7 @@ def recording(path, agent_login=AGENT, maintainer_login=MAINTAINER, agent_exit=0
             call["effects"] = [{"path": STATE, "write": login + "\n"}]
         calls.append(call)
     calls.append({"args": SETUP_GIT, "exit": 0, "stdout": PLANTS[8], "stderr": PLANTS[9],
-                  "effects": [{"path": "${HOME}/.gitconfig", "append": CREDENTIAL_SECTION}]})
+                  "effects": [{"path": "${HOME}/.gitconfig", "append": credential_section(helper)}]})
     with open(path, "w") as handle:
         json.dump({"description": "The account wizard's stand-in GitHub, written by test_machine_wizard.py.",
                    "tool": "gh", "calls": calls}, handle)
@@ -128,7 +132,7 @@ class WizardCase(support.TempDirCase):
         return [call["args"] for call in calls if call["tool"] == "gh"]
 
     def git_writes(self, calls):
-        return [call["args"] for call in calls if call["tool"] == "git" and not any(a.startswith("--get") for a in call["args"])]
+        return [call["args"] for call in calls if call["tool"] == "git" and not any(a.startswith("--get") or a == "--list" for a in call["args"])]
 
     def steps(self, out):
         return [(status, subject) for status, subject, _ in ms.lines(out)]
@@ -376,6 +380,89 @@ class Stops(WizardCase):
         support.write_tree(self.home, {".zshrc": "alias ghm='gh'\n"})
         self.assert_stops("ghm", UP_TO_MAINTAINER + [MAINTAINER_LOGIN, STATUS], "别的 ghm 定义")
         self.assertEqual(self.read(".zshrc"), "alias ghm='gh'\n")
+
+
+class CredentialRoute(WizardCase):
+    """A1: git takes every matching helper in config order, an empty value clearing the list,
+    and asks them in turn. The step is done only when that list is exactly gh's helper.
+
+    Each case asks the real git, in the throwaway home, which helper answers github.com. Every
+    helper is test-local: gh's is a fake gh printing the agent account, the others print the
+    maintainer account and leave a mark, so no real gh, keychain or credential is reached.
+    """
+
+    def setUp(self):
+        super(CredentialRoute, self).setUp()
+        fake = self.path("fake-gh-bin", "gh")
+        support.write_tree(self.path("fake-gh-bin"), {"gh": (
+            "#!/bin/bash\ncat >/dev/null\n[ \"$*\" = 'auth git-credential get' ] && "
+            "printf 'username=Habit098\\npassword=agent-marker\\n'\nexit 0\n")})
+        os.chmod(fake, 0o755)
+        self.gh_helper = "!%s auth git-credential" % fake
+        self.recording = recording(self.path("gh-route.json"), helper=self.gh_helper)
+        self.other_mark = self.path("other-helper-ran")
+        # A helper that supplies a complete credential for the maintainer account, and a planted value.
+        self.other = "!f() { cat >/dev/null; touch '%s'; echo username=Habit130; echo password=%s; }; f" % (
+            self.other_mark, PLANTS[9])
+
+    def fill(self, extra=None):
+        """(username git's credential fill gets for github.com, whether the other helper ran)."""
+        _, env = self.env(extra=extra)
+        env["GIT_TERMINAL_PROMPT"] = "0"
+        work = self.path("fill-%d" % self.scratches)
+        os.makedirs(work)
+        result = subprocess.run([REAL_GIT, "credential", "fill"], input="protocol=https\nhost=github.com\n\n", cwd=work,
+                                env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        names = [line[len("username="):] for line in result.stdout.splitlines() if line.startswith("username=")]
+        ran = os.path.exists(self.other_mark)
+        if ran:
+            os.remove(self.other_mark)
+        return (names[0] if names else None), ran
+
+    def assert_routed_through_gh_alone(self, extra=None):
+        code, out, calls = self.wizard(extra=extra)
+        self.assertEqual(code, 0, out)
+        self.assertIn(("已完成", "git credential"), self.steps(out))
+        self.assertIn(SETUP_GIT, self.gh_calls(calls))
+        self.assertEqual(self.fill(extra), (AGENT, False))
+        before = ms.snapshot(self.home)
+        code, out, calls = self.wizard(extra=extra)
+        self.assertEqual(code, 0, out)
+        self.assertIn(("已就绪", "git credential"), self.steps(out))
+        self.assertNotIn(SETUP_GIT, self.gh_calls(calls))
+        self.assertEqual(ms.snapshot(self.home), before)
+
+    def test_an_earlier_helper_before_a_trailing_gh_helper_without_its_reset(self):
+        # Acceptance's A1: the last github.com helper is gh's, but nothing clears the one before it.
+        support.write_tree(self.home, {".gitconfig": (
+            "[credential]\n\thelper = \"%s\"\n[credential \"https://github.com\"]\n\thelper = %s\n"
+            % (self.other, self.gh_helper))})
+        self.assertEqual(self.fill()[0], MAINTAINER)  # before: the earlier helper answers
+        self.assert_routed_through_gh_alone()
+
+    def test_a_system_helper_such_as_the_keychains(self):
+        system = self.path("system-gitconfig")
+        with open(system, "w") as handle:
+            handle.write("[credential]\n\thelper = \"%s\"\n" % self.other)
+        extra = {"GIT_CONFIG_SYSTEM": system, "GIT_CONFIG_NOSYSTEM": "0"}
+        self.assertEqual(self.fill(extra)[0], MAINTAINER)
+        self.assert_routed_through_gh_alone(extra)
+
+    def test_a_helper_after_gh_that_setup_git_leaves_in_place_stops_the_step(self):
+        # Applied after gh's reset, it would also receive every credential git approves.
+        later = "[credential]\n\thelper = \"%s\"\n" % self.other
+        with open(self.recording) as handle:
+            calls = json.load(handle)
+        calls["calls"][-1]["effects"][0]["append"] += later
+        with open(self.recording, "w") as handle:
+            json.dump(calls, handle)
+        code, out, made = self.wizard()  # wizard() asserts no plant in the output
+        self.assertEqual(code, 1, out)
+        status, subject, detail = ms.lines(out)[-1]
+        self.assertEqual((status, subject), ("停止", "git credential"))
+        self.assertIn("别的 credential helper", detail)
+        self.assertEqual(self.git_writes(made), [])
+        self.assertFalse(os.path.exists(self.other_mark))
 
 
 class Scopes(WizardCase):

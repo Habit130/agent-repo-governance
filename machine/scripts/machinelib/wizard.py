@@ -10,7 +10,8 @@ at. In order:
 2. agent account 登录: the agent account is gh's default login, its token in the keychain, with
    `AGENT_SCOPES`. A missing login, or one gh reports broken, goes to habit as `gh auth login`;
    missing scopes as `gh auth refresh`.
-3. git credential: git's github.com credential goes through gh (`gh auth setup-git`).
+3. git credential: git's github.com credential goes through gh alone (`gh auth setup-git`): the
+   helpers git takes for it, system and global config together, are exactly gh's.
 4. git commit 身份: the global `user.email` is the agent account's noreply address, built from
    the id `gh api user` answers, and `user.name` is the agent account.
 5. maintainer 配置: the maintainer account is logged in under `~/.config/gh-maintainer`, the
@@ -30,12 +31,15 @@ GitHub's login form, and every line passes through `govlib.secrets.redact`. The 
 calls `gh auth token`; that text appears only inside `ghm`'s definition.
 """
 
+import fnmatch
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
+from urllib.parse import urlsplit
 
 from govlib import secrets
 from govlib.owner import MAINTAINER_GH_CONFIG
@@ -73,6 +77,19 @@ class Stop(Exception):
 def say(text):
     sys.stdout.write(secrets.redact(text) + "\n")
     sys.stdout.flush()
+
+
+def helper_matches(key):
+    """Whether a config key is a credential helper git applies to https://github.com."""
+    lowered = key.lower()
+    if not (lowered.startswith("credential.") and lowered.endswith(".helper")):
+        return False
+    url = key[len("credential."):-len(".helper")]
+    if not url:
+        return True
+    parsed = urlsplit(url if "://" in url else "https://" + url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme.lower() == "https" and parsed.path in ("", "/") and fnmatch.fnmatchcase(HOST, host)
 
 
 def shown(login):
@@ -191,20 +208,40 @@ class Wizard(object):
         return self.login(self.default_config, AGENT, "agent account %s" % AGENT, AGENT_SCOPES)
 
     def credential_helpers(self):
-        code, out, _ = self.git("config", "--global", "--get-all", "credential.https://%s.helper" % HOST)
-        return out.splitlines() if code == 0 else []
+        """The helpers git uses for https://github.com, in order, from the system and global config.
+
+        As git's credential.c builds them: every `credential.helper` and every
+        `credential.<url>.helper` whose URL matches is taken in config order, and an empty
+        value clears the list so far. Read outside any repository, so no local config counts.
+        """
+        scratch = tempfile.mkdtemp(prefix="wizard-")
+        try:
+            code, out, _ = self.home.run(["git", "config", "-z", "--list"], cwd=scratch)
+        finally:
+            shutil.rmtree(scratch, True)
+        helpers = []
+        for entry in out.split("\0") if code == 0 else []:
+            key, _, value = entry.partition("\n")
+            if helper_matches(key):
+                helpers = helpers + [value] if value else []
+        return helpers
 
     def git_credential(self):
         def through_gh():
+            # Exactly gh's helper: git asks the helpers in order and stores an approved
+            # credential in every one of them, so another helper could answer first or keep a copy.
             helpers = self.credential_helpers()
-            return bool(helpers) and helpers[-1].strip().endswith("gh auth git-credential")
+            return len(helpers) == 1 and helpers[0].strip().endswith("gh auth git-credential")
 
         if through_gh():
-            return READY, "git 的 github.com credential 已经经过 gh"
+            return READY, "git 的 github.com credential 只经过 gh"
         code, _, _ = self.gh(self.default_config, "auth", "setup-git", "--hostname", HOST)
-        if code != 0 or not through_gh():
+        if code != 0:
             raise Stop("`gh auth setup-git` 没能把 git 的 credential 交给 gh。重跑 wizard 会从这一步继续。")
-        return DONE, "git 的 github.com credential 现在经过 gh"
+        if not through_gh():
+            raise Stop("运行 `gh auth setup-git` 之后，git 的 github.com credential 除了 gh 还会经过别的 credential helper。"
+                       "请 habit 删掉 ~/.gitconfig 里 gh 那一段之后的 `credential.helper` 设置，再重跑。")
+        return DONE, "git 的 github.com credential 现在只经过 gh"
 
     def commit_identity(self):
         code, out, _ = self.gh(self.default_config, "api", "user")
