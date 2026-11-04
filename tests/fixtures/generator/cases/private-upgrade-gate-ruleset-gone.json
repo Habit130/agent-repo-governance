@@ -1,0 +1,58 @@
+{
+  "description": "#53 CRIT-2: a private repository at Upgrade whose Gate ruleset is gone, so the rules read lists only Merge's and History's rule types and the private item fails, naming the owner-script rerun.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "fail",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": false,
+      "rules_in_effect": {
+        "read": "rules",
+        "case": "ruleset missing",
+        "passed": false,
+        "missing": [
+          "Gate"
+        ],
+        "habit_lines": [
+          "这个 private 仓库的默认分支上缺少 Gate ruleset 的规则：这个 ruleset 被停用或删除了，规则没有完全生效。",
+          "解决办法：habit 运行下面的 owner script 命令，把 ruleset 恢复启用，然后再运行一次治理。"
+        ],
+        "owner_command": true
+      }
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Upgrade"
+    }
+  },
+  "github": {
+    "private": true,
+    "rulesets": [
+      {
+        "as_target": "Merge"
+      },
+      {
+        "as_target": "History"
+      }
+    ]
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 2
+  },
+  "run": [
+    "preconditions",
+    "mode"
+  ]
+}

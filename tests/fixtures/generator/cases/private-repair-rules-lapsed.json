@@ -1,0 +1,49 @@
+{
+  "description": "#53 CRIT-2 and CRIT-3: a private repository at Repair whose plan has lapsed, as #17's lapse simulation read it: the rules read answers 403, so the private item fails with the lapse remedies.",
+  "expect": {
+    "preconditions": {
+      "exit": 1,
+      "items": {
+        "directory": "pass",
+        "repository": "pass",
+        "private": "fail",
+        "collaborator": "pass",
+        "machine check": "pass",
+        "machine skill set": "pass",
+        "versions": "pass",
+        "review bots": "habit"
+      },
+      "checklist": [
+        "review bots"
+      ],
+      "passed": false,
+      "rules_in_effect": {
+        "read": "rules",
+        "case": "lapsed",
+        "passed": false,
+        "habit_lines": [
+          "GitHub 拒绝了这个 private 仓库的 rulesets 读取：Habit130 的 GitHub Pro 不在生效状态，所以这里的 rulesets 不能用，规则没有生效。",
+          "解决办法二选一：续期 GitHub Education 学生认证，或者把这个仓库改为 public。"
+        ],
+        "issue_line": "Rules not in effect on Habit130/tally: GitHub refused the agent account's rules read with 403 (\"Upgrade to GitHub Pro or make this repository public to enable this feature.\"), so the plan has lapsed. Remedy: renew the student verification, or make the repository public."
+      }
+    },
+    "mode": {
+      "exit": 0,
+      "mode": "Repair"
+    }
+  },
+  "github": {
+    "private": true,
+    "rulesets": "target",
+    "rulesets_forbidden": true
+  },
+  "harness": "claude-code",
+  "repository": {
+    "governed_at": 3
+  },
+  "run": [
+    "preconditions",
+    "mode"
+  ]
+}

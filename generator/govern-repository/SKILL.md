@@ -26,7 +26,9 @@ in English and no code, diffs or paths. It names its sender and target.
 
 1. Run `<entry> preconditions`. On a failed item, or a step only habit can take, give habit
    the one checklist. Items that block the run wait until habit says they are done. A step
-   that can wait, such as the review bots, goes into the confirmation instead.
+   that can wait, such as the review bots, goes into the confirmation instead. On a private
+   repository whose `private` item fails, give habit `rules_in_effect.habit_lines` verbatim,
+   with its `command` beside them when there is one, and end: the run never waits on it.
 2. Run `<entry> mode`, saving its report. On mode `stop`, or when any subcommand exits 2, tell
    habit the reason and end.
 3. Follow the report's `outcome` by the words it begins with:
@@ -167,6 +169,9 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
    When it is false, the run ends here with the Chinese report.
 3. After habit's run, fetch `origin` and run `<entry> mode` once in a temporary worktree of the
    default branch's head. It reads the rulesets and readable settings as the agent account, and
-   `<entry> preconditions` reads your own permission. Report on the issue in English,
-   where there is one, and to habit in Chinese, with whatever stays unread beside habit's
-   owner-script report. The run then ends.
+   `<entry> preconditions` reads your own permission and, on a private repository, whether
+   the rules are in effect: its `private` item and `rules_in_effect`. Report on the issue in
+   English, where there is one, and to habit in Chinese, with whatever stays unread beside
+   habit's owner-script report. When the `private` item fails, the issue records
+   `rules_in_effect.issue_line` and habit hears its `habit_lines` verbatim, with its `command`
+   beside them when there is one. The run then ends.

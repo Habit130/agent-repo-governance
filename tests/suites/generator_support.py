@@ -24,7 +24,7 @@ A case under `tests/fixtures/generator/cases/` is one JSON file:
   - `checkout_branch`: the branch `origin/HEAD` names in the checkout (default `main`).
 - `github`: the agent account's view: `owner`, `private`, `default_branch`, `permissions`,
   `invitations`, `empty`, `settings`, `labels`, `pulls`, `classic_protection`,
-  `rulesets_forbidden`, `failing_rulesets` (ids whose own read fails), `failing_reads` (`{path
+  `rulesets_forbidden` (the rulesets and rules reads answer #17's 403), `failing_rulesets` (ids whose own read fails), `failing_reads` (`{path
   after repos/owner/name, or a path from user/: "once" or "always"}`, each answering HTTP 500), `settings_once`
   (settings the first repository read leaves out), and `rulesets`: `target` (the three as #41
   §7 has them, for the record's checks) or a list of `{"as_target": name, "changes": {...}}` and full bodies with
@@ -306,10 +306,15 @@ def recording(case, path):
     if not github.get("empty"):
         rules = []
         for ruleset_id, body in rulesets:
-            if _applies(body, branch) and not github.get("rulesets_forbidden"):
+            if _applies(body, branch):
                 rules.extend({"type": rule["type"], "ruleset_source_type": "Repository", "ruleset_source": name,
                               "ruleset_id": ruleset_id} for rule in body["rules"])
-        calls.append(ow.ok(api("/rules/branches/%s" % quote(branch, safe="")), rules))
+        if github.get("rulesets_forbidden"):
+            # #17's phase 1 and lapse simulation: the rules read is refused like the rulesets read.
+            calls.append(ow.http_error(api("/rules/branches/%s" % quote(branch, safe="")), 403,
+                                       "Upgrade to GitHub Pro or make this repository public to enable this feature."))
+        else:
+            calls.append(ow.ok(api("/rules/branches/%s" % quote(branch, safe="")), rules))
     for invitation in github.get("invitations", []):
         calls.append(ow.call(["api", "--method", "PATCH", "user/repository_invitations/%d" % invitation["id"]]))
     failing = []

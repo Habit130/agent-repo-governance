@@ -1,5 +1,5 @@
 {
-  "description": "#17 split: a private repository at Initialize where GitHub won't list rulesets. It fails closed until #53.",
+  "description": "#17 split: a private repository at Initialize where GitHub refuses the rulesets read with phase 1's 403, so the plan has lapsed and the private item fails with the lapse remedies (#53).",
   "expect": {
     "preconditions": {
       "exit": 1,
@@ -16,7 +16,16 @@
       "checklist": [
         "review bots"
       ],
-      "passed": false
+      "passed": false,
+      "rules_in_effect": {
+        "read": "rulesets",
+        "case": "lapsed",
+        "passed": false,
+        "habit_lines": [
+          "GitHub 拒绝了这个 private 仓库的 rulesets 读取：Habit130 的 GitHub Pro 不在生效状态，所以这里的 rulesets 不能用，规则没有生效。",
+          "解决办法二选一：续期 GitHub Education 学生认证，或者把这个仓库改为 public。"
+        ]
+      }
     },
     "mode": {
       "exit": 0,
@@ -27,6 +36,7 @@
         "visibility": "private",
         "rulesets": null,
         "unreadable": [
+          "the rules on the default branch",
           "rulesets: Upgrade to GitHub Pro or make this repository public to enable this feature."
         ]
       }

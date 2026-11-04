@@ -8,7 +8,12 @@ accepting habit's invitation) or `not checked` (an earlier item it needs failed)
 - directory: a git checkout whose `origin` is a GitHub repository;
 - repository: owned by the maintainer account, not an organization, and its default branch
   has a commit;
-- private: a private repository stops with the reason, failing closed until #53;
+- private: a public repository passes; a private one passes only when #17's read shows its
+  rules can bind: at Initialize that rulesets are available, otherwise (Upgrade, Repair, and
+  the after-merge run in the default branch's head) that the Gate and Merge rules are in
+  effect. `rules.py` gives the cases; the facts carry its read under `rules_in_effect`, with
+  the Chinese lines habit hears and the English line the issue records. A case it can't
+  decide fails closed;
 - collaborator: the agent account has write permission, read from its own permission;
 - machine check: the installed machine check passes against the machine home;
 - machine skill set: every relied-on skill is a managed skill in the installed state;
@@ -23,7 +28,7 @@ import os
 import subprocess
 import sys
 
-from govlib import AGENT, MAINTAINER, GovernError, checkout, github, harness, store as stores
+from govlib import AGENT, MAINTAINER, GovernError, checkout, github, harness, rules, store as stores
 
 ITEMS = ("directory", "repository", "private", "collaborator", "machine check", "machine skill set", "versions", "review bots")
 INSTALLED_STATE = (".agents", "governance", "installed.json")
@@ -84,13 +89,13 @@ def installed_skills(home):
         return None, "the installed state ~/%s can't be read: %s" % ("/".join(INSTALLED_STATE), error)
 
 
-def _repository_items(run, gh, repository):
-    """The repository's own facts; the repository's JSON, or None when it can't be read."""
+def _repository_items(run, gh, repository, root):
+    """The repository's own facts; the repository's JSON and the private read's, or None when it can't be read."""
     response = gh.get("repos/%s" % repository)
     if not response.ok:
         run.add("repository", "fail", "the agent account can't read %s: %s" % (repository, response.message))
         run.add("private", "not checked", "the repository can't be read")
-        return None
+        return None, None
     data = response.data
     owner = data.get("owner") or {}
     problems = []
@@ -106,16 +111,14 @@ def _repository_items(run, gh, repository):
         run.add("repository", "fail", "; ".join(problems))
     else:
         run.add("repository", "pass", "owned by %s, default branch %s with a commit" % (MAINTAINER, branch))
-    if data.get("private"):
-        run.add(
-            "private",
-            "fail",
-            "the repository is private; until the private-repository reads arrive (#53), "
-            "a private repository stops the run, failing closed",
-        )
-    else:
+    if not data.get("private"):
         run.add("private", "pass", "the repository is public")
-    return data
+        return data, None
+    found = checkout.read_record(root)
+    initialize = not (found.get("present") and found.get("parses"))
+    fact = rules.check(gh, repository, branch, initialize)
+    run.add("private", "pass" if fact["passed"] else "fail", "the repository is private; " + fact["issue_line"])
+    return data, fact
 
 
 def _collaborator_item(run, gh, repository, data):
@@ -173,7 +176,7 @@ def run(worktree, home, store_root, env=None):
     result = Run()
     gh = github.Retried(env)
     root = checkout.toplevel(worktree)
-    repository = data = None
+    repository = data = in_effect = None
     if root is None:
         result.add("directory", "fail", "%s isn't inside a git checkout" % os.path.realpath(worktree))
     else:
@@ -183,7 +186,7 @@ def run(worktree, home, store_root, env=None):
         except GovernError as error:
             result.add("directory", "fail", str(error))
     if repository:
-        data = _repository_items(result, gh, repository)
+        data, in_effect = _repository_items(result, gh, repository, root)
     else:
         result.add("repository", "not checked", "the directory names no GitHub repository")
         result.add("private", "not checked", "the directory names no GitHub repository")
@@ -240,6 +243,7 @@ def run(worktree, home, store_root, env=None):
         "repository": repository,
         "items": result.items,
         "checklist": steps,
+        "rules_in_effect": in_effect,
         "passed": not failed,
     }
     return facts, 1 if failed else 0

@@ -178,7 +178,12 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     `tests/fixtures/generator/harness-probes.json` with each harness's version.
   - **`preconditions`** reports every §6.1 item together with habit's checklist. It runs the
     installed machine check, `~/.agents/governance/machine/scripts/machine.py check --home`,
-    and reads the managed skills from `~/.agents/governance/installed.json`.
+    and reads the managed skills from `~/.agents/governance/installed.json`. On a private
+    repository its `private` item takes #17's read through `govlib/rules.py` (#53): the
+    rulesets list at Initialize, the default branch's rules otherwise, after-merge included.
+    It passes only on rulesets available or every Gate and Merge rule type listed; the Pro
+    refusal, a missing type and any case it can't decide fail, each with the Chinese lines
+    habit hears and the English line the issue records under `rules_in_effect`.
   - **`mode`** gives the mode and, at Upgrade and Repair, drift against the record's version:
     exact comparison with GitHub's default branch, the markers with whether the generator's
     text between them is intact, and GitHub state against `govlib/target.py`, which Seam A
@@ -215,6 +220,14 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     python/cpython's `main`, which has classic protection and no ruleset, and `false` on the
     two repositories above, protected by rulesets only. It is the classic-protection fact;
     `.../protection` needs admin.
+  - On a private repository, #17's revision (phase 1 on Free, phase 2 on Pro, and its lapse
+    simulation, run 2026-10-23 and 2026-10-26): `GET repos/{r}/rulesets` and
+    `GET repos/{r}/rules/branches/{b}` answer 403 "Upgrade to GitHub Pro or make this
+    repository public to enable this feature." when the rules can't bind, and 200 when they
+    can, the rules read listing `deletion`, `non_fast_forward`, `pull_request`,
+    `required_status_checks` and `update`; the agent's push, force-push and merge were
+    accepted in the first case and rejected in the second. Seam A's stand-in answers both
+    reads that way under `rulesets_forbidden`.
   - `GET user/repository_invitations` lists the agent's open invitations;
     `PATCH user/repository_invitations/{id}` accepts one and answers 204.
 - **The change note** opens with `urgency: urgent` or `urgency: when convenient`, then
