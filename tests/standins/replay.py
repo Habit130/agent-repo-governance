@@ -21,6 +21,13 @@ An accepting `label list` or `api repos/<repo>/labels` entry with "labels" serve
 labels and then the ones the log shows the run creating: plain, as `--json` fields or the API's
 objects, or by `--jq` `length` or `.[].<field>`; an `api` call that writes fails. The Codex stand-in replays only `codex execpolicy check`
 and `codex debug prompt-input`.
+
+An "args" entry may also carry "when" and "effects", for state a run changes, such as a
+login. It matches only when every condition under "when" holds: {"path": ..., "absent": true}
+or {"path": ..., "contains": <text>}, the path expanded as above, so `${GH_CONFIG_DIR}` tells
+two gh configurations apart. When it answers, each of its "effects" writes or appends text,
+{"path": ..., "write" | "append": <text>}, creating the parent directories. Keep such state in
+files real gh never reads, such as `standin-account`, so a stray call can't become a login.
 """
 
 import json
@@ -95,6 +102,8 @@ def holds(call):
     """Whether every condition under the entry's "when" holds."""
     for condition in call.get("when", ()):
         path = expand(condition["path"])
+        if "contains" not in condition and not condition.get("absent"):
+            raise ValueError("a `when` condition needs `absent` or `contains`: %r" % (condition,))
         if condition.get("absent"):
             if os.path.exists(path):
                 return False

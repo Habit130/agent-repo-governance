@@ -38,6 +38,7 @@ import subprocess
 import sys
 
 from govlib import secrets
+from govlib.owner import MAINTAINER_GH_CONFIG
 
 from machinelib import AGENT, MAINTAINER, check
 from machinelib import home as homes
@@ -46,21 +47,23 @@ HOST = "github.com"
 AGENT_SCOPES = ("repo", "read:org", "gist", "workflow")
 TOKEN_VARIABLES = ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN")
 DONE, READY, STOP, PASS, FAIL = "已完成", "已就绪", "停止", homes.PASS, homes.FAIL
+MAINTAINER_PREFIX = 'GH_CONFIG_DIR="%s" ' % MAINTAINER_GH_CONFIG
 LOGIN_FORM = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
 READY_COMMAND = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "ready.sh")
 
 GHM_BEGIN = "# >>> agent-repo-governance account wizard: ghm >>>"
 GHM_END = "# <<< agent-repo-governance account wizard: ghm <<<"
+# The maintainer's gh configuration is the one the owner-script command names (govlib/owner.py).
 GHM_BLOCK = """%s
 # ghm runs gh as the maintainer account %s, with its own gh configuration. The token is
 # looked up only when ghm runs, so this file holds none. Agents never call ghm.
 ghm() {
-  GH_CONFIG_DIR="$HOME/.config/gh-maintainer" \\
-    GH_TOKEN="$(GH_CONFIG_DIR="$HOME/.config/gh-maintainer" command gh auth token --user %s)" \\
+  GH_CONFIG_DIR="%s" \\
+    GH_TOKEN="$(GH_CONFIG_DIR="%s" command gh auth token --user %s)" \\
     command gh "$@"
 }
 %s
-""" % (GHM_BEGIN, MAINTAINER, MAINTAINER, GHM_END)
+""" % (GHM_BEGIN, MAINTAINER, MAINTAINER_GH_CONFIG, MAINTAINER_GH_CONFIG, MAINTAINER, GHM_END)
 
 
 class Stop(Exception):
@@ -81,7 +84,7 @@ class Wizard(object):
         self.home = home
         config = home.env.get("XDG_CONFIG_HOME") or os.path.join(home.root, ".config")
         self.default_config = os.path.join(config, "gh")
-        self.maintainer_config = os.path.join(home.root, ".config", "gh-maintainer")
+        self.maintainer_config = MAINTAINER_GH_CONFIG.replace("$HOME", home.root, 1)
         self.profile = os.path.join(home.env.get("ZDOTDIR") or home.root, ".zshrc")
 
     # -- tools
@@ -98,6 +101,8 @@ class Wizard(object):
         sys.stdout.flush()
         try:
             return subprocess.call(["gh"] + list(args), env=env)
+        except KeyboardInterrupt:
+            return 130  # habit cancelled: the step stops like a declined login
         except OSError:
             return 127
 
@@ -135,7 +140,7 @@ class Wizard(object):
         config = self.home.env.get("GH_CONFIG_DIR")
         if config and os.path.realpath(config) != os.path.realpath(self.default_config):
             raise Stop("环境里设置了 GH_CONFIG_DIR，gh 不会用默认配置。请在没有它的终端里重跑。")
-        return DONE, "gh、git 和 Python 都在，环境里没有替代登录的设置"
+        return PASS, "gh 和 git 都在，环境里没有替代保存登录的设置"
 
     def login(self, config, expected, who, scopes=()):
         """Make expected gh's active login under config; return the step's (status, detail)."""
@@ -154,16 +159,20 @@ class Wizard(object):
             if account is None:
                 raise Stop("登录后 gh 仍没有 %s 的登录。重跑 wizard 会从这一步继续。" % who)
         if account["login"] != expected:
-            raise Stop(
-                "这里的 gh 登录是 %s，不是 %s。wizard 不会登出任何账户：请 habit 自己运行 "
-                "`%sgh auth logout --hostname %s --user %s`，再重跑。"
-                % (shown(account["login"]), expected,
-                   "" if config == self.default_config else 'GH_CONFIG_DIR="$HOME/.config/gh-maintainer" ',
-                   HOST, shown(account["login"])))
+            prefix = "" if config == self.default_config else MAINTAINER_PREFIX
+            login = account["login"]
+            if isinstance(login, str) and LOGIN_FORM.match(login):
+                how = "运行 `%sgh auth logout --hostname %s --user %s`" % (prefix, HOST, login)
+            else:
+                how = "用 `%sgh auth status` 找到它并登出" % prefix
+            raise Stop("这里的 gh 登录是 %s，不是 %s。wizard 不会登出任何账户：请 habit 自己%s，再重跑。"
+                       % (shown(login), expected, how))
         if account["state"] != "success":
             raise Stop("gh 现在无法确认 %s 的登录（可能是网络问题）。网络正常后重跑。" % expected)
         if not account["keyring"]:
-            raise Stop("%s 的 token 不在 keychain 里。请 habit 运行 `gh auth logout` 登出它，再重跑 wizard 重新登录。" % expected)
+            prefix = "" if config == self.default_config else MAINTAINER_PREFIX
+            raise Stop("%s 的 token 不在 keychain 里。请 habit 运行 `%sgh auth logout --hostname %s --user %s` 登出它，"
+                       "再重跑 wizard 重新登录。" % (expected, prefix, HOST, expected))
         missing = [scope for scope in scopes if scope not in account["scopes"]]
         if missing:
             say("—— 现在交给 habit：%s 的登录缺少 scopes %s，gh 会打开浏览器补授权。" % (expected, "、".join(missing)))
@@ -233,10 +242,13 @@ class Wizard(object):
         if os.path.basename(shell) != "zsh":
             raise Stop("登录 shell 不是 zsh，wizard 只会在 ~/.zshrc 里定义 ghm。请把登录 shell 改成 zsh（`chsh -s /bin/zsh`）后重跑。")
         text = ""
-        if os.path.exists(self.profile):
-            with open(self.profile, encoding="utf-8") as handle:
-                text = handle.read()
         shown_profile = self.home.show(self.profile)
+        if os.path.exists(self.profile):
+            try:
+                with open(self.profile, encoding="utf-8") as handle:
+                    text = handle.read()
+            except (OSError, UnicodeError):
+                raise Stop("读不了 %s（不是 UTF-8 文本，或没有读权限）。wizard 没有改它；请检查后重跑。" % shown_profile)
         if GHM_BEGIN in text or GHM_END in text:
             if GHM_BLOCK not in text:
                 raise Stop("%s 里 wizard 写的 ghm 段落被改过。请删掉整个段落（两行标记之间）后重跑。" % shown_profile)
@@ -245,8 +257,11 @@ class Wizard(object):
             return READY, "%s 定义了 ghm" % shown_profile
         if self.ghm_kind(shell) in ("alias", "function"):
             raise Stop("交互式登录 shell 里已经有别的 ghm 定义。wizard 不改它：请删掉它后重跑。")
-        with open(self.profile, "a", encoding="utf-8") as handle:
-            handle.write(("\n" if text and not text.endswith("\n") else "") + ("\n" if text else "") + GHM_BLOCK)
+        try:
+            with open(self.profile, "a", encoding="utf-8") as handle:
+                handle.write(("\n" if text and not text.endswith("\n") else "") + ("\n" if text else "") + GHM_BLOCK)
+        except OSError:
+            raise Stop("没能写入 %s。请检查它的权限后重跑。" % shown_profile)
         if self.ghm_kind(shell) != "function":
             raise Stop("写入 %s 后，交互式登录 shell 仍没有把 ghm 读成 function。请检查文件后重跑。" % shown_profile)
         return DONE, "%s 定义了 ghm，只在调用时取 maintainer account 的 token" % shown_profile
@@ -270,7 +285,8 @@ class Wizard(object):
             say("[%s] %s：%s" % (status, name, detail))
         problems = check._identity_problems(self.home)
         for problem in problems:
-            say("[%s] identity：%s" % (FAIL, problem))
+            # Only what the item expects: the value it found stays out of the output.
+            say("[%s] identity：%s" % (FAIL, problem.split("，实际：")[0]))
         if problems:
             say("machine check 的 identity 项没有通过，wizard 停在这里。按上面的说明处理后重跑。")
             return 1

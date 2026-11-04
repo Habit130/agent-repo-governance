@@ -143,7 +143,7 @@ class Walkthrough(WizardCase):
         code, out, calls = self.wizard()
         self.assertEqual(code, 0, out)
         self.assertEqual(self.steps(out), [
-            ("已完成", "前提"),
+            ("通过", "前提"),
             ("已完成", "agent account 登录"),
             ("已完成", "git credential"),
             ("已完成", "git commit 身份"),
@@ -244,7 +244,7 @@ class Rerun(WizardCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(ms.snapshot(self.home), before)
         self.assertEqual(self.steps(out), [
-            ("已完成", "前提"),
+            ("通过", "前提"),
             ("已就绪", "agent account 登录"),
             ("已就绪", "git credential"),
             ("已就绪", "git commit 身份"),
@@ -277,7 +277,7 @@ class Stops(WizardCase):
         code, out, _ = self.wizard()
         self.assertEqual(code, 0, out)
         done = [subject for status, subject in self.steps(out) if status == "已完成"]
-        self.assertEqual(done, ["前提"] + done_now)
+        self.assertEqual(done, done_now)
         return out
 
     def write_account(self, config, login):
@@ -318,6 +318,35 @@ class Stops(WizardCase):
             'GH_CONFIG_DIR="$HOME/.config/gh-maintainer" gh auth logout --hostname github.com --user Habit098')
         os.remove(os.path.join(self.home, ".config", "gh-maintainer", "standin-account"))
         self.assert_picks_up(["maintainer 配置", "ghm"])
+
+    def test_the_maintainer_configuration_already_held_by_another_account(self):
+        self.write_account("gh-maintainer", OTHER)
+        self.assert_stops("maintainer 配置", UP_TO_MAINTAINER,
+                          'GH_CONFIG_DIR="$HOME/.config/gh-maintainer" gh auth logout --hostname github.com --user %s' % OTHER)
+        os.remove(os.path.join(self.home, ".config", "gh-maintainer", "standin-account"))
+        self.assert_picks_up(["maintainer 配置", "ghm"])
+
+    def test_a_maintainer_token_outside_the_keychain_names_the_maintainer_configuration(self):
+        self.recording = recording(self.path("gh-plain.json"), extra=[
+            {"args": STATUS, "when": [{"path": STATE, "contains": MAINTAINER + "\n"}],
+             "stdout": json.dumps({"hosts": {"github.com": [status_entry(MAINTAINER, source="/x/hosts.yml")]}}) + "\n"},
+        ])
+        self.write_account("gh-maintainer", MAINTAINER)
+        self.assert_stops("maintainer 配置", UP_TO_MAINTAINER,
+                          'GH_CONFIG_DIR="$HOME/.config/gh-maintainer" gh auth logout --hostname github.com --user Habit130')
+
+    def test_a_failing_identity_item_names_what_it_expects_and_never_what_it_found(self):
+        # gh answers the agent account to the wizard's own read, then a planted login to the check's.
+        self.recording = recording(self.path("gh-check.json"), extra=[
+            {"args": ["api", "user"], "once": True, "when": [{"path": STATE, "contains": AGENT + "\n"}],
+             "stdout": json.dumps({"login": AGENT, "id": ms.AGENT_ID}) + "\n"},
+            {"args": ["api", "user"], "when": [{"path": STATE, "contains": AGENT + "\n"}], "exit": 1,
+             "stdout": "", "stderr": "gh: Bad credentials %s\n" % PLANTS[11]},
+        ])
+        code, out, _ = self.wizard()  # wizard() asserts no plant in the output
+        self.assertEqual(code, 1, out)
+        self.assertIn("[失败] identity：gh 应以 agent account Habit098 操作", out)
+        self.assertNotIn("下一步", out)
 
     def test_habit_declines_the_agent_login(self):
         self.recording = recording(self.path("gh-declined.json"), agent_exit=1)
