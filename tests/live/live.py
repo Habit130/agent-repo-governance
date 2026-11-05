@@ -13,8 +13,9 @@
                    session-only plugin beside a fresh clone, and hand habit the line that starts
                    Claude Code there
 
-Execution runs it as the agent account. habit runs only the printed commands, each one line
-with Claude Code's `!` prefix. Probes plug in under `tests/live/probes/` (that package's
+Execution runs it as the agent account. habit runs only the printed steps: each command is one
+line with Claude Code's `!` prefix, except `reset`'s browser step and `end-to-end`'s start line,
+which habit runs in a terminal of their own. Probes plug in under `tests/live/probes/` (that package's
 docstring gives their shape). Nothing here deletes a sandbox, force-pushes or writes outside
 the two sandboxes and this repository's PR; results carry probe output only, never a credential.
 """
@@ -311,8 +312,11 @@ def cmd_probe(args):
 PLUGIN = "cut"
 SKILL_COMMAND = "/%s:govern-repository" % PLUGIN
 SKILL_PATH = "generator/govern-repository"
+SANDBOX_URL = "https://github.com/%s.git"
 # The settings only the scenario runner sets (docs/agents/build.md); the end-to-end run sets none.
 SCENARIO_SETTINGS = ("GOVERN_SCENARIO_STORE", "GOVERN_SCENARIO_HOME", "GOVERN_SCENARIO_REPOSITORY")
+# A directory's instruction files that Claude Code or OpenCode would load into a session below it.
+INSTRUCTION_FILES = ("AGENTS.md", "CLAUDE.md", "CLAUDE.local.md")
 
 
 def seed_tree(work):
@@ -321,7 +325,7 @@ def seed_tree(work):
     os.makedirs(tree)
     storedform.materialize(os.path.join(SEED, "repo"), tree)
     run(["git", "init", "-q"], cwd=tree)
-    run(["git", "add", "-A"], cwd=tree)
+    run(["git", "add", "-A", "--force"], cwd=tree)
     return run(["git", "write-tree"], cwd=tree).stdout.strip()
 
 
@@ -329,7 +333,7 @@ def reset_to_seed(clone):
     """Replace every tracked file in a fresh clone with the materialized seed, staged; return the staged tree's id."""
     run(["git", "rm", "-r", "-q", "--ignore-unmatch", "--", "."], cwd=clone)
     storedform.materialize(os.path.join(SEED, "repo"), clone)
-    run(["git", "add", "-A"], cwd=clone)
+    run(["git", "add", "-A", "--force"], cwd=clone)
     return run(["git", "write-tree"], cwd=clone).stdout.strip()
 
 
@@ -360,29 +364,38 @@ def start_command(checkout, plugin):
     return "cd %s && env %s claude --plugin-dir %s" % (shlex.quote(checkout), unset, shlex.quote(plugin))
 
 
-def default_branch_of(clone):
-    return run(["git", "-C", clone, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"]).stdout.strip().split("/", 1)[1]
+def instruction_files_above(path):
+    """Every instruction file in path's directory or one above it, which a harness started there would load."""
+    found, here = [], os.path.realpath(path)
+    while True:
+        found += [os.path.join(here, name) for name in INSTRUCTION_FILES if os.path.isfile(os.path.join(here, name))]
+        parent = os.path.dirname(here)
+        if parent == here:
+            return found
+        here = parent
 
 
-def fresh_clone(repository, clone):
-    run(["git", "clone", "-q", "https://github.com/%s.git" % repository, clone])
-    branch = default_branch_of(clone)
+def clone_sandbox(repository, clone):
+    """Clone a sandbox afresh and return its default branch, refusing one other than the seed's."""
+    run(["git", "clone", "-q", SANDBOX_URL % repository, clone])
+    branch = run(["git", "-C", clone, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"]).stdout.strip().split("/", 1)[1]
     if branch != seed_fixture()["default_branch"]:
         raise RunnerError("%s's default branch is %s, not the seed's %s" % (repository, branch, seed_fixture()["default_branch"]))
     return branch
 
 
 def rulesets_of(repository):
-    """{name: (id, enforcement)} of a repository's rulesets, as the agent account reads them."""
-    return dict((r["name"], (r["id"], r.get("enforcement"))) for r in gh_json(["api", "repos/%s/rulesets" % repository]) or [])
+    """{name: ruleset} of a repository's rulesets, as the agent account lists them (id and enforcement included)."""
+    return dict((ruleset["name"], ruleset) for ruleset in gh_json(["api", "repos/%s/rulesets" % repository]) or [])
 
 
 def cmd_reset(args):
     repository = sandbox_name(args.sandbox)
+    gate = rulesets_of(repository).get("Gate")
     work = tempfile.mkdtemp(prefix="sandbox-reset-")
     try:
         clone = os.path.join(work, "sandbox")
-        default_branch = fresh_clone(repository, clone)
+        default_branch = clone_sandbox(repository, clone)
         seed = seed_tree(work)
         if run(["git", "-C", clone, "rev-parse", "HEAD^{tree}"]).stdout.strip() == seed:
             print("%s's %s already holds the seed's tree %s: nothing to reset." % (repository, default_branch, seed))
@@ -409,7 +422,6 @@ def cmd_reset(args):
     url = run(["gh", "pr", "create", "--repo", repository, "--base", default_branch, "--head", branch,
                "--title", "Reset the sandbox to its seed", "--body-file", "-"], stdin=body).stdout.strip()
     number = int(url.rstrip("/").split("/")[-1])
-    gate = rulesets_of(repository).get("Gate")
     print("Opened %s from %s at %s, whose tree is the seed's %s." % (url, branch, head[:12], seed[:12]))
     print("")
     print("habit's steps, in order:")
@@ -417,7 +429,7 @@ def cmd_reset(args):
     print("   ghm pr merge %d --repo %s --admin --squash --match-head-commit %s" % (number, repository, head))
     print("2. Then disable the Gate ruleset in the browser, leaving Merge and History active:")
     if gate:
-        print("   https://github.com/%s/settings/rules/%s : Enforcement status Disabled, then Save changes." % (repository, gate[0]))
+        print("   https://github.com/%s/settings/rules/%s : Enforcement status Disabled, then Save changes." % (repository, gate["id"]))
     else:
         print("   %s has no Gate ruleset, so there is nothing to disable." % repository)
     return 0
@@ -442,8 +454,33 @@ def cmd_end_to_end(args):
     commit = pushed_head(args.pr)
     repository = sandbox_name(args.sandbox)
     directory = os.path.realpath(tempfile.mkdtemp(prefix="end-to-end-"))
+    try:
+        state = launch(args.pr, commit, repository, directory)
+    except BaseException:
+        shutil.rmtree(directory, True)
+        raise
+    print("%s's %s is at the seed (%s), its rulesets are %s, and the plugin's generator %s reads it as Initialize."
+          % (repository, state["default_branch"], state["sandbox_head"][:12],
+             ", ".join("%s %s" % item for item in sorted(state["rulesets"].items())), state["identity"][:12]))
+    print("State: %s" % os.path.join(directory, "end-to-end.json"))
+    print("")
+    print("habit's steps, in order:")
+    print("1. In a terminal of your own, not with Claude Code's ! prefix, start Claude Code there with this commit's generator:")
+    print("   %s" % start_command(state["checkout"], state["plugin"]))
+    print("2. Type %s, never the bare /govern-repository, and answer its confirmation." % SKILL_COMMAND)
+    print("3. Then follow that run's Builder to the end: its Codex review bot request, the Reviewer it names, the high-risk")
+    print("   report, the pinned merge, saying merged in its terminal, and the owner-script command it hands over.")
+    return 0
+
+
+def launch(pr, commit, repository, directory):
+    """The end-to-end run's checkout and plugin in directory, once every check passes; its state, also in end-to-end.json."""
+    above = instruction_files_above(directory)
+    if above:
+        raise RunnerError("%s sits below %s, which a session there would load: set TMPDIR outside them"
+                          % (directory, ", ".join(above)))
     checkout, plugin = os.path.join(directory, "checkout"), os.path.join(directory, "plugin")
-    default_branch = fresh_clone(repository, checkout)
+    default_branch = clone_sandbox(repository, checkout)
     work = tempfile.mkdtemp(prefix="seed-tree-")
     try:
         seed = seed_tree(work)
@@ -453,9 +490,13 @@ def cmd_end_to_end(args):
     if tree != seed:
         raise RunnerError("%s's %s holds the tree %s, not the seed's %s: run `live.py reset` and have habit merge it"
                           % (repository, default_branch, tree[:12], seed[:12]))
-    rulesets = rulesets_of(repository)
-    if (rulesets.get("Gate") or (None, None))[1] == "active":
-        raise RunnerError("%s's Gate ruleset is active: habit disables it first (`live.py reset` printed where)" % repository)
+    enforcement = dict((name, ruleset.get("enforcement")) for name, ruleset in rulesets_of(repository).items())
+    wanted = {"Gate": "disabled", "Merge": "active", "History": "active"}
+    wrong = ["%s is %s, not %s" % (name, enforcement.get(name, "missing"), state) for name, state in sorted(wanted.items())
+             if enforcement.get(name) != state]
+    if wrong:
+        raise RunnerError("%s's rulesets aren't as the reset leaves them (%s): habit disables only Gate, as `live.py reset` printed"
+                          % (repository, "; ".join(wrong)))
     entry = os.path.join(build_plugin(REPO, commit, plugin), "scripts", "govern.py")
     head_identity, plugin_identity = identity(GOVERN), identity(entry)
     if plugin_identity != head_identity:
@@ -464,25 +505,13 @@ def cmd_end_to_end(args):
     if mode.get("mode") != "Initialize":
         raise RunnerError("the plugin's generator reads %s as %r, not Initialize: %s"
                           % (repository, mode.get("mode"), mode.get("error") or mode.get("outcome")))
-    state = {"pr": args.pr, "commit": commit, "identity": head_identity, "sandbox": repository,
+    state = {"pr": pr, "commit": commit, "identity": head_identity, "sandbox": repository,
              "default_branch": default_branch, "sandbox_head": run(["git", "-C", checkout, "rev-parse", "HEAD"]).stdout.strip(),
-             "rulesets": dict((name, enforcement) for name, (_, enforcement) in rulesets.items()),
-             "checkout": checkout, "plugin": plugin,
+             "rulesets": enforcement, "checkout": checkout, "plugin": plugin,
              "started": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
     with open(os.path.join(directory, "end-to-end.json"), "w") as handle:
         json.dump(state, handle, indent=2, sort_keys=True)
-    print("%s's %s is at the seed (%s), its rulesets are %s, and the plugin's generator %s reads it as Initialize."
-          % (repository, default_branch, state["sandbox_head"][:12],
-             ", ".join("%s %s" % item for item in sorted(state["rulesets"].items())) or "none", head_identity[:12]))
-    print("State: %s" % os.path.join(directory, "end-to-end.json"))
-    print("")
-    print("habit's steps, in order:")
-    print("1. In a terminal of your own, not with Claude Code's ! prefix, start Claude Code there with this commit's generator:")
-    print("   %s" % start_command(checkout, plugin))
-    print("2. Type %s, never the bare /govern-repository, and answer its confirmation." % SKILL_COMMAND)
-    print("3. Then follow that run's Builder to the end: its Codex review bot request, the Reviewer it names, the high-risk")
-    print("   report, the pinned merge, saying merged in its terminal, and the owner-script command it hands over.")
-    return 0
+    return state
 
 
 def build_parser():
@@ -506,11 +535,11 @@ def build_parser():
     probing.add_argument("--post", action="store_true", help="post the results on this repository's PR")
     probing.set_defaults(run=cmd_probe)
     resetting = commands.add_parser("reset", help="open the sandbox PR that returns it to its seed")
-    resetting.add_argument("--sandbox", choices=("public", "private"), required=True)
+    resetting.add_argument("--sandbox", choices=("public",), required=True, help="the end-to-end run uses only the public one")
     resetting.set_defaults(run=cmd_reset)
     ending = commands.add_parser("end-to-end", help="build the head's generator beside a fresh sandbox clone")
     ending.add_argument("--pr", type=int, required=True, help="this repository's PR whose head is checked out")
-    ending.add_argument("--sandbox", choices=("public", "private"), required=True)
+    ending.add_argument("--sandbox", choices=("public",), required=True, help="the end-to-end run uses only the public one")
     ending.set_defaults(run=cmd_end_to_end)
     return parser
 
