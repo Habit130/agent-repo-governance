@@ -24,7 +24,7 @@ Suites、检查和 CI 的命令见 `docs/agents/build.md`；generator 等程序�
 
 ### Install
 
-本仓库改动 machine skill set 的 PR merge 后，habit 在 Claude Code 里用 `!` 前缀运行这条 ready command。它每次都相同：重新 clone `origin` 默认分支的最新 commit 到临时目录，从那里 install 到本机，不用本地 checkout。
+本仓库改动 machine skill set 的 PR merge 后，habit 在 Claude Code 里用 `!` 前缀运行这条 ready command。发布 governance model version 1 的 PR（cut）也属于这类：merge 之后运行一次，本机才有已发布的版本，generator 才能 Initialize。它每次都相同：重新 clone `origin` 默认分支的最新 commit 到临时目录，从那里 install 到本机，不用本地 checkout。
 
 ```text
 /bin/bash -c 'set -eu; d="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone --quiet --filter=blob:none https://github.com/Habit130/agent-repo-governance.git "$d/src"; /usr/bin/python3 "$d/src/machine/scripts/machine.py" install --source "$d/src" --home "$HOME"'
@@ -38,6 +38,16 @@ Install 之后，machine check 和 governed-repository list 可单独运行。�
 ```
 
 Install 只写 machine skills，从不写 personal skill，也不经 personal skill 里的链接写入。Machine check 里，machine skill 缺少 Codex user-only key、在 Codex skill list 里被省略或描述被截短时算失败；personal skill 出现同样的问题只报告（`说明`），不算失败。
+
+### 第一次 Initialize
+
+Install 带来已发布的 version 之后，一个 repository 的第一次 Initialize 这样走：
+
+1. 在这个 repository 的 checkout 目录里启动 Claude Code 或 OpenCode，不带参数调用 generator：Claude Code 里是 `/govern-repository`，OpenCode 里是 `@govern-repository`。Codex harness 和 deepseekharness 不能运行它。
+2. Generator 先给一份 checklist：邀请 agent account 成为 collaborator（附现成命令，agent 随后自己接受邀请），把 Bugbot 和 Codex review bot 连接到这个 repository。做完后告诉它。
+3. 它发来一次中文确认，列出 sensitive paths、required checks、owner script 要替换的 rulesets、要创建的 labels 等，habit 一次回答。Private repository 还要 habit 表示知道两件事：GitHub 在那里不检测、也不阻止 credential；Actions 的分钟数有限。
+4. 之后按它的 Builder 的指引走完 high 的 review：在 PR 上请求 Codex review bot（它给现成命令），按它说的启动另一家 vendor 的 Reviewer，读 high-risk report，运行它给的 pinned merge 命令，再在它的终端里说 merged。
+5. Merge 之后，用 `!` 前缀运行它交给 habit 的 owner script 命令。从这时起只有 habit 能 merge。
 
 GitHub:https://github.com/habit130/agent-repo-governance
 
