@@ -241,8 +241,9 @@ their own need neither of the last two rows.
 
 ### Review expectations
 
-Each finding states its trigger, the wrong behavior, its impact and the safe path, citing
-`path:line`. In this repository failure looks like:
+Each finding cites `path:line` for the defect, not a guess from a name, and states its
+trigger, the wrong behavior, its impact and the safe path. In this repository failure looks
+like:
 
 - **Documentation** that lies about authority, supported behavior or verification, causing a
   session to take the wrong action.
