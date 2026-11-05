@@ -47,7 +47,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `machine-wizard` | Seam C: the account wizard in a throwaway home against the stand-in GitHub, whose logins take effect there; the walkthrough's steps, calls and last line, the machine check's identity item on its end state, a rerun changing nothing, each stop and the next run picking up, planted credential shapes in every answer and file it reads, and `machine/wizard.sh` from a fresh clone of a local origin | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
-| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets`; the cut's helpers: the reset staging exactly the seed's tree, the plugin holding the committed generator under `cut`, habit's start line under `/bin/bash` with every scenario setting the generator reads unset | macos |
+| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets`; the cut's `reset` and `end-to-end` against a local bare sandbox and the stand-in, the plugin's own `mode` reading Initialize, each refusal leaving nothing behind; the reset staging exactly the seed's tree, the plugin holding the committed generator under `cut`, habit's start line under `/bin/bash` with every scenario setting the generator reads unset | macos |
 | `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place; the handover rule, the skill files' four conditions and the identity hash, and the scenario settings | macos |
 | `scenario-runner` | Seam B's runner with no model: the stand-in accepting a run's writes, the issue's block parsed, each assertion on planted evidence, and the three-run rule | macos |
 
@@ -606,13 +606,14 @@ push reruns them, the live checks and this run, with a fresh reset.
    seed's `git write-tree`. It prints habit's two steps, in this order: the pinned merge once the
    PR's checks pass, then disabling the Gate ruleset in the browser, Merge and History staying
    active. The Gate ruleset has no bypass, so the sandbox's still-governed default branch judges
-   the reset PR, which is why its body says `Risk: high`. Gate is disabled afterwards because
-   the Initialize PR can't report `governance-gate` until its gate workflow is on the default
-   branch.
-2. **The launch.** `live.py end-to-end --pr <n> --sandbox public` refuses unless this checkout
-   is clean at the PR's head, the sandbox's default branch holds the seed's tree and Gate isn't
-   active. It clones the sandbox afresh under the system temporary directory, outside this
-   repository and `~/Projects`, so no parent instruction file loads into the run. Beside the
+   the reset PR; its `Risk: high` line clears every floor the removed paths carry. Gate is
+   disabled afterwards because the Initialize PR can't report `governance-gate` until its gate
+   workflow is on the default branch. The reset reads the public sandbox only.
+2. **The launch.** `live.py end-to-end --pr <n> --sandbox public` refuses, leaving nothing
+   behind, unless this checkout is clean at the PR's head, the sandbox's default branch holds
+   the seed's tree, Gate is disabled with Merge and History active, and no directory above its
+   new one under the system temporary directory holds an `AGENTS.md`, `CLAUDE.md` or
+   `CLAUDE.local.md`, which a session there would load. It clones the sandbox afresh. Beside the
    clone it builds the session-only plugin `cut` from the head's committed generator
    (`git archive`), checks the plugin's identity hash against the head's, and has the plugin's
    own `mode` read the sandbox as Initialize. It writes `end-to-end.json`, the before state with
@@ -631,7 +632,8 @@ push reruns them, the live checks and this run, with a fresh reset.
    Reviewer's Comment review and `Reviewer` status, and the high-risk report; habit's squash
    merge, Merge watch's push run on it, and the rulesets after the owner-script run. The live
    checks for the owner script, the gate and Merge watch then run through `prepare` and
-   `probe` as the run's probes.
+   `probe` as the run's probes. If the runner can't take that order, they run before the
+   reset, and the handback records why.
 
 After the merge habit runs the install (README.md), which brings released version 1 to the
 machine, and this repository's first Initialize follows as its own generator run. The cut's

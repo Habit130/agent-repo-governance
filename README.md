@@ -24,7 +24,7 @@ Suites、检查和 CI 的命令见 `docs/agents/build.md`；generator 等程序�
 
 ### Install
 
-本仓库改动 machine skill set 的 PR merge 后，habit 在 Claude Code 里用 `!` 前缀运行这条 ready command。发布 governance model version 1 的 PR（cut）也属于这类：merge 之后运行一次，本机才有已发布的版本，generator 才能 Initialize。它每次都相同：重新 clone `origin` 默认分支的最新 commit 到临时目录，从那里 install 到本机，不用本地 checkout。
+本仓库改动 machine skill set 的 PR merge 后，habit 在 Claude Code 里用 `!` 前缀运行这条 ready command。它每次都相同：重新 clone `origin` 默认分支的最新 commit 到临时目录，从那里 install 到本机，不用本地 checkout。发布 governance model version 1 的 PR（cut）也属于这类：merge 之后运行一次，本机才有已发布的版本，generator 才能 Initialize。
 
 ```text
 /bin/bash -c 'set -eu; d="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone --quiet --filter=blob:none https://github.com/Habit130/agent-repo-governance.git "$d/src"; /usr/bin/python3 "$d/src/machine/scripts/machine.py" install --source "$d/src" --home "$HOME"'
