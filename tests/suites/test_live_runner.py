@@ -1176,5 +1176,95 @@ class HabitsCommands(support.TempDirCase):
         self.assertEqual(live.OWNER_REPORT, "owner_report")
 
 
+class EndToEndHelpers(support.TempDirCase):
+    """Version 1's cut: the sandbox reset and the session-only plugin that loads the head's generator."""
+
+    def setUp(self):
+        super(EndToEndHelpers, self).setUp()
+        patcher = mock.patch.dict(os.environ, support.isolated_env(), clear=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def seed_tree(self):
+        """The seed's tree as git would store it, built here from the stored seed by hand."""
+        from govlib import storedform
+
+        tree = self.path("expected-seed")
+        os.makedirs(tree)
+        storedform.materialize(os.path.join(live.SEED, "repo"), tree)
+        support.init_repo(tree)
+        support.git(tree, "add", "-A")
+        return support.git(tree, "write-tree").strip()
+
+    def test_the_reset_stages_exactly_the_seed_whatever_the_sandbox_held(self):
+        clone = support.init_repo(self.path("sandbox"))
+        support.commit_tree(clone, {
+            "AGENTS.md": "governance\n",
+            ".github/governance/record.yml": "version: 1\n",
+            ".github/workflows/ci.yml": "an older ci\n",
+            "live-checks/abc.md": "a live check's record\n",
+            "scripts/release.sh": "an older release script\n",
+            "src/auth.py": "old\n",
+        }, "governed sandbox")
+        staged = live.reset_to_seed(clone)
+        self.assertEqual(staged, self.seed_tree())
+        self.assertEqual(live.seed_tree(self.path("work")), staged)
+        for gone in ("AGENTS.md", ".github/governance/record.yml", "live-checks/abc.md"):
+            self.assertFalse(os.path.exists(os.path.join(clone, *gone.split("/"))), gone)
+        self.assertEqual(support.file_mode(os.path.join(clone, "scripts", "release.sh")), "100755")
+
+    def test_the_plugin_holds_the_committed_generator_only_and_names_the_namespaced_command(self):
+        repo = support.init_repo(self.path("repo"))
+        support.commit_tree(repo, {
+            "generator/govern-repository/SKILL.md": "---\nname: govern-repository\n---\n",
+            "generator/govern-repository/scripts/run.sh": {"content": "#!/bin/bash\n", "mode": "100755"},
+            "generator/govern-repository/store/1/change-note.md": "urgency: urgent\n",
+            "README.md": "not the generator\n",
+        }, "head")
+        from govlib import store
+
+        committed = store.directory_hash(os.path.join(repo, "generator", "govern-repository"))
+        support.write_tree(repo, {"generator/govern-repository/stray.txt": "uncommitted\n"})
+        plugin = self.path("e2e", "plugin")
+        skill = live.build_plugin(repo, "HEAD", plugin)
+        self.assertEqual(skill, os.path.join(plugin, "skills", "govern-repository"))
+        self.assertEqual(store.directory_hash(skill), committed)
+        self.assertFalse(os.path.exists(os.path.join(skill, "stray.txt")))
+        with open(os.path.join(plugin, ".claude-plugin", "plugin.json")) as handle:
+            self.assertEqual(json.load(handle)["name"], "cut")
+        self.assertEqual(live.SKILL_COMMAND, "/cut:govern-repository")
+
+    def test_habits_start_command_runs_claude_in_the_checkout_with_the_plugin_and_no_scenario_settings(self):
+        checkout = self.path("it's a checkout")
+        plugin = self.path("the \"plugin\" dir")
+        os.makedirs(checkout)
+        bin_dir = self.path("bin")
+        support.write_tree(bin_dir, {"claude": {"mode": "100755", "content": (
+            "#!/bin/bash\n"
+            "printf 'cwd=%s\\n' \"$PWD\"\n"
+            "for a in \"$@\"; do printf 'arg=%s\\n' \"$a\"; done\n"
+            "env | grep '^GOVERN_SCENARIO_' || echo 'no scenario settings'\n")}})
+        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ["PATH"], GOVERN_SCENARIO_STORE="/x",
+                   GOVERN_SCENARIO_HOME="/y", GOVERN_SCENARIO_REPOSITORY="o/n")
+        line = live.start_command(checkout, plugin)
+        result = subprocess.run(["/bin/bash", "-c", line], cwd=self.tmp, env=env, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, universal_newlines=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            "cwd=%s" % checkout, "arg=--plugin-dir", "arg=%s" % plugin, "no scenario settings"])
+
+    def test_the_start_command_unsets_every_scenario_setting_the_generator_reads(self):
+        import re
+
+        read = set()
+        for base, _, names in os.walk(support.SCRIPTS):
+            for name in names:
+                if name.endswith(".py"):
+                    with open(os.path.join(base, name)) as handle:
+                        read |= set(re.findall(r"GOVERN_SCENARIO_[A-Z_]+", handle.read()))
+        self.assertEqual(read, {"GOVERN_SCENARIO_STORE", "GOVERN_SCENARIO_HOME", "GOVERN_SCENARIO_REPOSITORY"})
+        self.assertEqual(set(live.SCENARIO_SETTINGS), read)
+
+
 if __name__ == "__main__":
     unittest.main()
