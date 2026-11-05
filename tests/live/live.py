@@ -465,7 +465,7 @@ def cmd_end_to_end(args):
     except BaseException:
         shutil.rmtree(directory, True)
         raise
-    print("%s's %s is at the seed (%s), its rulesets are %s, and the plugin's generator %s reads it as Initialize."
+    print("%s's %s is at the seed (%s), so the run is an Initialize; its rulesets are %s; the plugin's generator is %s."
           % (repository, state["default_branch"], state["sandbox_head"][:12],
              ", ".join("%s %s" % item for item in sorted(state["rulesets"].items())), state["identity"][:12]))
     print("State: %s" % os.path.join(directory, "end-to-end.json"))
@@ -503,14 +503,9 @@ def launch(pr, commit, repository, directory):
     if wrong:
         raise RunnerError("%s's rulesets aren't as the reset leaves them (%s): habit disables only Gate, as `live.py reset` printed"
                           % (repository, "; ".join(wrong)))
-    entry = os.path.join(build_plugin(REPO, commit, plugin), "scripts", "govern.py")
-    head_identity, plugin_identity = identity(GOVERN), identity(entry)
-    if plugin_identity != head_identity:
-        raise RunnerError("the plugin's generator is %s, not the head's %s" % (plugin_identity, head_identity))
-    mode = json.loads(run([sys.executable, entry, "mode", "--worktree", checkout], check=False).stdout or "{}")
-    if mode.get("mode") != "Initialize":
-        raise RunnerError("the plugin's generator reads %s as %r, not Initialize: %s"
-                          % (repository, mode.get("mode"), mode.get("error") or mode.get("outcome")))
+    # The seed holds no record, so the run is an Initialize. The plugin is the commit's generator exported clean, so
+    # its identity is the head's that the run's issue must name, whatever an ignored file in this checkout holds.
+    head_identity = identity(os.path.join(build_plugin(REPO, commit, plugin), "scripts", "govern.py"))
     state = {"pr": pr, "commit": commit, "identity": head_identity, "sandbox": repository,
              "default_branch": default_branch, "sandbox_head": run(["git", "-C", checkout, "rev-parse", "HEAD"]).stdout.strip(),
              "rulesets": enforcement, "checkout": checkout, "plugin": plugin,

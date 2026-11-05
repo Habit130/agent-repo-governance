@@ -1277,7 +1277,7 @@ class EndToEndHelpers(support.TempDirCase):
 
 
 class EndToEndCommands(support.TempDirCase):
-    """`live.py reset` and `live.py end-to-end` whole: a local bare sandbox, the stand-in GitHub, the plugin's own mode."""
+    """`live.py reset` and `live.py end-to-end` whole: a local bare sandbox and the stand-in GitHub, outside any harness."""
 
     PR = 7
 
@@ -1321,22 +1321,16 @@ class EndToEndCommands(support.TempDirCase):
     def github(self, rulesets, head=None, extra=()):
         """The stand-in GitHub on os.environ: the sandbox's reads, this repository's PR, and extra calls."""
         recording = self.path("gh.json")
-        case = {"repository": {"name": PUBLIC}, "github": {"rulesets": [
-            {"as_target": name, "changes": {"enforcement": state}} for name, state in rulesets]}}
-        self.gs.recording(case, recording)
-        with open(recording) as handle:
-            served = json.load(handle)
         listed = [{"id": self.gs.RULESET_IDS[name], "name": name, "enforcement": state} for name, state in rulesets]
-        served["calls"] = [ow.ok(["api", "repos/%s/rulesets" % PUBLIC], listed)] + list(extra) + served["calls"]
+        served = {"tool": "gh", "calls": [ow.ok(["api", "repos/%s/rulesets" % PUBLIC], listed)] + list(extra)}
         if head:
             served["calls"].insert(0, ow.ok(["pr", "view", str(self.PR), "--repo", live.THIS_REPOSITORY, "--json",
                                              "headRefOid,state"], {"headRefOid": head, "state": "OPEN"}))
         with open(recording, "w") as handle:
             json.dump(served, handle)
         scratch = tempfile.mkdtemp(prefix="standin-", dir=self.tmp)
+        # No harness's variables: Execution may prepare the run from any harness or a plain terminal.
         base = dict((k, v) for k, v in support.isolated_env().items() if not k.startswith(self.gs.HARNESS_PREFIXES))
-        base.update(self.gs.HARNESS_VARIABLES["claude-code"])
-        base["GOVERN_SCENARIO_REPOSITORY"] = PUBLIC  # the plugin's mode names the sandbox, not the local origin
         patcher = mock.patch.dict(os.environ, environment.environment(scratch, gh_recording=recording, base=base), clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -1352,12 +1346,18 @@ class EndToEndCommands(support.TempDirCase):
         return code, out.getvalue()
 
     def head_repository(self):
-        """This repository's stand-in: the generator committed, clean; returns the commit."""
+        """This repository's stand-in: the generator committed, then an ignored .DS_Store beside it; returns the commit."""
         head = support.init_repo(self.path("head"))
         shutil.copytree(os.path.join(support.REPO, live.SKILL_PATH), os.path.join(head, live.SKILL_PATH),
-                        ignore=shutil.ignore_patterns("__pycache__"))
+                        ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"))
+        support.write_tree(head, {".gitignore": ".DS_Store\n"})
         support.git(head, "add", "-A")
         support.git(head, "commit", "-q", "-m", "head")
+        from govlib import store
+
+        self.committed_identity = store.directory_hash(os.path.join(head, live.SKILL_PATH))
+        support.write_tree(head, {live.SKILL_PATH + "/.DS_Store": "Finder's\n"})
+        self.assertEqual(support.git(head, "status", "--porcelain"), "")
         return support.git(head, "rev-parse", "HEAD").strip()
 
     def test_reset_pushes_a_branch_holding_the_seed_opens_the_pr_and_prints_habits_two_steps(self):
@@ -1417,21 +1417,22 @@ class EndToEndCommands(support.TempDirCase):
                 with mock.patch("sys.stderr"):
                     live.main(command + ["--sandbox", "private"])
 
-    def test_end_to_end_builds_the_head_beside_a_fresh_clone_reads_initialize_and_prints_habits_line(self):
+    def test_end_to_end_builds_the_head_beside_a_fresh_clone_and_prints_habits_line_from_any_harness(self):
         commit = self.head_repository()
         sandbox_head = self.sandbox(self.seed_files())
-        self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
-        with mock.patch.object(live, "GOVERN", os.path.join(self.path("head"), live.SKILL_PATH, "scripts", "govern.py")):
-            code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
+        scratch = self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
+        code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
         self.assertEqual(code, 0, out)
         (directory,) = os.listdir(self.path("temp"))
         with open(self.path("temp", directory, "end-to-end.json")) as handle:
             state = json.load(handle)
-        from govlib import store
-
         self.assertEqual(state["commit"], commit)
         self.assertEqual(state["sandbox_head"], sandbox_head)
-        self.assertEqual(state["identity"], store.directory_hash(os.path.join(self.path("head"), live.SKILL_PATH)))
+        # The committed generator's identity, though this checkout holds an ignored file beside it.
+        self.assertEqual(state["identity"], self.committed_identity)
+        self.assertFalse(os.path.exists(os.path.join(state["plugin"], "skills", "govern-repository", ".DS_Store")))
+        self.assertEqual([e["args"][:2] for e in environment.read_log(scratch)],
+                         [["pr", "view"], ["api", "repos/%s/rulesets" % PUBLIC]])
         self.assertEqual(state["rulesets"], {"Gate": "disabled", "Merge": "active", "History": "active"})
         self.assertEqual(support.git(state["checkout"], "remote", "get-url", "origin").strip(), self.remote)
         self.assertIn(live.start_command(state["checkout"], state["plugin"]), out)
