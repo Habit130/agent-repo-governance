@@ -6,9 +6,10 @@ Governance model version 1 是第一个版本。现在还没有 governed reposit
 第一次 Initialize 落地这些东西：
 
 - AGENTS.md 里的固定规则：怎么开始一个 session，流程概览，硬性限制，怎么和 habit 及其他 agent 说话，governance 文件和 credential 的规则，以及 Code Review Rules。AGENTS.md 后面的 "This repository" 一节归这个 repository 自己，写着从它原有规则里保留下来的部分。
-- 三个角色 Planner、Builder、Reviewer 各自的流程，以及 review、issue、label 的用法、PR 模板和 Bugbot 的规则文件。
+- 给 Claude Code 的固定说明：它只把 AGENTS.md 翻译成 Claude Code 的用法，不加也不改规则；后面同样留一节给这个 repository 自己。
+- 三个角色 Planner、Builder、Reviewer 各自的流程，以及 review、issue、label、domain 文档（词汇表和 ADR）的用法、PR 模板和 Bugbot 的规则文件。
 - 这个 repository 自己的命令、CI 和 Actions secrets 说明，由 generator 检查过后写下。
-- Governance record：sensitive paths 和 required checks，都由 habit 在确认时定下。
+- Governance record：governance 文件本身的 sensitive paths 是固定的；这个 repository 自己的 sensitive paths 和 required checks 由 habit 在确认时定下。
 - Governance gate：每个 PR 都要通过的 required check。它检查 PR 的作者、Risk 行，以及改到 sensitive path 时 tier 够不够。
 - Merge watch：每次 merge 之后检查该做的 review 是否都做了，漏了就开一个 miss issue。它不拦任何 merge。
 - Owner script：habit 运行它，把 GitHub 设成目标状态：Gate、Merge、History 三个 ruleset，只允许 squash merge，以及 Actions、secret scanning 和 push protection 的设置。从这时起，只有 habit 能 merge。
