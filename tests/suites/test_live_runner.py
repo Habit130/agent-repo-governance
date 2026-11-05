@@ -1176,5 +1176,300 @@ class HabitsCommands(support.TempDirCase):
         self.assertEqual(live.OWNER_REPORT, "owner_report")
 
 
+class EndToEndHelpers(support.TempDirCase):
+    """Version 1's cut: the sandbox reset and the session-only plugin that loads the head's generator."""
+
+    def setUp(self):
+        super(EndToEndHelpers, self).setUp()
+        patcher = mock.patch.dict(os.environ, support.isolated_env(), clear=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def seed_tree(self):
+        """The seed's tree as git would store it, built here from the stored seed by hand."""
+        from govlib import storedform
+
+        tree = self.path("expected-seed")
+        os.makedirs(tree)
+        storedform.materialize(os.path.join(live.SEED, "repo"), tree)
+        support.init_repo(tree)
+        support.git(tree, "add", "-A")
+        return support.git(tree, "write-tree").strip()
+
+    def test_the_reset_stages_exactly_the_seed_whatever_the_sandbox_held(self):
+        clone = support.init_repo(self.path("sandbox"))
+        support.commit_tree(clone, {
+            "AGENTS.md": "governance\n",
+            ".github/governance/record.yml": "version: 1\n",
+            ".github/workflows/ci.yml": "an older ci\n",
+            "live-checks/abc.md": "a live check's record\n",
+            "scripts/release.sh": "an older release script\n",
+            "src/auth.py": "old\n",
+        }, "governed sandbox")
+        staged = live.reset_to_seed(clone)
+        self.assertEqual(staged, self.seed_tree())
+        self.assertEqual(live.seed_tree(self.path("work")), staged)
+        for gone in ("AGENTS.md", ".github/governance/record.yml", "live-checks/abc.md"):
+            self.assertFalse(os.path.exists(os.path.join(clone, *gone.split("/"))), gone)
+        self.assertEqual(support.file_mode(os.path.join(clone, "scripts", "release.sh")), "100755")
+
+    def test_the_plugin_holds_the_committed_generator_only_and_names_the_namespaced_command(self):
+        repo = support.init_repo(self.path("repo"))
+        support.commit_tree(repo, {
+            "generator/govern-repository/SKILL.md": "---\nname: govern-repository\n---\n",
+            "generator/govern-repository/scripts/run.sh": {"content": "#!/bin/bash\n", "mode": "100755"},
+            "generator/govern-repository/store/1/change-note.md": "urgency: urgent\n",
+            "README.md": "not the generator\n",
+        }, "head")
+        from govlib import store
+
+        committed = store.directory_hash(os.path.join(repo, "generator", "govern-repository"))
+        support.write_tree(repo, {"generator/govern-repository/stray.txt": "uncommitted\n"})
+        plugin = self.path("e2e", "plugin")
+        skill = live.build_plugin(repo, "HEAD", plugin)
+        self.assertEqual(skill, os.path.join(plugin, "skills", "govern-repository"))
+        self.assertEqual(store.directory_hash(skill), committed)
+        self.assertFalse(os.path.exists(os.path.join(skill, "stray.txt")))
+        with open(os.path.join(plugin, ".claude-plugin", "plugin.json")) as handle:
+            self.assertEqual(json.load(handle)["name"], "cut")
+        self.assertEqual(live.SKILL_COMMAND, "/cut:govern-repository")
+
+    def test_habits_start_command_runs_claude_in_the_checkout_with_the_plugin_and_no_scenario_settings(self):
+        checkout = self.path("it's a checkout")
+        plugin = self.path("the \"plugin\" dir")
+        os.makedirs(checkout)
+        bin_dir = self.path("bin")
+        support.write_tree(bin_dir, {"claude": {"mode": "100755", "content": (
+            "#!/bin/bash\n"
+            "printf 'cwd=%s\\n' \"$PWD\"\n"
+            "for a in \"$@\"; do printf 'arg=%s\\n' \"$a\"; done\n"
+            "env | grep '^GOVERN_SCENARIO_' || echo 'no scenario settings'\n")}})
+        env = dict(os.environ, PATH=bin_dir + os.pathsep + os.environ["PATH"], GOVERN_SCENARIO_STORE="/x",
+                   GOVERN_SCENARIO_HOME="/y", GOVERN_SCENARIO_REPOSITORY="o/n")
+        line = live.start_command(checkout, plugin)
+        result = subprocess.run(["/bin/bash", "-c", line], cwd=self.tmp, env=env, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, universal_newlines=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            "cwd=%s" % checkout, "arg=--plugin-dir", "arg=%s" % plugin, "no scenario settings"])
+
+    def test_the_start_command_unsets_every_scenario_setting_the_generator_reads(self):
+        import re
+
+        read = set()
+        for base, _, names in os.walk(support.SCRIPTS):
+            for name in names:
+                if name.endswith(".py"):
+                    with open(os.path.join(base, name)) as handle:
+                        read |= set(re.findall(r"GOVERN_SCENARIO_[A-Z_]+", handle.read()))
+        self.assertEqual(read, {"GOVERN_SCENARIO_STORE", "GOVERN_SCENARIO_HOME", "GOVERN_SCENARIO_REPOSITORY"})
+        self.assertEqual(set(live.SCENARIO_SETTINGS), read)
+
+    def test_an_instruction_file_in_any_directory_above_is_found(self):
+        self.assertEqual(set(live.INSTRUCTION_FILES), {"AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"})
+        clean = self.path("a", "b")
+        os.makedirs(clean)
+        # A name only this test writes, so instruction files above the system temporary directory don't count.
+        with mock.patch.object(live, "INSTRUCTION_FILES", ("SUITE-ONLY.md",)):
+            self.assertEqual(live.instruction_files_above(clean), [])
+            support.write_tree(self.path("a"), {"SUITE-ONLY.md": "x\n"})
+            self.assertEqual(live.instruction_files_above(clean), [self.path("a", "SUITE-ONLY.md")])
+
+
+class EndToEndCommands(support.TempDirCase):
+    """`live.py reset` and `live.py end-to-end` whole: a local bare sandbox and the stand-in GitHub, outside any harness."""
+
+    PR = 7
+
+    def setUp(self):
+        super(EndToEndCommands, self).setUp()
+        import generator_support as gs
+
+        self.gs = gs
+        self.remote = self.path("remotes", PUBLIC + ".git")
+        # A name only these tests write, so instruction files above the system temporary directory don't count.
+        for name, value in (("SANDBOX_URL", self.path("remotes", "%s.git")), ("REPO", self.path("head")),
+                            ("INSTRUCTION_FILES", ("SUITE-ONLY.md",))):
+            patcher = mock.patch.object(live, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.seed = live.seed_tree(tempfile.mkdtemp(dir=self.tmp))  # before the temporary directory moves below
+        patcher = mock.patch.object(tempfile, "tempdir", self.path("temp"))
+        os.makedirs(self.path("temp"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def sandbox(self, files):
+        """The bare sandbox, its main holding files; returns main's commit."""
+        work = support.init_repo(self.path("sandbox-work"))
+        head = support.commit_tree(work, files, "sandbox")
+        if not os.path.isdir(self.remote):
+            support.git(self.tmp, "clone", "-q", "--bare", work, self.remote)
+        else:
+            support.git(work, "push", "-q", self.remote, "HEAD:refs/heads/main")
+        return head
+
+    def seed_files(self):
+        from govlib import storedform
+
+        files = {}
+        for rel, full in storedform.stored_files(os.path.join(live.SEED, "repo")):
+            with open(full, encoding="utf-8") as handle:
+                files[storedform.decode(rel)] = {"content": handle.read(), "mode": storedform.mode_of(full)}
+        return files
+
+    def github(self, rulesets, head=None, extra=()):
+        """The stand-in GitHub on os.environ: the sandbox's reads, this repository's PR, and extra calls."""
+        recording = self.path("gh.json")
+        listed = [{"id": self.gs.RULESET_IDS[name], "name": name, "enforcement": state} for name, state in rulesets]
+        served = {"tool": "gh", "calls": [ow.ok(["api", "repos/%s/rulesets" % PUBLIC], listed)] + list(extra)}
+        if head:
+            served["calls"].insert(0, ow.ok(["pr", "view", str(self.PR), "--repo", live.THIS_REPOSITORY, "--json",
+                                             "headRefOid,state"], {"headRefOid": head, "state": "OPEN"}))
+        with open(recording, "w") as handle:
+            json.dump(served, handle)
+        scratch = tempfile.mkdtemp(prefix="standin-", dir=self.tmp)
+        # No harness's variables: Execution may prepare the run from any harness or a plain terminal.
+        base = dict((k, v) for k, v in support.isolated_env().items() if not k.startswith(self.gs.HARNESS_PREFIXES))
+        patcher = mock.patch.dict(os.environ, environment.environment(scratch, gh_recording=recording, base=base), clear=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return scratch
+
+    def main(self, args):
+        import contextlib
+        import io
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = live.main(args)
+        return code, out.getvalue()
+
+    def head_repository(self):
+        """This repository's stand-in: the generator committed, then an ignored .DS_Store beside it; returns the commit."""
+        head = support.init_repo(self.path("head"))
+        shutil.copytree(os.path.join(support.REPO, live.SKILL_PATH), os.path.join(head, live.SKILL_PATH),
+                        ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"))
+        support.write_tree(head, {".gitignore": ".DS_Store\n"})
+        support.git(head, "add", "-A")
+        support.git(head, "commit", "-q", "-m", "head")
+        from govlib import store
+
+        self.committed_identity = store.directory_hash(os.path.join(head, live.SKILL_PATH))
+        support.write_tree(head, {live.SKILL_PATH + "/.DS_Store": "Finder's\n"})
+        self.assertEqual(support.git(head, "status", "--porcelain"), "")
+        return support.git(head, "rev-parse", "HEAD").strip()
+
+    def test_reset_pushes_a_branch_holding_the_seed_opens_the_pr_and_prints_habits_two_steps(self):
+        main = self.sandbox({"AGENTS.md": "governed\n", ".github/governance/record.yml": "version: 1\n",
+                             "live-checks/x.md": "a record\n", "src/auth.py": "old\n"})
+        url = "https://github.com/%s/pull/31\n" % PUBLIC
+        scratch = self.github([("Gate", "active"), ("Merge", "active"), ("History", "active")],
+                              extra=[{"accepts": ["pr", "create"], "stdout": url}])
+        code, out = self.main(["reset", "--sandbox", "public"])
+        self.assertEqual(code, 0, out)
+        branches = support.git(self.remote, "for-each-ref", "--format=%(refname:short) %(objectname) %(tree)", "refs/heads").split("\n")
+        reset = [line.split() for line in branches if line.startswith("reset/seed-")]
+        self.assertEqual(len(reset), 1, branches)
+        name, head, tree = reset[0]
+        self.assertEqual(tree, self.seed)
+        self.assertEqual(support.git(self.remote, "rev-parse", "main").strip(), main)
+        created = [e for e in environment.read_log(scratch) if e["args"][:2] == ["pr", "create"]]
+        self.assertEqual(len(created), 1)
+        self.assertIn("--head", created[0]["args"])
+        self.assertEqual(created[0]["args"][created[0]["args"].index("--head") + 1], name)
+        self.assertIn("\nRisk: high — ", created[0]["body"])
+        self.assertIn("ghm pr merge 31 --repo %s --admin --squash --match-head-commit %s" % (PUBLIC, head), out)
+        self.assertIn("https://github.com/%s/settings/rules/%d" % (PUBLIC, self.gs.RULESET_IDS["Gate"]), out)
+        self.assertLess(out.index("ghm pr merge"), out.index("settings/rules"))
+        self.assertEqual(os.listdir(self.path("temp")), [])
+
+    def test_reset_of_a_sandbox_already_at_the_seed_opens_nothing_and_names_a_gate_still_active(self):
+        self.sandbox(self.seed_files())
+        for gate, step in (("disabled", False), ("active", True)):
+            with self.subTest(gate=gate):
+                scratch = self.github([("Gate", gate), ("Merge", "active"), ("History", "active")])
+                code, out = self.main(["reset", "--sandbox", "public"])
+                self.assertEqual(code, 0, out)
+                self.assertIn("nothing to reset", out)
+                self.assertEqual("settings/rules/%d" % self.gs.RULESET_IDS["Gate"] in out, step, out)
+                self.assertEqual([e["args"][:2] for e in environment.read_log(scratch)], [["api", "repos/%s/rulesets" % PUBLIC]])
+                self.assertEqual(support.git(self.remote, "for-each-ref", "--format=%(refname:short)", "refs/heads").split(), ["main"])
+
+    def test_reset_whose_rulesets_read_fails_pushes_and_opens_nothing(self):
+        self.sandbox({"AGENTS.md": "governed\n"})
+        scratch = self.github([("Gate", "active"), ("Merge", "active"), ("History", "active")],
+                              extra=[{"accepts": ["pr", "create"], "stdout": "https://github.com/%s/pull/31\n" % PUBLIC}])
+        with open(os.environ["STANDIN_GH_RECORDING"]) as handle:
+            served = json.load(handle)
+        served["calls"][0] = ow.http_error(["api", "repos/%s/rulesets" % PUBLIC], 403, "Must have admin rights")
+        with open(os.environ["STANDIN_GH_RECORDING"], "w") as handle:
+            json.dump(served, handle)
+        code, out = self.main(["reset", "--sandbox", "public"])
+        self.assertEqual(code, 2, out)
+        self.assertEqual([e["args"][:2] for e in environment.read_log(scratch)], [["api", "repos/%s/rulesets" % PUBLIC]])
+        self.assertEqual(support.git(self.remote, "for-each-ref", "--format=%(refname:short)", "refs/heads").split(), ["main"])
+        self.assertEqual(os.listdir(self.path("temp")), [])
+
+    def test_the_new_commands_take_only_the_public_sandbox(self):
+        for command in (["reset"], ["end-to-end", "--pr", "1"]):
+            with self.assertRaises(SystemExit):
+                with mock.patch("sys.stderr"):
+                    live.main(command + ["--sandbox", "private"])
+
+    def test_end_to_end_builds_the_head_beside_a_fresh_clone_and_prints_habits_line_from_any_harness(self):
+        commit = self.head_repository()
+        sandbox_head = self.sandbox(self.seed_files())
+        scratch = self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
+        code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
+        self.assertEqual(code, 0, out)
+        (directory,) = os.listdir(self.path("temp"))
+        with open(self.path("temp", directory, "end-to-end.json")) as handle:
+            state = json.load(handle)
+        self.assertEqual(state["commit"], commit)
+        self.assertEqual(state["sandbox_head"], sandbox_head)
+        # The committed generator's identity, though this checkout holds an ignored file beside it.
+        self.assertEqual(state["identity"], self.committed_identity)
+        self.assertFalse(os.path.exists(os.path.join(state["plugin"], "skills", "govern-repository", ".DS_Store")))
+        self.assertEqual([e["args"][:2] for e in environment.read_log(scratch)],
+                         [["pr", "view"], ["api", "repos/%s/rulesets" % PUBLIC]])
+        self.assertEqual(state["rulesets"], {"Gate": "disabled", "Merge": "active", "History": "active"})
+        self.assertEqual(support.git(state["checkout"], "remote", "get-url", "origin").strip(), self.remote)
+        self.assertIn(live.start_command(state["checkout"], state["plugin"]), out)
+        self.assertIn("Type /cut:govern-repository, never the bare /govern-repository", out)
+
+    def test_end_to_end_refuses_and_leaves_nothing_behind(self):
+        commit = self.head_repository()
+        governed = {"AGENTS.md": "governed\n"}
+        cases = [
+            ("a stale head", self.seed_files(), [("Gate", "disabled"), ("Merge", "active"), ("History", "active")],
+             "0" * 40, "push first"),
+            ("no reset", governed, [("Gate", "disabled"), ("Merge", "active"), ("History", "active")], commit,
+             "not the seed's"),
+            ("Gate active", self.seed_files(), [("Gate", "active"), ("Merge", "active"), ("History", "active")], commit,
+             "Gate is active, not disabled"),
+            ("Merge disabled too", self.seed_files(), [("Gate", "disabled"), ("Merge", "disabled"), ("History", "active")],
+             commit, "Merge is disabled, not active"),
+        ]
+        for label, files, rulesets, head, why in cases:
+            with self.subTest(label):
+                self.sandbox(files)
+                self.github(rulesets, head=head)
+                code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
+                self.assertEqual(code, 2, out)
+                self.assertIn(why, out)
+                self.assertEqual(os.listdir(self.path("temp")), [])
+
+    def test_end_to_end_refuses_a_temporary_directory_below_an_instruction_file(self):
+        commit = self.head_repository()
+        self.sandbox(self.seed_files())
+        self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
+        support.write_tree(self.path("temp"), {"SUITE-ONLY.md": "a parent's rules\n"})
+        code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
+        self.assertEqual(code, 2, out)
+        self.assertIn(self.path("temp", "SUITE-ONLY.md"), out)
+        self.assertEqual(os.listdir(self.path("temp")), ["SUITE-ONLY.md"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -120,7 +120,8 @@ def build_store(kind):
     versions = (1,) if kind == "unreleased" else (1, 2, 3)
     for version in versions:
         target = os.path.join(root, str(version))
-        shutil.copytree(real, target)
+        # Version 1's own note stays behind: each kind decides which synthetic versions are released.
+        shutil.copytree(real, target, ignore=shutil.ignore_patterns("change-note.md"))
         with open(os.path.join(target, "manifest.json")) as handle:
             manifest = json.load(handle)
         manifest["version"] = version

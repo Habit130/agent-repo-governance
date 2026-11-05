@@ -47,7 +47,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `machine-wizard` | Seam C: the account wizard in a throwaway home against the stand-in GitHub, whose logins take effect there; the walkthrough's steps, calls and last line, the machine check's identity item on its end state, a rerun changing nothing, each stop and the next run picking up, planted credential shapes in every answer and file it reads, and `machine/wizard.sh` from a fresh clone of a local origin | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
-| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets` | macos |
+| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets`; the cut's `reset` and `end-to-end` against a local bare sandbox and the stand-in with no harness's variables, an ignored file beside the generator left out of the plugin and its identity, each refusal leaving nothing behind; the reset staging exactly the seed's tree, the plugin holding the committed generator under `cut`, habit's start line under `/bin/bash` with every scenario setting the generator reads unset | macos |
 | `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place; the handover rule, the skill files' four conditions and the identity hash, and the scenario settings | macos |
 | `scenario-runner` | Seam B's runner with no model: the stand-in accepting a run's writes, the issue's block parsed, each assertion on planted evidence, and the three-run rule | macos |
 
@@ -589,6 +589,57 @@ Its docstring gives each step and what each assertion reads.
   `statuses` and `actions` as the permissions behind what the script reads and writes, and
   sets every unlisted permission to `none`. A run's log comes from
   `actions/jobs/<id>/logs`, the gate's read, through `gh api --allow-escape-sequences`.
+
+## Version 1's cut and the end-to-end run
+
+Version 1 is released once `generator/govern-repository/store/1/change-note.md` is on the
+default branch (#44 §4). From then on the release check freezes `store/1/` byte for byte, a
+defect becomes a later version, and a version's templates, manifest and note arrive in one PR.
+`govern.py change-note <path>` reads a note's two fields.
+
+The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI, the
+Required order and the scenarios pass on the head. Every result names the head, so a later
+push reruns them, the live checks and this run, with a fresh reset.
+
+1. **The reset.** `live.py reset --sandbox public` opens a sandbox PR whose commit holds exactly
+   the materialized seed, `tests/fixtures/repositories/sandbox/repo/`, checked against the
+   seed's `git write-tree`. It prints habit's two steps, in this order: the pinned merge once the
+   PR's checks pass, then disabling the Gate ruleset in the browser, Merge and History staying
+   active. The Gate ruleset has no bypass, so the sandbox's still-governed default branch judges
+   the reset PR; its `Risk: high` line clears every floor the removed paths carry. Gate is
+   disabled afterwards because the Initialize PR can't report `governance-gate` until its gate
+   workflow is on the default branch. The reset reads the public sandbox only.
+2. **The launch.** `live.py end-to-end --pr <n> --sandbox public` refuses, leaving nothing
+   behind, unless this checkout is clean at the PR's head, the sandbox's default branch holds
+   the seed's tree, Gate is disabled with Merge and History active, and no directory above its
+   new one under the system temporary directory holds an `AGENTS.md`, `CLAUDE.md` or
+   `CLAUDE.local.md`, which a session there would load. It clones the sandbox afresh. Beside the
+   clone it builds the session-only plugin `cut` from the head's committed generator
+   (`git archive`), so an ignored file in this checkout stays out. The seed holds no record, so
+   the run is an Initialize. It writes `end-to-end.json`: the before state, with the rulesets'
+   enforcement and the plugin's identity hash, which the run's issue must name. Then it prints
+   habit's line. It runs from any harness or a plain terminal.
+3. **habit's run.** habit starts Claude Code with that line in a terminal of their own, never
+   with `!`. The line sets no `GOVERN_SCENARIO_` setting, so the run reads real GitHub as the
+   agent account on the real machine. habit types `/cut:govern-repository`: the bare name
+   resolves the installed copy. habit answers the confirmation, which lists the three rulesets
+   for the owner script to replace. Then habit follows that run's Builder through the high path:
+   Bugbot, habit's Codex review bot request, a Reviewer on another vendor, the high-risk
+   report, the pinned merge, saying merged, and the owner-script command, which makes Gate
+   active again.
+4. **The outcomes.** Execution posts each step's outcome on the cutting PR, naming the head.
+   The issue's `generator_identity` equals `end-to-end.json`'s identity; the Initialize PR's
+   head carries a completed Bugbot check, the Codex review bot's completed marker, the
+   Reviewer's Comment review and `Reviewer` status, and the high-risk report; habit's squash
+   merge, Merge watch's push run on it, and the rulesets after the owner-script run. The live
+   checks for the owner script, the gate and Merge watch then run through `prepare` and
+   `probe` as the run's probes. If the runner can't take that order, they run before the
+   reset, and the handback records why.
+
+After the merge habit runs the install (README.md), which brings released version 1 to the
+machine, and this repository's first Initialize follows as its own generator run. The cut's
+record that habit reads says to run the install, that version 1 was cut, and its urgency
+(#44 §8, Trigger).
 
 ## Operational constraints
 

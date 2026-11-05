@@ -177,11 +177,13 @@ class VersionManifest(support.TempDirCase):
         for label in manifest["labels"]:
             self.assertLessEqual(len(label["description"]), 100, label["name"])
 
-    def test_the_real_store_is_valid_and_version_one_is_not_yet_released(self):
+    def test_the_real_store_is_valid_and_version_one_is_released(self):
+        # #54 cut version 1: its change note is in the store, so version 1 is released and installed.
         code, facts = support.govern(["store", "--store", support.REAL_STORE])
         self.assertEqual(code, 0, facts)
         self.assertEqual(facts["versions"][0], 1)
-        self.assertNotIn(1, facts["released"])
+        self.assertIn(1, facts["released"])
+        self.assertEqual(facts["change_notes"]["1"], {"urgency": "when convenient", "must_act": "yes"})
 
     def test_each_category_omission_fails_the_independent_label_expectation(self):
         manifest = store.Store(support.REAL_STORE).manifest(1)
