@@ -1266,11 +1266,14 @@ class EndToEndHelpers(support.TempDirCase):
         self.assertEqual(set(live.SCENARIO_SETTINGS), read)
 
     def test_an_instruction_file_in_any_directory_above_is_found(self):
+        self.assertEqual(set(live.INSTRUCTION_FILES), {"AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"})
         clean = self.path("a", "b")
         os.makedirs(clean)
-        self.assertEqual(live.instruction_files_above(clean), [])
-        support.write_tree(self.path("a"), {"CLAUDE.md": "x\n"})
-        self.assertEqual(live.instruction_files_above(clean), [self.path("a", "CLAUDE.md")])
+        # A name only this test writes, so instruction files above the system temporary directory don't count.
+        with mock.patch.object(live, "INSTRUCTION_FILES", ("SUITE-ONLY.md",)):
+            self.assertEqual(live.instruction_files_above(clean), [])
+            support.write_tree(self.path("a"), {"SUITE-ONLY.md": "x\n"})
+            self.assertEqual(live.instruction_files_above(clean), [self.path("a", "SUITE-ONLY.md")])
 
 
 class EndToEndCommands(support.TempDirCase):
@@ -1284,7 +1287,9 @@ class EndToEndCommands(support.TempDirCase):
 
         self.gs = gs
         self.remote = self.path("remotes", PUBLIC + ".git")
-        for name, value in (("SANDBOX_URL", self.path("remotes", "%s.git")), ("REPO", self.path("head"))):
+        # A name only these tests write, so instruction files above the system temporary directory don't count.
+        for name, value in (("SANDBOX_URL", self.path("remotes", "%s.git")), ("REPO", self.path("head")),
+                            ("INSTRUCTION_FILES", ("SUITE-ONLY.md",))):
             patcher = mock.patch.object(live, name, value)
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -1379,14 +1384,32 @@ class EndToEndCommands(support.TempDirCase):
         self.assertLess(out.index("ghm pr merge"), out.index("settings/rules"))
         self.assertEqual(os.listdir(self.path("temp")), [])
 
-    def test_reset_of_a_sandbox_already_at_the_seed_opens_nothing(self):
+    def test_reset_of_a_sandbox_already_at_the_seed_opens_nothing_and_names_a_gate_still_active(self):
         self.sandbox(self.seed_files())
-        scratch = self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")])
+        for gate, step in (("disabled", False), ("active", True)):
+            with self.subTest(gate=gate):
+                scratch = self.github([("Gate", gate), ("Merge", "active"), ("History", "active")])
+                code, out = self.main(["reset", "--sandbox", "public"])
+                self.assertEqual(code, 0, out)
+                self.assertIn("nothing to reset", out)
+                self.assertEqual("settings/rules/%d" % self.gs.RULESET_IDS["Gate"] in out, step, out)
+                self.assertEqual([e["args"][:2] for e in environment.read_log(scratch)], [["api", "repos/%s/rulesets" % PUBLIC]])
+                self.assertEqual(support.git(self.remote, "for-each-ref", "--format=%(refname:short)", "refs/heads").split(), ["main"])
+
+    def test_reset_whose_rulesets_read_fails_pushes_and_opens_nothing(self):
+        self.sandbox({"AGENTS.md": "governed\n"})
+        scratch = self.github([("Gate", "active"), ("Merge", "active"), ("History", "active")],
+                              extra=[{"accepts": ["pr", "create"], "stdout": "https://github.com/%s/pull/31\n" % PUBLIC}])
+        with open(os.environ["STANDIN_GH_RECORDING"]) as handle:
+            served = json.load(handle)
+        served["calls"][0] = ow.http_error(["api", "repos/%s/rulesets" % PUBLIC], 403, "Must have admin rights")
+        with open(os.environ["STANDIN_GH_RECORDING"], "w") as handle:
+            json.dump(served, handle)
         code, out = self.main(["reset", "--sandbox", "public"])
-        self.assertEqual(code, 0, out)
-        self.assertIn("nothing to reset", out)
+        self.assertEqual(code, 2, out)
         self.assertEqual([e["args"][:2] for e in environment.read_log(scratch)], [["api", "repos/%s/rulesets" % PUBLIC]])
         self.assertEqual(support.git(self.remote, "for-each-ref", "--format=%(refname:short)", "refs/heads").split(), ["main"])
+        self.assertEqual(os.listdir(self.path("temp")), [])
 
     def test_the_new_commands_take_only_the_public_sandbox(self):
         for command in (["reset"], ["end-to-end", "--pr", "1"]):
@@ -1440,11 +1463,11 @@ class EndToEndCommands(support.TempDirCase):
         commit = self.head_repository()
         self.sandbox(self.seed_files())
         self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
-        support.write_tree(self.path("temp"), {"AGENTS.md": "a parent's rules\n"})
+        support.write_tree(self.path("temp"), {"SUITE-ONLY.md": "a parent's rules\n"})
         code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
         self.assertEqual(code, 2, out)
-        self.assertIn(self.path("temp", "AGENTS.md"), out)
-        self.assertEqual(os.listdir(self.path("temp")), ["AGENTS.md"])
+        self.assertIn(self.path("temp", "SUITE-ONLY.md"), out)
+        self.assertEqual(os.listdir(self.path("temp")), ["SUITE-ONLY.md"])
 
 
 if __name__ == "__main__":

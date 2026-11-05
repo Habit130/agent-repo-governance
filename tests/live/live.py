@@ -14,8 +14,8 @@
                    Claude Code there
 
 Execution runs it as the agent account. habit runs only the printed steps: each command is one
-line with Claude Code's `!` prefix, except `reset`'s browser step and `end-to-end`'s start line,
-which habit runs in a terminal of their own. Probes plug in under `tests/live/probes/` (that package's
+line with Claude Code's `!` prefix, except `end-to-end`'s start line, which habit runs in a
+terminal of their own, and `reset`'s step in the browser. Probes plug in under `tests/live/probes/` (that package's
 docstring gives their shape). Nothing here deletes a sandbox, force-pushes or writes outside
 the two sandboxes and this repository's PR; results carry probe output only, never a credential.
 """
@@ -399,6 +399,9 @@ def cmd_reset(args):
         seed = seed_tree(work)
         if run(["git", "-C", clone, "rev-parse", "HEAD^{tree}"]).stdout.strip() == seed:
             print("%s's %s already holds the seed's tree %s: nothing to reset." % (repository, default_branch, seed))
+            if gate and gate.get("enforcement") != "disabled":
+                print("habit's step: disable the Gate ruleset in the browser, leaving Merge and History active:")
+                print("   " + gate_step(repository, gate))
             return 0
         branch = "reset/seed-%s" % datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
         run(["git", "-C", clone, "checkout", "-q", "-b", branch])
@@ -428,11 +431,14 @@ def cmd_reset(args):
     print("1. Once the reset PR's checks pass, merge it with the ! prefix in Claude Code:")
     print("   ghm pr merge %d --repo %s --admin --squash --match-head-commit %s" % (number, repository, head))
     print("2. Then disable the Gate ruleset in the browser, leaving Merge and History active:")
-    if gate:
-        print("   https://github.com/%s/settings/rules/%s : Enforcement status Disabled, then Save changes." % (repository, gate["id"]))
-    else:
-        print("   %s has no Gate ruleset, so there is nothing to disable." % repository)
+    print("   " + gate_step(repository, gate))
     return 0
+
+
+def gate_step(repository, gate):
+    if not gate:
+        return "%s has no Gate ruleset, so there is nothing to disable." % repository
+    return "https://github.com/%s/settings/rules/%s : Enforcement status Disabled, then Save changes." % (repository, gate["id"])
 
 
 def pushed_head(number):
