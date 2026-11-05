@@ -6,6 +6,22 @@
 
 Suites、检查和 CI 的命令见 `docs/agents/build.md`；generator 等程序仍在逐个 delivery 开发中。
 
+### 新机器
+
+新机器第一次 install 之前，按顺序做一次：
+
+1. 装好 Command Line Tools（`xcode-select --install`），它带来 `git` 和 `/usr/bin/python3`；再用 Homebrew 装 `gh`。Account wizard 不安装任何东西，只检查它们在不在。
+2. 安装各 harness 并手动登录。
+3. 在 habit 自己的终端（Terminal 等）里运行下面这条 account wizard 命令，不要在 Claude Code 里用 `!` 前缀运行，因为两次登录要在终端里回答 gh：
+
+   ```text
+   /bin/bash -c 'set -eu; d="$(mktemp -d)"; trap "rm -rf \"\$d\"" EXIT; git clone --quiet --depth 1 https://github.com/Habit130/agent-repo-governance.git "$d/src"; /usr/bin/python3 "$d/src/machine/scripts/machine.py" wizard'
+   ```
+
+   它把 agent account Habit098 设为 gh 的默认登录（scopes `repo`、`read:org`、`gist`、`workflow`），让 git 的 GitHub credential 经过 gh，把 git 的全局 commit 身份设为 Habit098 的 noreply 地址；再在 `~/.config/gh-maintainer` 里登录 maintainer account Habit130，并在 `~/.zshrc` 里定义 `ghm`。两次登录都会打开浏览器：第一次在浏览器里以 Habit098 登录，第二次以 Habit130 登录；浏览器已登录别的账户时，先在无痕窗口打开 gh 给的网址。Token 只存在 keychain 里，wizard 从不读取或显示它。某一步做不完时，wizard 停在那一步并用中文说明怎么处理；处理后重跑，已完成的步骤会跳过。Wizard 不会登出任何账户。
+4. Wizard 最后一行给出下一步：运行下面的 install ready command。
+5. Codex harness 询问时，信任 governed repositories。
+
 ### Install
 
 本仓库改动 machine skill set 的 PR merge 后，habit 在 Claude Code 里用 `!` 前缀运行这条 ready command。它每次都相同：重新 clone `origin` 默认分支的最新 commit 到临时目录，从那里 install 到本机，不用本地 checkout。

@@ -21,6 +21,13 @@ An accepting `label list` or `api repos/<repo>/labels` entry with "labels" serve
 labels and then the ones the log shows the run creating: plain, as `--json` fields or the API's
 objects, or by `--jq` `length` or `.[].<field>`; an `api` call that writes fails. The Codex stand-in replays only `codex execpolicy check`
 and `codex debug prompt-input`.
+
+An "args" entry may also carry "when" and "effects", for state a run changes, such as a
+login. It matches only when every condition under "when" holds: {"path": ..., "absent": true}
+or {"path": ..., "contains": <text>}, the path expanded as above, so `${GH_CONFIG_DIR}` tells
+two gh configurations apart. When it answers, each of its "effects" writes or appends text,
+{"path": ..., "write" | "append": <text>}, creating the parent directories. Keep such state in
+files real gh never reads, such as `standin-account`, so a stray call can't become a login.
 """
 
 import json
@@ -89,6 +96,36 @@ def _flag(args, *flags):
         if flag in args[:-1]:
             return args[args.index(flag) + 1]
     return None
+
+
+def holds(call):
+    """Whether every condition under the entry's "when" holds."""
+    for condition in call.get("when", ()):
+        path = expand(condition["path"])
+        if "contains" not in condition and not condition.get("absent"):
+            raise ValueError("a `when` condition needs `absent` or `contains`: %r" % (condition,))
+        if condition.get("absent"):
+            if os.path.exists(path):
+                return False
+            continue
+        try:
+            with open(path, encoding="utf-8") as handle:
+                text = handle.read()
+        except OSError:
+            return False
+        if condition["contains"] not in text:
+            return False
+    return True
+
+
+def apply_effects(call):
+    for effect in call.get("effects", ()):
+        path = expand(effect["path"])
+        parent = os.path.dirname(path)
+        if parent and not os.path.isdir(parent):
+            os.makedirs(parent)
+        with open(path, "a" if "append" in effect else "w", encoding="utf-8") as handle:
+            handle.write(effect["append"] if "append" in effect else effect["write"])
 
 
 def created_issues():
@@ -197,7 +234,7 @@ def main(argv):
             return int(call.get("exit", 0))
 
     candidates = [(index, call) for index, call in enumerate(calls)
-                  if "args" in call and [expand(a) for a in call["args"]] == args]
+                  if "args" in call and [expand(a) for a in call["args"]] == args and holds(call)]
     if any(call.get("once") for _, call in candidates):
         answered = served()
         candidates = [(index, call) for index, call in candidates if not (call.get("once") and index in answered)]
@@ -210,6 +247,7 @@ def main(argv):
             if stdin is not None:
                 entry["stdin"] = stdin
             log(entry)
+            apply_effects(call)
             sys.stdout.write(call.get("stdout", ""))
             sys.stderr.write(call.get("stderr", ""))
             return int(call.get("exit", 0))
