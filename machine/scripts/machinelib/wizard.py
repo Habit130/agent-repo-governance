@@ -31,7 +31,6 @@ GitHub's login form, and every line passes through `govlib.secrets.redact`. The 
 calls `gh auth token`; that text appears only inside `ghm`'s definition.
 """
 
-import fnmatch
 import json
 import os
 import re
@@ -39,7 +38,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from urllib.parse import urlsplit
 
 from govlib import secrets
 from govlib.owner import MAINTAINER_GH_CONFIG
@@ -94,21 +92,13 @@ def helper_matches(key):
     # These spellings certainly apply to the username-less, default-port context.
     if url in ("https://github.com", "https://github.com/", "github.com", "github.com/"):
         return True
-    try:
-        parsed = urlsplit(url if "://" in url else "https://" + url)
-        host = (parsed.hostname or "").lower()
-        if parsed.username is not None or parsed.port not in (None, 443):
-            return False
-    except ValueError:
-        return None
-    # An empty host is a partial URL git applies to every https host, github.com included.
-    if parsed.scheme.lower() != "https":
+    # A canonical, literal DNS host other than github.com certainly doesn't match.
+    # Everything else stays uncertain, including user/port qualifiers, partial URLs,
+    # patterns, escapes, paths and malformed keys. General URL parsers don't reproduce
+    # Git's normalization and fallback rules (e.g. github.com. can match github.com).
+    if re.fullmatch(r"https://[a-z0-9]+(?:[.-][a-z0-9]+)*/?", url):
         return False
-    # Percent-encoded hosts can reach Git's partial-URL fallback. Paths can normalize
-    # (e.g. /repo/.. -> /); neither can be ruled out using urlsplit's raw fields.
-    if host and "%" not in host and not fnmatch.fnmatchcase(HOST, host):
-        return False
-    return None  # normalization, partial URLs and patterns must not authorize a reset
+    return None
 
 
 def shown(login):

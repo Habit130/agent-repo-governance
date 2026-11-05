@@ -271,10 +271,11 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   credential; either answer is fine, since the wizard runs `gh auth setup-git` itself. Its
    credential step conservatively models Git's `credential.c` and `urlmatch.c` (read
    2026-11-05): system and global helpers in config order; only an unconditional or exact
-   `https://github.com[/]` / `github.com[/]` match may apply an empty reset. Username-qualified
-   and alternate-port sections do not apply to the username-less default-port request.
-   Other potentially matching URL spellings (including parse failures, patterns and
-   normalization) add uncertainty, never clear earlier helpers or prove gh's route; a later
+   `https://github.com[/]` / `github.com[/]` match may apply an empty reset. Only canonical
+   literal lowercase DNS HTTPS hosts other than github.com are certainly excluded. Other
+   URL spellings (including username/port qualifiers, parse failures, patterns, paths and
+   normalization such as a trailing host dot) add uncertainty, never clear earlier helpers
+   or prove gh's route; a later
    certain reset clears that uncertainty too. Residual uncertainty stops the step in Chinese.
    `fill` stops at the first helper that answers and `approve` stores to every one, so the
    step passes only with exactly gh's helper and no uncertainty (AC-48's Acceptance A1).

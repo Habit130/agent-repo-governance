@@ -495,6 +495,13 @@ class CredentialRoute(WizardCase):
         self.assertEqual(ms.lines(out)[-1][:2], ("停止", "git credential"))
         self.assertEqual(self.git_writes(calls), [])
 
+    def test_a_normalized_hostname_cannot_hide_an_earlier_helper(self):
+        support.write_tree(self.home, {".gitconfig": (
+            '[credential "https://github.com."]\n\thelper = "%s"\n'
+            '[credential "https://github.com"]\n\thelper = %s\n' % (self.other, self.gh_helper))})
+        self.assertEqual(self.fill(), (MAINTAINER, True))
+        self.assert_routed_through_gh_alone()
+
     def test_a_helper_after_gh_that_setup_git_leaves_in_place_stops_the_step(self):
         # Applied after gh's reset, it would also receive every credential git approves.
         self.after_setup_git("[credential]\n\thelper = \"%s\"\n" % self.other)
