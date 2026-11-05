@@ -458,6 +458,43 @@ class CredentialRoute(WizardCase):
         self.assertEqual(self.fill(extra)[0], MAINTAINER)
         self.assert_routed_through_gh_alone(extra)
 
+    def test_a_username_qualified_reset_cannot_hide_an_earlier_helper(self):
+        support.write_tree(self.home, {".gitconfig": (
+            '[credential]\n\thelper = "%s"\n[credential "https://OtherUser@github.com"]\n'
+            '\thelper = \n\thelper = %s\n' % (self.other, self.gh_helper))})
+        self.assertEqual(self.fill(), (MAINTAINER, True))
+        self.assert_routed_through_gh_alone()
+
+    def test_an_alternate_port_reset_cannot_hide_an_earlier_helper(self):
+        support.write_tree(self.home, {".gitconfig": (
+            '[credential]\n\thelper = "%s"\n[credential "https://github.com:8443"]\n'
+            '\thelper = \n\thelper = %s\n' % (self.other, self.gh_helper))})
+        self.assertEqual(self.fill(), (MAINTAINER, True))
+        self.assert_routed_through_gh_alone()
+
+    def test_an_uncertain_reset_never_erases_a_helper_from_the_safety_check(self):
+        # All were previously approximated as matches, including parse failures. None may
+        # prove a safe route by clearing the helper before it. A later canonical reset can.
+        for url in ("https://[", "https://*", "https://GITHUB.COM", "https://github.com?x",
+                    "https://github.com#x", "https://github.com:443", "https://github.com/repo/..",
+                    "https://%67ithub.com"):
+            with self.subTest(url=url):
+                support.write_tree(self.home, {".gitconfig": (
+                    '[credential]\n\thelper = "%s"\n[credential "%s"]\n'
+                    '\thelper = \n\thelper = %s\n' % (self.other, url, self.gh_helper))})
+                self.assert_routed_through_gh_alone()
+
+    def test_an_uncertain_reset_after_an_extra_helper_cannot_report_success(self):
+        # A parse-error reset used to erase this known helper from the modeled chain.
+        # The canonical reset is before it, so setup-git cannot repair this ordering.
+        self.after_setup_git('[credential]\n\thelper = "%s"\n'
+                             '[credential "https://["]\n\thelper = \n\thelper = %s\n'
+                             % (self.other, self.gh_helper))
+        code, out, calls = self.wizard()
+        self.assertEqual(code, 1, out)
+        self.assertEqual(ms.lines(out)[-1][:2], ("停止", "git credential"))
+        self.assertEqual(self.git_writes(calls), [])
+
     def test_a_helper_after_gh_that_setup_git_leaves_in_place_stops_the_step(self):
         # Applied after gh's reset, it would also receive every credential git approves.
         self.after_setup_git("[credential]\n\thelper = \"%s\"\n" % self.other)

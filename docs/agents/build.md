@@ -269,11 +269,16 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   the `hosts.yml` path, and `scopes` is the `X-OAuth-Scopes` header, comma-separated.
   `gh auth login --web` stays interactive on a terminal and may ask whether to set up git's
   credential; either answer is fine, since the wizard runs `gh auth setup-git` itself. Its
-  credential step builds github.com's helper list as git's `credential.c` does (read
-  2026-11-04): every matching `credential.helper` and `credential.<url>.helper`, system and
-  global config in order, an empty value clearing the list; `fill` stops at the first helper
-  that answers and `approve` stores to every one. So the step passes only when the list is
-  exactly gh's helper (AC-48's Acceptance A1). It reads outside any repository, so a
+   credential step conservatively models Git's `credential.c` and `urlmatch.c` (read
+   2026-11-05): system and global helpers in config order; only an unconditional or exact
+   `https://github.com[/]` / `github.com[/]` match may apply an empty reset. Username-qualified
+   and alternate-port sections do not apply to the username-less default-port request.
+   Other potentially matching URL spellings (including parse failures, patterns and
+   normalization) add uncertainty, never clear earlier helpers or prove gh's route; a later
+   certain reset clears that uncertainty too. Residual uncertainty stops the step in Chinese.
+   `fill` stops at the first helper that answers and `approve` stores to every one, so the
+   step passes only with exactly gh's helper and no uncertainty (AC-48's Acceptance A1).
+   Isolated real-Git regressions cover the false resets and no-op reruns. It reads outside any repository, so a
   conditional include (`includeIf`) stays unseen; the step's line says so when one exists. The
   `machine-wizard` suite never runs `ghm` or any `gh` inside a login shell: macOS's login
   profile reorders PATH, so a real gh there could reach the keychain.
