@@ -1,27 +1,37 @@
-# Build and Verification
+# Build and verification
 
-The executable paths and the non-obvious ordering that delivery sessions need. Human-facing
-setup stays in the README. What a PR needs by what it changes: `AGENTS.md`, Verification by
-change.
+The commands, CI and Actions secrets that a Builder runs and checks, and that a Planner
+draws on to write a ticket's Verification. The generator wrote this file at Initialize from
+what it ran. It is repository-owned, kept current by this repository's own PRs, and it sits
+under `docs/agents/`, a sensitive path with a medium floor, so a PR that edits it is at
+least medium.
 
-## Required order
+What a PR needs by what it changes is `AGENTS.md`, This repository, Verification by
+change. Human-facing setup stays in `README.md`.
+
+## Commands
 
 Run these in order, and every one must pass. Steps 2 to 6 are CI's steps in its order; step
-7 prints the exact comparison that the `materialized-version` suite asserts in CI.
+7 prints the exact comparison that the `materialized-version` suite asserts in CI. None needs
+a service or the network. At Initialize each one ran on `98acc22`, in a temporary worktree
+on habit's Mac, where `python3` and `/usr/bin/python3` are both Python 3.9.6, and each
+worked.
 
-| Step | Command | Evidence / notes |
-| --- | --- | --- |
-| 1. Whitespace | `git diff --check origin/main...HEAD` | Also `git diff --check` before committing. |
-| 2. Stored form | `python3 tests/run.py stored-form` | One PASS line, or one FAIL line per stored path that could load or fails to decode. |
-| 3. Release check | `python3 tests/run.py release-check --base "$(git merge-base origin/main HEAD)" --head HEAD` | One PASS or FAIL line per rule, then INFO lines for new and changed fixtures. Use the merge-base: a newer `origin/main` would read its own new fixtures as removed. |
-| 4. Linux suites | `python3 tests/run.py suites --job linux` | unittest's verbose output, ending `OK`. |
-| 5. Python 3.9 and bash 3.2 | `/usr/bin/python3 tests/run.py py39` | Fails unless the interpreter is 3.9; parses every script as 3.9 and runs `/bin/bash -n` on every shell entry. |
-| 6. Every suite under 3.9 | `/usr/bin/python3 tests/run.py suites --all` | The 3.9 compatibility run of every suite. |
-| 7. Exact comparison | `python3 tests/run.py exact-comparison` | Renders version 1 into the tally sample repository and prints exact comparison's JSON; `differences` must be empty. |
-| 8. Committed whitespace | `git show --format= --check HEAD` | After committing. |
-| 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the frozen contract. |
+| Step | Command | Evidence / notes | At Initialize |
+| --- | --- | --- | --- |
+| 1. Whitespace | `git diff --check origin/main...HEAD` | Also `git diff --check` before committing. | Working: no output |
+| 2. Stored form | `python3 tests/run.py stored-form` | One PASS line, or one FAIL line per stored path that could load or fails to decode. | Working: 495 stored paths |
+| 3. Release check | `python3 tests/run.py release-check --base "$(git merge-base origin/main HEAD)" --head HEAD` | One PASS or FAIL line per rule, then INFO lines for new and changed fixtures. Use the merge-base: a newer `origin/main` would read its own new fixtures as removed. | Working: every rule passes, 346 fixture files |
+| 4. Linux suites | `python3 tests/run.py suites --job linux` | unittest's verbose output, ending `OK`. | Working: 739 tests OK |
+| 5. Python 3.9 and bash 3.2 | `/usr/bin/python3 tests/run.py py39` | Fails unless the interpreter is 3.9; parses every script as 3.9 and runs `/bin/bash -n` on every shell entry. | Working: 75 Python files, 6 shell entries |
+| 6. Every suite under 3.9 | `/usr/bin/python3 tests/run.py suites --all` | The 3.9 compatibility run of every suite. | Working: 1072 tests OK |
+| 7. Exact comparison | `python3 tests/run.py exact-comparison` | Renders version 1 into the tally sample repository and prints exact comparison's JSON; `differences` must be empty. | Working: no differences, 17 paths checked |
+| 8. Committed whitespace | `git show --format= --check HEAD` | After committing. | Working: no output |
+| 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
 
-`tests/run.py suites <name>...` runs single suites while working.
+`tests/run.py suites <name>...` runs single suites while working. The copies check and
+the copies verification (Skill copies, below) also worked at Initialize: 16 copies pass,
+and the copies and the license are byte-identical with upstream.
 
 ## Suites
 
@@ -57,8 +67,8 @@ Later deliveries add theirs there, under the job #44 §11 names.
 runs a scenario in a logged-in harness on habit's Mac, one run at a time. Its docstring gives
 the fixture shape. The scenarios are `initialize-planted`, `upgrade` and `repair-files` under
 `tests/scenarios/fixtures/`: each Claude Code scenario runs three times, and the OpenCode
-smoke scenario is one run of `initialize-planted`. The Builder, until Initialize Execution,
-runs them and posts the results naming the head. Each OpenCode submission passes exactly
+smoke scenario is one run of `initialize-planted`. The Builder runs them and posts the
+results naming the head (`AGENTS.md`, This repository). Each OpenCode submission passes exactly
 `--model xai/grok-4.7`, and `opencode models --standalone` must list it first. Each Claude
 Code submission passes `--model claude-sonnet-5-5 --effort medium`, habit's choice, and a run
 fails unless every main-thread message ran on it and no message ran on Opus. A run's
@@ -70,9 +80,11 @@ probes, and the runner reuses its clean environment. CI runs no model.
 ## CI
 
 `.github/workflows/ci.yml` runs on every PR, with no path filter, in two jobs whose names stay
-stable: they become required checks when habit confirms them at this repository's
-Initialize. Until then no required check names exist on the default branch, and Acceptance
-or the pre-merge check confirms both jobs are green on the head.
+stable: `linux` and `macos`, the required checks habit confirmed at this repository's
+Initialize, beside the governance gate's `governance-gate`. It doesn't run on pushes to the
+default branch, so a merge has no default-branch CI run to serve as the smoke check. The
+governance workflows, `governance-gate.yml` and `merge-watch.yml`, are the generator's
+(`AGENTS.md`, Governance files).
 
 - **`linux`**, on `ubuntu-24.04` with its `python3`: steps 2 to 4. The checkout is the PR's
   merge commit, so the release check compares `HEAD^1` with `HEAD`.
@@ -82,6 +94,13 @@ or the pre-merge check confirms both jobs are green on the head.
   installs. The only token is the checkout's read-only `GITHUB_TOKEN`, not kept in the
   checkout. Standard runners are free on a public repository, per GitHub's
   [runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+
+## Actions secrets
+
+CI uses no Actions secret: the only token is the checkout's read-only `GITHUB_TOKEN`, not
+kept in the checkout.
+
+Only habit writes Actions secrets (`AGENTS.md`, Secrets).
 
 ## The generator's command line
 
@@ -352,7 +371,7 @@ allowed change, the Codex user-only key appended to a user-invoked skill whose
   make user-only (one that isn't `false`, or `unclear`), or an upstream path fails stored form.
 - **Verification**: `python3 skill-copies/scripts/verify.py` fetches each recorded commit and
   prints a PASS or FAIL line per copy and for the license, then each added Codex key. CI has
-  no network, so Execution runs it on the PR head and Acceptance reruns it. For a planted
+  no network, so the Builder runs it on the PR head and the Reviewer reruns it. For a planted
   change, pass `--copies` a modified copy of `skill-copies/` in a temporary directory.
 - **The change list**: `python3 skill-copies/scripts/changes.py --to <newer sha>` prints, in
   plain Chinese, what changed per copy since the recorded commit, quoting up to ten changed
@@ -598,7 +617,7 @@ defect becomes a later version, and a version's templates, manifest and note arr
 `govern.py change-note <path>` reads a note's two fields.
 
 The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI, the
-Required order and the scenarios pass on the head. Every result names the head, so a later
+Commands' steps and the scenarios pass on the head. Every result names the head, so a later
 push reruns them, the live checks and this run, with a fresh reset.
 
 1. **The reset.** `live.py reset --sandbox public` opens a sandbox PR whose commit holds exactly
@@ -627,7 +646,7 @@ push reruns them, the live checks and this run, with a fresh reset.
    Bugbot, habit's Codex review bot request, a Reviewer on another vendor, the high-risk
    report, the pinned merge, saying merged, and the owner-script command, which makes Gate
    active again.
-4. **The outcomes.** Execution posts each step's outcome on the cutting PR, naming the head.
+4. **The outcomes.** The cut's Builder posted each step's outcome on the cutting PR, naming the head.
    The issue's `generator_identity` equals `end-to-end.json`'s identity; the Initialize PR's
    head carries a completed Bugbot check, the Codex review bot's completed marker, the
    Reviewer's Comment review and `Reviewer` status, and the high-risk report; habit's squash
@@ -650,14 +669,7 @@ record that habit reads says to run the install, that version 1 was cut, and its
 - Suites build their git repositories under the system temporary directory, isolated from
   user and system git config, and reach GitHub and Codex only through `tests/standins/`.
 - For governance deliveries, verify paths, links, headings, router targets, unresolved
-  rendering placeholders, the root instruction budget (near 100 lines and below 12 KiB),
-  and ignore behavior with `git check-ignore`. Template prompts are intentional;
-  frozen contract bodies must have every prompt filled. Parse changed JSON when present.
-- Local read-only checks run autonomously. GitHub operations require repository access
-  and follow the frozen contract and `delivery.md`. Preserve unrelated work.
-- No shared machine-level runtime, data store, deployment resource or product module
-  boundary has been identified in this skeleton. Allocate any newly introduced shared
-  resource explicitly before parallel writers use it.
-- Engineering skills are installed in the local environment; availability in a session
-  depends on its harness. If a listed skill is unavailable, report the gap and ask habit
-  to launch it in an environment where it is available; never substitute a denied load.
+  rendering placeholders, and ignore behavior with `git check-ignore`. Template prompts
+  are intentional. Parse changed JSON when present.
+- The shared resources are the two sandbox repositories. Allocate one explicitly in the
+  ticket before parallel writers use it (`AGENTS.md`, This repository).
