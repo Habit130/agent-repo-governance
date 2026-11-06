@@ -196,9 +196,9 @@ skill copies under `skill-copies/`.
   PR target.
 - Branches are `<type>/<kebab-slug>`, the type a Conventional Commits type. PRs are never
   stacked.
-- Each parallel writer, a subagent included, works in its own git worktree. A shared
-  resource, such as a sandbox repository, is allocated explicitly in the ticket before
-  parallel writers use it.
+- Each writer owns an exclusive scope, and each parallel writer, a subagent included, works
+  in its own git worktree. A shared resource, such as a sandbox repository, is allocated
+  explicitly in the ticket before parallel writers use it.
 - Machine-specific hosts, absolute paths and resource instances live in the ignored
   `.local/`, never committed (`.local/README.md`).
 - Harness memory is context, not authority: rules live in `AGENTS.md` and `docs/agents/`,
