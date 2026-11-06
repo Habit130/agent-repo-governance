@@ -1,0 +1,4386 @@
+{
+  "historical_logs": {
+    "1": {
+      "bytes": 154993,
+      "sha256": "e0a8f50307044880ce09bb3a15f72e49b98d138a6eb7175e992c3cdcb2497a85"
+    },
+    "2": {
+      "bytes": 153647,
+      "sha256": "26d26e473839a3b4caee5e12ed54d1ba3209a0dda23a9a3e247f57bc82529da5"
+    }
+  },
+  "note": "Only the historical-merge series reproduced an unforced write. Labelled write/threshold controls attribute their own writes, not the historical CI event. All path differences are retained. Trace arguments/environment are omitted.",
+  "probes": [
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "none",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 30,
+      "runs": [
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "check-ref-format": 3,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 2,
+            "init": 2,
+            "ls-files": 4,
+            "remote": 5,
+            "rev-parse": 5,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 3,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        }
+      ],
+      "series": "current",
+      "source_head": "ea687abe4cd0fe0aae417737a5cd1612ee041ea2"
+    },
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "none",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 10,
+      "runs": [
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 2,
+            "init": 2,
+            "ls-files": 4,
+            "remote": 5,
+            "rev-parse": 5,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        }
+      ],
+      "series": "historical",
+      "source_head": "37c939f3461467fbd537c52061a7b6b8570de2b8"
+    },
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "none",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 10,
+      "runs": [
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 2,
+            "init": 2,
+            "ls-files": 4,
+            "remote": 5,
+            "rev-parse": 5,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [
+            {
+              "after": [
+                "file",
+                "0o644",
+                "7d741fa756165553a6484d3de48f23e12617bd637b2f2b4931ead1edf4494acd"
+              ],
+              "before": null,
+              "path": ".git/info/refs"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/01"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "74038b36c60d999b301bff0caef82ce46db8238a976715538254fa28ecbc3ac8"
+              ],
+              "path": ".git/objects/01/b7fe025b9143d1c4259b1e16a0109a5a6ab388"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/03"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "d357d134c260dbd3a908d4408f7328e46d2fb504ccc98032fabb63975ffe2d8d"
+              ],
+              "path": ".git/objects/03/9cdedd4a4cc587674914d7b480c138aba545ca"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/04"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2af8e7e57973c30760d0b8ded88cb697f35d55a3aaa58b215e16c0e723696a16"
+              ],
+              "path": ".git/objects/04/a9794378defa2cf871488a2eef0d1d0e8489af"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/06"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "75cc25df28dc45ec4f0043c2405fdce8e5b737d15a083b77e56e0d5ca093eb2e"
+              ],
+              "path": ".git/objects/06/21ec57607eaa76a0c808749093c255fe4ee58a"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/0a"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "38eeecff45c06baf3911f5fd2575d3e27d26857386768347f9ec3e285e1081fb"
+              ],
+              "path": ".git/objects/0a/c0d6f699944d1252e0d1c1949d18e317e4ac20"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/17"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "90425fcb824af5fa8a7c0a8d7daa82eafac7481f0d20b164f377c1f91a58c1f7"
+              ],
+              "path": ".git/objects/17/16570765877be7cc20b32e7bfc3a6bb673993e"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "e9e819a236ab70c259a8cad47f1e7b3313721e24448253ebeb6de29da7d583c6"
+              ],
+              "path": ".git/objects/17/3ed8eb64536263e42729dec30052255337b265"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/1e"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "72184a0691c5da4b9e4c5e40ce66a00db220b906e207ddfffc18f9b3d92d3329"
+              ],
+              "path": ".git/objects/1e/1122b32ba94537128516dc2d1615002e2ec786"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/21"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "30af64b2614ca8420fb87633f5a74e86b74b82bba193ec140d8b63bc24c1f7dd"
+              ],
+              "path": ".git/objects/21/b9ff0e9a2e5e63d40d353b4d2aaa5682da465e"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/28"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "44049f18c7fe5e698a42fe1f10b30f225be1d446116f074d3166b599ba2c5a1e"
+              ],
+              "path": ".git/objects/28/a62e71d91b1a5b5aa4f9d09ee1a4698e46e6d6"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/33"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "c715e7365c5bc38bed1b957c6ae033ddd471b10edd9aa4237e269e21683c665d"
+              ],
+              "path": ".git/objects/33/132ff2ccb6eabc838d3b927b6b9d21b8af71ba"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/45"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "06921e82699d5d34237086265719e48e8357035027c1091f9625a7dc1f155683"
+              ],
+              "path": ".git/objects/45/2f7fe182ff416bc60d60aa41c2ce15948135d7"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/4d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "783f23b8638eb73c13dd04ecd8f6be298abcbe4095035adf842441364efb3aa4"
+              ],
+              "path": ".git/objects/4d/dc9ffb2b04e852732ee03244c6aa9d42f65bd7"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/51"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "a28734d5cc4dee4c3e398e04def9933ecd6037be9bcc561fa3b988404c89ecc0"
+              ],
+              "path": ".git/objects/51/ef28f04863119a7d7a4a9d2b394bb41c28f333"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/5b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "af0f850643ee5d9631d0244b7c90fd9c419e7062aeffb913af6f8d0adb6b5993"
+              ],
+              "path": ".git/objects/5b/602258504b6fc10828811c62b88ddd0216db30"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/62"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "90f4641a1a8662742884a7e3630251345458a2760662b1b2a3cdf505cdc9631c"
+              ],
+              "path": ".git/objects/62/dcc30c8feef07b40c79f9465ebe05dfc1663a4"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/64"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "d9835325789f4429dc6ea1c1152103bfaa549cd95d0f5fdaccceafe5e5fc28d9"
+              ],
+              "path": ".git/objects/64/52dc336dfa86282bdb826f9240b1be49085307"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/65"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "b80a990911d97db35fb950ac51f7440cf74ed24b238fdf595b6bb8bdcdafee51"
+              ],
+              "path": ".git/objects/65/ca6683ba7bfea6b1a9befab45e7c9ce311caeb"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/6d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "85ce9e6045a3d57d76d4f70e2f6fadf06ce9f7f420710d909d7dfad79b914475"
+              ],
+              "path": ".git/objects/6d/2254b7e58c13f50d2400fa591e96073abb9f3b"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/7b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "655cd77c69ee219d6dc8c3d0c8082a324eb8d86613c4c0c53dafad602cc58178"
+              ],
+              "path": ".git/objects/7b/e4f1742d5edf034318380c19c04f32ab0e140e"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/81"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2ddc0e077dbe77d0cff9f0cadde7aa27c4be76b1867b73e97f5a888f09bf4dd6"
+              ],
+              "path": ".git/objects/81/24bed446e179e7cc438d209a150cc8c6eda28d"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/82"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3c4e26fbe4d61b11655d3e3ad0b25eba30955ee2f4eed0bd3e838908c1a1d87e"
+              ],
+              "path": ".git/objects/82/d3b15457c300e1fbab6b418753f3038cc49303"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/88"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9e6928dedd261417a73b194a0c6a592f96105162df77625f86c2272f206b8db4"
+              ],
+              "path": ".git/objects/88/867e887a45b7c76fecda5bd571264ed6fe0286"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/8a"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9e06a39171c7e2b500b8aa7136b5d166ea06f9894b441da98aada3a62b811cc7"
+              ],
+              "path": ".git/objects/8a/64837bb09ef77a9a869617ec5a8d8667ae9eb2"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/93"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "b74bf8d44993d6af5f2bf4c8da9467f6c351d6169ad173773a949c855f2172a1"
+              ],
+              "path": ".git/objects/93/7fca46b777dd39a336521552d110c51686103b"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/99"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3cd2e458c78dc6792db40e8150931d3791cbca8c9b2523fd0d4beddd4497c1a3"
+              ],
+              "path": ".git/objects/99/ac34d4d53d0957b253937227a28e2a35982815"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/9b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3b8fe1f58f4c5524fc7aa684760cc3158ee74a19d84701a38fa42ce00d29955a"
+              ],
+              "path": ".git/objects/9b/5bfb961a82be69890ace8eaa5f5f9ff388c32a"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/aa"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "696808652217c2d87ed6c56fd05a9f4c19759b64f6419e8724277f24cfa5d87f"
+              ],
+              "path": ".git/objects/aa/ac1f9d84d4ec18a7a87bf71a96ddaa53f42567"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/ad"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ce92b8cf03a798c97932e835e29198f97589f63f4531e574e5601bdf2de03f4b"
+              ],
+              "path": ".git/objects/ad/606e595dc8d943aec9b23d075606649151a45c"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b4"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "5a603e35a9ad533c68ddb6ce1c255c2634673bb3ff184b1c5f6c1d5a9899eb2f"
+              ],
+              "path": ".git/objects/b4/e7ea5f70be0037b63c44953fcd9944db757f0c"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b6"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ab73d64f67ec69dff99c70e0265ac1989d681f328edac47eb0d167ec553f994d"
+              ],
+              "path": ".git/objects/b6/6b5ac19d076edbc9894569915295062c89e6e4"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b8"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1e8d6f6e17de53c752cdbeb119a1ead4d5574dec43b1fecdc52f1d00cbc7fd7d"
+              ],
+              "path": ".git/objects/b8/10d0d92ee8c7c6e6f57088d3bb6f4f2ef7a7c8"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b9"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ddeb6aaa228480cce4f7eacb2b8838a8fe64a4a90cc06377749328fef6e63d8c"
+              ],
+              "path": ".git/objects/b9/470778764f72c5257a3361590d2994547f90e1"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o600",
+                "cdb61ea3efb27b0afa8e62383e90b1c9d86630e742ae02fdf2a54b647bc237cd"
+              ],
+              "path": ".git/objects/bitmap-ref-tips_KfDEqE"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/c9"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9f3ad335e8610854c5ac743778a4b4f20272b4a49c7e597168a72286e62ef7d9"
+              ],
+              "path": ".git/objects/c9/2907c7a9278dd8b5d73b0dd06a3ea27bbbc5d6"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d3"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "e3aa6add287f0010cb0697dd8b606d18b1dfb636698dd46b635b3f9df0825a2b"
+              ],
+              "path": ".git/objects/d3/3155d9f0e2ba4c861aac72881b0c24c2e06927"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d7"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2b077492a2e670c31574975bd0ee894aeb9300f9e13c9fbc600f6810f0fc7d1c"
+              ],
+              "path": ".git/objects/d7/b9ba9a29bf94e1c52b3ae512ef40764262d892"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d8"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "7d64f1dcf952430779b4ea6aac13805fff03faa0ecf06802b3b23522734c6db7"
+              ],
+              "path": ".git/objects/d8/8a11426bde735a67330b2eddb081af1d152d83"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/dd"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "e8321938c315e42fc577b86d43c0aef8072484dfa293005988dc83e83571be5c"
+              ],
+              "path": ".git/objects/dd/228c5a63259649324940685210b9cc83e39ef3"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/e0"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "f73334c5c4a142d6d8c57aee4eaabd9aa67a3686535d93c5069e85f00e4bbbff"
+              ],
+              "path": ".git/objects/e0/095d3dcd45c1ad92d06a079154adeb03708431"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/f0"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ddf7b48d600c6b12636385c24570986dfd271de4f5a39f95dbf127d1dcd7a608"
+              ],
+              "path": ".git/objects/f0/70802dbe2f1bfa4dd66e01bf1bc1b2d1966e45"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1637e62b8ca634e7284270bf40f9e3f8190521d48f441b1b880c2f51cd3cdb25"
+              ],
+              "path": ".git/objects/f0/804a8e50006494437d3f4d7fff792a3a81ac70"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/f2"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "77277e9f3e4a638cd7a2a0df8b9d3645abbac78c621ca49d63224a60ac4a0cce"
+              ],
+              "path": ".git/objects/f2/f819565905d4789d49bbcbffa6308309fd4914"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/fa"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1cea8682d759fd51676cc680c7fb3d45440096770d5587b84b834e68fd9fdc52"
+              ],
+              "path": ".git/objects/fa/5c96649106413e193733444599eb5d324346fa"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/ff"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "12782d7f05750d9bbfd3ea4d717389f11aef059f285f61266fb670f9d77f96d1"
+              ],
+              "path": ".git/objects/ff/900ba85304128786f880f0b27d2ac6f75939b1"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "3b2a287fcd66009efdf6c313a1093ee9be93edc4d4e513c4d3c5e6360a192a77"
+              ],
+              "before": null,
+              "path": ".git/objects/info/packs"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "c938be6aa18213593e3fb5c8336affa1955072ee6245ed229af37fc980be4a8f"
+              ],
+              "path": ".git/objects/pack/.tmp-98536-pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.idx"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "f925dacdfbc53dba8a8e87399497fc569e4b157b9aec8280270becb522d93196"
+              ],
+              "path": ".git/objects/pack/.tmp-98536-pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.pack"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "8c504c6c0638a7b9185f2bb4374b138bf265fd2ee757bcfa072bb0d31117ce8e"
+              ],
+              "path": ".git/objects/pack/.tmp-98536-pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.rev"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "f140d81dbd3ffa88d30a5651288dc896a285c80194cbcae2ecc3f9adc754e06a"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/multi-pack-index"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "c938be6aa18213593e3fb5c8336affa1955072ee6245ed229af37fc980be4a8f"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.idx"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "f925dacdfbc53dba8a8e87399497fc569e4b157b9aec8280270becb522d93196"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.pack"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "8c504c6c0638a7b9185f2bb4374b138bf265fd2ee757bcfa072bb0d31117ce8e"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.rev"
+            }
+          ],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "commit/maintenance/repack": 1,
+            "commit/maintenance/repack/multi-pack-index": 1,
+            "commit/maintenance/repack/pack-objects": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [
+            {
+              "after": [
+                "file",
+                "0o644",
+                "7d741fa756165553a6484d3de48f23e12617bd637b2f2b4931ead1edf4494acd"
+              ],
+              "before": null,
+              "path": ".git/info/refs"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/01"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "74038b36c60d999b301bff0caef82ce46db8238a976715538254fa28ecbc3ac8"
+              ],
+              "path": ".git/objects/01/b7fe025b9143d1c4259b1e16a0109a5a6ab388"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/03"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "d357d134c260dbd3a908d4408f7328e46d2fb504ccc98032fabb63975ffe2d8d"
+              ],
+              "path": ".git/objects/03/9cdedd4a4cc587674914d7b480c138aba545ca"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/04"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2af8e7e57973c30760d0b8ded88cb697f35d55a3aaa58b215e16c0e723696a16"
+              ],
+              "path": ".git/objects/04/a9794378defa2cf871488a2eef0d1d0e8489af"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/06"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "75cc25df28dc45ec4f0043c2405fdce8e5b737d15a083b77e56e0d5ca093eb2e"
+              ],
+              "path": ".git/objects/06/21ec57607eaa76a0c808749093c255fe4ee58a"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/0a"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "38eeecff45c06baf3911f5fd2575d3e27d26857386768347f9ec3e285e1081fb"
+              ],
+              "path": ".git/objects/0a/c0d6f699944d1252e0d1c1949d18e317e4ac20"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/17"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "90425fcb824af5fa8a7c0a8d7daa82eafac7481f0d20b164f377c1f91a58c1f7"
+              ],
+              "path": ".git/objects/17/16570765877be7cc20b32e7bfc3a6bb673993e"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "e9e819a236ab70c259a8cad47f1e7b3313721e24448253ebeb6de29da7d583c6"
+              ],
+              "path": ".git/objects/17/3ed8eb64536263e42729dec30052255337b265"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/1e"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "72184a0691c5da4b9e4c5e40ce66a00db220b906e207ddfffc18f9b3d92d3329"
+              ],
+              "path": ".git/objects/1e/1122b32ba94537128516dc2d1615002e2ec786"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/21"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "30af64b2614ca8420fb87633f5a74e86b74b82bba193ec140d8b63bc24c1f7dd"
+              ],
+              "path": ".git/objects/21/b9ff0e9a2e5e63d40d353b4d2aaa5682da465e"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/28"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "44049f18c7fe5e698a42fe1f10b30f225be1d446116f074d3166b599ba2c5a1e"
+              ],
+              "path": ".git/objects/28/a62e71d91b1a5b5aa4f9d09ee1a4698e46e6d6"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/33"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "c715e7365c5bc38bed1b957c6ae033ddd471b10edd9aa4237e269e21683c665d"
+              ],
+              "path": ".git/objects/33/132ff2ccb6eabc838d3b927b6b9d21b8af71ba"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/45"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "06921e82699d5d34237086265719e48e8357035027c1091f9625a7dc1f155683"
+              ],
+              "path": ".git/objects/45/2f7fe182ff416bc60d60aa41c2ce15948135d7"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/4d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "783f23b8638eb73c13dd04ecd8f6be298abcbe4095035adf842441364efb3aa4"
+              ],
+              "path": ".git/objects/4d/dc9ffb2b04e852732ee03244c6aa9d42f65bd7"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/51"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "a28734d5cc4dee4c3e398e04def9933ecd6037be9bcc561fa3b988404c89ecc0"
+              ],
+              "path": ".git/objects/51/ef28f04863119a7d7a4a9d2b394bb41c28f333"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/5b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "af0f850643ee5d9631d0244b7c90fd9c419e7062aeffb913af6f8d0adb6b5993"
+              ],
+              "path": ".git/objects/5b/602258504b6fc10828811c62b88ddd0216db30"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/62"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "90f4641a1a8662742884a7e3630251345458a2760662b1b2a3cdf505cdc9631c"
+              ],
+              "path": ".git/objects/62/dcc30c8feef07b40c79f9465ebe05dfc1663a4"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/64"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "d9835325789f4429dc6ea1c1152103bfaa549cd95d0f5fdaccceafe5e5fc28d9"
+              ],
+              "path": ".git/objects/64/52dc336dfa86282bdb826f9240b1be49085307"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/65"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "b80a990911d97db35fb950ac51f7440cf74ed24b238fdf595b6bb8bdcdafee51"
+              ],
+              "path": ".git/objects/65/ca6683ba7bfea6b1a9befab45e7c9ce311caeb"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/6d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "85ce9e6045a3d57d76d4f70e2f6fadf06ce9f7f420710d909d7dfad79b914475"
+              ],
+              "path": ".git/objects/6d/2254b7e58c13f50d2400fa591e96073abb9f3b"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/7b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "655cd77c69ee219d6dc8c3d0c8082a324eb8d86613c4c0c53dafad602cc58178"
+              ],
+              "path": ".git/objects/7b/e4f1742d5edf034318380c19c04f32ab0e140e"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/81"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2ddc0e077dbe77d0cff9f0cadde7aa27c4be76b1867b73e97f5a888f09bf4dd6"
+              ],
+              "path": ".git/objects/81/24bed446e179e7cc438d209a150cc8c6eda28d"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/82"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3c4e26fbe4d61b11655d3e3ad0b25eba30955ee2f4eed0bd3e838908c1a1d87e"
+              ],
+              "path": ".git/objects/82/d3b15457c300e1fbab6b418753f3038cc49303"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/88"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9e6928dedd261417a73b194a0c6a592f96105162df77625f86c2272f206b8db4"
+              ],
+              "path": ".git/objects/88/867e887a45b7c76fecda5bd571264ed6fe0286"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/8a"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9e06a39171c7e2b500b8aa7136b5d166ea06f9894b441da98aada3a62b811cc7"
+              ],
+              "path": ".git/objects/8a/64837bb09ef77a9a869617ec5a8d8667ae9eb2"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/93"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "b74bf8d44993d6af5f2bf4c8da9467f6c351d6169ad173773a949c855f2172a1"
+              ],
+              "path": ".git/objects/93/7fca46b777dd39a336521552d110c51686103b"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/99"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3cd2e458c78dc6792db40e8150931d3791cbca8c9b2523fd0d4beddd4497c1a3"
+              ],
+              "path": ".git/objects/99/ac34d4d53d0957b253937227a28e2a35982815"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/9b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3b8fe1f58f4c5524fc7aa684760cc3158ee74a19d84701a38fa42ce00d29955a"
+              ],
+              "path": ".git/objects/9b/5bfb961a82be69890ace8eaa5f5f9ff388c32a"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/aa"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "696808652217c2d87ed6c56fd05a9f4c19759b64f6419e8724277f24cfa5d87f"
+              ],
+              "path": ".git/objects/aa/ac1f9d84d4ec18a7a87bf71a96ddaa53f42567"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/ad"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ce92b8cf03a798c97932e835e29198f97589f63f4531e574e5601bdf2de03f4b"
+              ],
+              "path": ".git/objects/ad/606e595dc8d943aec9b23d075606649151a45c"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b4"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "5a603e35a9ad533c68ddb6ce1c255c2634673bb3ff184b1c5f6c1d5a9899eb2f"
+              ],
+              "path": ".git/objects/b4/e7ea5f70be0037b63c44953fcd9944db757f0c"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b6"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ab73d64f67ec69dff99c70e0265ac1989d681f328edac47eb0d167ec553f994d"
+              ],
+              "path": ".git/objects/b6/6b5ac19d076edbc9894569915295062c89e6e4"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b8"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1e8d6f6e17de53c752cdbeb119a1ead4d5574dec43b1fecdc52f1d00cbc7fd7d"
+              ],
+              "path": ".git/objects/b8/10d0d92ee8c7c6e6f57088d3bb6f4f2ef7a7c8"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b9"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ddeb6aaa228480cce4f7eacb2b8838a8fe64a4a90cc06377749328fef6e63d8c"
+              ],
+              "path": ".git/objects/b9/470778764f72c5257a3361590d2994547f90e1"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o600",
+                "cdb61ea3efb27b0afa8e62383e90b1c9d86630e742ae02fdf2a54b647bc237cd"
+              ],
+              "path": ".git/objects/bitmap-ref-tips_KfDEqE"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/c9"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9f3ad335e8610854c5ac743778a4b4f20272b4a49c7e597168a72286e62ef7d9"
+              ],
+              "path": ".git/objects/c9/2907c7a9278dd8b5d73b0dd06a3ea27bbbc5d6"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d3"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "e3aa6add287f0010cb0697dd8b606d18b1dfb636698dd46b635b3f9df0825a2b"
+              ],
+              "path": ".git/objects/d3/3155d9f0e2ba4c861aac72881b0c24c2e06927"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d7"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2b077492a2e670c31574975bd0ee894aeb9300f9e13c9fbc600f6810f0fc7d1c"
+              ],
+              "path": ".git/objects/d7/b9ba9a29bf94e1c52b3ae512ef40764262d892"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d8"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "7d64f1dcf952430779b4ea6aac13805fff03faa0ecf06802b3b23522734c6db7"
+              ],
+              "path": ".git/objects/d8/8a11426bde735a67330b2eddb081af1d152d83"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/dd"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "e8321938c315e42fc577b86d43c0aef8072484dfa293005988dc83e83571be5c"
+              ],
+              "path": ".git/objects/dd/228c5a63259649324940685210b9cc83e39ef3"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/e0"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "f73334c5c4a142d6d8c57aee4eaabd9aa67a3686535d93c5069e85f00e4bbbff"
+              ],
+              "path": ".git/objects/e0/095d3dcd45c1ad92d06a079154adeb03708431"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/f0"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ddf7b48d600c6b12636385c24570986dfd271de4f5a39f95dbf127d1dcd7a608"
+              ],
+              "path": ".git/objects/f0/70802dbe2f1bfa4dd66e01bf1bc1b2d1966e45"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1637e62b8ca634e7284270bf40f9e3f8190521d48f441b1b880c2f51cd3cdb25"
+              ],
+              "path": ".git/objects/f0/804a8e50006494437d3f4d7fff792a3a81ac70"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/f2"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "77277e9f3e4a638cd7a2a0df8b9d3645abbac78c621ca49d63224a60ac4a0cce"
+              ],
+              "path": ".git/objects/f2/f819565905d4789d49bbcbffa6308309fd4914"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/fa"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1cea8682d759fd51676cc680c7fb3d45440096770d5587b84b834e68fd9fdc52"
+              ],
+              "path": ".git/objects/fa/5c96649106413e193733444599eb5d324346fa"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/ff"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "12782d7f05750d9bbfd3ea4d717389f11aef059f285f61266fb670f9d77f96d1"
+              ],
+              "path": ".git/objects/ff/900ba85304128786f880f0b27d2ac6f75939b1"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "3b2a287fcd66009efdf6c313a1093ee9be93edc4d4e513c4d3c5e6360a192a77"
+              ],
+              "before": null,
+              "path": ".git/objects/info/packs"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "c938be6aa18213593e3fb5c8336affa1955072ee6245ed229af37fc980be4a8f"
+              ],
+              "path": ".git/objects/pack/.tmp-98536-pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.idx"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "f925dacdfbc53dba8a8e87399497fc569e4b157b9aec8280270becb522d93196"
+              ],
+              "path": ".git/objects/pack/.tmp-98536-pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.pack"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "8c504c6c0638a7b9185f2bb4374b138bf265fd2ee757bcfa072bb0d31117ce8e"
+              ],
+              "path": ".git/objects/pack/.tmp-98536-pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.rev"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "f140d81dbd3ffa88d30a5651288dc896a285c80194cbcae2ecc3f9adc754e06a"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/multi-pack-index"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "c938be6aa18213593e3fb5c8336affa1955072ee6245ed229af37fc980be4a8f"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.idx"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "f925dacdfbc53dba8a8e87399497fc569e4b157b9aec8280270becb522d93196"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.pack"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "8c504c6c0638a7b9185f2bb4374b138bf265fd2ee757bcfa072bb0d31117ce8e"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-0fe684f911f84c74b379be7f3505652b71d9f6b2.rev"
+            }
+          ],
+          "home_unchanged": true,
+          "maintenance_processes": [
+            {
+              "hierarchy": "commit/maintenance",
+              "name": "maintenance",
+              "pid_chain": [
+                98524,
+                98525
+              ],
+              "utc": "20261106T090501.366780Z"
+            },
+            {
+              "hierarchy": "commit/maintenance",
+              "name": "maintenance",
+              "pid_chain": [
+                98533,
+                98534
+              ],
+              "utc": "20261106T090501.477475Z"
+            },
+            {
+              "hierarchy": "commit/maintenance/repack",
+              "name": "repack",
+              "pid_chain": [
+                98533,
+                98534,
+                98536
+              ],
+              "utc": "20261106T090501.482334Z"
+            },
+            {
+              "hierarchy": "commit/maintenance/repack/pack-objects",
+              "name": "pack-objects",
+              "pid_chain": [
+                98533,
+                98534,
+                98536,
+                98538
+              ],
+              "utc": "20261106T090501.486782Z"
+            },
+            {
+              "hierarchy": "commit/maintenance/repack/pack-objects",
+              "name": "pack-objects",
+              "pid_chain": [
+                98533,
+                98534,
+                98536,
+                98540
+              ],
+              "utc": "20261106T090501.499662Z"
+            },
+            {
+              "hierarchy": "commit/maintenance/repack/multi-pack-index",
+              "name": "multi-pack-index",
+              "pid_chain": [
+                98533,
+                98534,
+                98536,
+                98541
+              ],
+              "utc": "20261106T090501.505946Z"
+            }
+          ],
+          "problems": [],
+          "snapshot_rejected": true
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        }
+      ],
+      "series": "historical-merge",
+      "source_head": "69222d117293b20235ec165349ca30b65e656959"
+    },
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "idle",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 10,
+      "runs": [
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "check-ref-format": 1,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 1,
+            "init": 2,
+            "ls-files": 3,
+            "remote": 2,
+            "rev-parse": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "check-ref-format": 1,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        }
+      ],
+      "series": "idle",
+      "source_head": "ea687abe4cd0fe0aae417737a5cd1612ee041ea2"
+    },
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "worktree-write",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 1,
+      "runs": [
+        {
+          "action": "write diagnostic-write.txt (no generator running)",
+          "changes": [
+            {
+              "after": [
+                "file",
+                "0o644",
+                "bebc8cc1550e3f8acb97d04a3b21dc3bf301ee0e4c31b8ab9bac96bfa70f2eb4"
+              ],
+              "before": null,
+              "path": "diagnostic-write.txt"
+            }
+          ],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "check-ref-format": 3,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 2,
+            "init": 2,
+            "ls-files": 4,
+            "remote": 5,
+            "rev-parse": 5,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": true
+        }
+      ],
+      "series": "write",
+      "source_head": "ea687abe4cd0fe0aae417737a5cd1612ee041ea2"
+    },
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "object-write",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 1,
+      "runs": [
+        {
+          "action": "git hash-object -w --stdin (no generator running)",
+          "changes": [
+            {
+              "after": [
+                "dir"
+              ],
+              "before": null,
+              "path": ".git/objects/ed"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "86761523d6fc3df5f10287f4055365f7ba86cd4ad86457a6706842be5c43fa19"
+              ],
+              "before": null,
+              "path": ".git/objects/ed/6fa4c7b5978e194cf0994266fd767f694fbabb"
+            }
+          ],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "check-ref-format": 3,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 2,
+            "hash-object": 1,
+            "init": 2,
+            "ls-files": 4,
+            "remote": 5,
+            "rev-parse": 5,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": true
+        }
+      ],
+      "series": "object",
+      "source_head": "ea687abe4cd0fe0aae417737a5cd1612ee041ea2"
+    },
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "repack",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 1,
+      "runs": [
+        {
+          "action": "git repack -ad (no generator running)",
+          "changes": [
+            {
+              "after": [
+                "file",
+                "0o644",
+                "17f0c5ee75eb0bd1be1a0e35b9a195c5dbb74d93ee013e5d1342698af9392c6c"
+              ],
+              "before": null,
+              "path": ".git/info/refs"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/01"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "74038b36c60d999b301bff0caef82ce46db8238a976715538254fa28ecbc3ac8"
+              ],
+              "path": ".git/objects/01/b7fe025b9143d1c4259b1e16a0109a5a6ab388"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/03"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "d357d134c260dbd3a908d4408f7328e46d2fb504ccc98032fabb63975ffe2d8d"
+              ],
+              "path": ".git/objects/03/9cdedd4a4cc587674914d7b480c138aba545ca"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/04"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2af8e7e57973c30760d0b8ded88cb697f35d55a3aaa58b215e16c0e723696a16"
+              ],
+              "path": ".git/objects/04/a9794378defa2cf871488a2eef0d1d0e8489af"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/0a"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "38eeecff45c06baf3911f5fd2575d3e27d26857386768347f9ec3e285e1081fb"
+              ],
+              "path": ".git/objects/0a/c0d6f699944d1252e0d1c1949d18e317e4ac20"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/17"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "90425fcb824af5fa8a7c0a8d7daa82eafac7481f0d20b164f377c1f91a58c1f7"
+              ],
+              "path": ".git/objects/17/16570765877be7cc20b32e7bfc3a6bb673993e"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/1e"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "72184a0691c5da4b9e4c5e40ce66a00db220b906e207ddfffc18f9b3d92d3329"
+              ],
+              "path": ".git/objects/1e/1122b32ba94537128516dc2d1615002e2ec786"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/21"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "30af64b2614ca8420fb87633f5a74e86b74b82bba193ec140d8b63bc24c1f7dd"
+              ],
+              "path": ".git/objects/21/b9ff0e9a2e5e63d40d353b4d2aaa5682da465e"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/28"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "44049f18c7fe5e698a42fe1f10b30f225be1d446116f074d3166b599ba2c5a1e"
+              ],
+              "path": ".git/objects/28/a62e71d91b1a5b5aa4f9d09ee1a4698e46e6d6"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/45"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "06921e82699d5d34237086265719e48e8357035027c1091f9625a7dc1f155683"
+              ],
+              "path": ".git/objects/45/2f7fe182ff416bc60d60aa41c2ce15948135d7"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/4d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "783f23b8638eb73c13dd04ecd8f6be298abcbe4095035adf842441364efb3aa4"
+              ],
+              "path": ".git/objects/4d/dc9ffb2b04e852732ee03244c6aa9d42f65bd7"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/51"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "a28734d5cc4dee4c3e398e04def9933ecd6037be9bcc561fa3b988404c89ecc0"
+              ],
+              "path": ".git/objects/51/ef28f04863119a7d7a4a9d2b394bb41c28f333"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/5b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "af0f850643ee5d9631d0244b7c90fd9c419e7062aeffb913af6f8d0adb6b5993"
+              ],
+              "path": ".git/objects/5b/602258504b6fc10828811c62b88ddd0216db30"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/65"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "b80a990911d97db35fb950ac51f7440cf74ed24b238fdf595b6bb8bdcdafee51"
+              ],
+              "path": ".git/objects/65/ca6683ba7bfea6b1a9befab45e7c9ce311caeb"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/6d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "85ce9e6045a3d57d76d4f70e2f6fadf06ce9f7f420710d909d7dfad79b914475"
+              ],
+              "path": ".git/objects/6d/2254b7e58c13f50d2400fa591e96073abb9f3b"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/73"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "5c7f3470ccdec34571bc476c820ff122d15ca80764a376204e75e218bc50bd6b"
+              ],
+              "path": ".git/objects/73/34dd5232ea7e81ca8002d4bafee09f04cb4af1"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/7b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "655cd77c69ee219d6dc8c3d0c8082a324eb8d86613c4c0c53dafad602cc58178"
+              ],
+              "path": ".git/objects/7b/e4f1742d5edf034318380c19c04f32ab0e140e"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/81"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2ddc0e077dbe77d0cff9f0cadde7aa27c4be76b1867b73e97f5a888f09bf4dd6"
+              ],
+              "path": ".git/objects/81/24bed446e179e7cc438d209a150cc8c6eda28d"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/82"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3c4e26fbe4d61b11655d3e3ad0b25eba30955ee2f4eed0bd3e838908c1a1d87e"
+              ],
+              "path": ".git/objects/82/d3b15457c300e1fbab6b418753f3038cc49303"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/88"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9e6928dedd261417a73b194a0c6a592f96105162df77625f86c2272f206b8db4"
+              ],
+              "path": ".git/objects/88/867e887a45b7c76fecda5bd571264ed6fe0286"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/8a"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9e06a39171c7e2b500b8aa7136b5d166ea06f9894b441da98aada3a62b811cc7"
+              ],
+              "path": ".git/objects/8a/64837bb09ef77a9a869617ec5a8d8667ae9eb2"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/93"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "b74bf8d44993d6af5f2bf4c8da9467f6c351d6169ad173773a949c855f2172a1"
+              ],
+              "path": ".git/objects/93/7fca46b777dd39a336521552d110c51686103b"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/99"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3cd2e458c78dc6792db40e8150931d3791cbca8c9b2523fd0d4beddd4497c1a3"
+              ],
+              "path": ".git/objects/99/ac34d4d53d0957b253937227a28e2a35982815"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/9b"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "3b8fe1f58f4c5524fc7aa684760cc3158ee74a19d84701a38fa42ce00d29955a"
+              ],
+              "path": ".git/objects/9b/5bfb961a82be69890ace8eaa5f5f9ff388c32a"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/a5"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "919472c851682f5819b99d256611ef45960bf11b71a8afe0df6532baf947e568"
+              ],
+              "path": ".git/objects/a5/e32d6a36e657ad25b2767069e5b10b99a7f693"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/a7"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9ce9f2a56b1f7f797310bc41a3c5e8e71aa40b053f37ac1f6aaa48927494b80d"
+              ],
+              "path": ".git/objects/a7/4801b1c4735c2a5fc97cfd0f3b4dc8302e00d3"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/ad"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ce92b8cf03a798c97932e835e29198f97589f63f4531e574e5601bdf2de03f4b"
+              ],
+              "path": ".git/objects/ad/606e595dc8d943aec9b23d075606649151a45c"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b3"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "b9b4eab85af8699a43f9457cca55a1273d24024cc7c86c5c19e98b7e91dc4404"
+              ],
+              "path": ".git/objects/b3/6c7ddd30004047cebab20709c8ea21e0528a47"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b4"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "5a603e35a9ad533c68ddb6ce1c255c2634673bb3ff184b1c5f6c1d5a9899eb2f"
+              ],
+              "path": ".git/objects/b4/e7ea5f70be0037b63c44953fcd9944db757f0c"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b6"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ab73d64f67ec69dff99c70e0265ac1989d681f328edac47eb0d167ec553f994d"
+              ],
+              "path": ".git/objects/b6/6b5ac19d076edbc9894569915295062c89e6e4"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b8"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1e8d6f6e17de53c752cdbeb119a1ead4d5574dec43b1fecdc52f1d00cbc7fd7d"
+              ],
+              "path": ".git/objects/b8/10d0d92ee8c7c6e6f57088d3bb6f4f2ef7a7c8"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/b9"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ddeb6aaa228480cce4f7eacb2b8838a8fe64a4a90cc06377749328fef6e63d8c"
+              ],
+              "path": ".git/objects/b9/470778764f72c5257a3361590d2994547f90e1"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/c1"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "8544840b81af6ba384a15e97541d84355beca363c7feebe75ed3bef403b295fb"
+              ],
+              "path": ".git/objects/c1/3da2fe32342ec6875ad7cac7475dd9b54aabd2"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/c9"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "9f3ad335e8610854c5ac743778a4b4f20272b4a49c7e597168a72286e62ef7d9"
+              ],
+              "path": ".git/objects/c9/2907c7a9278dd8b5d73b0dd06a3ea27bbbc5d6"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d3"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "e3aa6add287f0010cb0697dd8b606d18b1dfb636698dd46b635b3f9df0825a2b"
+              ],
+              "path": ".git/objects/d3/3155d9f0e2ba4c861aac72881b0c24c2e06927"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d7"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "2b077492a2e670c31574975bd0ee894aeb9300f9e13c9fbc600f6810f0fc7d1c"
+              ],
+              "path": ".git/objects/d7/b9ba9a29bf94e1c52b3ae512ef40764262d892"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/d8"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "7d64f1dcf952430779b4ea6aac13805fff03faa0ecf06802b3b23522734c6db7"
+              ],
+              "path": ".git/objects/d8/8a11426bde735a67330b2eddb081af1d152d83"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/dd"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "e8321938c315e42fc577b86d43c0aef8072484dfa293005988dc83e83571be5c"
+              ],
+              "path": ".git/objects/dd/228c5a63259649324940685210b9cc83e39ef3"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/e0"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "f73334c5c4a142d6d8c57aee4eaabd9aa67a3686535d93c5069e85f00e4bbbff"
+              ],
+              "path": ".git/objects/e0/095d3dcd45c1ad92d06a079154adeb03708431"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/e7"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ace9f6f55c635df0b7f626ea3d465c1231e9fbe9bf1cf694dcce6408b3d941dc"
+              ],
+              "path": ".git/objects/e7/b8356135bc9f48b0702fe201fef414c237a62e"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/f0"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "ddf7b48d600c6b12636385c24570986dfd271de4f5a39f95dbf127d1dcd7a608"
+              ],
+              "path": ".git/objects/f0/70802dbe2f1bfa4dd66e01bf1bc1b2d1966e45"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1637e62b8ca634e7284270bf40f9e3f8190521d48f441b1b880c2f51cd3cdb25"
+              ],
+              "path": ".git/objects/f0/804a8e50006494437d3f4d7fff792a3a81ac70"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/f3"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "4653f764ea0e20e7e850b614c1562c73b4a965a50eb0ce9f6694eb67792919ea"
+              ],
+              "path": ".git/objects/f3/166191c7153467b36c62f6ae94ed3e11d3d929"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/fa"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1cea8682d759fd51676cc680c7fb3d45440096770d5587b84b834e68fd9fdc52"
+              ],
+              "path": ".git/objects/fa/5c96649106413e193733444599eb5d324346fa"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/ff"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "12782d7f05750d9bbfd3ea4d717389f11aef059f285f61266fb670f9d77f96d1"
+              ],
+              "path": ".git/objects/ff/900ba85304128786f880f0b27d2ac6f75939b1"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "e761896b1c2a4ab5d6511350ee4d7774085fd70b6a63ac546dfe5c4db639ec35"
+              ],
+              "before": null,
+              "path": ".git/objects/info/packs"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "93f87f47f6380d721a01ca621eb6c07d79f09fbf377b029c9d2c20ff3dd023c5"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-cb4493158c88ed412fc4f89a35f5ce860b838901.idx"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "00ad9f492cdd6e06618a7f6b2f6fe2acd17d27b6911a1d6782bd2d70a6c10dd9"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-cb4493158c88ed412fc4f89a35f5ce860b838901.pack"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "972c2c6c92c7756d9f041c1d7d7d5166c95e7c41413e63f9b550236e3d489b78"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-cb4493158c88ed412fc4f89a35f5ce860b838901.rev"
+            }
+          ],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "check-ref-format": 3,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 2,
+            "init": 2,
+            "ls-files": 4,
+            "remote": 5,
+            "repack": 1,
+            "repack/pack-objects": 1,
+            "rev-parse": 5,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": true
+        }
+      ],
+      "series": "repack",
+      "source_head": "ea687abe4cd0fe0aae417737a5cd1612ee041ea2"
+    },
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "commit_date": "2026-11-06T09:05:01Z",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "none",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 3,
+      "runs": [
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 2,
+            "init": 2,
+            "ls-files": 4,
+            "remote": 5,
+            "rev-parse": 5,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "config": 1,
+            "init": 1,
+            "ls-files": 1,
+            "remote": 5,
+            "rev-parse": 3,
+            "symbolic-ref": 3,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        }
+      ],
+      "series": "pinned-none",
+      "source_head": "69222d117293b20235ec165349ca30b65e656959"
+    },
+    {
+      "case": "older-record",
+      "case_sha256": "4ca68ae4aef7d92ce01c44f2ade08ac5196b2f831ce63ed7da2080bca06d92fb",
+      "commit_date": "2026-11-06T09:05:01Z",
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "idle",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 3,
+      "runs": [
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 3,
+            "commit": 3,
+            "commit/maintenance": 3,
+            "config": 1,
+            "init": 2,
+            "ls-files": 3,
+            "remote": 2,
+            "rev-parse": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        },
+        {
+          "action": null,
+          "changes": [],
+          "command_hierarchy_counts": {
+            "add": 2,
+            "commit": 2,
+            "commit/maintenance": 2,
+            "init": 1,
+            "remote": 2,
+            "symbolic-ref": 2,
+            "update-ref": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "snapshot_rejected": false
+        }
+      ],
+      "series": "pinned-idle",
+      "source_head": "69222d117293b20235ec165349ca30b65e656959"
+    },
+    {
+      "case": "sampled-object-threshold",
+      "case_sha256": null,
+      "commit_date": null,
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "threshold-1",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 3,
+      "runs": [
+        {
+          "action": "git maintenance run --auto --no-detach (no generator running)",
+          "changes": [],
+          "command_hierarchy_counts": {
+            "maintenance": 1
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "sampled_objects": [
+            ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af"
+          ],
+          "snapshot_rejected": false
+        },
+        {
+          "action": "git maintenance run --auto --no-detach (no generator running)",
+          "changes": [],
+          "command_hierarchy_counts": {
+            "maintenance": 1
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "sampled_objects": [
+            ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af"
+          ],
+          "snapshot_rejected": false
+        },
+        {
+          "action": "git maintenance run --auto --no-detach (no generator running)",
+          "changes": [],
+          "command_hierarchy_counts": {
+            "maintenance": 1
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "sampled_objects": [
+            ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af"
+          ],
+          "snapshot_rejected": false
+        }
+      ],
+      "series": "threshold-1",
+      "source_head": "ea687abe4cd0fe0aae417737a5cd1612ee041ea2"
+    },
+    {
+      "case": "sampled-object-threshold",
+      "case_sha256": null,
+      "commit_date": null,
+      "git": "git version 2.54.0 (Apple Git-157)",
+      "invocation_control": "threshold-2",
+      "os": "macOS-27.3-arm64-arm-64bit",
+      "python": "3.9.6 (default, Jul 10 2026, 15:39:47) \n[Clang 21.0.0 (clang-2100.3.27.1)]",
+      "repetitions": 3,
+      "runs": [
+        {
+          "action": "git maintenance run --auto --no-detach (no generator running)",
+          "changes": [
+            {
+              "after": [
+                "file",
+                "0o644",
+                "503b62d86cee51620563855b92375a0608496167c65edc52e429faaff010e9b6"
+              ],
+              "before": null,
+              "path": ".git/info/refs"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/17"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "07855d847f43365eda1f97740e5ca461c6c7f52694a3c596dd6c31922a94a1e1"
+              ],
+              "path": ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "c7f446b0bc87fbdf126d632f9606684b9dcbde941a6de94823e48a15fe7f2f06"
+              ],
+              "path": ".git/objects/17/95c8f7ecea9c704483f38a995cd160a88bdb97"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/4d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1eebf50c012c213a7b3d47c65749acff1dc3b2287ac57205c2238e47f1ff420b"
+              ],
+              "path": ".git/objects/4d/0589abc2ea3419038428bace76ef73ce442ce3"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/c1"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "42c3422caf3d98f0833894bc81dfc77ff9dd0b2507e6e3d06620d578e158d54b"
+              ],
+              "path": ".git/objects/c1/5147365de5ec62fed95e2634cf82ca33377158"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "e6023dd70971d50daacc04f506b4706c006a62412cc3e2390f2e542576e267a9"
+              ],
+              "before": null,
+              "path": ".git/objects/info/packs"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "3ff33447772c357469ca987805b02bdb568e9a6d2a5a09784b8d30e7831a359a"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/multi-pack-index"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "557e2df66effca5c21c10a8c978e3f485b3b427cf8b730b1163d45f4d55ecb94"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.idx"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "aadce39b551aa3dc4e90e15ac9d037d9f72d84a26d4f29b9fc0e7f4f3a825b58"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.pack"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "54e29e2c1862a18a5363cf48590f5aac0a92850b6cf0ae61483390c1ad659a66"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.rev"
+            }
+          ],
+          "command_hierarchy_counts": {
+            "maintenance": 1,
+            "maintenance/repack": 1,
+            "maintenance/repack/multi-pack-index": 1,
+            "maintenance/repack/pack-objects": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "sampled_objects": [
+            ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af",
+            ".git/objects/17/95c8f7ecea9c704483f38a995cd160a88bdb97"
+          ],
+          "snapshot_rejected": true
+        },
+        {
+          "action": "git maintenance run --auto --no-detach (no generator running)",
+          "changes": [
+            {
+              "after": [
+                "file",
+                "0o644",
+                "503b62d86cee51620563855b92375a0608496167c65edc52e429faaff010e9b6"
+              ],
+              "before": null,
+              "path": ".git/info/refs"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/17"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "07855d847f43365eda1f97740e5ca461c6c7f52694a3c596dd6c31922a94a1e1"
+              ],
+              "path": ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "c7f446b0bc87fbdf126d632f9606684b9dcbde941a6de94823e48a15fe7f2f06"
+              ],
+              "path": ".git/objects/17/95c8f7ecea9c704483f38a995cd160a88bdb97"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/4d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1eebf50c012c213a7b3d47c65749acff1dc3b2287ac57205c2238e47f1ff420b"
+              ],
+              "path": ".git/objects/4d/0589abc2ea3419038428bace76ef73ce442ce3"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/c1"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "42c3422caf3d98f0833894bc81dfc77ff9dd0b2507e6e3d06620d578e158d54b"
+              ],
+              "path": ".git/objects/c1/5147365de5ec62fed95e2634cf82ca33377158"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "e6023dd70971d50daacc04f506b4706c006a62412cc3e2390f2e542576e267a9"
+              ],
+              "before": null,
+              "path": ".git/objects/info/packs"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "3ff33447772c357469ca987805b02bdb568e9a6d2a5a09784b8d30e7831a359a"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/multi-pack-index"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "557e2df66effca5c21c10a8c978e3f485b3b427cf8b730b1163d45f4d55ecb94"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.idx"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "aadce39b551aa3dc4e90e15ac9d037d9f72d84a26d4f29b9fc0e7f4f3a825b58"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.pack"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "54e29e2c1862a18a5363cf48590f5aac0a92850b6cf0ae61483390c1ad659a66"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.rev"
+            }
+          ],
+          "command_hierarchy_counts": {
+            "maintenance": 1,
+            "maintenance/repack": 1,
+            "maintenance/repack/multi-pack-index": 1,
+            "maintenance/repack/pack-objects": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "sampled_objects": [
+            ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af",
+            ".git/objects/17/95c8f7ecea9c704483f38a995cd160a88bdb97"
+          ],
+          "snapshot_rejected": true
+        },
+        {
+          "action": "git maintenance run --auto --no-detach (no generator running)",
+          "changes": [
+            {
+              "after": [
+                "file",
+                "0o644",
+                "503b62d86cee51620563855b92375a0608496167c65edc52e429faaff010e9b6"
+              ],
+              "before": null,
+              "path": ".git/info/refs"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/17"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "07855d847f43365eda1f97740e5ca461c6c7f52694a3c596dd6c31922a94a1e1"
+              ],
+              "path": ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "c7f446b0bc87fbdf126d632f9606684b9dcbde941a6de94823e48a15fe7f2f06"
+              ],
+              "path": ".git/objects/17/95c8f7ecea9c704483f38a995cd160a88bdb97"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/4d"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "1eebf50c012c213a7b3d47c65749acff1dc3b2287ac57205c2238e47f1ff420b"
+              ],
+              "path": ".git/objects/4d/0589abc2ea3419038428bace76ef73ce442ce3"
+            },
+            {
+              "after": null,
+              "before": [
+                "dir"
+              ],
+              "path": ".git/objects/c1"
+            },
+            {
+              "after": null,
+              "before": [
+                "file",
+                "0o444",
+                "42c3422caf3d98f0833894bc81dfc77ff9dd0b2507e6e3d06620d578e158d54b"
+              ],
+              "path": ".git/objects/c1/5147365de5ec62fed95e2634cf82ca33377158"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "e6023dd70971d50daacc04f506b4706c006a62412cc3e2390f2e542576e267a9"
+              ],
+              "before": null,
+              "path": ".git/objects/info/packs"
+            },
+            {
+              "after": [
+                "file",
+                "0o644",
+                "3ff33447772c357469ca987805b02bdb568e9a6d2a5a09784b8d30e7831a359a"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/multi-pack-index"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "557e2df66effca5c21c10a8c978e3f485b3b427cf8b730b1163d45f4d55ecb94"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.idx"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "aadce39b551aa3dc4e90e15ac9d037d9f72d84a26d4f29b9fc0e7f4f3a825b58"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.pack"
+            },
+            {
+              "after": [
+                "file",
+                "0o444",
+                "54e29e2c1862a18a5363cf48590f5aac0a92850b6cf0ae61483390c1ad659a66"
+              ],
+              "before": null,
+              "path": ".git/objects/pack/pack-2bf48f34ff07b088c48c73b0bbee19fd30eeb3ca.rev"
+            }
+          ],
+          "command_hierarchy_counts": {
+            "maintenance": 1,
+            "maintenance/repack": 1,
+            "maintenance/repack/multi-pack-index": 1,
+            "maintenance/repack/pack-objects": 2
+          },
+          "generator_changes": [],
+          "home_unchanged": true,
+          "problems": [],
+          "sampled_objects": [
+            ".git/objects/17/7b2d31eef1971af1257ba5e805939c7fcb52af",
+            ".git/objects/17/95c8f7ecea9c704483f38a995cd160a88bdb97"
+          ],
+          "snapshot_rejected": true
+        }
+      ],
+      "series": "threshold-2",
+      "source_head": "ea687abe4cd0fe0aae417737a5cd1612ee041ea2"
+    }
+  ],
+  "ticket": 99
+}
