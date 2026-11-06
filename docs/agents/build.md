@@ -49,7 +49,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in | linux |
-| `release-check` | Seam E: every fixture in `tests/fixtures/release-check/` | linux |
+| `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits in both shapes | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
 | `machine-install` | Seam C: every install fixture of #44's Testing Decisions, the machine rules, forward-only refusals and the ready command against a local origin | macos |
@@ -79,21 +79,40 @@ probes, and the runner reuses its clean environment. CI runs no model.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every PR, with no path filter, in two jobs whose names stay
-stable: `linux` and `macos`, the required checks habit confirmed at this repository's
-Initialize, beside the governance gate's `governance-gate`. It doesn't run on pushes to the
-default branch, so a merge has no default-branch CI run to serve as the smoke check. The
-governance workflows, `governance-gate.yml` and `merge-watch.yml`, are the generator's
-(`AGENTS.md`, Governance files).
+`.github/workflows/ci.yml` runs on every PR and on pushes to `main`, with no path filter,
+in two jobs whose names stay stable: `linux` and `macos`, the required checks habit confirmed
+at this repository's Initialize, beside the governance gate's `governance-gate`. Pushes to
+other branches and tags don't run CI. A merge's push-triggered run tests the actual merged
+combination and is the Builder's after-merge smoke check: record that run and its result;
+green PR CI alone isn't that evidence. A failed default-branch run is observed by Merge
+watch for a `red-default-branch` miss record. The governance workflows,
+`governance-gate.yml` and `merge-watch.yml`, are the generator's (`AGENTS.md`, Governance files).
 
-- **`linux`**, on `ubuntu-24.04` with its `python3`: steps 2 to 4. The checkout is the PR's
-  merge commit, so the release check compares `HEAD^1` with `HEAD`.
+- **`linux`**, on `ubuntu-24.04` with its `python3`: steps 2 to 4. Checkout depth is two.
+  On a PR, `HEAD` is GitHub's PR merge commit and `HEAD^1` is its base-branch parent;
+  on a squash push to `main`, `HEAD` is the squash commit and `HEAD^1` is the previous
+  `main`. The release check compares these two trees in both events. The offline
+  `release-check` suite proves both shapes with real shallow fetches, including rejection
+  of a frozen-template edit; it doesn't substitute for the hosted push run.
 - **`macos`**, on `macos-15`: steps 5 and 6 with `/usr/bin/python3`, which is Python 3.9.6
   there, beside `/bin/bash` 3.2.57.
 - Both use no model, credential, network, GitHub writes, third-party actions or package
-  installs. The only token is the checkout's read-only `GITHUB_TOKEN`, not kept in the
+  installs in their suites. Checkout is the existing pinned external action and needs
+  GitHub/network access; its only token is the read-only `GITHUB_TOKEN`, not kept in the
   checkout. Standard runners are free on a public repository, per GitHub's
   [runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+
+The [#99 diagnosis](https://github.com/Habit130/agent-repo-governance/pull/114) alone did not
+repair the snapshot race. Before enabling push coverage, habit chose repair first;
+[#115's reviewed repair](https://github.com/Habit130/agent-repo-governance/pull/116) prevents
+both fixture setup commits from dispatching automatic maintenance while preserving product
+environments, full snapshots and real-write rejection. Its deterministic regression proves
+that specific prevention, not the historical hosted writer's identity or a zero future-flake
+rate. A later flaky main run can still create a false-alarm miss record and needs assessment;
+passing retries alone aren't proof of repair. The
+[head-bound handoff](https://github.com/Habit130/agent-repo-governance/issues/111#issuecomment-6683303661)
+records these limits. This trigger addition changes no required checks, governance record,
+settings or generated workflow; no owner-script rerun follows from it.
 
 ## Actions secrets
 

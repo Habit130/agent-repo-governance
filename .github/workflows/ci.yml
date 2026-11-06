@@ -1,10 +1,13 @@
 name: CI
 
-# Every PR, with no path filter, so both jobs can become required checks at this
-# repository's Initialize. No model, credential, network, GitHub writes, third-party actions
-# or package installs; the job names stay stable. docs/agents/build.md lists what each runs.
+# Every PR and every push to main, with no path filter; main runs are the after-merge
+# smoke check. Suites use no model, credential, network, GitHub writes, third-party actions
+# or package installs. Checkout uses only the read-only GITHUB_TOKEN, never persisted;
+# job names stay stable. docs/agents/build.md lists what each runs.
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -15,7 +18,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - name: Check out the PR's merge commit and its base
+      - name: Check out the event commit and its first parent
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
@@ -32,7 +35,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 15
     steps:
-      - name: Check out the PR's merge commit
+      - name: Check out the event commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
