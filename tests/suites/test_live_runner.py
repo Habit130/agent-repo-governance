@@ -134,6 +134,54 @@ class Registry(unittest.TestCase):
             live.chosen_probes(["owner-private-secret"], "public")
 
 
+class ProbeSelection(support.TempDirCase):
+    def test_valid_groups_keep_the_requested_order_and_sandbox_support(self):
+        groups = [
+            ["gate-trigger", "gate-reruns", "gate-source", "gate-rulesets"],
+            ["merge-watch-clean", "merge-watch-miss"],
+            ["gate-rulesets", "merge-watch-miss", "owner-report"],
+            ["owner-state", "merge-watch-clean", "owner-rerun"],
+        ]
+        known = probes.registered()
+        for visibility in ("public", "private"):
+            for names in groups:
+                with self.subTest(visibility=visibility, names=names):
+                    self.assertEqual(live.chosen_probes(names, visibility), [known[name] for name in names])
+        self.assertEqual(live.chosen_probes(["owner-private-secret"], "private"), [known["owner-private-secret"]])
+
+    def test_prepare_refuses_every_gate_and_clean_merge_watch_mix_before_tools_or_setup(self):
+        import contextlib
+        import io
+        import itertools
+
+        gates = ("gate-trigger", "gate-reruns", "gate-source", "gate-rulesets")
+        directory = self.path("check")
+        support.write_tree(directory, {"keep.txt": "existing work\n"})
+        for visibility in ("public", "private"):
+            for size in range(1, len(gates) + 1):
+                for group in itertools.combinations(gates, size):
+                    for names in (list(group) + ["merge-watch-clean"], ["merge-watch-clean"] + list(group)):
+                        with self.subTest(visibility=visibility, names=names):
+                            args = ["prepare", "--pr", "7", "--sandbox", visibility, "--directory", directory]
+                            for name in names:
+                                args += ["--probe", name]
+                            out = io.StringIO()
+                            with mock.patch.object(live, "run", side_effect=AssertionError("tool before refusal")) as run, \
+                                    mock.patch.object(live, "check_directory", side_effect=AssertionError("persistent setup")) as setup, \
+                                    mock.patch.object(tempfile, "mkdtemp", side_effect=AssertionError("temporary setup")) as temp, \
+                                    contextlib.redirect_stdout(out):
+                                self.assertEqual(live.main(args), 2)
+                            run.assert_not_called()
+                            setup.assert_not_called()
+                            temp.assert_not_called()
+                            self.assertIn("merge-watch-clean", out.getvalue())
+                            self.assertIn("gate", out.getvalue())
+                            self.assertIn("separate checks", out.getvalue())
+                            self.assertEqual(os.listdir(directory), ["keep.txt"])
+                            with open(os.path.join(directory, "keep.txt")) as handle:
+                                self.assertEqual(handle.read(), "existing work\n")
+
+
 class OwnerReport(ProbeCase):
     def test_a_first_run_on_a_public_repository_passes(self):
         context = self.context("public", {"owner_report": owner_report(self.path("run"), "public-from-nothing")})
@@ -1266,7 +1314,6 @@ class EndToEndHelpers(support.TempDirCase):
         self.assertEqual(set(live.SCENARIO_SETTINGS), read)
 
     def test_an_instruction_file_in_any_directory_above_is_found(self):
-        self.assertEqual(set(live.INSTRUCTION_FILES), {"AGENTS.md", "CLAUDE.md", "CLAUDE.local.md"})
         clean = self.path("a", "b")
         os.makedirs(clean)
         # A name only this test writes, so instruction files above the system temporary directory don't count.
@@ -1274,6 +1321,25 @@ class EndToEndHelpers(support.TempDirCase):
             self.assertEqual(live.instruction_files_above(clean), [])
             support.write_tree(self.path("a"), {"SUITE-ONLY.md": "x\n"})
             self.assertEqual(live.instruction_files_above(clean), [self.path("a", "SUITE-ONLY.md")])
+
+    def test_documented_instruction_locations_are_found_at_each_ancestor_level(self):
+        # Independent literal expectations from the harness docs, not the production list.
+        names = ("AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md", ".claude/AGENTS.md")
+        for ancestor in ("/launch/parent/check", "/launch/parent", "/launch", "/"):
+            for name in names:
+                with self.subTest(ancestor=ancestor, name=name):
+                    target = os.path.join(ancestor, name)
+                    with mock.patch.object(os.path, "isfile", side_effect=lambda p: p == target):
+                        self.assertEqual(live.instruction_files_above("/launch/parent/check"), [target])
+
+    def test_ancestor_claude_rules_are_detected_recursively(self):
+        clean = self.path("parent", "check")
+        os.makedirs(clean)
+        support.write_tree(self.path("parent"), {".claude/rules/nested/check.md": "an ancestor rule\n"})
+        target = self.path("parent", ".claude", "rules", "nested", "check.md")
+        isfile = os.path.isfile
+        with mock.patch.object(os.path, "isfile", side_effect=lambda p: p.startswith(self.tmp + os.sep) and isfile(p)):
+            self.assertEqual(live.instruction_files_above(clean), [target])
 
 
 class EndToEndCommands(support.TempDirCase):
@@ -1286,6 +1352,7 @@ class EndToEndCommands(support.TempDirCase):
         import generator_support as gs
 
         self.gs = gs
+        self.instruction_files = live.INSTRUCTION_FILES
         self.remote = self.path("remotes", PUBLIC + ".git")
         # A name only these tests write, so instruction files above the system temporary directory don't count.
         for name, value in (("SANDBOX_URL", self.path("remotes", "%s.git")), ("REPO", self.path("head")),
@@ -1469,6 +1536,24 @@ class EndToEndCommands(support.TempDirCase):
         self.assertEqual(code, 2, out)
         self.assertIn(self.path("temp", "SUITE-ONLY.md"), out)
         self.assertEqual(os.listdir(self.path("temp")), ["SUITE-ONLY.md"])
+
+    def test_end_to_end_refuses_an_ancestor_with_only_dot_claude_instructions_without_side_effects(self):
+        commit = self.head_repository()
+        for index, name in enumerate((".claude/CLAUDE.md", ".claude/AGENTS.md", ".claude/rules/nested/check.md")):
+            with self.subTest(name=name):
+                scratch = self.github([], head=commit)
+                parent = self.path("temp", "parent [%d]" % index)
+                support.write_tree(parent, {name: "a parent's rules\n"})
+                # Keep production locations, but hide unrelated files outside this synthetic tree.
+                isfile = os.path.isfile
+                with mock.patch.object(live, "INSTRUCTION_FILES", self.instruction_files), \
+                        mock.patch.object(tempfile, "tempdir", parent), \
+                        mock.patch.object(os.path, "isfile", side_effect=lambda p: p.startswith(self.tmp + os.sep) and isfile(p)):
+                    code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
+                self.assertEqual(code, 2, out)
+                self.assertIn(os.path.join(parent, name), out)
+                self.assertEqual(os.listdir(parent), [".claude"])
+                self.assertEqual([e["args"][:2] for e in environment.read_log(scratch)], [["pr", "view"]])
 
 
 if __name__ == "__main__":
