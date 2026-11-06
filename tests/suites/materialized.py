@@ -17,7 +17,7 @@ def tally_fixture():
         return json.load(handle)
 
 
-def tally_worktree(root):
+def tally_worktree(root, *, no_auto_maintenance=False):
     """A git worktree of tally before Initialize, with origin and its default branch known offline."""
     fixture = tally_fixture()
     worktree = support.init_repo(os.path.join(root, "tally"))
@@ -25,7 +25,10 @@ def tally_worktree(root):
     if code != 0:
         raise AssertionError("materializing tally failed: %s" % facts)
     support.git(worktree, "add", "-A")
-    support.git(worktree, "commit", "-q", "-m", "tally before Initialize")
+    # Only generator-core opts in: its complete no-write baseline must not
+    # inherit a maintenance worker from this setup commit (#115).
+    config = ("-c", "maintenance.auto=false") if no_auto_maintenance else ()
+    support.git(worktree, *config, "commit", "-q", "-m", "tally before Initialize")
     support.git(worktree, "remote", "add", "origin", "https://github.com/%s.git" % fixture["repository"])
     branch = fixture["default_branch"]
     support.git(worktree, "update-ref", "refs/remotes/origin/%s" % branch, "HEAD")
