@@ -10,13 +10,16 @@ the case that runs it, and the worktree and the machine home are byte-for-byte u
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 
 import generator_support as gs
 import machine_support as ms
 import support
+import fixture_maintenance
 from target_state import TARGET_SETTINGS, target_ruleset
 
 
@@ -61,6 +64,130 @@ def _add_case(name):
 
 for _name in gs.case_names():
     _add_case(_name)
+
+
+class FixtureSetup(support.TempDirCase):
+    """#115's actual construction/baseline seam; provenance: #99 and PR #114."""
+
+    def test_neither_setup_commit_can_leave_maintenance_across_baseline(self):
+        for index, selected in enumerate(("tally before Initialize", "the fixture's state")):
+            with self.subTest(commit=selected):
+                root = self.path(str(index))
+                os.makedirs(root)
+                bindir, server = fixture_maintenance.install(root, shutil.which("git"), selected)
+                original = gs.tree_snapshot
+                captured = []
+
+                def snapshot(worktree):
+                    before = original(worktree)
+                    if not captured:
+                        captured.append(before)
+                        # Every dispatched worker has acknowledged readiness before
+                        # commit returned. No connection can arrive late here.
+                        log = os.path.join(root, "maintenance.sock.dispatch")
+                        if os.path.exists(log):
+                            rows = [json.loads(line) for line in support.read_text(log).splitlines()]
+                            if any(row["commit"] == selected for row in rows):
+                                channel, _ = server.accept()
+                                with channel:
+                                    channel.settimeout(10)
+                                    channel.sendall(b"G")
+                                    result = json.loads(channel.recv(65536))
+                                    self.assertEqual(result, {"exit": 0, "stderr": ""})
+                    return before
+
+                try:
+                    with patch.dict(os.environ, {"GIT_EXEC_PATH": bindir}), patch.object(gs, "tree_snapshot", snapshot):
+                        run = gs.run_case(root, gs.load_case("older-record"))
+                finally:
+                    server.close()
+                self.assertEqual(run["after"][0], run["before"][0],
+                                 "setup maintenance crossed the complete baseline: " + selected)
+                self.assertEqual(support.git(run["worktree"], "log", "--format=%s").splitlines(),
+                                 ["the fixture's state", "tally before Initialize"])
+                self.assertFalse(os.path.exists(os.path.join(root, "maintenance.sock.dispatch")),
+                                 "a setup commit still dispatched maintenance")
+
+    def test_the_default_tally_caller_still_dispatches_maintenance(self):
+        bindir, server = fixture_maintenance.install(self.tmp, shutil.which("git"), "not selected")
+        try:
+            with patch.dict(os.environ, {"GIT_EXEC_PATH": bindir}):
+                gs.materialized.tally_worktree(self.tmp)
+        finally:
+            server.close()
+        rows = [json.loads(line) for line in support.read_text(self.path("maintenance.sock.dispatch")).splitlines()]
+        self.assertEqual([row["commit"] for row in rows], ["tally before Initialize"])
+
+    def test_a_commit_in_the_exact_product_environment_still_runs_maintenance(self):
+        bindir, server = fixture_maintenance.install(self.tmp, shutil.which("git"), "not selected")
+        real_run = subprocess.run
+        commits = []
+
+        def execute(args, **kwargs):
+            if (not commits and args[:2] == [sys.executable, support.GOVERN] and "--worktree" in args):
+                commits.append("product-environment control")
+                result = real_run(["git", "commit", "--allow-empty", "-qm", commits[0]],
+                                  cwd=kwargs["cwd"], env=kwargs["env"],
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                self.assertEqual((result.returncode, result.stderr), (0, b""))
+            return real_run(args, **kwargs)
+
+        try:
+            with patch.dict(os.environ, {"GIT_EXEC_PATH": bindir}), patch.object(subprocess, "run", execute):
+                run = gs.run_case(self.tmp, gs.load_case("older-record"))
+        finally:
+            server.close()
+        rows = [json.loads(line) for line in support.read_text(self.path("maintenance.sock.dispatch")).splitlines()]
+        self.assertEqual([row["commit"] for row in rows], commits)
+        self.assertEqual(commits, ["product-environment control"])
+        with self.assertRaises(AssertionError):
+            self.assertEqual(run["after"][0], run["before"][0], "a run changed the worktree")
+
+    def test_real_writes_during_the_measured_interval_are_still_rejected(self):
+        for index, kind in enumerate(("ordinary-file", "loose-object")):
+            with self.subTest(write=kind):
+                root = self.path(str(index))
+                os.makedirs(root)
+                real_run = subprocess.run
+                product_envs = []
+
+                def execute(args, **kwargs):
+                    if args[:2] == [sys.executable, support.GOVERN] and "--worktree" in args:
+                        product_envs.append(dict(kwargs["env"]))
+                        if len(product_envs) == 1:
+                            worktree = kwargs["cwd"]
+                            if kind == "ordinary-file":
+                                with open(os.path.join(worktree, "independent-write.txt"), "w") as handle:
+                                    handle.write("real independent write during measurement\n")
+                            else:
+                                result = real_run(["git", "-C", worktree, "hash-object", "-w", "--stdin"],
+                                                  input=b"real independent object during measurement\n",
+                                                  env=kwargs["env"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                self.assertEqual(result.returncode, 0, result.stderr)
+                    return real_run(args, **kwargs)
+
+                with patch.object(subprocess, "run", execute):
+                    run = gs.run_case(root, gs.load_case("older-record"))
+                self.assertEqual(len(product_envs), 3)
+                for env in product_envs:
+                    # Ask real Git with each exact product environment, rather than
+                    # assuming a particular environment-variable encoding of config.
+                    config = real_run(["git", "-C", run["worktree"], "config", "--get-regexp", "^maintenance\\."],
+                                      env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    self.assertEqual((config.returncode, config.stdout, config.stderr), (1, b"", b""))
+                for command, (code, facts, out, err) in run["results"].items():
+                    self.assertEqual((code, err), (0, ""), out)
+                    want = gs.load_case("older-record")["expect"].get(command, {})
+                    self.assertEqual(gs.subset({k: v for k, v in want.items()
+                                               if k not in ("exit", "items", "checklist")}, facts), [])
+                changed = {path for path in set(run["before"][0]) | set(run["after"][0])
+                           if run["before"][0].get(path) != run["after"][0].get(path)}
+                if kind == "ordinary-file":
+                    self.assertEqual(changed, {"independent-write.txt"})
+                else:
+                    self.assertTrue(any(path.startswith(".git/objects/") for path in changed), changed)
+                with self.assertRaises(AssertionError):
+                    self.assertEqual(run["after"][0], run["before"][0], "a run changed the worktree")
 
 
 class Handover(support.TempDirCase):

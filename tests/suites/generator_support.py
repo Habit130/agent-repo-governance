@@ -178,7 +178,7 @@ def build_repository(root, case, store):
         worktree = support.init_repo(os.path.join(root, "tally"))
         support.git(worktree, "remote", "add", "origin", "https://github.com/%s.git" % name)
         return worktree
-    worktree = materialized.tally_worktree(root)
+    worktree = materialized.tally_worktree(root, no_auto_maintenance=True)
     support.git(worktree, "remote", "set-url", "origin", "https://github.com/%s.git" % name)
     if spec.get("governed_at"):
         confirmed = os.path.join(root, "confirmed.json")
@@ -210,7 +210,9 @@ def build_repository(root, case, store):
         if "mode" in edit:
             os.chmod(full, 0o755 if edit["mode"] == "100755" else 0o644)
     support.git(worktree, "add", "-A")
-    support.git(worktree, "commit", "-q", "--allow-empty", "-m", "the fixture's state")
+    # Command-scoped, like the initial tally commit: no setup worker can
+    # outlive construction, and product commands retain Git's normal behavior.
+    support.git(worktree, "-c", "maintenance.auto=false", "commit", "-q", "--allow-empty", "-m", "the fixture's state")
     branch = spec.get("checkout_branch", "main")
     support.git(worktree, "update-ref", "refs/remotes/origin/%s" % branch, "HEAD")
     support.git(worktree, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/%s" % branch)
