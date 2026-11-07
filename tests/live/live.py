@@ -23,6 +23,7 @@ the two sandboxes and this repository's PR; results carry probe output only, nev
 import argparse
 import collections
 import datetime
+import glob
 import json
 import os
 import shlex
@@ -173,6 +174,11 @@ def chosen_probes(names, sandbox):
     wrong = [name for name in names if sandbox not in known[name].sandboxes]
     if wrong:
         raise RunnerError("these probes don't run in the %s sandbox: %s" % (sandbox, ", ".join(wrong)))
+    gates = [name for name in names if name.startswith("gate-")]
+    if gates and "merge-watch-clean" in names:
+        raise RunnerError("gate probes (%s) are incompatible with merge-watch-clean: its legitimate merge moves "
+                          "the default branch that the gate check requires unchanged; prepare separate checks"
+                          % ", ".join(gates))
     return [known[name] for name in names]
 
 
@@ -315,8 +321,14 @@ SKILL_PATH = "generator/govern-repository"
 SANDBOX_URL = "https://github.com/%s.git"
 # The settings only the scenario runner sets (docs/agents/build.md); the end-to-end run sets none.
 SCENARIO_SETTINGS = ("GOVERN_SCENARIO_STORE", "GOVERN_SCENARIO_HOME", "GOVERN_SCENARIO_REPOSITORY")
-# A directory's instruction files that Claude Code or OpenCode would load into a session below it.
-INSTRUCTION_FILES = ("AGENTS.md", "CLAUDE.md", "CLAUDE.local.md")
+# Conservative union of automatic ancestor instruction locations, checked 2026-11-06:
+# https://code.claude.com/docs/en/memory#when-claude-code-reads-agents-md
+# https://opencode.ai/v2/docs/instructions/ (V2 discovers AGENTS.md only).
+# Keep every ancestor: a location may load conditionally, so refuse rather than resolve precedence.
+# Rules are recursive Markdown; conservatively include path-scoped rules too. This is not
+# isolation from user/managed configuration or arbitrary configured instruction imports.
+INSTRUCTION_FILES = ("AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md", ".claude/AGENTS.md",
+                     ".claude/rules/**/*.md")
 
 
 def seed_tree(work):
@@ -368,7 +380,10 @@ def instruction_files_above(path):
     """Every instruction file in path's directory or one above it, which a harness started there would load."""
     found, here = [], os.path.realpath(path)
     while True:
-        found += [os.path.join(here, name) for name in INSTRUCTION_FILES if os.path.isfile(os.path.join(here, name))]
+        for name in INSTRUCTION_FILES:
+            paths = (sorted(glob.glob(os.path.join(glob.escape(here), name), recursive=True))
+                     if glob.has_magic(name) else [os.path.join(here, name)])
+            found += [candidate for candidate in paths if os.path.isfile(candidate)]
         parent = os.path.dirname(here)
         if parent == here:
             return found
