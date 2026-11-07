@@ -78,9 +78,20 @@ PRO_REFUSAL = "Upgrade to GitHub Pro or make this repository public to enable th
 # would block. They match the inspection's shapes and are no one's credential.
 PLANTED = {
     "github-token": "gh" + "p_" + "Z" * 36,
+    "aws-key": "AK" + "IA" + "Z" * 16,
+    "slack-token": "xo" + "xb-" + "Z" * 24,
+    "anthropic-key": "sk-" + "ant-" + "Z" * 24,
+    "openai-key": "sk-" + "proj-" + "Z" * 24,
+    "google-key": "AI" + "za" + "Z" * 35,
     "private-key": "-----BEGIN " + "RSA PRIVATE KEY-----",
     "private-key-body": "MIIE" + "Q" * 60,
     "private-key-end": "-----END " + "RSA PRIVATE KEY-----",
+}
+SHAPE_PLANTS = {
+    "GitHub token": "github-token", "AWS access key ID": "aws-key",
+    "Slack token": "slack-token", "private key": "private-key",
+    "Anthropic API key": "anthropic-key", "OpenAI API key": "openai-key",
+    "Google API key": "google-key",
 }
 
 _cache = {}
@@ -373,7 +384,7 @@ def tree_snapshot(root):
     return found
 
 
-def run_case(root, case):
+def run_case(root, case, entry=None):
     """Run a case's subcommands; return {command: (exit, facts)}, the stand-in log and the snapshots."""
     store = build_store(case.get("store", "released"))
     home = build_home(case.get("home", "ready"))
@@ -390,7 +401,7 @@ def run_case(root, case):
             args += ["--home", home]
         if command in ("preconditions", "mode"):
             args += ["--store", store]
-        result = subprocess.run([sys.executable, support.GOVERN] + args, env=env, cwd=worktree,
+        result = subprocess.run([sys.executable, entry or support.GOVERN] + args, env=env, cwd=worktree,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         try:
             facts = json.loads(result.stdout)

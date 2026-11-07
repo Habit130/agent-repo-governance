@@ -243,6 +243,22 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     text, a title or an error carries none. A private key is redacted from its header to its end
     marker, or to the text's end without one, and in a document's shell block its lines are
     never read as commands.
+
+    Seam A's source-to-output inventory is `tests/suites/credential_support.py`: it names
+    each selected input and output field, the command-producing manifest names, document
+    families and GitHub strings. Full-entry tests require exact redacted fields (proving
+    echo reachability), type/location reports and no plant in stdout or stderr. Runtime
+    plants cover every `SHAPES` class; set equality requires a plant for a new class.
+    An isolated copy with redaction bypassed is the negative control for both normal facts
+    and caught errors. Existing private-key fixtures retain the document-discard and
+    truncated-key checks. Review the inventory when adding an echoed source; supported
+    manifest names and the document-name expression are checked mechanically. Make/just
+    target grammar and discarded document key lines limit which shapes can echo there.
+    The single-writer AST guard covers direct print, process-stream references/aliases and
+    low-level descriptor writes in the entry and `govlib`, allowing exactly one stdout
+    writer in `emit`; it is not dynamic information-flow analysis. It leaves subprocess
+    capture and unrelated tools alone. Focused command: `python3 tests/run.py suites generator-core`.
+    Diagnostics name plants, never their values.
 - **GitHub's facts the core relies on**, as the agent account, a write collaborator, read on
   2026-10-29 from Habit130/governance-sandbox and Habit130/agent-repo-governance, and from
   GitHub's REST reference pages for rules, branches and invitations the same day:

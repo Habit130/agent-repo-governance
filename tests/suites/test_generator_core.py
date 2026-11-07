@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import shutil
 import subprocess
 import sys
 import unittest
@@ -29,6 +30,10 @@ class SeamA(support.TempDirCase):
     def assert_case(self, name):
         case = gs.load_case(name)
         run = gs.run_case(self.tmp, case)
+        from credential_support import assert_no_values
+
+        for _, _, out, err in run["results"].values():
+            assert_no_values(self, out, err)
         printed = "\n".join(out for _, _, out, _ in run["results"].values())
         for command, (code, facts, out, err) in run["results"].items():
             self.assertEqual(err, "", "%s wrote to stderr: %s" % (command, err))
@@ -47,11 +52,88 @@ class SeamA(support.TempDirCase):
         self.assertEqual(run["after"][0], run["before"][0], "a run changed the worktree")
         self.assertEqual(run["after"][1], run["before"][1], "a run changed the machine home")
         self.assertFalse(ms.ghm_called(run["scratch"]), "a run called ghm")
-        for value in gs.PLANTED.values():
-            self.assertNotIn(value, printed, "a planted credential's value was printed")
         if case.get("expect_no_calls"):
             self.assertEqual(run["log"], [], "a refused harness reached GitHub")
         return run
+
+
+class CredentialCoverage(support.TempDirCase):
+    def test_every_supported_shape_has_a_runtime_plant(self):
+        from govlib import secrets
+
+        self.assertEqual(set(gs.SHAPE_PLANTS), {kind for kind, _ in secrets.SHAPES})
+        for kind, name in gs.SHAPE_PLANTS.items():
+            self.assertIn(kind, secrets.kinds(gs.PLANTED[name]), kind)
+
+    def test_echoed_sources_reach_output_without_disclosing_plants(self):
+        import credential_support as cs
+
+        run = gs.run_case(self.tmp, cs.case())
+        cs.assert_output(self, run)
+
+    def test_caught_errors_redact_every_shape(self):
+        import credential_support as cs
+
+        case = {"run": ["inspect"], "github": {"refused_reads": {"": cs.bundle()}}}
+        code, facts, out, err = gs.run_case(self.tmp, case)["results"]["inspect"]
+        cs.assert_no_values(self, out, err)
+        self.assertEqual(code, 2)
+        self.assertEqual(err, "")
+        self.assertTrue(cs.bundle(redacted=True) in facts["error"], "caught error not echoed")
+
+    def test_bypassing_redaction_is_detected_for_sources_and_errors(self):
+        import credential_support as cs
+
+        scripts = self.path("scripts")
+        shutil.copytree(os.path.dirname(support.GOVERN), scripts)
+        entry = os.path.join(scripts, "govern.py")
+        text = support.read_text(entry)
+        self.assertEqual(text.count("secrets.redact(facts)"), 1)
+        with open(entry, "w") as handle:
+            handle.write(text.replace("secrets.redact(facts)", "facts"))
+        cases = [cs.case(), {"run": ["inspect"], "github": {"refused_reads": {"": cs.bundle()}}}]
+        for index, case in enumerate(cases):
+            root = self.path("control-%d" % index)
+            os.makedirs(root)
+            run = gs.run_case(root, case, entry=entry)
+            _, _, out, err = run["results"]["inspect"]
+            with self.assertRaisesRegex(AssertionError, "plant disclosed"):
+                cs.assert_no_values(self, out, err)
+            for kind, name in gs.SHAPE_PLANTS.items():
+                self.assertTrue(gs.PLANTED[name] in out, "negative control not reached: " + kind)
+
+    def test_source_inventory_matches_supported_manifest_and_document_classes(self):
+        import credential_support as cs
+        from govlib import inspection
+
+        self.assertEqual(set(cs.MANIFEST_NAMES), {name for name, tool in inspection.MANIFESTS.items()
+                                                if name == "package.json" or tool in ("make", "just")})
+        self.assertEqual(inspection.COMMAND_DOCS.pattern,
+                         r"(^|/)(readme|contributing|development|hacking|building|testing)[^/]*\.(md|rst|txt)$|^docs/agents/build\.md$")
+        self.assertTrue(all(inspection.COMMAND_DOCS.search(path) for path in cs.DOCUMENTS))
+
+
+class SingleWriter(unittest.TestCase):
+    """A narrow structural guard, not a general Python information-flow analyzer."""
+
+    def test_entry_and_library_keep_one_output_writer(self):
+        import credential_support as cs
+
+        scripts = os.path.dirname(support.GOVERN)
+        self.assertEqual(cs.output_writers(support.read_text(support.GOVERN), entry=True), [])
+        for name in sorted(os.listdir(os.path.join(scripts, "govlib"))):
+            if name.endswith(".py"):
+                self.assertEqual(cs.output_writers(support.read_text(os.path.join(scripts, "govlib", name))), [], name)
+
+    def test_guard_rejects_added_writers_but_not_captured_subprocess_output(self):
+        import credential_support as cs
+
+        for text in ("print('extra')", "sys.stdout.write('extra')", "sys.stderr.write('extra')",
+                     "stream = sys.stdout\nstream.write('extra')", "from sys import stderr as stream",
+                     "os.write(1, b'extra')", "sys.__stdout__.write('extra')"):
+            self.assertTrue(cs.output_writers(text), "writer guard missed a planted writer")
+            self.assertTrue(cs.output_writers(support.read_text(support.GOVERN) + "\n" + text, entry=True))
+        self.assertEqual(cs.output_writers("result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\ntext = result.stdout"), [])
 
 
 def _add_case(name):
