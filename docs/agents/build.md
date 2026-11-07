@@ -337,6 +337,19 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   conditional include (`includeIf`) stays unseen; the step's line says so when one exists. The
   `machine-wizard` suite never runs `ghm` or any `gh` inside a login shell: macOS's login
   profile reorders PATH, so a real gh there could reach the keychain.
+- **Generated credential routes** (#105), in `machine-wizard`'s
+  `GeneratedCredentialRoute`, compare the credential step with the runner's real Git.
+  The exhaustive bounded corpus combines three schemes, eight hosts and five decorations,
+  each before/after gh's section and with/without a reset: 120 URLs and 480 routes.
+  Each route starts with an earlier synthetic helper. Certified routes must call only the
+  test-local gh helper on both `fill` and `approve`; certain nonmatches are checked without
+  a masking reset. Successful reruns preserve the home's bytes. Two deliberately unsafe
+  matcher substitutions prove the oracle catches false resets and storage fan-out hidden
+  by `fill`'s short circuit. Output names Git's version and the corpus parameters; Git
+  credential subprocesses have a ten-second timeout. All helpers, configuration, homes
+  and call logs are disposable and synthetic; no login, keychain or real configuration is
+  used. This bounded sweep is not proof for every Git URL spelling; a newly exposed
+  product mismatch returns to habit rather than relaxing the fail-closed model.
 - **Run on their own** from the installed copy: `/usr/bin/python3
   ~/.agents/governance/machine/scripts/machine.py check` and `... list`. The installed state
   is `~/.agents/governance/installed.json`; there the entry imports `govlib` from the
