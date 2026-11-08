@@ -161,7 +161,13 @@ def build_home(kind):
     base = os.path.join(_scratch_root(), key)
     os.makedirs(base)
     source = os.path.join(base, "source")
-    ms.build_source(source)
+    if kind == "candidate":
+        copies_root = os.path.join(support.REPO, "skill-copies", "skills")
+        copies = {name: ms._tree(os.path.join(copies_root, name))
+                  for name in os.listdir(copies_root) if os.path.isdir(os.path.join(copies_root, name))}
+        ms.build_source(source, copies=copies)
+    else:
+        ms.build_source(source)
     home = ms.ready_home(os.path.join(base, "home"))
     env = ms.machine_env(home, os.path.join(base, "install-scratch"), gh_recording=ms.write_gh_recording(os.path.join(base, "gh.json")))
     code, out, err = ms.run_machine(["install", "--source", source, "--home", home], env)

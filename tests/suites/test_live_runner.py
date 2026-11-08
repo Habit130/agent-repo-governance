@@ -108,7 +108,7 @@ class Registry(unittest.TestCase):
     def test_the_gate_and_owner_probes_register_in_the_one_shape(self):
         known = probes.registered()
         self.assertEqual(list(known), ["gate-trigger", "gate-reruns", "gate-source", "gate-rulesets",
-                                       "merge-watch-clean", "merge-watch-miss", "owner-report", "owner-state", "owner-rerun", "owner-private-secret"])
+                                        "merge-watch-clean", "merge-watch-miss", "owner-report", "owner-state", "owner-rerun", "owner-recovery", "owner-private-secret"])
         for name in ("gate-trigger", "gate-reruns", "gate-source", "gate-rulesets"):
             self.assertEqual(known[name].sandboxes, ("public", "private"))
         for probe in known.values():
@@ -618,6 +618,33 @@ sys.exit(97)
             self.assertIn(headers[0], stopped.detail)
             self.assertIn("stop as for a product question", stopped.detail)
             self.assertNotIn("rerun", stopped.detail)
+
+
+class OwnerRecoveryProbe(ProbeCase):
+    def test_recovery_preserves_both_defaults_and_requires_a_no_write_repeat(self):
+        for permission in ("read", "write"):
+            baseline = {"default_workflow_permissions": permission, "can_approve_pull_request_reviews": False}
+            inputs = {
+                "owner_recovery_baseline": json.dumps(baseline),
+                "owner_recovery_before": json.dumps(dict(baseline, can_approve_pull_request_reviews=True)),
+                "owner_recovery_after": json.dumps(baseline),
+                "owner_recovery_report": "[已设置] Actions 不能创建或批准 PR：已关闭\n写入 1 项\n",
+                "owner_recovery_rerun": "写入 0 项；全部已就位，本次未改动 GitHub\n",
+            }
+            context = self.context(inputs=inputs)
+            self.assertEqual(self.failed(self.results("owner-recovery", context)), [])
+            with open(context.input_path("owner_recovery_after"), "w") as handle:
+                json.dump(dict(baseline, default_workflow_permissions="write" if permission == "read" else "read"), handle)
+            self.assertTrue(self.failed(self.results("owner-recovery", context)))
+
+    def test_readback_commands_use_the_owner_environment_without_an_interactive_alias(self):
+        commands = probes.registered()["owner-recovery"].commands(self.context())
+        self.assertEqual(len(commands), 5)
+        for name, _, line in commands:
+            if name in ("owner_recovery_baseline", "owner_recovery_before", "owner_recovery_after"):
+                self.assertIn("gh api repos/%s/actions/permissions/workflow" % PUBLIC, line)
+                self.assertIn(owner_probes.owner.MAINTAINER_SHELL, line)
+                self.assertNotIn("ghm ", line)
 
 
 class GateProbes(ProbeCase):

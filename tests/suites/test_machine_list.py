@@ -107,7 +107,10 @@ class NoReleasedVersion(ListCase):
         for version in NOTES:
             os.remove(os.path.join(store, str(version), "change-note.md"))
         for version in (2, 3):
-            os.rmdir(os.path.join(store, str(version)))
+            directory = os.path.join(store, str(version))
+            # A real version may now occupy a formerly synthetic note-only directory.
+            if not os.listdir(directory):
+                os.rmdir(directory)
         code, found, out = self.list(repositories=[repository("at-one")], records={"Habit130/at-one": record(1)})
         self.assertEqual(found["header"], "installed commit %s；installed version 无（store 里没有已发布版本）" % self.commit)
         self.assertEqual(found["Habit130/at-one"], "版本 1；record 比本机新，先更新本机；未关闭 miss record 0 条")

@@ -59,7 +59,9 @@ conflict habit confirms. At Repair, make none of them.
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
   - `covered`: the model already holds it, so it is dropped and listed;
-  - `carried`: repository-specific and compatible, so it goes into "This repository";
+  - `carried`: repository-specific and compatible, so "This repository" points to its
+    authoritative runbook, naming when to read it; only a rule without an authoritative
+    home is carried inline;
   - `conflicting`: it conflicts with the model or loosens it, so it is dropped and listed
     separately. Keeping it would be a model change, never a per-repository exception;
   - `removed`: an earlier decision removes it: a root `CLAUDE.md` once carried, any
@@ -68,11 +70,22 @@ conflict habit confirms. At Repair, make none of them.
 
   Each rule's text is quoted with its file. Sort other files the model never writes, such as
   hooks, CODEOWNERS or a Bugbot config, the same way, and propose keeping or removing each.
+  Preserve mandatory prohibitions and their force in the authoritative source. An
+  explanatory consequence never replaces a prohibition. Carrying by reference removes
+  duplicated policy, not command inventories, environment facts or verification evidence.
 - **Sensitive paths.** Propose paths by category: authentication, billing and payments,
   release and publish workflows and scripts, installers, deployment configuration,
   secret-handling code, data migrations. Each gets a medium or high floor.
 - **Required checks.** Propose a job only when `inspect` reads it as `every_pr: true` and not
   uncertain, under its reported `name`. Name every other job and why it can't be required.
+- **Product smoke.** Identify actual default-branch product verification on the merged
+  commit. A product build/test job triggered by a push to the default branch qualifies,
+  including one in the same workflow as PR CI; identify its merged-commit run separately
+  from the PR run. A failing qualifying run is failed smoke, not absent product verification.
+  Only when that verification is absent, predetermine an executable local smoke on the
+  exact merged commit in the high-risk ticket. Governance audits, pre-merge PR runs and
+  Release dispatch do not substitute.
+  Preserve any existing command prohibition when selecting that smoke.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
   worktree of your own, so the checkout stays untouched. A manifest whose `extraction` is
   `unsupported` has its commands read from the file by you. Record each command you ran and
@@ -90,14 +103,14 @@ Send one plain message, never a question tool, then end the turn and wait for ha
 
 - **Initialize, or a rebuilt record**, holds only: (1) sensitive paths as plain categories
   with paths as labels, plus any high floors; (2) the checks to make required, any that can't
-  be and why, or that there is no CI and so no smoke check; (3) the carrying lists: rules
+   be and why, plus the product smoke or its local fallback; (3) the carrying lists: rules
   dropped as covered, rules dropped as conflicting, files removed by earlier decisions,
   repository skills sharing a machine skill's name, and nested `AGENTS.md` files; (4) the
   rulesets and branch protection the owner script will replace; (5) open PRs, for
   information; (6) any precondition step still open for habit; (7) the Actions secrets with
   proposed purposes and issuing services; (8) the labels to create; (9) on a private
   repository, that GitHub detects and blocks no credential there and that Actions minutes are
-  limited, for habit's acknowledgment. Files to keep or remove join item 3.
+   limited, for habit's acknowledgment. Files to keep or remove join item 3.
 - **Upgrade** holds only: every change note after the record's version, combined, and what
   they mean here; confirmed values the new version newly needs; repository-owned content that
   conflicts with the new fixed rules; any ruleset or required-check change, applied after
@@ -118,6 +131,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 
 - habit's invocation, the findings, the proposals and habit's answers, each verbatim;
 - one fenced block with the info string `govern-facts`, holding JSON with exactly these keys:
+  Each rule's `text` quotes the original rule verbatim, including inline backticks;
+  `class` holds its classification, and rewritten carried text belongs outside this block.
 
   ```text
   rules: [{"text", "file", "class"}]        sensitive_paths: [{"pattern", "floor"}]
@@ -134,6 +149,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 1. Create only the labels missing from GitHub, from the version manifest's `labels`, with
    `gh label create <name> --color <color> --description <description>`. Every run that
    reaches Writing does this, Upgrade included, even when its confirmation names no labels.
+   Preserve existing same-name, same-purpose labels with different descriptions. Their
+   manifest descriptions are creation defaults. Escalate a purpose conflict before writing.
 2. Make your own worktree on a new branch from the latest `origin` default branch.
 3. Render: `<entry> render --dest <worktree> --repository <owner/name> --default-branch
    <branch> --confirmed <file>`, the file holding JSON with `sensitive_paths` and
@@ -146,7 +163,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    Remove a target first only where a version path holds another file, never a mixed file
    with governance markers: render replaces fixed files, and writes a removed mixed file whole.
 4. Write the repository-owned content: `AGENTS.md`'s "This repository" section, with the
-   carried rules and any repository-specific review expectation; the Claude Code notes in
+   authoritative runbook references and any inline carried rules and repository-specific
+   review expectation; the Claude Code notes in
    `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands it ran, each marked as working
    or failing with the cause, the CI and the Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
 5. Make the removals habit's answer leaves standing. Move the repository's own skills to
@@ -161,8 +179,9 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 
 A run with no issue and no PR starts at step 2 and reports only to habit.
 
-1. Wait on the PR as the role file says. Confirm the default-branch CI run is green, or note
-   that the repository has no CI.
+1. Wait on the PR as the role file says. Complete its product smoke on the exact merged
+   commit: the actual default-branch product run, or the ticket's predetermined local smoke.
+   Failure or unavailability leaves delivery incomplete and is escalated to habit.
 2. Run `<entry> handover --mode-facts <saved mode report>`, adding
    `--required-checks-changed` when habit's answer changed them. When `owner_command` is true,
    give habit `<entry> owner-command --repository <owner/name>`'s command, with each of the
@@ -176,4 +195,4 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
    habit's owner-script report. When the `private` item fails, the issue records
    `rules_in_effect.issue_line` and habit hears its `habit_lines` verbatim. Its `command`, when
    there is one, is a second hand-over of the owner-script command, since the first run left a
-   Gate or Merge rule out of effect. The run then ends.
+   Gate or Merge rule out of effect.

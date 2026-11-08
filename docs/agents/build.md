@@ -77,6 +77,14 @@ run's `OPENCODE_CONFIG_CONTENT` in OpenCode, never `--auto`. A failed resume rec
 fallback and stops. `tests/scenarios/headless_probe.py` holds the resume and interface-entry
 probes, and the runner reuses its clean environment. CI runs no model.
 
+For version 2, the runner applies the additive scenario data in
+`tests/fixtures/generator/scenarios-v2.json` to the unchanged original fixtures. It uses
+the actual candidate store and an isolated installed home containing this repository's
+real skill copies. Initialize starts without governance, Upgrade starts at version 1,
+and Repair damages version 2's real review policy. The recorded answer confirms product
+smoke and policy preservation; the judge checks the rendered version and the unchanged
+confirmed-record format. No additional signing configuration is used.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, with no path filter,
@@ -548,7 +556,7 @@ item failed or missing, 2 stopped before any write).
      list) for both sandboxes. `live.py seed --sandbox <s>` then accepts the invitation and
      seeds the empty default branch from `tests/fixtures/repositories/sandbox/`, whose
      `fixture.json` holds the sandboxes' fixed confirmed values.
-  2. `live.py prepare --pr <n> --sandbox <s> --probe <name>...`, at this checkout's pushed
+   2. `live.py prepare --pr <n> --sandbox <s> --probe <name>...`, at this checkout's pushed
      PR head, opens the sandbox PR, with a record under `live-checks/` so one exists even
      when the render is unchanged, and prints habit's commands: the pinned merge command,
      the owner-script command, then each probe's commands, each saving its output in the
@@ -556,6 +564,26 @@ item failed or missing, 2 stopped before any write).
   3. After habit's steps, `live.py probe --state <dir>/prepared.json --probe <name>... --post`
      posts the result comment, naming the commit. The owner probes need one run without
      `--post` between habit's two owner-script runs (`probes/owner.py`).
+
+### Version 2 owner recovery
+
+`prepare` selects version 2. Before either existing sandbox is written, ticket #122 requires
+habit's exclusive-window confirmation. Preserve historical probes and resources; this is
+not permission to reset either sandbox. The existing gate and confirmed-record format stay
+unchanged. Keep local evidence out of Git.
+
+Run `owner-report`, `owner-state`, `owner-rerun` and `owner-recovery` in both sandboxes:
+
+| Probe | Setup and evidence |
+| --- | --- |
+| `owner-recovery` | After initial owner application, habit captures the disabled-approval baseline, enables approval in sandbox settings without changing the default workflow permission, captures that state, runs the printed owner command, reads back both fields and repeats the owner command. The probe requires preserved `read`/`write`, disabled approval after repair and a zero-write repeat. Agents run none of these owner commands. |
+
+Run setup probes without `--post` first, then the printed habit-only commands, then post
+only when every assertion passes. A missing input is an incomplete check, never a skip.
+
+Offline probe tests exercise the evidence judge, not GitHub's implementation. Record the
+model head, sandbox PR, baseline, commands and full assertions with results. The live check
+proves the retained owner repair, not reproduction of an optional-field API failure.
 
 ## The gate's live check
 

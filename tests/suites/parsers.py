@@ -38,15 +38,17 @@ def machine_record(data):
 GATE = os.path.join(support.REAL_STORE, "1", "templates", "dot-github", "governance", "gate.py")
 
 
-def load_gate():
+def load_gate(version=1):
     """The gate script's template as a module."""
-    spec = importlib.util.spec_from_file_location("governed_gate", GATE)
+    path = os.path.join(support.REAL_STORE, str(version), "templates", "dot-github", "governance", "gate.py")
+    spec = importlib.util.spec_from_file_location("governed_gate_v%d" % version, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
 gate = load_gate()
+gate_v2 = load_gate(2)
 
 
 def governed_record(data):
@@ -56,10 +58,18 @@ def governed_record(data):
         return DOESNT_PARSE
 
 
+def governed_v2_record(data):
+    try:
+        return gate_v2.parse_record(data)
+    except gate_v2.RecordError:
+        return DOESNT_PARSE
+
+
 PARSERS = (
     # The generator's library: the drift check, the governed-repository list and the
     # scenario runner use it.
     Parser("machine", machine_record, prbody.parse),
     # The gate script: the gate, Merge watch's script and the owner script use it.
     Parser("governed", governed_record, gate.parse_body),
+    Parser("governed-v2", governed_v2_record, gate_v2.parse_body),
 )

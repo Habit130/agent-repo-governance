@@ -1,0 +1,9 @@
+{
+  "description": "Additive reduced-scope v2 scenarios using the actual candidate store and unchanged original fixtures.",
+  "answer": "确认以实际合并提交运行仓库的产品测试作为 smoke，不执行 Release dispatch。保留原有 confirmed 值、仓库权威规则及强制禁止规则；同名同用途的已有标签描述保持不变。",
+  "upgrade": {"governed_at": 1},
+  "repair-files": {
+    "governed_at": 2,
+    "edits": [{"path": "docs/agents/review.md", "replace": ["Kinds don't substitute for each other.", "Kinds substitute for each other."]}]
+  }
+}

@@ -213,7 +213,7 @@ def recording(case, head, path):
     if "actions/permissions/workflow" in failing:
         calls.append(http_error(api("/actions/permissions/workflow"), failing["actions/permissions/workflow"], "Server Error"))
     else:
-        calls.append(ok(api("/actions/permissions/workflow"), state.workflow))
+        calls.append(ok(api("/actions/permissions/workflow"), case.get("github", {}).get("workflow_response", state.workflow)))
     if state.rulesets_forbidden:
         message = "Upgrade to GitHub Pro or make this repository public to enable this feature."
         calls.append(http_error(api("/rulesets?includes_parents=false&per_page=100"), 403, message))
@@ -320,18 +320,19 @@ def load_case(name):
 
 
 def prepare(root, case):
-    """A tally worktree with version 1 rendered for the case's record, committed; (worktree, head)."""
+    """A tally worktree with the case's version (default 1), committed; (worktree, head)."""
+    version = str(case.get("version", 1))
     fixture = materialized.tally_fixture()
     worktree = materialized.tally_worktree(root)
     confirmed = os.path.join(root, "confirmed.json")
     with open(confirmed, "w") as handle:
         json.dump({"sensitive_paths": fixture["confirmed"]["sensitive_paths"], "required_checks": case.get("required_checks", [])}, handle)
     code, facts = support.govern(
-        ["render", "--store", support.REAL_STORE, "--version", "1", "--allow-unreleased", "--dest", worktree,
+        ["render", "--store", support.REAL_STORE, "--version", version, "--allow-unreleased", "--dest", worktree,
          "--repository", REPOSITORY, "--default-branch", BRANCH, "--confirmed", confirmed]
     )
     if code != 0:
-        raise AssertionError("rendering version 1 failed: %s" % facts)
+        raise AssertionError("rendering version %s failed: %s" % (version, facts))
     support.git(worktree, "add", "-A")
     support.git(worktree, "commit", "-q", "-m", "Initialize governance")
     head = support.git(worktree, "rev-parse", "HEAD").strip()

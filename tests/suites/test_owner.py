@@ -109,6 +109,104 @@ class Report(OwnerCase):
             self.assertIn("未写入任何内容", result["out"], name)
 
 
+class VersionTwoPermissions(OwnerCase):
+    """#122: preserve the existing default while disabling Actions approval, at Seam D."""
+
+    def test_disabling_approval_preserves_read_default(self):
+        case = ow.load_case("rerun-at-target")
+        case["version"] = 2
+        case["github"] = {"workflow": {
+            "default_workflow_permissions": "read", "can_approve_pull_request_reviews": True,
+        }}
+        case["writes"] = [["PUT", "actions/permissions/workflow", {
+            "default_workflow_permissions": "read", "can_approve_pull_request_reviews": False,
+        }]]
+        result = self.run_case(case)
+        self.assert_safe(result)
+        self.assertEqual(result["code"], 0, result["out"])
+        self.assertEqual(ow.writes(result["log"]), [("PUT", "actions/permissions/workflow")])
+
+    def test_an_invalid_permission_read_fails_without_writing(self):
+        case = ow.load_case("rerun-at-target")
+        case["version"] = 2
+        case["github"] = {"workflow_response": {
+            "default_workflow_permissions": "admin", "can_approve_pull_request_reviews": False,
+        }}
+        result = self.run_case(case)
+        self.assert_safe(result)
+        self.assertEqual(result["code"], 1, result["out"])
+        self.assertEqual(ow.writes(result["log"]), [])
+        self.assertIn(("未通过", "Actions 不能创建或批准 PR"), ow.report_lines(result["out"]))
+
+    def test_both_defaults_disabled_approval_and_invalid_responses(self):
+        with open(os.path.join(support.FIXTURES, "owner", "v2-workflow-permissions.json")) as handle:
+            fixture = json.load(handle)
+        for valid, states in ((True, fixture["valid"]), (False, fixture["invalid"])):
+            for state in states:
+                with self.subTest(valid=valid, state=state):
+                    case = ow.load_case("rerun-at-target")
+                    case["version"] = 2
+                    response = dict(state, unrelated_setting="preserved") if valid else state
+                    case["github"] = {"workflow_response": response}
+                    if valid and state["can_approve_pull_request_reviews"]:
+                        case["writes"] = [["PUT", "actions/permissions/workflow", {
+                            "default_workflow_permissions": state["default_workflow_permissions"],
+                            "can_approve_pull_request_reviews": False,
+                        }]]
+                    result = self.run_case(case)
+                    self.assert_safe(result)
+                    self.assertEqual(result["code"], 0 if valid else 1, result["out"])
+                    self.assertEqual(ow.writes(result["log"]), [(w[0], w[1]) for w in case["writes"]])
+
+    def test_failed_write_can_be_retried_and_its_result_needs_no_further_write(self):
+        case = ow.load_case("rerun-at-target")
+        case["version"] = 2
+        case["github"] = {"workflow": {
+            "default_workflow_permissions": "write", "can_approve_pull_request_reviews": True,
+        }}
+        case["writes"] = [["PUT", "actions/permissions/workflow", {
+            "default_workflow_permissions": "write", "can_approve_pull_request_reviews": False,
+        }]]
+        case["answers"] = {"PUT actions/permissions/workflow": {"status": 503, "message": "Unavailable"}}
+        failed = self.run_case(case)
+        self.assert_safe(failed)
+        self.assertEqual(failed["code"], 1, failed["out"])
+        self.assertNotIn(("已设置", "Actions 不能创建或批准 PR"), ow.report_lines(failed["out"]))
+        del case["answers"]
+        recovered = self.run_case(case)
+        self.assert_safe(recovered)
+        self.assertEqual(recovered["code"], 0, recovered["out"])
+        case["github"]["workflow"]["can_approve_pull_request_reviews"] = False
+        case["writes"] = []
+        rerun = self.run_case(case)
+        self.assert_safe(rerun)
+        self.assertEqual(rerun["code"], 0, rerun["out"])
+        self.assertEqual(ow.writes(rerun["log"]), [])
+
+    def test_unreadable_permissions_do_not_write_a_guessed_value(self):
+        case = ow.load_case("rerun-at-target")
+        case["version"] = 2
+        case["github"] = {"failing_reads": {"actions/permissions/workflow": 503}}
+        result = self.run_case(case)
+        self.assert_safe(result)
+        self.assertNotEqual(result["code"], 0, result["out"])
+        self.assertEqual(ow.writes(result["log"]), [])
+
+
+class VersionTwoApplication(OwnerCase):
+    def test_checkout_only_allowlist_and_existing_record_need_no_new_setup(self):
+        case = ow.load_case("rerun-at-target")
+        case.update(version=2)
+        case["github"] = {
+            "actions": {"allowed_actions": "selected"},
+            "selected_actions": {"github_owned_allowed": False, "patterns_allowed": ["actions/checkout@*"]},
+        }
+        result = self.run_case(case)
+        self.assert_safe(result)
+        self.assertEqual(result["code"], 0, result["out"])
+        self.assertEqual(ow.writes(result["log"]), [])
+
+
 class Program(unittest.TestCase):
     def test_the_entry_is_bash_3_2_with_the_notice_on_line_two(self):
         text = support.read_text(TEMPLATE)

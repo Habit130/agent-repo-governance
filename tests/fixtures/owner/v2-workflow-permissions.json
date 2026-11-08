@@ -1,0 +1,21 @@
+{
+  "description": "#122 compatibility contract, not a reproduction of an optional-field API failure. New-version PUTs include the unchanged default and disabled approval; unrelated response fields are not sent back.",
+  "valid": [
+    {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": true},
+    {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": true},
+    {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false},
+    {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": false}
+  ],
+  "invalid": [
+    null,
+    [],
+    "unreadable",
+    {},
+    {"can_approve_pull_request_reviews": true},
+    {"default_workflow_permissions": "read"},
+    {"default_workflow_permissions": "admin", "can_approve_pull_request_reviews": false},
+    {"default_workflow_permissions": null, "can_approve_pull_request_reviews": true},
+    {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": "false"},
+    {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": 0}
+  ]
+}
