@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 import support
 
@@ -47,7 +48,9 @@ class VersionTwoSetup(support.TempDirCase):
             with self.subTest(scenario=name):
                 scratch = Path(self.path(name))
                 scratch.mkdir()
-                built = runner.build(scratch, runner.fixture(name), "claude")
+                # Hosted macOS uses Bash; the fixture home is provisioned for zsh.
+                with patch.dict(os.environ, {"SHELL": "/bin/bash"}):
+                    built = runner.build(scratch, runner.fixture(name), "claude")
                 self.assertEqual(built["store"], support.REAL_STORE)
                 env = dict(built["env"], CLAUDECODE="1")
                 for command in ("preconditions", "mode"):

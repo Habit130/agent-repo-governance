@@ -322,6 +322,8 @@ def build(scratch, spec, harness):
     with open(str(recording), "w") as handle:
         json.dump(served, handle)
     env = probe.clean_environment(scratch)
+    # The isolated machine home has a zsh profile, regardless of the host's shell.
+    env["SHELL"] = "/bin/zsh"
     env.update({"STANDIN_GH_RECORDING": str(recording), "GOVERN_SCENARIO_STORE": store, "GOVERN_SCENARIO_HOME": home,
                 "GOVERN_SCENARIO_REPOSITORY": repository, "MACHINE_CODEX": os.path.join(home, "no-codex-here"),
                 "PYTHONDONTWRITEBYTECODE": "1"})
