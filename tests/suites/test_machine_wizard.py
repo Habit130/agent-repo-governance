@@ -565,7 +565,7 @@ class GeneratedCredentialRoute(WizardCase):
     def setUp(self):
         super(GeneratedCredentialRoute, self).setUp()
         self.actions = self.path("helper-actions")
-        for name, account in (("gh", AGENT), ("earlier", MAINTAINER), ("candidate", OTHER)):
+        for name, account in (("gh", "route-agent"), ("earlier", "route-earlier"), ("candidate", "route-candidate")):
             support.write_tree(self.path("helpers"), {name: {
                 "content": (
                     "#!/bin/sh\ncat >/dev/null\nprintf '%s %%s\\n' \"$1\" >> '%s'\n"
@@ -588,6 +588,12 @@ class GeneratedCredentialRoute(WizardCase):
                           if not key.startswith("GIT_") and key not in ("SSH_ASKPASS", "GCM_INTERACTIVE")}
         self.route_env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.path.join(self.home, ".gitconfig"),
                               GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="/usr/bin/false")
+        # Pin a disposable empty repository so neither subprocess cwd can discover
+        # repository-local configuration above the scratch directory or HOME.
+        repository = self.path("credential-context.git")
+        self.route_env["GIT_DIR"] = repository
+        subprocess.run([REAL_GIT, "init", "--quiet", "--bare", repository],
+                       cwd=self.home, env=self.route_env, check=True, timeout=10)
         self.work = self.path("outside-repository")
         os.makedirs(self.work)
         self.step = wizard_module.Wizard(Home(self.home, self.route_env))
@@ -607,21 +613,24 @@ class GeneratedCredentialRoute(WizardCase):
             os.remove(self.actions)
         payload = "protocol=https\nhost=github.com\n"
         if action == "approve":
-            payload += "username=Habit098\npassword=synthetic-marker\n"
+            payload += "username=route-agent\npassword=synthetic-marker\n"
         result = subprocess.run([REAL_GIT, "credential", action], input=payload + "\n", cwd=self.work,
                                 env=self.route_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 universal_newlines=True, timeout=10)
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.returncode, 0, "synthetic Git credential action failed")
         calls = support.read_text(self.actions).splitlines() if os.path.exists(self.actions) else []
         return result.stdout, calls
 
     def assert_certified_route(self, status):
         self.assertIn(status, (wizard_module.READY, wizard_module.DONE))
         output, calls = self.git_action("fill")
-        self.assertIn("username=Habit098\n", output)
-        self.assertIn("password=synthetic-marker\n", output)
+        fields = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+        self.assertTrue(fields.get("username") == "route-agent" and fields.get("password") == "synthetic-marker",
+                        "fill did not return the expected synthetic identity")
         self.assertEqual(calls, ["gh get"])
-        self.assertEqual(self.git_action("approve"), ("", ["gh store"]))
+        output, calls = self.git_action("approve")
+        self.assertFalse(bool(output), "approve unexpectedly produced output")
+        self.assertEqual(calls, ["gh store"], "approve helper fan-out is not gh-only")
 
     def test_oracle_rejects_an_unsafe_reset_certification(self):
         url = "https://someone@github.com"
@@ -631,8 +640,41 @@ class GeneratedCredentialRoute(WizardCase):
                                side_effect=lambda key: True if key == "credential.%s.helper" % url else original(key)):
             status, _ = self.step.git_credential()
         self.assertEqual(status, wizard_module.READY)
-        with self.assertRaises(AssertionError):
+        self.assertEqual(self.git_action("fill")[1], ["earlier get"])
+        with self.assertRaisesRegex(AssertionError, "expected synthetic identity"):
             self.assert_certified_route(status)
+
+    def test_route_ignores_parent_repository_configuration(self):
+        # Even TMPDIR inside a checkout must not let the oracle or the step discover
+        # a parent repository's helper. This parent and its helper are synthetic too.
+        init_env = {key: value for key, value in self.route_env.items() if key != "GIT_DIR"}
+        subprocess.run([REAL_GIT, "init", "--quiet", "--bare", self.path(".git")],
+                       env=init_env, cwd=self.work, check=True, timeout=10)
+        subprocess.run([REAL_GIT, "config", "--file", self.path(".git", "config"),
+                        "--add", "credential.helper", self.helper("candidate")],
+                       env=init_env, cwd=self.work, check=True, timeout=10)
+        self.configure(credential_section(self.gh_helper))
+        self.assertEqual(self.git_action("approve"), ("", ["gh store"]))
+        make_scratch = wizard_module.tempfile.mkdtemp
+        with mock.patch.object(wizard_module.tempfile, "mkdtemp",
+                               side_effect=lambda prefix: make_scratch(prefix=prefix, dir=self.tmp)):
+            status, _ = self.step.git_credential()
+        self.assertEqual(status, wizard_module.READY)
+        self.assert_certified_route(status)
+
+    def test_oracle_failure_does_not_echo_fill_fields(self):
+        for output in ("username=unexpected-marker\npassword=synthetic-marker\n",
+                       "username=route-agent\npassword=unexpected-marker\n"):
+            with self.subTest(field="username" if output.startswith("username=unexpected") else "password"):
+                with mock.patch.object(self, "git_action", return_value=(output, ["gh get"])):
+                    with self.assertRaises(AssertionError) as caught:
+                        self.assert_certified_route(wizard_module.READY)
+                self.assertNotIn("unexpected-marker", str(caught.exception))
+
+    def test_reset_negative_control_does_not_accept_a_failed_git_action(self):
+        with mock.patch.object(self, "git_action", side_effect=AssertionError("synthetic action failed")):
+            with self.assertRaisesRegex(AssertionError, "synthetic action failed"):
+                self.test_oracle_rejects_an_unsafe_reset_certification()
 
     def test_generated_routes_agree_with_real_git(self):
         started = time.monotonic()
@@ -703,7 +745,8 @@ class GeneratedCredentialRoute(WizardCase):
             status, _ = self.step.git_credential()
         self.assertEqual(status, wizard_module.READY)
         self.assertEqual(self.git_action("fill")[1], ["gh get"])
-        with self.assertRaises(AssertionError):
+        self.assertEqual(self.git_action("approve")[1], ["gh store", "candidate store"])
+        with self.assertRaisesRegex(AssertionError, "approve helper fan-out is not gh-only"):
             self.assert_certified_route(status)
 
 
