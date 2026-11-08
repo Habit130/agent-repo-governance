@@ -63,6 +63,11 @@ Later deliveries add theirs there, under the job #44 §11 names.
 
 ## Scenarios
 
+Before invoking a model scenario, obtain habit's approval. The one-delivery #122 exemption
+in `AGENTS.md`, Verification by change, permits omitting its remaining scenarios and reruns;
+record the unverified final-head behavior rather than reporting a pass. Offline runner tests
+remain required and use no model.
+
 `python3 tests/scenarios/runner.py <scenario> --harness claude|opencode [--runs N] [--out DIR]`
 runs a scenario in a logged-in harness on habit's Mac, one run at a time. Its docstring gives
 the fixture shape. The scenarios are `initialize-planted`, `upgrade` and `repair-files` under
