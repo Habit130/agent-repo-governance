@@ -17,11 +17,15 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import unittest
+from unittest import mock
 
 import machine_support as ms
 import support
 from standins import environment
+from machinelib import wizard as wizard_module
+from machinelib.home import Home
 
 AGENT, MAINTAINER, OTHER = "Habit098", "Habit130", "SomeoneElse"
 IDS = {AGENT: ms.AGENT_ID, MAINTAINER: 2468, OTHER: 1357}
@@ -540,6 +544,210 @@ class CredentialRoute(WizardCase):
         code, out, _ = self.wizard()
         self.assertEqual(code, 1, out)
         self.assertEqual(ms.lines(out)[-1][:2], ("停止", "git credential"))
+
+
+def credential_url_corpus():
+    """Exhaustive small product, not random sampling: each spelling has all four layouts."""
+    return [scheme + decorate.format(host=host)
+            for scheme in ("https://", "http://", "")
+            for host in ("github.com", "GITHUB.COM", "github.com.", "", "example.invalid",
+                         "a-b.example.invalid", "*.com", "%67ithub.com")
+            for decorate in ("{host}", "{host}/", "Someone@{host}", "{host}:8443", "{host}/repo")]
+
+
+class GeneratedCredentialRoute(WizardCase):
+    """#105: bounded real-Git differential checks at the credential step and matcher seams.
+
+    No login runs here. Helpers only emit synthetic markers and append action names to a
+    test-local log; approve exercises fan-out even when fill stops at the first helper.
+    """
+
+    def setUp(self):
+        super(GeneratedCredentialRoute, self).setUp()
+        self.actions = self.path("helper-actions")
+        for name, account in (("gh", "route-agent"), ("earlier", "route-earlier"), ("candidate", "route-candidate")):
+            support.write_tree(self.path("helpers"), {name: {
+                "content": (
+                    "#!/bin/sh\ncat >/dev/null\nprintf '%s %%s\\n' \"$1\" >> '%s'\n"
+                    "if [ \"$1\" = get ]; then printf 'username=%s\\npassword=synthetic-marker\\n'; fi\n"
+                    % (name, self.actions, account)),
+                "mode": "100755",
+            }})
+        self.gh_helper = "!%s auth git-credential" % self.path("helpers", "gh")
+        # gh's synthetic script receives the action after its two fixed arguments.
+        gh = self.path("helpers", "gh")
+        with open(gh) as handle:
+            text = handle.read()
+        with open(gh, "w") as handle:
+            handle.write(text.replace('cat >/dev/null', 'shift 2\ncat >/dev/null'))
+        self.recording = recording(self.path("gh-generated.json"), helper=self.gh_helper)
+        _, self.route_env = self.env()
+        # Start from a minimal environment: inherited Git config injections, askpass,
+        # tracing and executable-path overrides must not escape the synthetic home.
+        self.route_env = {key: value for key, value in self.route_env.items()
+                          if not key.startswith("GIT_") and key not in ("SSH_ASKPASS", "GCM_INTERACTIVE")}
+        self.route_env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.path.join(self.home, ".gitconfig"),
+                              GIT_TERMINAL_PROMPT="0", GIT_ASKPASS="/usr/bin/false")
+        # Pin a disposable empty repository so neither subprocess cwd can discover
+        # repository-local configuration above the scratch directory or HOME.
+        repository = self.path("credential-context.git")
+        self.route_env["GIT_DIR"] = repository
+        subprocess.run([REAL_GIT, "init", "--quiet", "--bare", repository],
+                       cwd=self.home, env=self.route_env, check=True, timeout=10)
+        self.work = self.path("outside-repository")
+        os.makedirs(self.work)
+        self.step = wizard_module.Wizard(Home(self.home, self.route_env))
+
+    def section(self, url, helpers):
+        heading = "[credential]" if url is None else '[credential "%s"]' % url
+        return heading + "\n" + "".join("\thelper = %s\n" % helper for helper in helpers)
+
+    def helper(self, name):
+        return "!" + self.path("helpers", name)
+
+    def configure(self, text):
+        support.write_tree(self.home, {".gitconfig": text})
+
+    def git_action(self, action):
+        if os.path.exists(self.actions):
+            os.remove(self.actions)
+        payload = "protocol=https\nhost=github.com\n"
+        if action == "approve":
+            payload += "username=route-agent\npassword=synthetic-marker\n"
+        result = subprocess.run([REAL_GIT, "credential", action], input=payload + "\n", cwd=self.work,
+                                env=self.route_env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                universal_newlines=True, timeout=10)
+        self.assertEqual(result.returncode, 0, "synthetic Git credential action failed")
+        calls = support.read_text(self.actions).splitlines() if os.path.exists(self.actions) else []
+        return result.stdout, calls
+
+    def assert_certified_route(self, status):
+        self.assertIn(status, (wizard_module.READY, wizard_module.DONE))
+        output, calls = self.git_action("fill")
+        fields = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+        self.assertTrue(fields.get("username") == "route-agent" and fields.get("password") == "synthetic-marker",
+                        "fill did not return the expected synthetic identity")
+        self.assertEqual(calls, ["gh get"])
+        output, calls = self.git_action("approve")
+        self.assertFalse(bool(output), "approve unexpectedly produced output")
+        self.assertEqual(calls, ["gh store"], "approve helper fan-out is not gh-only")
+
+    def test_oracle_rejects_an_unsafe_reset_certification(self):
+        url = "https://someone@github.com"
+        self.configure(self.section(None, [self.helper("earlier")]) + self.section(url, ["", self.gh_helper]))
+        original = wizard_module.helper_matches
+        with mock.patch.object(wizard_module, "helper_matches",
+                               side_effect=lambda key: True if key == "credential.%s.helper" % url else original(key)):
+            status, _ = self.step.git_credential()
+        self.assertEqual(status, wizard_module.READY)
+        self.assertEqual(self.git_action("fill")[1], ["earlier get"])
+        with self.assertRaisesRegex(AssertionError, "expected synthetic identity"):
+            self.assert_certified_route(status)
+
+    def test_route_ignores_parent_repository_configuration(self):
+        # Even TMPDIR inside a checkout must not let the oracle or the step discover
+        # a parent repository's helper. This parent and its helper are synthetic too.
+        init_env = {key: value for key, value in self.route_env.items() if key != "GIT_DIR"}
+        subprocess.run([REAL_GIT, "init", "--quiet", "--bare", self.path(".git")],
+                       env=init_env, cwd=self.work, check=True, timeout=10)
+        subprocess.run([REAL_GIT, "config", "--file", self.path(".git", "config"),
+                        "--add", "credential.helper", self.helper("candidate")],
+                       env=init_env, cwd=self.work, check=True, timeout=10)
+        self.configure(credential_section(self.gh_helper))
+        self.assertEqual(self.git_action("approve"), ("", ["gh store"]))
+        make_scratch = wizard_module.tempfile.mkdtemp
+        with mock.patch.object(wizard_module.tempfile, "mkdtemp",
+                               side_effect=lambda prefix: make_scratch(prefix=prefix, dir=self.tmp)):
+            status, _ = self.step.git_credential()
+        self.assertEqual(status, wizard_module.READY)
+        self.assert_certified_route(status)
+
+    def test_oracle_failure_does_not_echo_fill_fields(self):
+        for output in ("username=unexpected-marker\npassword=synthetic-marker\n",
+                       "username=route-agent\npassword=unexpected-marker\n"):
+            with self.subTest(field="username" if output.startswith("username=unexpected") else "password"):
+                with mock.patch.object(self, "git_action", return_value=(output, ["gh get"])):
+                    with self.assertRaises(AssertionError) as caught:
+                        self.assert_certified_route(wizard_module.READY)
+                self.assertNotIn("unexpected-marker", str(caught.exception))
+
+    def test_reset_negative_control_does_not_accept_a_failed_git_action(self):
+        with mock.patch.object(self, "git_action", side_effect=AssertionError("synthetic action failed")):
+            with self.assertRaisesRegex(AssertionError, "synthetic action failed"):
+                self.test_oracle_rejects_an_unsafe_reset_certification()
+
+    def test_generated_routes_agree_with_real_git(self):
+        started = time.monotonic()
+        urls = credential_url_corpus()
+        self.assertEqual(len(urls), 120)
+        version = subprocess.check_output([REAL_GIT, "--version"], env=self.route_env,
+                                          cwd=self.work, universal_newlines=True).strip()
+        print("\nCredential corpus: %s; exhaustive 3 schemes x 8 hosts x 5 decorations; "
+              "%d URLs x 2 orders x 2 resets = 480 routes; subprocess timeout=10s" % (version, len(urls)))
+        statuses = set()
+        certified = 0
+        nonmatches = 0
+        for url in urls:
+            key = "credential.%s.helper" % url
+            if wizard_module.helper_matches(key) is False:
+                nonmatches += 1
+                # No reset can mask this entry; approve visits all applicable helpers.
+                self.configure(credential_section(self.gh_helper) + self.section(url, [self.helper("candidate")]))
+                self.assertEqual(self.git_action("approve"), ("", ["gh store"]), key)
+            for order in ("before", "after"):
+                for reset in (False, True):
+                    with self.subTest(url=url, order=order, reset=reset):
+                        # Before gh, a reset alone can conceal the earlier helper if the
+                        # model overmatches it. After gh, a helper exposes false nonmatches
+                        # through approve even when fill short-circuits at gh.
+                        helpers = ([""] if reset else [])
+                        if order == "after" or not reset:
+                            helpers.append(self.helper("candidate"))
+                        block = self.section(url, helpers)
+                        earlier = self.section(None, [self.helper("earlier")])
+                        if order == "before":
+                            config = earlier + block + self.section("https://github.com", [self.gh_helper])
+                            tail = ""
+                        else:
+                            config = earlier + credential_section(self.gh_helper) + block
+                            tail = block
+                        self.configure(config)
+                        self.recording = recording(self.path("gh-generated.json"), helper=self.gh_helper)
+                        with open(self.recording) as handle:
+                            entries = json.load(handle)
+                        entries["calls"][-1]["effects"][0]["append"] += tail
+                        with open(self.recording, "w") as handle:
+                            json.dump(entries, handle)
+                        try:
+                            status, _ = self.step.git_credential()
+                        except wizard_module.Stop:
+                            statuses.add(wizard_module.STOP)
+                            continue  # Uncertainty is safe, not evidence that Git must reject it.
+                        statuses.add(status)
+                        certified += 1
+                        self.assert_certified_route(status)
+                        before = ms.snapshot(self.home)
+                        again, _ = self.step.git_credential()
+                        self.assertEqual(again, wizard_module.READY)
+                        self.assertEqual(ms.snapshot(self.home), before)
+                        self.assert_certified_route(again)
+        self.assertGreater(nonmatches, 0, "the certain-nonmatch branch was never exercised")
+        self.assertEqual(statuses, {wizard_module.READY, wizard_module.DONE, wizard_module.STOP})
+        print("Credential corpus: %d certified routes, %d certain nonmatches; %.2fs elapsed" %
+              (certified, nonmatches, time.monotonic() - started))
+
+    def test_oracle_rejects_a_false_nonmatch_hidden_by_fill_short_circuit(self):
+        url = "https://github.com."
+        self.configure(credential_section(self.gh_helper) + self.section(url, [self.helper("candidate")]))
+        original = wizard_module.helper_matches
+        with mock.patch.object(wizard_module, "helper_matches",
+                               side_effect=lambda key: False if key == "credential.%s.helper" % url else original(key)):
+            status, _ = self.step.git_credential()
+        self.assertEqual(status, wizard_module.READY)
+        self.assertEqual(self.git_action("fill")[1], ["gh get"])
+        self.assertEqual(self.git_action("approve")[1], ["gh store", "candidate store"])
+        with self.assertRaisesRegex(AssertionError, "approve helper fan-out is not gh-only"):
+            self.assert_certified_route(status)
 
 
 class Scopes(WizardCase):
