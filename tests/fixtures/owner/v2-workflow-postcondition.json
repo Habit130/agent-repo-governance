@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {"name": "read-confirmed", "default": "read", "after": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}, "exit": 0},
+    {"name": "write-confirmed", "default": "write", "after": {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": false}, "exit": 0},
+    {"name": "approval-still-enabled", "default": "read", "after": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": true}, "exit": 1},
+    {"name": "read-default-changed", "default": "read", "after": {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": false}, "exit": 1},
+    {"name": "write-default-changed", "default": "write", "after": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}, "exit": 1},
+    {"name": "approval-not-boolean", "default": "read", "after": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": 0}, "exit": 1},
+    {"name": "missing-permissions", "default": "read", "after": {}, "exit": 1},
+    {"name": "non-object", "default": "read", "after": null, "exit": 1},
+    {"name": "read-refused", "default": "read", "error": 503, "exit": 1}
+  ]
+}

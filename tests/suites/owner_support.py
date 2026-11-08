@@ -19,6 +19,7 @@ report lines it expects:
   - `classic_protection`: whether the default branch has classic branch protection;
   - `rulesets_forbidden`: GitHub refuses to list rulesets, as on a private repository without Pro;
   - `failing_reads`: maps a read, `actions/permissions/workflow`, to the HTTP status GitHub fails it with;
+  - `workflow_after`, `workflow_after_error`: override the permission read after a successful PUT;
   - `event_policy`: `none`, `target`, `unreadable`, or policies that differ from the target
     by the fields given, each with an `id`.
 - `writes`: every write in order, `[method, path under repos/<repository>/, body]`, where a
@@ -229,7 +230,17 @@ def recording(case, head, path):
         calls.append(http_error(api("/branches/%s/protection" % BRANCH), 404, "Branch not protected"))
     calls += event_policy_calls(state)
     for write in case.get("writes", []):
-        calls.append(write_call(state, case, write))
+        answer = write_call(state, case, write)
+        if write[:2] == ["PUT", "actions/permissions/workflow"] and answer["exit"] == 0:
+            marker = os.path.join(os.path.dirname(path), "workflow-written")
+            answer["effects"] = [{"path": marker, "write": "accepted"}]
+            github = case.get("github", {})
+            after = github.get("workflow_after", dict(state.workflow, **write[2]))
+            read = (http_error(api("/actions/permissions/workflow"), github["workflow_after_error"], "Server Error")
+                    if "workflow_after_error" in github else ok(api("/actions/permissions/workflow"), after))
+            read["when"] = [{"path": marker, "contains": "accepted"}]
+            calls.insert(0, read)
+        calls.append(answer)
     with open(path, "w") as handle:
         json.dump({"description": "Seam D's stand-in GitHub, written by owner_support.py.", "tool": "gh", "calls": calls}, handle)
     return path

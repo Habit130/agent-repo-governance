@@ -46,7 +46,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `compare` | Exact comparison naming each difference | linux |
 | `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; each fixed file's notice, the Markdown form an HTML comment on line 1 (`MARKDOWN_NOTICE`); the mixed files' markers, well formed at version 1, with their notice as the first line inside them (`MIXED_NOTICE`) and their skeleton text after the end marker left uncompared; `AGENTS.md`'s sections in order and its bytes within `AGENTS_BUDGET`; `.cursor/BUGBOT.md` equal to its notice, a blank line and `AGENTS.md`'s Code Review Rules section, heading included; every path pointer in a Markdown file version 1 writes naming a file version 1 writes, with what stays outside in `UNROUTED`; no root `CLAUDE.md`, `AGENTS.override.md` or `.codex/` written; the `build.md` skeleton written with no notice and left uncompared; the role files' skill lists against #41 §13 and the relied-on list; the PR template's comment lines, continuation lines included, none starting with `Risk:` or `Reverts:`, and its one `Risk:` line, once filled, read by both parsers; `triage-labels.md` against the manifest's labels; Merge watch's workflow and script with the notice, their mode and exact comparison; planted mismatches failing; later templates' seam-3 checks join it | linux |
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
-| `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
+| `parser-fixtures` | The machine parser and each stored version of the governed-side parser against every shared parser fixture, one test per registration and fixture; versioned registrations retain v1 coverage while checking v2 against the same expectations | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits in both shapes | linux |
@@ -449,9 +449,11 @@ allowed change, the Codex user-only key appended to a user-invoked skill whose
 
 ## Parsers
 
-One parser per side (#44 §5): the generator's library holds the machine side's, and the gate
-script, `generator/govern-repository/store/1/templates/dot-github/governance/gate.py`, holds
-the governed repository's. Both register in the `parser-fixtures` suite.
+One parser implementation per side (#44 §5): the generator's library holds the machine
+side's, and each stored version's gate script holds the governed repository's. The
+`parser-fixtures` suite registers the machine parser once and the governed parser once per
+stored version (currently v1 and v2). Both versioned copies run against the same shared
+expectations, retaining immutable v1 coverage while checking the candidate.
 
 - **The gate script's interface.** In a governed repository it is
   `.github/governance/gate.py`, and a script beside it, such as Merge watch's

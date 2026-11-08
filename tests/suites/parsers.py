@@ -1,6 +1,9 @@
-"""The parsers registered for the shared parser fixtures (#44 §5: one parser per side).
+"""The parsers registered for the shared parser fixtures (#44 §5: machine and governed sides).
 
-Each side's parser registers as one `Parser` in `PARSERS`: a name and two adapters.
+The machine parser registers once; the governed parser registers once per stored version,
+so immutable v1 and candidate v2 each run against every shared expectation. These are versioned
+copies of the same governed-side parser, not additional parser implementations. Each `Parser`
+in `PARSERS` has a name and two adapters.
 
 - `record(data)` takes a record file's bytes. It returns the record as
   `{"version": int, "agent_account": str, "sensitive_paths": [{"pattern": str, "floor": str}],

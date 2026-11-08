@@ -651,7 +651,17 @@ def actions_cannot_approve(report, repository):
     except GitHubError as error:
         report.line("未通过", subject, "GitHub 拒绝了写入：%s" % error.message)
         return
-    report.wrote("已设置", subject, "已关闭")
+    try:
+        after = gh_api(path)
+    except GitHubError:
+        report.wrote("未通过", subject, "GitHub 已接受写入，但无法读回确认权限；核查后重新运行")
+        return
+    if (not isinstance(after, dict)
+            or after.get("default_workflow_permissions") != current["default_workflow_permissions"]
+            or after.get("can_approve_pull_request_reviews") is not False):
+        report.wrote("未通过", subject, "GitHub 已接受写入，但读回未确认默认权限保持不变且审批关闭；核查后重新运行")
+        return
+    report.wrote("已设置", subject, "已读回确认：默认工作流权限保持不变，审批已关闭")
 
 
 # 4. Secret protection and the Actions event policy, public repositories only.
