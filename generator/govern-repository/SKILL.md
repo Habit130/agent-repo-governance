@@ -47,6 +47,18 @@ in English and no code, diffs or paths. It names its sender and target.
    can never read, which the owner script checks. They are never unverified, unread or drift,
    and never decide whether habit gets the owner-script command.
 4. Run `<entry> inspect`.
+5. **Product smoke, every PR-producing mode.** Before creating the ticket, identify actual
+   default-branch product verification for the exact merged commit. A product build/test
+   job triggered by a push to the default branch qualifies, including one in the same
+   workflow as PR CI; identify its merged-commit run separately from the PR run. A failing
+   qualifying run is failed smoke, not absent product verification. When verification is
+   absent, select an executable local smoke from the repository's authoritative runbook and
+   command inventory, with its prerequisites and success criterion. Preserve existing
+   command prohibitions. At Upgrade and Repair, select it by reading; do not run exploratory
+   build/test commands or change confirmed values or repository-owned content. Record the
+   selected verification in the ticket before it is frozen. Governance audits, pre-merge
+   PR runs and Release dispatch do not substitute. If no executable smoke can be determined,
+   stop before creating the ticket and ask habit to resolve that blocker.
 
 ## 2. Judgment
 
@@ -78,14 +90,6 @@ conflict habit confirms. At Repair, make none of them.
   secret-handling code, data migrations. Each gets a medium or high floor.
 - **Required checks.** Propose a job only when `inspect` reads it as `every_pr: true` and not
   uncertain, under its reported `name`. Name every other job and why it can't be required.
-- **Product smoke.** Identify actual default-branch product verification on the merged
-  commit. A product build/test job triggered by a push to the default branch qualifies,
-  including one in the same workflow as PR CI; identify its merged-commit run separately
-  from the PR run. A failing qualifying run is failed smoke, not absent product verification.
-  Only when that verification is absent, predetermine an executable local smoke on the
-  exact merged commit in the high-risk ticket. Governance audits, pre-merge PR runs and
-  Release dispatch do not substitute.
-  Preserve any existing command prohibition when selecting that smoke.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
   worktree of your own, so the checkout stays untouched. A manifest whose `extraction` is
   `unsupported` has its commands read from the file by you. Record each command you ran and
@@ -114,8 +118,9 @@ Send one plain message, never a question tool, then end the turn and wait for ha
 - **Upgrade** holds only: every change note after the record's version, combined, and what
   they mean here; confirmed values the new version newly needs; repository-owned content that
   conflicts with the new fixed rules; any ruleset or required-check change, applied after
-  merge; and anything unverified.
-- **Repair with drift** holds only the drift found, how it is restored, and anything unverified.
+  merge; the selected product smoke; and anything unverified.
+- **Repair with drift** holds only the drift found, how it is restored, the selected product
+  smoke, and anything unverified.
 
 Each list is closed. Not asked: the wording of fixed content, the build and test commands
 and their results, and the substitutions. Nothing outside a list's items becomes a question
@@ -143,6 +148,9 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 
 - acceptance criteria and verification commands: exact comparison and the repository's
   commands that worked. A command that failed is listed as failing, outside Verification.
+- after-merge product smoke: the qualifying default-branch job, or the predetermined local
+  command, prerequisites and success criterion from Facts, tied to the exact merged commit.
+  Record any known failure or unavailable prerequisite; selecting a smoke is not passing it.
 
 ## 5. Writing
 
