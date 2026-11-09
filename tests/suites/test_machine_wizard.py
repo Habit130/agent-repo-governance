@@ -604,6 +604,22 @@ class CredentialRoute(WizardCase):
         with open(origin) as handle:
             self.assertEqual(handle.read(), text)
 
+    def test_path_provenance_preserves_url_punctuation_outside_url_fields(self):
+        origin = self.path("team@work", "config?#local")
+        conditions = ('gitdir:~/team@work/repo?#/', 'onbranch:topic@work?#')
+        text = '[credential "https://GitLab.com"]\n\thelper = "%s"\n' % self.other
+        text += ''.join('[includeIf "%s"]\n\tpath = ~/unused.config\n' % c for c in conditions)
+        support.write_tree(os.path.dirname(origin), {os.path.basename(origin): text})
+        self.after_setup_git('[include]\n\tpath = "%s"\n' % origin)
+        code, out, _ = self.wizard()
+        self.assertEqual(code, 1, out)
+        self.assertIn(origin, out)
+        for condition in conditions:
+            self.assertIn(condition, out)
+        self.assertNotIn(self.other, out)
+        with open(origin) as handle:
+            self.assertEqual(handle.read(), text)
+
     def test_a_key_git_can_read_but_urlsplit_cant_still_counts(self):
         self.after_setup_git('[credential "https://["]\n\thelper = "%s"\n' % self.other)
         code, out, _ = self.wizard()

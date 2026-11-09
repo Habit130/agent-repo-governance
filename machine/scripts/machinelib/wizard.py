@@ -105,14 +105,15 @@ def shown(login):
     return login if isinstance(login, str) and LOGIN_FORM.match(login) else "一个无法识别的账户"
 
 
-def provenance(text):
-    """Quote metadata, never helper values; URL userinfo/query/fragment are not provenance."""
+def provenance(text, url=False):
+    """Quote metadata; only URL fields have userinfo/query/fragment to withhold."""
     text = secrets.redact(text)
     # Uncertain URLs can be malformed, so do not assume userinfo ends at whitespace
     # or a slash. Withhold the whole prefix rather than partially exposing a password.
-    if "@" in text:
-        text = "<已隐藏>@" + text.rsplit("@", 1)[1]
-    text = re.sub(r"[?#].*", "<已隐藏>", text, flags=re.DOTALL)
+    if url:
+        if "@" in text:
+            text = "<已隐藏>@" + text.rsplit("@", 1)[1]
+        text = re.sub(r"[?#].*", "<已隐藏>", text, flags=re.DOTALL)
     return json.dumps(text, ensure_ascii=False)
 
 
@@ -264,7 +265,9 @@ class Wizard(object):
         if not self.conditional_sources:
             return ""
         return ("；观察到 includeIf 条件及来源：" +
-                "；".join("%s，来源 %s" % (provenance(key), provenance(origin))
+                "；".join("%s，来源 %s" % (
+                             provenance(key, url=key.lower().startswith("includeif.hasconfig:remote.*.url:")),
+                             provenance(origin))
                          for key, origin in self.conditional_sources) +
                 "。以上只检查了仓库外配置，仓库内路由尚未验证。"
                 "请 habit 列出可能匹配的仓库并单独授权一次限定这些仓库的只读检查："
@@ -290,7 +293,7 @@ class Wizard(object):
         if not through_gh():
             raise Stop("运行 `gh auth setup-git` 之后，git 用于 github.com 的 credential helper 仍不只是 gh 的（或有无法确认的 URL 配置）。"
                        "待核实的配置键及来源（不显示 helper 内容）：" +
-                       "；".join("%s，来源 %s" % (provenance(key), provenance(origin))
+                       "；".join("%s，来源 %s" % (provenance(key, url=True), provenance(origin))
                                 for key, origin in self.helper_sources) +
                        "。请保留其他服务的正常 helper；先单独授权一次限于这些来源的只读检查，"
                        "确认每项服务范围及 Git 实际匹配方式。优先核实能否仅规范主机名大小写且保持匹配语义；"
