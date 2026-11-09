@@ -620,6 +620,28 @@ class CredentialRoute(WizardCase):
         with open(origin) as handle:
             self.assertEqual(handle.read(), text)
 
+    def test_url_tails_are_withheld_before_userinfo_in_both_diagnostics(self):
+        origin = self.path("url-tails.config")
+        self.after_setup_git('[include]\n\tpath = "%s"\n' % origin)
+        for field in ("credential", "remote-condition"):
+            for delimiter in ("?", "#"):
+                with self.subTest(field=field, delimiter=delimiter):
+                    marker = "synthetic-private-tail"
+                    url = "https://GitLab.com%signored@%s" % (delimiter, marker)
+                    text = '[credential "%s"]\n\thelper = "%s"\n' % (
+                        url if field == "credential" else "https://GitLab.com", self.other)
+                    if field == "remote-condition":
+                        text += '[includeIf "hasconfig:remote.*.url:%s"]\n\tpath = ~/unused.config\n' % url
+                    with open(origin, "w") as handle:
+                        handle.write(text)
+                    code, out, _ = self.wizard()
+                    self.assertEqual(code, 1)
+                    self.assertFalse(marker in out, "private URL tail leaked in diagnostic metadata")
+                    self.assertIn(origin, out)
+                    self.assertIn("<已隐藏>", out)
+                    with open(origin) as handle:
+                        self.assertEqual(handle.read(), text)
+
     def test_a_key_git_can_read_but_urlsplit_cant_still_counts(self):
         self.after_setup_git('[credential "https://["]\n\thelper = "%s"\n' % self.other)
         code, out, _ = self.wizard()

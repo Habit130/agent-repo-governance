@@ -357,7 +357,8 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   correction before changing anything; meaningful URL qualifiers must be retained.
   Metadata is quoted and known credential shapes redacted. URL fields (credential keys
   and remote-URL include conditions) additionally hide userinfo, including bare URL forms,
-  and withhold query/fragment tails; origins and non-URL conditions retain legal path
+  and withhold query/fragment tails before userinfo processing, so a later `@` cannot
+  erase the delimiter that marks sensitive tail data; origins and non-URL conditions retain legal path
   punctuation. `CredentialRoute`'s #106 regressions
   exercise the full wizard entry with synthetic included files, credential-bearing
   metadata and unchanged source-file assertions. The matcher and machine check remain

@@ -111,10 +111,15 @@ def provenance(text, url=False):
     # Uncertain URLs can be malformed, so do not assume userinfo ends at whitespace
     # or a slash. Withhold the whole prefix rather than partially exposing a password.
     if url:
+        # Drop tails first: an @ in a tail must not erase its delimiter before hiding it.
+        text = re.sub(r"[?#].*", "<已隐藏>", text, flags=re.DOTALL)
         if "@" in text:
             text = "<已隐藏>@" + text.rsplit("@", 1)[1]
-        text = re.sub(r"[?#].*", "<已隐藏>", text, flags=re.DOTALL)
     return json.dumps(text, ensure_ascii=False)
+
+
+def source_description(key, origin, url=False):
+    return "%s，来源 %s" % (provenance(key, url=url), provenance(origin))
 
 
 class Wizard(object):
@@ -265,9 +270,8 @@ class Wizard(object):
         if not self.conditional_sources:
             return ""
         return ("；观察到 includeIf 条件及来源：" +
-                "；".join("%s，来源 %s" % (
-                             provenance(key, url=key.lower().startswith("includeif.hasconfig:remote.*.url:")),
-                             provenance(origin))
+                "；".join(source_description(
+                             key, origin, url=key.lower().startswith("includeif.hasconfig:remote.*.url:"))
                          for key, origin in self.conditional_sources) +
                 "。以上只检查了仓库外配置，仓库内路由尚未验证。"
                 "请 habit 列出可能匹配的仓库并单独授权一次限定这些仓库的只读检查："
@@ -293,7 +297,7 @@ class Wizard(object):
         if not through_gh():
             raise Stop("运行 `gh auth setup-git` 之后，git 用于 github.com 的 credential helper 仍不只是 gh 的（或有无法确认的 URL 配置）。"
                        "待核实的配置键及来源（不显示 helper 内容）：" +
-                       "；".join("%s，来源 %s" % (provenance(key, url=True), provenance(origin))
+                       "；".join(source_description(key, origin, url=True)
                                 for key, origin in self.helper_sources) +
                        "。请保留其他服务的正常 helper；先单独授权一次限于这些来源的只读检查，"
                        "确认每项服务范围及 Git 实际匹配方式。优先核实能否仅规范主机名大小写且保持匹配语义；"
