@@ -1,0 +1,12 @@
+{
+  "cases": [
+    {"name": "read-converges", "default": "read", "reads": [{"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": true}}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}}], "exit": 0, "observations": 2},
+    {"name": "write-converges", "default": "write", "reads": [{"response": {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": true}}, {"response": {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": false}}], "exit": 0, "observations": 2},
+    {"name": "read-timeout-then-confirmed", "default": "read", "reads": [{"delay": 6, "response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}}], "exit": 0, "observations": 2},
+    {"name": "all-reads-time-out", "default": "read", "reads": [{"delay": 6, "response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}}], "exit": 1, "observations": 3},
+    {"name": "last-observation-confirms", "default": "read", "reads": [{"error": 503}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": true}}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}}], "exit": 0, "observations": 3},
+    {"name": "fourth-observation-is-too-late", "default": "read", "reads": [{"error": 503}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": true}}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": true}}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}}], "exit": 1, "observations": 3},
+    {"name": "changed-default-stops", "default": "read", "reads": [{"response": {"default_workflow_permissions": "write", "can_approve_pull_request_reviews": false}}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}}], "exit": 1, "observations": 1},
+    {"name": "malformed-object-stops", "default": "read", "reads": [{"response": {}}, {"response": {"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}}], "exit": 1, "observations": 1}
+  ]
+}

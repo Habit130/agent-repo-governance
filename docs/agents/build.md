@@ -46,7 +46,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `compare` | Exact comparison naming each difference | linux |
 | `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; each fixed file's notice, the Markdown form an HTML comment on line 1 (`MARKDOWN_NOTICE`); the mixed files' markers, well formed at version 1, with their notice as the first line inside them (`MIXED_NOTICE`) and their skeleton text after the end marker left uncompared; `AGENTS.md`'s sections in order and its bytes within `AGENTS_BUDGET`; `.cursor/BUGBOT.md` equal to its notice, a blank line and `AGENTS.md`'s Code Review Rules section, heading included; every path pointer in a Markdown file version 1 writes naming a file version 1 writes, with what stays outside in `UNROUTED`; no root `CLAUDE.md`, `AGENTS.override.md` or `.codex/` written; the `build.md` skeleton written with no notice and left uncompared; the role files' skill lists against #41 §13 and the relied-on list; the PR template's comment lines, continuation lines included, none starting with `Risk:` or `Reverts:`, and its one `Risk:` line, once filled, read by both parsers; `triage-labels.md` against the manifest's labels; Merge watch's workflow and script with the notice, their mode and exact comparison; planted mismatches failing; later templates' seam-3 checks join it | linux |
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
-| `parser-fixtures` | Every registered parser against every shared parser fixture, one test per parser and fixture | linux |
+| `parser-fixtures` | The machine parser and each stored version of the governed-side parser against every shared parser fixture, one test per registration and fixture; versioned registrations retain v1 coverage while checking v2 against the same expectations | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits in both shapes | linux |
@@ -63,6 +63,11 @@ Later deliveries add theirs there, under the job #44 §11 names.
 
 ## Scenarios
 
+Before invoking a model scenario, obtain habit's approval. The one-delivery #122 exemption
+in `AGENTS.md`, Verification by change, permits omitting its remaining scenarios and reruns;
+record the unverified final-head behavior rather than reporting a pass. Offline runner tests
+remain required and use no model.
+
 `python3 tests/scenarios/runner.py <scenario> --harness claude|opencode [--runs N] [--out DIR]`
 runs a scenario in a logged-in harness on habit's Mac, one run at a time. Its docstring gives
 the fixture shape. The scenarios are `initialize-planted`, `upgrade` and `repair-files` under
@@ -76,6 +81,14 @@ permissions are its own: `--tools` and `--allowedTools` in Claude Code, `permiss
 run's `OPENCODE_CONFIG_CONTENT` in OpenCode, never `--auto`. A failed resume records #40's
 fallback and stops. `tests/scenarios/headless_probe.py` holds the resume and interface-entry
 probes, and the runner reuses its clean environment. CI runs no model.
+
+For version 2, the runner applies the additive scenario data in
+`tests/fixtures/generator/scenarios-v2.json` to the unchanged original fixtures. It uses
+the actual candidate store and an isolated installed home containing this repository's
+real skill copies. Initialize starts without governance, Upgrade starts at version 1,
+and Repair damages version 2's real review policy. The recorded answer confirms product
+smoke and policy preservation; the judge checks the rendered version and the unchanged
+confirmed-record format. No additional signing configuration is used.
 
 ## CI
 
@@ -436,9 +449,11 @@ allowed change, the Codex user-only key appended to a user-invoked skill whose
 
 ## Parsers
 
-One parser per side (#44 §5): the generator's library holds the machine side's, and the gate
-script, `generator/govern-repository/store/1/templates/dot-github/governance/gate.py`, holds
-the governed repository's. Both register in the `parser-fixtures` suite.
+One parser implementation per side (#44 §5): the generator's library holds the machine
+side's, and each stored version's gate script holds the governed repository's. The
+`parser-fixtures` suite registers the machine parser once and the governed parser once per
+stored version (currently v1 and v2). Both versioned copies run against the same shared
+expectations, retaining immutable v1 coverage while checking the candidate.
 
 - **The gate script's interface.** In a governed repository it is
   `.github/governance/gate.py`, and a script beside it, such as Merge watch's
@@ -548,7 +563,7 @@ item failed or missing, 2 stopped before any write).
      list) for both sandboxes. `live.py seed --sandbox <s>` then accepts the invitation and
      seeds the empty default branch from `tests/fixtures/repositories/sandbox/`, whose
      `fixture.json` holds the sandboxes' fixed confirmed values.
-  2. `live.py prepare --pr <n> --sandbox <s> --probe <name>...`, at this checkout's pushed
+   2. `live.py prepare --pr <n> --sandbox <s> --probe <name>...`, at this checkout's pushed
      PR head, opens the sandbox PR, with a record under `live-checks/` so one exists even
      when the render is unchanged, and prints habit's commands: the pinned merge command,
      the owner-script command, then each probe's commands, each saving its output in the
@@ -556,6 +571,26 @@ item failed or missing, 2 stopped before any write).
   3. After habit's steps, `live.py probe --state <dir>/prepared.json --probe <name>... --post`
      posts the result comment, naming the commit. The owner probes need one run without
      `--post` between habit's two owner-script runs (`probes/owner.py`).
+
+### Version 2 owner recovery
+
+`prepare` selects version 2. Before either existing sandbox is written, ticket #122 requires
+habit's exclusive-window confirmation. Preserve historical probes and resources; this is
+not permission to reset either sandbox. The existing gate and confirmed-record format stay
+unchanged. Keep local evidence out of Git.
+
+Run `owner-report`, `owner-state`, `owner-rerun` and `owner-recovery` in both sandboxes:
+
+| Probe | Setup and evidence |
+| --- | --- |
+| `owner-recovery` | After initial owner application, habit captures the disabled-approval baseline, enables approval in sandbox settings without changing the default workflow permission, captures that state, runs the printed owner command, reads back both fields and repeats the owner command. The probe requires preserved `read`/`write`, disabled approval after repair and a zero-write repeat. Agents run none of these owner commands. |
+
+Run setup probes without `--post` first, then the printed habit-only commands, then post
+only when every assertion passes. A missing input is an incomplete check, never a skip.
+
+Offline probe tests exercise the evidence judge, not GitHub's implementation. Record the
+model head, sandbox PR, baseline, commands and full assertions with results. The live check
+proves the retained owner repair, not reproduction of an optional-field API failure.
 
 ## The gate's live check
 

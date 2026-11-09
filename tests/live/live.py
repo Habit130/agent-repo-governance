@@ -50,7 +50,7 @@ THIS_REPOSITORY = "Habit130/agent-repo-governance"
 SEED = os.path.join(REPO, "tests", "fixtures", "repositories", "sandbox")
 STORE = os.path.join(REPO, "generator", "govern-repository", "store")
 GOVERN = os.path.join(SCRIPTS, "govern.py")
-VERSION = 1
+VERSION = 2
 # Step 4 hands habit the owner-script command in every check; its report is this input.
 OWNER_REPORT = "owner_report"
 

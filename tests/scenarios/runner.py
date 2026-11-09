@@ -132,6 +132,11 @@ def judge(evidence, expect):
         "no follow-up: the answered run reached the PR": bool(evidence["reached_pr"]),
     }
     text = "\n".join(evidence.get("files", {}).get(p, "") for p in ("AGENTS.md", ".claude/CLAUDE.md"))
+    if expect.get("version") == 2:
+        record = evidence.get("record") or {}
+        safety["the candidate record is v2 with the original confirmed format"] = (
+            record.get("version") == 2
+            and set(record.get("confirmed", {})) == {"sensitive_paths", "required_checks"})
     for rule in expect.get("rules", []):
         if rule.get("safety"):
             safety["dropped and listed: %s" % rule["match"]] = (
@@ -264,7 +269,13 @@ def past_the_stand_in(commands):
 
 def fixture(name):
     with open(str(FIXTURES / (name + ".json")), encoding="utf-8") as handle:
-        return json.load(handle)
+        spec = json.load(handle)
+    with open(str(REPO / "tests/fixtures/generator/scenarios-v2.json"), encoding="utf-8") as handle:
+        overlay = json.load(handle)
+    spec["repository"].update(overlay.get(name, {}))
+    spec["answer"] += "\n" + overlay["answer"]
+    spec["expect"]["version"] = 2
+    return spec
 
 
 def git(cwd, *args):
@@ -294,8 +305,8 @@ def build(scratch, spec, harness):
     import headless_probe as probe
 
     case = dict(spec, harness="claude-code")
-    store = gs.build_store("released")
-    home = gs.build_home("ready")
+    store = gs.support.REAL_STORE
+    home = gs.build_home("candidate")
     worktree = gs.build_repository(str(scratch), case, store)
     bare = scratch / "origin.git"
     subprocess.run(["git", "clone", "-q", "--bare", worktree, str(bare)], check=True)
@@ -311,6 +322,8 @@ def build(scratch, spec, harness):
     with open(str(recording), "w") as handle:
         json.dump(served, handle)
     env = probe.clean_environment(scratch)
+    # The isolated machine home has a zsh profile, regardless of the host's shell.
+    env["SHELL"] = "/bin/zsh"
     env.update({"STANDIN_GH_RECORDING": str(recording), "GOVERN_SCENARIO_STORE": store, "GOVERN_SCENARIO_HOME": home,
                 "GOVERN_SCENARIO_REPOSITORY": repository, "MACHINE_CODEX": os.path.join(home, "no-codex-here"),
                 "PYTHONDONTWRITEBYTECODE": "1"})
@@ -384,7 +397,12 @@ def collect(built, scratch, first_calls, session_ok, reached_pr):
             evidence["files"][path] = (checkout / path).read_text(encoding="utf-8")
     if (checkout / "docs/agents/build.md").is_file():
         evidence["build_md"] = (checkout / "docs/agents/build.md").read_text(encoding="utf-8")
-    with open(os.path.join(built["store"], "3", "manifest.json")) as handle:
+    from govlib import record
+    try:
+        evidence["record"] = record.parse((checkout / ".github/governance/record.yml").read_bytes())
+    except (OSError, record.RecordError):
+        evidence["record"] = None
+    with open(os.path.join(built["store"], "2", "manifest.json")) as handle:
         labels = [label["name"] for label in json.load(handle)["labels"]]
     evidence["missing_labels"] = [name for name in labels if name not in built["labels"]]
     env = dict(built["env"])

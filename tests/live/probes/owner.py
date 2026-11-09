@@ -239,9 +239,54 @@ def no_commands(context):
     return []
 
 
+def recovery_commands(context):
+    read = "/bin/bash -c '" + owner.MAINTAINER_SHELL + "gh api repos/%s/actions/permissions/workflow'" % context.repository
+    return [
+        ("owner_recovery_baseline", "capture the baseline after initial owner setup, before changing the approval setting", read),
+        ("owner_recovery_before", "habit enables Actions PR approval in sandbox settings, preserving the default workflow permission; then capture", read),
+        ("owner_recovery_report", "restore the sandbox with the owner script", owner.command(context.repository)),
+        ("owner_recovery_after", "read back both workflow permission fields after repair", read),
+        ("owner_recovery_rerun", "repeat the owner script; it must report zero writes", owner.command(context.repository)),
+    ]
+
+
+def recovery(context):
+    states = {}
+    for name in ("baseline", "before", "after"):
+        try:
+            value = json.loads(context.input("owner_recovery_" + name))
+        except ValueError:
+            raise ProbeError("owner recovery %s is not a JSON permission read-back" % name)
+        if not isinstance(value, dict) or value.get("default_workflow_permissions") not in ("read", "write") or \
+                type(value.get("can_approve_pull_request_reviews")) is not bool:
+            raise ProbeError("owner recovery %s has unreadable workflow permissions" % name)
+        states[name] = value
+    baseline, before, after = (states[name] for name in ("baseline", "before", "after"))
+    report = context.input("owner_recovery_report")
+    items, last = report_items(report)
+    rerun = context.input("owner_recovery_rerun")
+    repeated, repeated_last = report_items(rerun)
+    return [
+        Result("owner recovery starts from disabled approval and exercises enabled approval",
+               baseline["can_approve_pull_request_reviews"] is False and before["can_approve_pull_request_reviews"] is True,
+               "baseline and before read-backs"),
+        Result("owner recovery preserves the original default workflow permission",
+               baseline["default_workflow_permissions"] == before["default_workflow_permissions"] == after["default_workflow_permissions"],
+               "baseline=%s, before=%s, after=%s" % tuple(states[n]["default_workflow_permissions"] for n in ("baseline", "before", "after"))),
+        Result("owner recovery disables approval in the actual read-back",
+               after["can_approve_pull_request_reviews"] is False, "after repair"),
+        Result("owner recovery reports a successful approval repair",
+               items.get("Actions 不能创建或批准 PR", (None,))[0] == "已设置"
+               and not any(status == "未通过" for status, _ in items.values()) and last.startswith("写入 "), last),
+        Result("owner recovery repeat writes nothing", repeated_last == RERUN_LAST_LINE
+               and not any(status in ("未通过", "已设置", "已移除") for status, _ in repeated.values()), repeated_last),
+    ]
+
+
 PROBES = (
     Probe("owner-report", ("public", "private"), no_commands, owner_report),
     Probe("owner-state", ("public", "private"), no_commands, owner_state),
     Probe("owner-rerun", ("public", "private"), owner_rerun_commands, owner_rerun),
+    Probe("owner-recovery", ("public", "private"), recovery_commands, recovery),
     Probe("owner-private-secret", ("private",), secret_commands, secret_response),
 )

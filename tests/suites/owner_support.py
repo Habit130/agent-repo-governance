@@ -19,6 +19,10 @@ report lines it expects:
   - `classic_protection`: whether the default branch has classic branch protection;
   - `rulesets_forbidden`: GitHub refuses to list rulesets, as on a private repository without Pro;
   - `failing_reads`: maps a read, `actions/permissions/workflow`, to the HTTP status GitHub fails it with;
+  - `workflow_after`, `workflow_after_error`: override the permission read after a successful PUT;
+  - `workflow_after_reads`: ordered post-PUT `{response: ...}` or `{error: status}` reads;
+    optional `delay` seconds simulates a slow read; all but the last are served once,
+    and the last repeats;
   - `event_policy`: `none`, `target`, `unreadable`, or policies that differ from the target
     by the fields given, each with an `id`.
 - `writes`: every write in order, `[method, path under repos/<repository>/, body]`, where a
@@ -213,7 +217,7 @@ def recording(case, head, path):
     if "actions/permissions/workflow" in failing:
         calls.append(http_error(api("/actions/permissions/workflow"), failing["actions/permissions/workflow"], "Server Error"))
     else:
-        calls.append(ok(api("/actions/permissions/workflow"), state.workflow))
+        calls.append(ok(api("/actions/permissions/workflow"), case.get("github", {}).get("workflow_response", state.workflow)))
     if state.rulesets_forbidden:
         message = "Upgrade to GitHub Pro or make this repository public to enable this feature."
         calls.append(http_error(api("/rulesets?includes_parents=false&per_page=100"), 403, message))
@@ -229,7 +233,25 @@ def recording(case, head, path):
         calls.append(http_error(api("/branches/%s/protection" % BRANCH), 404, "Branch not protected"))
     calls += event_policy_calls(state)
     for write in case.get("writes", []):
-        calls.append(write_call(state, case, write))
+        answer = write_call(state, case, write)
+        if write[:2] == ["PUT", "actions/permissions/workflow"] and answer["exit"] == 0:
+            marker = os.path.join(os.path.dirname(path), "workflow-written")
+            answer["effects"] = [{"path": marker, "write": "accepted"}]
+            github = case.get("github", {})
+            after = github.get("workflow_after", dict(state.workflow, **write[2]))
+            sequence = github.get("workflow_after_reads", [
+                {"error": github["workflow_after_error"]} if "workflow_after_error" in github else {"response": after}
+            ])
+            reads = []
+            for index, entry in enumerate(sequence):
+                read = (http_error(api("/actions/permissions/workflow"), entry["error"], "Server Error")
+                        if "error" in entry else ok(api("/actions/permissions/workflow"), entry["response"]))
+                read["when"] = [{"path": marker, "contains": "accepted"}]
+                read["once"] = index < len(sequence) - 1
+                read["delay"] = entry.get("delay", 0)
+                reads.append(read)
+            calls[0:0] = reads
+        calls.append(answer)
     with open(path, "w") as handle:
         json.dump({"description": "Seam D's stand-in GitHub, written by owner_support.py.", "tool": "gh", "calls": calls}, handle)
     return path
@@ -320,18 +342,19 @@ def load_case(name):
 
 
 def prepare(root, case):
-    """A tally worktree with version 1 rendered for the case's record, committed; (worktree, head)."""
+    """A tally worktree with the case's version (default 1), committed; (worktree, head)."""
+    version = str(case.get("version", 1))
     fixture = materialized.tally_fixture()
     worktree = materialized.tally_worktree(root)
     confirmed = os.path.join(root, "confirmed.json")
     with open(confirmed, "w") as handle:
         json.dump({"sensitive_paths": fixture["confirmed"]["sensitive_paths"], "required_checks": case.get("required_checks", [])}, handle)
     code, facts = support.govern(
-        ["render", "--store", support.REAL_STORE, "--version", "1", "--allow-unreleased", "--dest", worktree,
+        ["render", "--store", support.REAL_STORE, "--version", version, "--allow-unreleased", "--dest", worktree,
          "--repository", REPOSITORY, "--default-branch", BRANCH, "--confirmed", confirmed]
     )
     if code != 0:
-        raise AssertionError("rendering version 1 failed: %s" % facts)
+        raise AssertionError("rendering version %s failed: %s" % (version, facts))
     support.git(worktree, "add", "-A")
     support.git(worktree, "commit", "-q", "-m", "Initialize governance")
     head = support.git(worktree, "rev-parse", "HEAD").strip()

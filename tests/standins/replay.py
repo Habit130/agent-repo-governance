@@ -28,12 +28,15 @@ or {"path": ..., "contains": <text>}, the path expanded as above, so `${GH_CONFI
 two gh configurations apart. When it answers, each of its "effects" writes or appends text,
 {"path": ..., "write" | "append": <text>}, creating the parent directories. Keep such state in
 files real gh never reads, such as `standin-account`, so a stray call can't become a login.
+An "args" entry's optional "delay" waits that many seconds after logging and effects but
+before output, to exercise the caller's real timeout handling.
 """
 
 import json
 import os
 import re
 import sys
+import time
 
 RECORDING_VARIABLES = {"gh": "STANDIN_GH_RECORDING", "codex": "STANDIN_CODEX_RECORDING"}
 CODEX_COMMANDS = (["execpolicy", "check"], ["debug", "prompt-input"])
@@ -248,6 +251,8 @@ def main(argv):
                 entry["stdin"] = stdin
             log(entry)
             apply_effects(call)
+            if call.get("delay"):
+                time.sleep(call["delay"])
             sys.stdout.write(call.get("stdout", ""))
             sys.stderr.write(call.get("stderr", ""))
             return int(call.get("exit", 0))

@@ -220,6 +220,13 @@ What a PR needs follows what it changes, not its tier (#44 §11). Commands and C
 This repository's own rendered governance files change only through the generator, and on
 their own need neither of the last two rows.
 
+For delivery #122 only, habit [approved omitting the remaining model scenarios and reruns](https://github.com/Habit130/agent-repo-governance/issues/122#issuecomment-6719531025)
+(“同意这个免除。”). Record the missing final-head behavioral coverage in the evidence and
+Merge summary; prior candidate runs are historical evidence, not final-head passes. All
+offline checks, CI, live checks, reviews and after-merge smoke remain required. This exception
+does not change the scenario requirement for other deliveries. Obtain habit's approval before
+any future model scenario invocation.
+
 - The Builder runs the scenarios and live checks, posts results naming the commit they ran
   on, and reruns them after a later push that touches the second or third row.
 - The Merge summary's writer confirms every required result names the head and passed every
