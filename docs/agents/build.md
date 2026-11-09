@@ -487,10 +487,11 @@ expectations, retaining immutable v1 coverage while checking the candidate.
 
 ## Merge watch
 
-Version 1's fixed templates `.github/workflows/merge-watch.yml` and
-`generator/govern-repository/store/1/templates/dot-github/governance/merge_watch.py` (#41 §9).
-The script's docstring gives what it records, from which facts, and how an unreadable fact
-yields a false miss record; it never blocks anything and is never a required check.
+The rendered `.github/workflows/merge-watch.yml` and `.github/governance/merge_watch.py`
+come from version 2's fixed templates under `generator/govern-repository/store/2/templates/`
+(#41 §9). Their behavior is unchanged from version 1. The script's docstring gives what it
+records, from which facts, and how an unreadable fact yields a false miss record; it never
+blocks anything and is never a required check.
 
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
   answers a REST path with GitHub's list, every page joined, or raises `ReadError`. Its
@@ -518,8 +519,8 @@ yields a false miss record; it never blocks anything and is never a required che
 
 ## The owner script and live checks
 
-The owner script is version 1's fixed template
-`generator/govern-repository/store/1/templates/dot-github/governance/owner.sh` (#44 §7). Its
+The rendered `.github/governance/owner.sh` comes from version 2's fixed template
+`generator/govern-repository/store/2/templates/dot-github/governance/owner.sh` (#44 §7). Its
 docstring gives the preconditions, the order of writes and the exit codes (0 in place, 1 an
 item failed or missing, 2 stopped before any write).
 
@@ -571,6 +572,34 @@ item failed or missing, 2 stopped before any write).
   3. After habit's steps, `live.py probe --state <dir>/prepared.json --probe <name>... --post`
      posts the result comment, naming the commit. The owner probes need one run without
      `--post` between habit's two owner-script runs (`probes/owner.py`).
+
+### Version 2 adoption
+
+For this repository's Upgrade (#123), verify the exact merged commit's push-triggered
+`linux` and `macos` product CI and run the installed released-v2 generator's
+`compare --worktree .` on a checkout pinned to that commit. Require empty `differences`;
+the Commands table's tally-sample comparison is separate evidence.
+
+After that smoke, habit runs the owner command above. Capture the non-sensitive
+`default_workflow_permissions` and `can_approve_pull_request_reviews` fields before and
+after execution as maintainer evidence, alongside the full owner report. The agent's
+readable rulesets/settings do not prove the workflow-permission postcondition. A report
+that approval was already disabled also needs those fields to establish the preserved
+default. The later generator `preconditions` run remains habit-run: it invokes the machine
+check against habit's home (`AGENTS.md`, Verification by change).
+
+Version 2 accepts only a valid `read` or `write` default and Boolean approval state. It
+preserves that default when disabling approval, writes once, then reads back at most
+three times (two-second intervals, five-second read timeouts). A changed default or invalid
+state stops verification; an unconfirmed result is a failure, not a successful application.
+Already-disabled approval needs no write. These are compatibility and observation repairs,
+not evidence that an optional-field API failure or propagation delay was reproduced.
+
+Record habit's report and permitted state read-back on #123; missing or mismatched evidence
+leaves the Upgrade incomplete even after auto-closure. Reverting the files does not restore
+GitHub settings: habit must rerun the corresponding version's owner command after a revert.
+The current gate still uses shared GitHub Actions App 15368, not a unique workflow issuer;
+same-SHA stale-success limitations remain. Adoption adds no signing secrets, App or environment.
 
 ### Version 2 owner recovery
 
