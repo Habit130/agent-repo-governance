@@ -539,6 +539,109 @@ class CredentialRoute(WizardCase):
         detail = [d for _, subject, d in ms.lines(out) if subject == "git credential"][0]
         self.assertIn("includeIf", detail)
 
+    def test_uncertain_service_guidance_identifies_source_without_deleting_helpers(self):
+        other_config = self.path("other-service.config")
+        text = '[credential "https://GitLab.com"]\n\thelper = "%s"\n' % self.other
+        with open(other_config, "w") as handle:
+            handle.write(text)
+        self.after_setup_git('[include]\n\tpath = %s\n' % other_config)
+        code, out, calls = self.wizard()
+        self.assertEqual(code, 1, out)
+        self.assertIn("credential.https://GitLab.com.helper", out)
+        self.assertIn(other_config, out)
+        self.assertIn("单独授权", out)
+        self.assertNotIn("找出其余的设置并删掉", out)
+        self.assertNotIn("--get-regexp", out)
+        self.assertNotIn(self.other, out)
+        self.assertEqual(self.git_writes(calls), [])
+        with open(other_config) as handle:
+            self.assertEqual(handle.read(), text)
+
+    def test_conditional_guidance_lists_each_condition_and_source_as_unverified(self):
+        conditions = ('gitdir:~/work/', 'hasconfig:remote.*.url:https://example.invalid/**',
+                      'onbranch:work/**')
+        included = self.path("conditional.config")
+        text = ''.join('[includeIf "%s"]\n\tpath = ~/unused.config\n' % c for c in conditions)
+        with open(included, "w") as handle:
+            handle.write(text)
+        support.write_tree(self.home, {".gitconfig": '[include]\n\tpath = %s\n' % included})
+        code, out, _ = self.wizard()
+        self.assertEqual(code, 0, out)
+        for condition in conditions:
+            self.assertIn(condition, out)
+        self.assertIn(included, out)
+        self.assertIn("仓库内路由尚未验证", out)
+        self.assertIn("单独授权", out)
+        self.assertIn("当前分支", out)
+        self.assertIn("remote", out)
+        self.assertIn("系统、全局、仓库", out)
+        self.assertNotIn("请 habit 自己确认", out)
+        self.assertNotIn("--get-regexp", out)
+        with open(included) as handle:
+            self.assertEqual(handle.read(), text)
+
+    def test_diagnostic_metadata_redacts_credentials_and_quotes_control_characters(self):
+        # Non-token-shaped URL passwords need protection as well as known secret shapes.
+        password = "synthetic password not a token"
+        origin = self.path("source-" + PLANTS[10] + ".config")
+        url = "https://someone:%s@GitLab.com:8443/project" % password
+        text = ('[credential "%s"]\n\thelper = "%s"\n'
+                '[includeIf "hasconfig:remote.*.url:%s"]\n\tpath = ~/unused.config\n'
+                '[includeIf "gitdir:~/line\x1bforged/"]\n\tpath = ~/unused.config\n' %
+                (url, self.other, url))
+        text += '[credential "someone:%s@GitLab.com"]\n\thelper = store\n' % password
+        with open(origin, "w") as handle:
+            handle.write(text)
+        self.after_setup_git('[include]\n\tpath = %s\n' % origin)
+        code, out, _ = self.wizard()
+        self.assertEqual(code, 1, out)
+        self.assertFalse("synthetic" in out, "URL password leaked in diagnostic metadata")
+        self.assertIn("GitLab.com:8443/project", out)
+        self.assertIn("<已隐藏>@", out)
+        self.assertIn("仓库内路由尚未验证", out)
+        self.assertNotIn("\x1b", out)
+        self.assertIn("line\\u001bforged/", out)
+        with open(origin) as handle:
+            self.assertEqual(handle.read(), text)
+
+    def test_path_provenance_preserves_url_punctuation_outside_url_fields(self):
+        origin = self.path("team@work", "config?#local")
+        conditions = ('gitdir:~/team@work/repo?#/', 'onbranch:topic@work?#')
+        text = '[credential "https://GitLab.com"]\n\thelper = "%s"\n' % self.other
+        text += ''.join('[includeIf "%s"]\n\tpath = ~/unused.config\n' % c for c in conditions)
+        support.write_tree(os.path.dirname(origin), {os.path.basename(origin): text})
+        self.after_setup_git('[include]\n\tpath = "%s"\n' % origin)
+        code, out, _ = self.wizard()
+        self.assertEqual(code, 1, out)
+        self.assertIn(origin, out)
+        for condition in conditions:
+            self.assertIn(condition, out)
+        self.assertNotIn(self.other, out)
+        with open(origin) as handle:
+            self.assertEqual(handle.read(), text)
+
+    def test_url_tails_are_withheld_before_userinfo_in_both_diagnostics(self):
+        origin = self.path("url-tails.config")
+        self.after_setup_git('[include]\n\tpath = "%s"\n' % origin)
+        for field in ("credential", "remote-condition"):
+            for delimiter in ("?", "#"):
+                with self.subTest(field=field, delimiter=delimiter):
+                    marker = "synthetic-private-tail"
+                    url = "https://GitLab.com%signored@%s" % (delimiter, marker)
+                    text = '[credential "%s"]\n\thelper = "%s"\n' % (
+                        url if field == "credential" else "https://GitLab.com", self.other)
+                    if field == "remote-condition":
+                        text += '[includeIf "hasconfig:remote.*.url:%s"]\n\tpath = ~/unused.config\n' % url
+                    with open(origin, "w") as handle:
+                        handle.write(text)
+                    code, out, _ = self.wizard()
+                    self.assertEqual(code, 1)
+                    self.assertFalse(marker in out, "private URL tail leaked in diagnostic metadata")
+                    self.assertIn(origin, out)
+                    self.assertIn("<已隐藏>", out)
+                    with open(origin) as handle:
+                        self.assertEqual(handle.read(), text)
+
     def test_a_key_git_can_read_but_urlsplit_cant_still_counts(self):
         self.after_setup_git('[credential "https://["]\n\thelper = "%s"\n' % self.other)
         code, out, _ = self.wizard()

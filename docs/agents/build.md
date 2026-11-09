@@ -347,7 +347,22 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
    `fill` stops at the first helper that answers and `approve` stores to every one, so the
    step passes only with exactly gh's helper and no uncertainty (AC-48's Acceptance A1).
    Isolated real-Git regressions cover the false resets and no-op reruns. It reads outside any repository, so a
-  conditional include (`includeIf`) stays unseen; the step's line says so when one exists. The
+  repository-dependent conditional include (`includeIf`) may stay inactive. The step lists
+  every observed condition and origin and explicitly leaves repository-local routing
+  unverified. Its checklist asks habit to authorize a scoped read-only check of matching
+  repositories, including directory, branch and remote conditions, all configuration
+  scopes and nested includes; it does not perform that check or execute helpers.
+  On an uncertain stop, diagnostics name the remaining helper keys and origins, never
+  helper bodies. They prioritize preserving unrelated services and verifying an equivalent
+  correction before changing anything; meaningful URL qualifiers must be retained.
+  Metadata is quoted and known credential shapes redacted. URL fields (credential keys
+  and remote-URL include conditions) additionally hide userinfo, including bare URL forms,
+  and withhold query/fragment tails before userinfo processing, so a later `@` cannot
+  erase the delimiter that marks sensitive tail data; origins and non-URL conditions retain legal path
+  punctuation. `CredentialRoute`'s #106 regressions
+  exercise the full wizard entry with synthetic included files, credential-bearing
+  metadata and unchanged source-file assertions. The matcher and machine check remain
+  unchanged. The
   `machine-wizard` suite never runs `ghm` or any `gh` inside a login shell: macOS's login
   profile reorders PATH, so a real gh there could reach the keychain.
 - **Generated credential routes** (#105), in `machine-wizard`'s

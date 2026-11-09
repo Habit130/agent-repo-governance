@@ -105,6 +105,23 @@ def shown(login):
     return login if isinstance(login, str) and LOGIN_FORM.match(login) else "一个无法识别的账户"
 
 
+def provenance(text, url=False):
+    """Quote metadata; only URL fields have userinfo/query/fragment to withhold."""
+    text = secrets.redact(text)
+    # Uncertain URLs can be malformed, so do not assume userinfo ends at whitespace
+    # or a slash. Withhold the whole prefix rather than partially exposing a password.
+    if url:
+        # Drop tails first: an @ in a tail must not erase its delimiter before hiding it.
+        text = re.sub(r"[?#].*", "<已隐藏>", text, flags=re.DOTALL)
+        if "@" in text:
+            text = "<已隐藏>@" + text.rsplit("@", 1)[1]
+    return json.dumps(text, ensure_ascii=False)
+
+
+def source_description(key, origin, url=False):
+    return "%s，来源 %s" % (provenance(key, url=url), provenance(origin))
+
+
 class Wizard(object):
     def __init__(self, home):
         self.home = home
@@ -223,27 +240,47 @@ class Wizard(object):
         order, with empty values clearing the list. Uncertain URL matches add a sentinel,
         never clear the list or prove gh's route. Read outside any repository, so no local config counts, and
         a conditional include (`includeIf`) that applies only inside some repository can't be
-        seen; `includes_conditionally` says whether one exists.
+        seen; `conditional_sources` lists the observed conditions and their origins.
         """
         scratch = tempfile.mkdtemp(prefix="wizard-")
         try:
-            code, out, _ = self.home.run(["git", "config", "-z", "--list"], cwd=scratch)
+            code, out, _ = self.home.run(["git", "config", "-z", "--show-origin", "--list"], cwd=scratch)
         finally:
             shutil.rmtree(scratch, True)
         helpers = []
-        self.includes_conditionally = False
-        for entry in out.split("\0") if code == 0 else []:
+        self.helper_sources = []
+        self.conditional_sources = []
+        fields = out.split("\0") if code == 0 else []
+        for origin, entry in zip(fields[0::2], fields[1::2]):
             key, _, value = entry.partition("\n")
             if key.lower().startswith("includeif."):
-                self.includes_conditionally = True
+                self.conditional_sources.append((key, origin))
             match = helper_matches(key)
             if match is True:
                 helpers = helpers + [value] if value else []
+                self.helper_sources = self.helper_sources + [(key, origin)] if value else []
             elif match is None:
                 # Neither an uncertain reset nor an uncertain gh helper proves the route.
                 # A later certain reset can safely clear this uncertainty too.
                 helpers.append(None)
+                self.helper_sources.append((key, origin))
         return helpers
+
+    def conditional_guidance(self):
+        if not self.conditional_sources:
+            return ""
+        return ("；观察到 includeIf 条件及来源：" +
+                "；".join(source_description(
+                             key, origin, url=key.lower().startswith("includeif.hasconfig:remote.*.url:"))
+                         for key, origin in self.conditional_sources) +
+                "。以上只检查了仓库外配置，仓库内路由尚未验证。"
+                "请 habit 列出可能匹配的仓库并单独授权一次限定这些仓库的只读检查："
+                "逐个核对仓库目录、当前分支和 remote 地址与条件是否匹配；"
+                "在匹配仓库中核对系统、全局、仓库及 worktree 配置和生效的嵌套 include，"
+                "按顺序确认 github.com 的 helper 链在最后一次有效清空后只有 agent account 的 gh helper。"
+                "检查只报告脱敏条件、键、来源及结论，不输出 helper 内容或 remote 凭据，"
+                "不执行 helper、不获取凭据、不修改配置。条件或仓库状态变化后需重新检查；"
+                "在确认前不要把此步骤通过当作仓库内账户隔离已验证。")
 
     def git_credential(self):
         def through_gh():
@@ -252,18 +289,23 @@ class Wizard(object):
             helpers = self.credential_helpers()
             return len(helpers) == 1 and helpers[0] is not None and helpers[0].strip().endswith("gh auth git-credential")
 
-        note = ("；git 配置里有 includeIf 条件配置，wizard 看不到它在某些仓库里可能另加的 credential helper"
-                "，请 habit 自己确认")
-
         if through_gh():
-            return READY, "git 的 github.com credential 只经过 gh" + (note if self.includes_conditionally else "")
+            return READY, "仓库外配置中，git 的 github.com credential 只经过 gh" + self.conditional_guidance()
         code, _, _ = self.gh(self.default_config, "auth", "setup-git", "--hostname", HOST)
         if code != 0:
             raise Stop("`gh auth setup-git` 没能把 git 的 credential 交给 gh。重跑 wizard 会从这一步继续。")
         if not through_gh():
             raise Stop("运行 `gh auth setup-git` 之后，git 用于 github.com 的 credential helper 仍不只是 gh 的（或有无法确认的 URL 配置）。"
-                       "请 habit 用 `git config --show-origin --get-regexp '^credential\\..*helper$'` 找出其余的设置并删掉，再重跑。")
-        return DONE, "git 的 github.com credential 现在只经过 gh" + (note if self.includes_conditionally else "")
+                       "待核实的配置键及来源（不显示 helper 内容）：" +
+                       "；".join(source_description(key, origin, url=True)
+                                for key, origin in self.helper_sources) +
+                       "。请保留其他服务的正常 helper；先单独授权一次限于这些来源的只读检查，"
+                       "确认每项服务范围及 Git 实际匹配方式。优先核实能否仅规范主机名大小写且保持匹配语义；"
+                       "验证等价后才修改，不要去掉用户名、端口或路径来通过检查。"
+                       "只有确认某项确实冗余且不再服务其他用途后，才考虑删除该项；处理后重跑。"
+                       "检查只报告脱敏后的键、来源和路由结论，不输出 helper 内容，也不调用 helper 获取凭据。" +
+                       self.conditional_guidance())
+        return DONE, "仓库外配置中，git 的 github.com credential 现在只经过 gh" + self.conditional_guidance()
 
     def commit_identity(self):
         code, out, _ = self.gh(self.default_config, "api", "user")
