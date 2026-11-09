@@ -42,6 +42,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from urllib.parse import quote
 
 sys.dont_write_bytecode = True
@@ -78,7 +79,7 @@ class GitHubError(Exception):
 # Talking to GitHub and git.
 
 
-def gh_api(path, method="GET", body=None):
+def gh_api(path, method="GET", body=None, timeout=None):
     """The parsed JSON of one `gh api` call, None for an empty response, or GitHubError."""
     args = ["gh", "api"]
     if method != "GET":
@@ -89,7 +90,9 @@ def gh_api(path, method="GET", body=None):
         args += ["--input", "-"]
         data = json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")
     try:
-        result = subprocess.run(args, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(args, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise GitHubError(None, "gh 读取超时")
     except OSError as error:
         raise GitHubError(None, "gh 无法运行：%s" % error)
     out = result.stdout.decode("utf-8", "replace")
@@ -651,17 +654,24 @@ def actions_cannot_approve(report, repository):
     except GitHubError as error:
         report.line("未通过", subject, "GitHub 拒绝了写入：%s" % error.message)
         return
-    try:
-        after = gh_api(path)
-    except GitHubError:
-        report.wrote("未通过", subject, "GitHub 已接受写入，但无法读回确认权限；核查后重新运行")
-        return
-    if (not isinstance(after, dict)
-            or after.get("default_workflow_permissions") != current["default_workflow_permissions"]
-            or after.get("can_approve_pull_request_reviews") is not False):
-        report.wrote("未通过", subject, "GitHub 已接受写入，但读回未确认默认权限保持不变且审批关闭；核查后重新运行")
-        return
-    report.wrote("已设置", subject, "已读回确认：默认工作流权限保持不变，审批已关闭")
+    # Observe only: never repeat the accepted PUT. A changed default or malformed object
+    # is not assumed to be transient. Bound both observation count and each read below.
+    for attempt in range(3):
+        if attempt:
+            time.sleep(2)
+        try:
+            after = gh_api(path, timeout=5)
+        except GitHubError:
+            continue
+        if (not isinstance(after, dict)
+                or after.get("default_workflow_permissions") != current["default_workflow_permissions"]
+                or type(after.get("can_approve_pull_request_reviews")) is not bool):
+            report.wrote("未通过", subject, "GitHub 已接受写入，但读回默认权限变化或状态无效；停止核验，请核查")
+            return
+        if after["can_approve_pull_request_reviews"] is False:
+            report.wrote("已设置", subject, "第 %d 次读回确认：默认工作流权限保持不变，审批已关闭" % (attempt + 1))
+            return
+    report.wrote("未通过", subject, "GitHub 已接受写入，但 3 次读回仍未确认审批关闭；停止核验，请核查")
 
 
 # 4. Secret protection and the Actions event policy, public repositories only.

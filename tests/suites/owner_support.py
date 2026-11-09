@@ -20,6 +20,9 @@ report lines it expects:
   - `rulesets_forbidden`: GitHub refuses to list rulesets, as on a private repository without Pro;
   - `failing_reads`: maps a read, `actions/permissions/workflow`, to the HTTP status GitHub fails it with;
   - `workflow_after`, `workflow_after_error`: override the permission read after a successful PUT;
+  - `workflow_after_reads`: ordered post-PUT `{response: ...}` or `{error: status}` reads;
+    optional `delay` seconds simulates a slow read; all but the last are served once,
+    and the last repeats;
   - `event_policy`: `none`, `target`, `unreadable`, or policies that differ from the target
     by the fields given, each with an `id`.
 - `writes`: every write in order, `[method, path under repos/<repository>/, body]`, where a
@@ -236,10 +239,18 @@ def recording(case, head, path):
             answer["effects"] = [{"path": marker, "write": "accepted"}]
             github = case.get("github", {})
             after = github.get("workflow_after", dict(state.workflow, **write[2]))
-            read = (http_error(api("/actions/permissions/workflow"), github["workflow_after_error"], "Server Error")
-                    if "workflow_after_error" in github else ok(api("/actions/permissions/workflow"), after))
-            read["when"] = [{"path": marker, "contains": "accepted"}]
-            calls.insert(0, read)
+            sequence = github.get("workflow_after_reads", [
+                {"error": github["workflow_after_error"]} if "workflow_after_error" in github else {"response": after}
+            ])
+            reads = []
+            for index, entry in enumerate(sequence):
+                read = (http_error(api("/actions/permissions/workflow"), entry["error"], "Server Error")
+                        if "error" in entry else ok(api("/actions/permissions/workflow"), entry["response"]))
+                read["when"] = [{"path": marker, "contains": "accepted"}]
+                read["once"] = index < len(sequence) - 1
+                read["delay"] = entry.get("delay", 0)
+                reads.append(read)
+            calls[0:0] = reads
         calls.append(answer)
     with open(path, "w") as handle:
         json.dump({"description": "Seam D's stand-in GitHub, written by owner_support.py.", "tool": "gh", "calls": calls}, handle)

@@ -112,6 +112,28 @@ class Report(OwnerCase):
 class VersionTwoPermissions(OwnerCase):
     """#122: preserve the existing default while disabling Actions approval, at Seam D."""
 
+    def test_bounded_observation_never_repeats_the_permission_write(self):
+        with open(os.path.join(support.FIXTURES, "owner", "v2-workflow-observation.json")) as handle:
+            rows = json.load(handle)["cases"]
+        for row in rows:
+            with self.subTest(case=row["name"]):
+                case = ow.load_case("rerun-at-target")
+                case["version"] = 2
+                case["github"] = {"workflow": {
+                    "default_workflow_permissions": row["default"], "can_approve_pull_request_reviews": True,
+                }, "workflow_after_reads": row["reads"]}
+                case["writes"] = [["PUT", "actions/permissions/workflow", {
+                    "default_workflow_permissions": row["default"], "can_approve_pull_request_reviews": False,
+                }]]
+                result = self.run_case(case)
+                self.assert_safe(result)
+                self.assertEqual(result["code"], row["exit"], result["out"])
+                self.assertEqual(ow.writes(result["log"]), [("PUT", "actions/permissions/workflow")])
+                reads = [entry for entry in result["log"] if entry["args"] == ow.api("/actions/permissions/workflow")]
+                self.assertEqual(len(reads), 1 + row["observations"])
+                self.assertEqual(("已设置", "Actions 不能创建或批准 PR") in ow.report_lines(result["out"]), row["exit"] == 0)
+                self.assertTrue(result["out"].splitlines()[-1].startswith("写入 1 项；"), result["out"])
+
     def test_success_requires_the_post_write_permission_readback(self):
         with open(os.path.join(support.FIXTURES, "owner", "v2-workflow-postcondition.json")) as handle:
             rows = json.load(handle)["cases"]
@@ -135,9 +157,10 @@ class VersionTwoPermissions(OwnerCase):
                 self.assertEqual(ow.writes(result["log"]), [("PUT", "actions/permissions/workflow")])
                 permission_calls = [entry["args"] for entry in result["log"]
                                     if "repos/Habit130/tally/actions/permissions/workflow" in entry["args"]]
+                observations = 3 if row["name"] in ("approval-still-enabled", "read-refused") else 1
                 self.assertEqual(permission_calls, [ow.api("/actions/permissions/workflow"),
-                                                   ow.write_args("PUT", "/actions/permissions/workflow"),
-                                                   ow.api("/actions/permissions/workflow")])
+                                                   ow.write_args("PUT", "/actions/permissions/workflow")]
+                                 + [ow.api("/actions/permissions/workflow")] * observations)
                 self.assertEqual(("已设置", "Actions 不能创建或批准 PR") in ow.report_lines(result["out"]), row["exit"] == 0)
                 self.assertTrue(result["out"].splitlines()[-1].startswith("写入 1 项；"), result["out"])
 
