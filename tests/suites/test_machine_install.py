@@ -7,6 +7,7 @@ import unittest
 
 import machine_support as ms
 import support
+from draft_support import add_draft
 from standins import environment
 
 
@@ -54,6 +55,23 @@ class InstallCase(support.TempDirCase):
 
 class FreshMachine(InstallCase):
     """A fresh machine, with the Codex stand-in replaying real output (CRIT-1, CRIT-3, CRIT-4)."""
+
+    def test_copied_draft_does_not_advance_installed_governance_version(self):
+        source_store = os.path.join(self.source, "generator", "govern-repository", "store")
+        add_draft(source_store)
+        support.git(self.source, "add", "generator")
+        support.git(self.source, "commit", "-q", "-m", "carry unpublished draft")
+        self.commit = support.git(self.source, "rev-parse", "HEAD").strip()
+        env = self.env()
+        code, out = self.install(env)
+        self.assertEqual(code, 0, out)
+        generator = self.h(".agents", "skills", "govern-repository")
+        self.assertEqual(ms.snapshot(os.path.join(generator, "store")), ms.snapshot(source_store))
+        code, out, err = support.run_cli(os.path.join(generator, "scripts", "govern.py"), ["store"], env=env)
+        self.assertEqual((code, err), (0, ""), out)
+        facts = json.loads(out)
+        self.assertEqual((facts["versions"], facts["released"], facts["installed_version"]),
+                         ([1, 2, 3], [1, 2], 2))
 
     def test_installs_every_step_and_passes_the_check(self):
         recording = ms.merge_codex_recordings(self.path("codex.json"), "codex-execpolicy.json", "codex-prompt-input-ready.json")

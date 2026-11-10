@@ -35,6 +35,42 @@ and the copies and the license are byte-identical with upstream.
 
 ## Suites
 
+### Unpublished model development
+
+The release check permits one draft: the highest consecutive numeric version in the
+store, identified by the absence of `change-note.md`. All earlier versions must have
+valid change notes. A sole unpublished v1 remains valid for bootstrap. Draft files may
+accumulate changes across PRs; an all-released store is also valid. Multiple drafts,
+a draft below a released version, gaps, non-version entries and malformed notes fail.
+
+Merge fixes, release a model, install machine components/skills, and adopt a version in
+a repository are separate decisions. habit chooses a coherent accumulated update without
+a fixed issue-count threshold; urgent bugs or severe usability problems may justify an
+earlier installation. Installation does not automatically Upgrade repositories.
+
+A separately approved release delivery adds the valid final change note to the default
+branch. Once a version's note exists on the comparison base, its complete tree is frozen:
+adding, deleting or editing a file, changing a mode, removing the version or removing its
+note all fail. Keep released versions unchanged and develop fixes in the next draft.
+
+Ordinary store/render/compare selection stays released-only. Explicit draft rendering
+and comparison require the existing per-call `--allow-unreleased` in isolated tests or
+sandboxes. Installation may copy draft bytes without advancing the installed governance
+version; this needs no filtering mechanism. Apply `AGENTS.md`'s verification-by-change
+requirements to each draft delivery, and obtain habit's approval before model scenarios.
+
+Offline coverage uses Seam E's additive `release-check/drafts/lifecycle.json`: draft
+creation, two updates, release, frozen-tree mutations and invalid layouts. Each transition
+also runs through depth-two PR-merge and squash-push histories with CI's base/head contract.
+The historical `new-version-without-note.json` now expects notes PASS;
+`second-version-while-first-unreleased.json` remains rejected. The render suite uses a
+copy of released v1/v2 plus draft v3 through the real store/render/compare entries; explicit
+v1/v2 comparisons still pass, and ordinary comparison still targets installed v2, reporting
+drift for v1. It checks no-write draft refusals and opt-in isolation. The machine-install
+suite proves copied draft bytes leave installed version at v2 in a disposable home.
+
+### Suite index
+
 `SUITES` in `tests/run.py` names each suite, its module under `tests/suites/` and its job.
 Later deliveries add theirs there, under the job #44 §11 names.
 
