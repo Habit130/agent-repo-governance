@@ -236,7 +236,7 @@ Historically, for delivery #122, habit [approved omitting the remaining model sc
 (“同意这个免除。”). The standing decision above now applies to every delivery.
 
 - The Builder runs the live checks, posts results naming the commit they ran on, and reruns
-  them after a later push that touches the third row.
+  them after a later push that touches the second or third row.
 - The Merge summary's writer confirms every required result names the head and passed every
   assertion, judges each Chinese confirmation, and reruns only when results look
   inconsistent.
