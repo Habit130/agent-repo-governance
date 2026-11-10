@@ -214,28 +214,36 @@ What a PR needs follows what it changes, not its tier (#44 §11). Commands and C
 | The PR changes | It needs |
 | --- | --- |
 | Anything | Green CI: the `linux` and `macos` jobs on the head |
-| The generator's skill text, templates or scripts under `generator/`, or the scenarios | Plus scenario results: each Claude Code scenario three times, plus the OpenCode smoke scenario |
+| The generator's skill text, templates or scripts under `generator/`, or the scenarios | Model scenarios not run; record final-head model behavior as unverified |
 | The gate, Merge watch or owner-script templates under `generator/`, the target state, or the record format the gate reads | Plus a live check in the sandbox repository |
 
 This repository's own rendered governance files change only through the generator, and on
 their own need neither of the last two rows.
 
-For delivery #122 only, habit [approved omitting the remaining model scenarios and reruns](https://github.com/Habit130/agent-repo-governance/issues/122#issuecomment-6719531025)
-(“同意这个免除。”). Record the missing final-head behavioral coverage in the evidence and
-Merge summary; prior candidate runs are historical evidence, not final-head passes. All
-offline checks, CI, live checks, reviews and after-merge smoke remain required. This exception
-does not change the scenario requirement for other deliveries. Obtain habit's approval before
-any future model scenario invocation.
+Model scenarios are stopped for every delivery, releases included, until the replacement
+tracked in #138 is established. No session invokes one. In [#139](https://github.com/Habit130/agent-repo-governance/issues/139),
+habit decided, verbatim:
 
-- The Builder runs the scenarios and live checks, posts results naming the commit they ran
-  on, and reruns them after a later push that touches the second or third row.
+> 2. 不要跑这个scenario了，太消耗额度了，如果必须要某种方式来验证的话，后续单独想一个新的验证方式。
+> 其他同意推荐
+
+The evidence and Merge summary state in one line that model scenarios were not run because
+of their quota cost and final-head model behavior is unverified. Prior candidate runs are
+historical evidence, not final-head passes. All offline checks, CI, live checks, reviews and
+after-merge smoke remain required.
+
+Historically, for delivery #122, habit [approved omitting the remaining model scenarios and reruns](https://github.com/Habit130/agent-repo-governance/issues/122#issuecomment-6719531025)
+(“同意这个免除。”). The standing decision above now applies to every delivery.
+
+- The Builder runs the live checks, posts results naming the commit they ran on, and reruns
+  them after a later push that touches the third row.
 - The Merge summary's writer confirms every required result names the head and passed every
   assertion, judges each Chinese confirmation, and reruns only when results look
   inconsistent.
 - The Merge summary's terminal copy, at high the high-risk report, carries a Chinese
   verification block in its evidence: one line each for CI, scenarios, and the live check or
-  why none was needed; new fixtures with their miss records; anything not run, with the
-  reason.
+  why none was needed; the scenarios line says “未运行：额度成本；最终 head 的模型行为未经验证”; new
+  fixtures with their miss records; anything not run, with the reason.
 - A failing check never reaches habit: the Builder repairs it before handing over, and a
   review that finds one raises an Important finding.
 - Fixtures are never removed or renamed; the release check enforces it. A PR that changes an
