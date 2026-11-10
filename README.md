@@ -1,10 +1,10 @@
 # agent-repo-governance
 
-借鉴 Anthropic 的代码审查实践与 mattpocock/skills，构建兼容 OpenCode、Claude Code 和 deepseekharness 的个性化仓库治理体系。
+借鉴 Anthropic 的代码审查实践与 mattpocock/skills，构建个性化仓库治理体系。Claude Code、OpenCode、deepseekharness 和 Codex harness 均支持角色 session；Codex review bot 是独立的 PR review bot。
 
 ## 运行
 
-Suites、检查和 CI 的命令见 `docs/agents/build.md`；generator 等程序仍在逐个 delivery 开发中。
+Governance model version 1 已发布，generator `govern-repository` 仅在 Claude Code 和 OpenCode 中运行。Suites、检查和 CI 的命令见 `docs/agents/build.md`。
 
 ### 新机器
 
@@ -53,9 +53,9 @@ Install 带来已发布的 version 之后，一个 repository 的第一次 Initi
 
 GitHub:https://github.com/habit130/agent-repo-governance
 
-## 本次初始化范围
+## 项目状态
 
-建立本仓库自身的治理契约；治理工具实现、skills 安装及其他仓库的修改属于后续独立交付。
+本仓库已完成 Initialize，治理工具和 machine skills 的安装流程已交付。后续修复与改进仍按独立 ticket 推进；其他仓库的治理落地分别交付。
 
 ## Agent instructions
 
