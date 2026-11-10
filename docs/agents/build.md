@@ -85,7 +85,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `parser-fixtures` | The machine parser and each stored version of the governed-side parser against every shared parser fixture, one test per registration and fixture; versioned registrations retain v1 coverage while checking v2 against the same expectations | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in | linux |
-| `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits in both shapes | linux |
+| `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits, plus `drafts/lifecycle.json`'s draft creation, updates, release, frozen mutations and invalid layouts in both shapes | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
 | `machine-install` | Seam C: every install fixture of #44's Testing Decisions, the machine rules, forward-only refusals and the ready command against a local origin | macos |
@@ -783,7 +783,8 @@ Its docstring gives each step and what each assertion reads.
 
 Version 1 is released once `generator/govern-repository/store/1/change-note.md` is on the
 default branch (#44 §4). From then on the release check freezes `store/1/` byte for byte, a
-defect becomes a later version, and a version's templates, manifest and note arrive in one PR.
+defect becomes a later version, developed as an unpublished draft that a separate release
+delivery freezes by adding its note (Unpublished model development, above).
 `govern.py change-note <path>` reads a note's two fields.
 
 The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI, the

@@ -37,10 +37,10 @@ def draft_transitions():
         base = head
     for step in fixture["after_release"]:
         yield step["name"], base, edited(base, step), ["frozen"]
-    # Layout validation is independent of immutability: start from released v1 only.
+    # Layout validation is independent of immutability; fixtures may override the v1 base.
     for step in fixture["invalid_layouts"]:
         head = edited(base, step)
-        start = initial if step["name"] != "lower-draft" else {}
+        start = {"released-v1": initial, "empty": {}}[step.get("base", "released-v1")]
         yield step["name"], start, head, step["failures"]
 
 
@@ -127,6 +127,9 @@ class ReleaseCheck(support.TempDirCase):
                                   if line.startswith("FAIL ")], failures, out)
                 self.assertEqual(len([line for line in out.splitlines() if line.startswith("PASS ")]),
                                  5 - len(failures))
+                if name == "frozen-edit":
+                    frozen = next(line for line in out.splitlines() if line.startswith("FAIL frozen:"))
+                    self.assertIn("templates/docs/agents/review.md", frozen)
 
     def test_depth_two_pr_merge_compares_first_parent_and_rejects_frozen_edit(self):
         self.check_ci_history("pr-merge")

@@ -15,7 +15,7 @@
   ],
   "invalid_layouts": [
     {"name": "two-drafts", "remove": ["2/change-note.md"], "write": {"3/manifest.json": "{\"version\": 3}\n"}, "failures": ["notes"]},
-    {"name": "lower-draft", "remove": ["1/change-note.md"], "failures": ["notes"]},
+    {"name": "lower-draft", "base": "empty", "remove": ["1/change-note.md"], "failures": ["notes"]},
     {"name": "gap", "write": {"4/manifest.json": "{\"version\": 4}\n"}, "failures": ["consecutive"]},
     {"name": "stray", "write": {"draft/manifest.json": "{}\n"}, "failures": ["consecutive"]},
     {"name": "malformed-release", "write": {"2/change-note.md": "urgency: later\nmust-act: no\n\n正文。\n"}, "failures": ["note-fields"]}
