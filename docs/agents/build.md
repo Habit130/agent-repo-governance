@@ -112,10 +112,13 @@ Later deliveries add theirs there, under the job #44 §11 names.
 
 ## Scenarios
 
-Before invoking a model scenario, obtain habit's approval. The one-delivery #122 exemption
-in `AGENTS.md`, Verification by change, permits omitting its remaining scenarios and reruns;
-record the unverified final-head behavior rather than reporting a pass. Offline runner tests
-remain required and use no model.
+No session invokes a model scenario, for any delivery or release: habit stopped them for
+their quota cost in #139. `AGENTS.md`, Verification by change, records the decision and the
+required evidence line: not run, with final-head model behavior unverified. A replacement
+is tracked in #138. Offline runner tests remain required and use no model.
+
+The runner description below is retained as reference, not an instruction to run it while
+model scenarios are stopped.
 
 `python3 tests/scenarios/runner.py <scenario> --harness claude|opencode [--runs N] [--out DIR]`
 runs a scenario in a logged-in harness on habit's Mac, one run at a time. Its docstring gives
