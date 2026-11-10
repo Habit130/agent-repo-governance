@@ -220,12 +220,24 @@ What a PR needs follows what it changes, not its tier (#44 §11). Commands and C
 This repository's own rendered governance files change only through the generator, and on
 their own need neither of the last two rows.
 
-Model scenarios are stopped for every delivery, releases included, until the replacement
-tracked in #138 is established. No session invokes one. In [#139](https://github.com/Habit130/agent-repo-governance/issues/139),
-habit decided, verbatim:
+No PR runs a model scenario or a replacement for one, releases included. In
+[#139](https://github.com/Habit130/agent-repo-governance/issues/139), habit stopped model
+scenarios for their quota cost, verbatim:
 
 > 2. 不要跑这个scenario了，太消耗额度了，如果必须要某种方式来验证的话，后续单独想一个新的验证方式。
 > 其他同意推荐
+
+In [#138](https://github.com/Habit130/agent-repo-governance/issues/138), habit approved the
+standing arrangement below, verbatim:
+
+> 同意， 同意推荐。
+
+- At a release, the cutting PR's end-to-end Initialize of the public sandbox remains
+  required, unchanged: it is Initialize's behavioral check.
+- This repository's Upgrade to the newly released version is Upgrade's behavioral check.
+  A failure there is a miss, repaired in a later version.
+- Repair and OpenCode have no behavioral check before release. This gap is accepted;
+  a failure in use is a miss. Release run details are in `docs/agents/build.md`.
 
 The evidence and Merge summary state in one line that model scenarios were not run because
 of their quota cost and final-head model behavior is unverified. Prior candidate runs are

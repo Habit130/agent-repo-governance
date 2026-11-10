@@ -69,7 +69,7 @@ Ordinary store/render/compare selection stays released-only. Explicit draft rend
 and comparison require the existing per-call `--allow-unreleased` in isolated tests or
 sandboxes. Installation may copy draft bytes without advancing the installed governance
 version; this needs no filtering mechanism. Apply `AGENTS.md`'s verification-by-change
-requirements to each draft delivery, and obtain habit's approval before model scenarios.
+requirements to each draft delivery, including the standing model-scenario decision below.
 
 Offline coverage uses Seam E's additive `release-check/drafts/lifecycle.json`: draft
 creation, two updates, release, frozen-tree mutations and invalid layouts. Each transition
@@ -112,13 +112,24 @@ Later deliveries add theirs there, under the job #44 §11 names.
 
 ## Scenarios
 
-No session invokes a model scenario, for any delivery or release: habit stopped them for
-their quota cost in #139. `AGENTS.md`, Verification by change, records the decision and the
-required evidence line: not run, with final-head model behavior unverified. A replacement
-is tracked in #138. Offline runner tests remain required and use no model.
+No PR runs a model scenario or a replacement for one, releases included. In
+[#138](https://github.com/Habit130/agent-repo-governance/issues/138), habit approved this
+standing arrangement, verbatim:
 
-The runner description below is retained as reference, not an instruction to run it while
-model scenarios are stopped.
+> 同意， 同意推荐。
+
+At a release, the cutting PR's end-to-end Initialize of the public sandbox remains
+required, unchanged, as Initialize's behavioral check (Version 1's cut and the end-to-end
+run, below). This repository's Upgrade to the newly released version is Upgrade's
+behavioral check; a failure there is a miss, repaired in a later version. Repair and
+OpenCode have no behavioral check before release. This gap is accepted; a failure in use
+is a miss.
+
+`AGENTS.md`, Verification by change, keeps the evidence and Merge summary line: model
+scenarios were not run because of their quota cost; final-head model behavior is
+unverified. Offline runner tests remain required and use no model.
+
+The runner description below is retained as reference, not an instruction to run it.
 
 `python3 tests/scenarios/runner.py <scenario> --harness claude|opencode [--runs N] [--out DIR]`
 runs a scenario in a logged-in harness on habit's Mac, one run at a time. Its docstring gives
@@ -873,7 +884,7 @@ delivery freezes by adding its note (Unpublished model development, above).
 `govern.py change-note <path>` reads a note's two fields.
 
 The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI, the
-Commands' steps and the scenarios pass on the head. Every result names the head, so a later
+Commands' steps pass on the head. Every result names the head, so a later
 push reruns them, the live checks and this run, with a fresh reset.
 
 1. **The reset.** `live.py reset --sandbox public` opens a sandbox PR whose commit holds exactly
