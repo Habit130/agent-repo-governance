@@ -11,12 +11,14 @@
 
 import argparse
 import ast
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 sys.dont_write_bytecode = True
@@ -47,6 +49,7 @@ SUITES = (
     ("merge-watch", "test_merge_watch", "linux"),
     ("release-check", "test_release_check", "linux"),
     ("skill-copies", "test_skill_copies", "linux"),
+    ("suite-runner", "test_suite_runner", "linux"),
     ("standins", "test_standins", "macos"),
     ("owner", "test_owner", "macos"),
     ("live-runner", "test_live_runner", "macos"),
@@ -201,6 +204,39 @@ def cmd_exact_comparison(args):
     return code
 
 
+def cmd_suite_child(args):
+    """Internal worker: report counts separately from arbitrary unittest output."""
+    suite = unittest.TestLoader().loadTestsFromName(args.module)
+    result = unittest.TextTestRunner(verbosity=2, stream=sys.stdout).run(suite)
+    with open(args.result, "w") as handle:
+        json.dump({"tests": result.testsRun, "passed": result.wasSuccessful()}, handle)
+    return 0 if result.wasSuccessful() else 1
+
+
+def run_suite(suite):
+    name, module, _ = suite
+    started = time.monotonic()
+    output = b""
+    passed, count = False, None
+    try:
+        with tempfile.TemporaryDirectory(prefix="suite-result-") as directory:
+            result_path = os.path.join(directory, "result.json")
+            process = subprocess.run(
+                [sys.executable, "-u", os.path.abspath(__file__), "_suite", module, result_path],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            )
+            output = process.stdout
+            if process.returncode:
+                output += ("\nworker exit code: %d\n" % process.returncode).encode()
+            with open(result_path) as handle:
+                result = json.load(handle)
+            count = result["tests"]
+            passed = result["passed"] and process.returncode == 0
+    except (OSError, ValueError, KeyError) as error:
+        output += ("\nworker failed: %s\n" % error).encode("utf-8", "replace")
+    return name, passed, count, time.monotonic() - started, output
+
+
 def cmd_suites(args):
     names = [name for name, _, _ in SUITES]
     if args.all:
@@ -216,13 +252,36 @@ def cmd_suites(args):
     else:
         print("name suites, or pass --job linux, --job macos or --all")
         return 2
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-    for name, module, _ in chosen:
-        suite.addTests(loader.loadTestsFromName(module))
-    print("suites: %s" % ", ".join(name for name, _, _ in chosen))
-    result = unittest.TextTestRunner(verbosity=2, stream=sys.stdout).run(suite)
-    return 0 if result.wasSuccessful() else 1
+    started = time.monotonic()
+    # Measured longest suites first; preserve registry order for the rest.
+    priority = {"machine-wizard": 0, "owner": 1}
+    chosen.sort(key=lambda suite: priority.get(suite[0], 2))
+    print("suites: %s (workers: %d)" % (", ".join(name for name, _, _ in chosen), args.workers), flush=True)
+    results = {}
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = [pool.submit(run_suite, suite) for suite in chosen]
+        for future in as_completed(futures):
+            name, passed, count, duration, output = future.result()
+            print("=== %s ===" % name)
+            print(output.decode("utf-8", "replace"), end="", flush=True)
+            results[name] = passed, count, duration
+    for name, _, _ in chosen:
+        passed, count, duration = results[name]
+        print("%s %s: %s tests, %.3fs" % (
+            "PASS" if passed else "FAIL", name, count if count is not None else "unknown", duration))
+    passed = all(result[0] for result in results.values())
+    incomplete = any(result[1] is None for result in results.values())
+    print("%s total: %d tests%s, %.3fs wall" % (
+        "PASS" if passed else "FAIL", sum(result[1] or 0 for result in results.values()),
+        " (incomplete)" if incomplete else "", time.monotonic() - started))
+    return 0 if passed else 1
+
+
+def positive_workers(value):
+    number = int(value)
+    if number < 1:
+        raise argparse.ArgumentTypeError("workers must be at least 1")
+    return number
 
 
 def build_parser():
@@ -253,10 +312,16 @@ def build_parser():
 
     suites = commands.add_parser("suites", help="run suites")
     suites.add_argument("names", nargs="*")
+    suites.add_argument("--workers", type=positive_workers, default=os.cpu_count() or 1,
+                        help="concurrent suites (default: CPU count); 1 runs serially")
     group = suites.add_mutually_exclusive_group()
     group.add_argument("--job", choices=("linux", "macos"))
     group.add_argument("--all", action="store_true")
     suites.set_defaults(run=cmd_suites)
+    child = commands.add_parser("_suite", help=argparse.SUPPRESS)
+    child.add_argument("module")
+    child.add_argument("result")
+    child.set_defaults(run=cmd_suite_child)
     return parser
 
 

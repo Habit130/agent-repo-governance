@@ -22,9 +22,9 @@ worked.
 | 1. Whitespace | `git diff --check origin/main...HEAD` | Also `git diff --check` before committing. | Working: no output |
 | 2. Stored form | `python3 tests/run.py stored-form` | One PASS line, or one FAIL line per stored path that could load or fails to decode. | Working: 495 stored paths |
 | 3. Release check | `python3 tests/run.py release-check --base "$(git merge-base origin/main HEAD)" --head HEAD` | One PASS or FAIL line per rule, then INFO lines for new and changed fixtures. Use the merge-base: a newer `origin/main` would read its own new fixtures as removed. | Working: every rule passes, 346 fixture files |
-| 4. Linux suites | `python3 tests/run.py suites --job linux` | unittest's verbose output, ending `OK`. | Working: 739 tests OK |
+| 4. Linux suites | `python3 tests/run.py suites --job linux` | Whole verbose unittest output per suite, then each suite's result/count/duration and the total result/count/wall time. | Working: 739 tests OK |
 | 5. Python 3.9 and bash 3.2 | `/usr/bin/python3 tests/run.py py39` | Fails unless the interpreter is 3.9; parses every script as 3.9 and runs `/bin/bash -n` on every shell entry. | Working: 75 Python files, 6 shell entries |
-| 6. Every suite under 3.9 | `/usr/bin/python3 tests/run.py suites --all` | The 3.9 compatibility run of every suite. | Working: 1072 tests OK |
+| 6. Every suite under 3.9 | `/usr/bin/python3 tests/run.py suites --all` | Every suite in a separate 3.9 child; whole verbose output per suite, then per-suite and total summaries as in step 4. | Working: 1072 tests OK |
 | 7. Exact comparison | `python3 tests/run.py exact-comparison` | Renders version 1 into the tally sample repository and prints exact comparison's JSON; `differences` must be empty. | Working: no differences, 17 paths checked |
 | 8. Committed whitespace | `git show --format= --check HEAD` | After committing. | Working: no output |
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
@@ -32,6 +32,18 @@ worked.
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
 the copies verification (Skill copies, below) also worked at Initialize: 16 copies pass,
 and the copies and the license are byte-identical with upstream.
+
+The suites command runs one child process per selected suite using the invoking interpreter.
+Concurrency defaults to the CPU count (one if unavailable); `--workers N` sets a positive
+limit, and `--workers 1` runs serially for debugging. `machine-wizard` starts first, then
+`owner`, then the remaining suites in registry order. Tests within each suite stay serial.
+Completed suites print their captured stdout and stderr as whole blocks, without interleaving.
+After all suites finish, summaries in scheduling order report each result, test count and
+duration, followed by the total count and wall time. Failure, error, load failure or worker
+crash makes the command fail without suppressing other suites. A worker without a completed
+result reports an unknown count and the total is marked incomplete; it is never a pass.
+Selection by names, `--job linux`, `--job macos` or `--all` retains the suite registry's jobs;
+the macOS compatibility command still runs every suite under `/usr/bin/python3`.
 
 ## Suites
 
@@ -51,6 +63,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits in both shapes | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
+| `suite-runner` | Real suites CLI with isolated synthetic modules: concurrent rendezvous, serial scheduling and longest-first order, interpreter identity, complete output blocks, selection and worker limits, counts and summaries, failures/errors/load failures/crashes with a passing sibling | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
 | `machine-install` | Seam C: every install fixture of #44's Testing Decisions, the machine rules, forward-only refusals and the ready command against a local origin | macos |
 | `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, personal skills' Codex problems only reported, and the Codex key detector's shapes | macos |
