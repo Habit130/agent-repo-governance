@@ -485,6 +485,43 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   the real CLI when its skills change, replacing the scratch home's path with
   `/fixture-home`.
 
+## Generated Codex policy corpus (#76)
+
+`tests/policy_corpus.py` generates inputs independently of both policy readers. The recipe
+combines explicit continuation, comment, tab and block-scalar boundaries with 32 sampled
+prefixes for each seed 1–4, then crosses them with four policy-key spellings. It retains
+valid and malformed inputs without consulting a reader. The committed corpus has 608
+unique shapes; the separate 130 hand-written shapes and their recording remain unchanged.
+
+To reproduce the corpus, run `python3 tests/policy_corpus.py generate`. To re-record it,
+run `python3 tests/policy_corpus.py record --codex <absolute-installed-codex-path>`.
+Use the installed CLI only; installing or upgrading it is outside this ticket. The recording
+identifies its consumer version and corpus SHA-256. The initial recording used
+`codex-cli 0.167.0-alpha.3.2` and `debug prompt-input x`, with no authentication, model or
+network call. The recorder supplies only a synthetic HOME, CODEX_HOME, XDG directories,
+TMPDIR and cwd, with a minimal environment; it never copies real-home configuration.
+
+Each batch contains at most 16 inputs and one listable control sorted after them. First,
+all skills must appear with their full unique descriptions without policy files. Then the
+same skills are recorded with their policy files; every visible description and the control
+must still be complete. This baseline prevents silent budget omission from masquerading
+as policy enforcement. The recording keeps the CLI's complete skills-instruction strings,
+normalizing scratch paths, and omits unrelated prompt content. It rejects nonzero exits,
+stderr, missing skill sections, duplicate entries, omitted controls and shortened entries.
+
+CI's `skill-copies` suite regenerates the corpus, binds it to the recording digest, verifies
+batch coverage and budgets, and checks both current consumers: every user-only reading
+must be hidden in the recorded real consumer. Deliberately unsafe reader substitutions
+must fail on the original invalid-continuation defect; stale, incomplete and shortened
+recordings also fail. Run `python3 tests/run.py suites skill-copies machine-check` for the
+focused checks. CI never launches real Codex.
+
+To extend coverage, append recipe inputs or seeds while preserving existing shapes and
+names, regenerate, and re-record the whole corpus. Review the corpus/recording diff and
+run the focused checks. This bounded corpus is evidence for its recorded CLI version,
+not proof for all YAML or future consumers. A new reader mismatch returns to habit for
+a bounded contract amendment; never filter it out or change product semantics here.
+
 ## Skill copies
 
 `skill-copies/` holds the third-party skill copies (#44 §10, ADR 0020): upstream's `LICENSE`,
