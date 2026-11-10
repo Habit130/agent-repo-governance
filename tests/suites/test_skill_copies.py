@@ -573,6 +573,80 @@ class PolicyShapes(unittest.TestCase):
         self.assertIn("shape-block-below-initial-indent", listed)
 
 
+class GeneratedPolicyCorpus(unittest.TestCase):
+    def test_committed_recording_matches_recipe_and_both_consumers(self):
+        import policy_corpus
+        from machinelib.skills import codex_policy
+
+        corpus = json.loads(policy_corpus.CORPUS.read_text())
+        self.assertEqual(corpus, policy_corpus.generate())
+        recording = json.loads(policy_corpus.RECORDING.read_text())
+        policy_corpus.verify(corpus, recording, codex_policy, copylib.has_codex_key)
+
+    def test_an_unsafe_reader_is_rejected_by_the_real_consumer_recording(self):
+        import policy_corpus as corpus_tool
+        from machinelib.skills import codex_policy
+
+        corpus = json.loads(corpus_tool.CORPUS.read_text())
+        recording = json.loads(corpus_tool.RECORDING.read_text())
+        target = next(s for s in corpus["shapes"]
+                      if s["yaml"] == CONTINUED_COLON)
+        listed = set().union(*(corpus_tool.entries(b["policy"]) for b in recording["batches"]))
+        self.assertIn(target["name"], listed)
+        self.assertNotEqual(codex_policy(target["yaml"].encode()), "false")
+        unsafe_machine = lambda data: "false" if data == CONTINUED_COLON.encode() else codex_policy(data)
+        unsafe_copies = lambda data: unsafe_machine(data) == "false"
+        with self.assertRaisesRegex(ValueError, "unsafe certification: " + target["name"]):
+            corpus_tool.verify(corpus, recording, unsafe_machine, unsafe_copies)
+        with self.assertRaisesRegex(ValueError, "detectors disagree: " + target["name"]):
+            corpus_tool.verify(corpus, recording, codex_policy, unsafe_copies)
+
+    def test_recording_rejects_budget_loss_and_stale_or_incomplete_inputs(self):
+        import copy
+        import policy_corpus as corpus_tool
+        from machinelib.skills import codex_policy
+
+        corpus = json.loads(corpus_tool.CORPUS.read_text())
+        original = json.loads(corpus_tool.RECORDING.read_text())
+        mutations = (
+            ("baseline omitted", lambda r: r["batches"][0].update(baseline=[])),
+            ("listable control", lambda r: r["batches"][0].update(policy=[])),
+            ("incomplete batches", lambda r: r["batches"].pop()),
+            ("batch inputs", lambda r: r["batches"][0]["names"].reverse()),
+            ("digest mismatch", lambda r: r.update(corpus_sha256="stale")),
+        )
+        for message, mutate in mutations:
+            with self.subTest(message=message):
+                recording = copy.deepcopy(original)
+                mutate(recording)
+                with self.assertRaisesRegex(ValueError, message):
+                    corpus_tool.verify(corpus, recording, codex_policy, copylib.has_codex_key)
+        for phase in ("baseline", "policy"):
+            recording = copy.deepcopy(original)
+            # Both phases list the malformed continuation; shorten only that entry.
+            name = next(s["name"] for s in corpus["shapes"] if s["yaml"] == CONTINUED_COLON)
+            recording["batches"][0][phase] = [
+                text.replace(corpus_tool.description(name), "Shortened")
+                for text in recording["batches"][0][phase]]
+            with self.assertRaisesRegex(ValueError, "shortened"):
+                corpus_tool.verify(corpus, recording, codex_policy, copylib.has_codex_key)
+
+    def test_recipe_is_reproducible_and_covers_each_boundary_and_spelling(self):
+        import policy_corpus
+
+        corpus = policy_corpus.generate()
+        self.assertEqual(corpus, policy_corpus.generate())
+        shapes = corpus["shapes"]
+        self.assertEqual(len({s["name"] for s in shapes}), len(shapes))
+        self.assertEqual(len({s["yaml"] for s in shapes}), len(shapes))
+        for family in ("continuation", "comment", "tab", "block", "seeded"):
+            for spelling in range(4):
+                self.assertTrue(any(s["family"] == family and s["spelling"] == spelling
+                                    for s in shapes), (family, spelling))
+        self.assertTrue(any('zzz: foo\n  : bar\n"policy":' in s["yaml"] for s in shapes))
+        self.assertTrue(all("reading" not in s for s in shapes))
+
+
 def _shapes():
     with open(SHAPES) as handle:
         return json.load(handle)["shapes"]

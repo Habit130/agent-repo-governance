@@ -1,0 +1,3666 @@
+{
+  "recipe": 1,
+  "seeds": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "samples_per_seed": 32,
+  "policy_spellings": [
+    "policy:",
+    "\"policy\":",
+    "'policy':",
+    "policy :"
+  ],
+  "shapes": [
+    {
+      "name": "probe-0000",
+      "family": "continuation",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0001",
+      "family": "continuation",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0002",
+      "family": "continuation",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0003",
+      "family": "continuation",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0004",
+      "family": "continuation",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0005",
+      "family": "continuation",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0006",
+      "family": "continuation",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0007",
+      "family": "continuation",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0008",
+      "family": "continuation",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  \"x\"\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0009",
+      "family": "continuation",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  \"x\"\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0010",
+      "family": "continuation",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  \"x\"\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0011",
+      "family": "continuation",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  \"x\"\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0012",
+      "family": "continuation",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  [a]\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0013",
+      "family": "continuation",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  [a]\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0014",
+      "family": "continuation",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  [a]\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0015",
+      "family": "continuation",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  [a]\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0016",
+      "family": "continuation",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  a: b\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0017",
+      "family": "continuation",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  a: b\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0018",
+      "family": "continuation",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  a: b\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0019",
+      "family": "continuation",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  a: b\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0020",
+      "family": "comment",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0021",
+      "family": "comment",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0022",
+      "family": "comment",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0023",
+      "family": "comment",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0024",
+      "family": "comment",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0025",
+      "family": "comment",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0026",
+      "family": "comment",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0027",
+      "family": "comment",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0028",
+      "family": "comment",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  # c\n  bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0029",
+      "family": "comment",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  # c\n  bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0030",
+      "family": "comment",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  # c\n  bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0031",
+      "family": "comment",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  # c\n  bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0032",
+      "family": "comment",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  # c\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0033",
+      "family": "comment",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  # c\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0034",
+      "family": "comment",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  # c\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0035",
+      "family": "comment",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  # c\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0036",
+      "family": "comment",
+      "spelling": 0,
+      "yaml": "zzz: foo\n# c\n  bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0037",
+      "family": "comment",
+      "spelling": 1,
+      "yaml": "zzz: foo\n# c\n  bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0038",
+      "family": "comment",
+      "spelling": 2,
+      "yaml": "zzz: foo\n# c\n  bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0039",
+      "family": "comment",
+      "spelling": 3,
+      "yaml": "zzz: foo\n# c\n  bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0040",
+      "family": "comment",
+      "spelling": 0,
+      "yaml": "zzz: foo\n# c\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0041",
+      "family": "comment",
+      "spelling": 1,
+      "yaml": "zzz: foo\n# c\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0042",
+      "family": "comment",
+      "spelling": 2,
+      "yaml": "zzz: foo\n# c\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0043",
+      "family": "comment",
+      "spelling": 3,
+      "yaml": "zzz: foo\n# c\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0044",
+      "family": "tab",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  -\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0045",
+      "family": "tab",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  -\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0046",
+      "family": "tab",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  -\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0047",
+      "family": "tab",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  -\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0048",
+      "family": "tab",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  ?\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0049",
+      "family": "tab",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  ?\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0050",
+      "family": "tab",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  ?\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0051",
+      "family": "tab",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  ?\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0052",
+      "family": "tab",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0053",
+      "family": "tab",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0054",
+      "family": "tab",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0055",
+      "family": "tab",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0056",
+      "family": "tab",
+      "spelling": 0,
+      "yaml": "zzz: foo\n\tbar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0057",
+      "family": "tab",
+      "spelling": 1,
+      "yaml": "zzz: foo\n\tbar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0058",
+      "family": "tab",
+      "spelling": 2,
+      "yaml": "zzz: foo\n\tbar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0059",
+      "family": "tab",
+      "spelling": 3,
+      "yaml": "zzz: foo\n\tbar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0060",
+      "family": "tab",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  a:\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0061",
+      "family": "tab",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  a:\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0062",
+      "family": "tab",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  a:\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0063",
+      "family": "tab",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  a:\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0064",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: |\n  first\n    deeper\n  back\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0065",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: |\n  first\n    deeper\n  back\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0066",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: |\n  first\n    deeper\n  back\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0067",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: |\n  first\n    deeper\n  back\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0068",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: |\n    first\n  below\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0069",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: |\n    first\n  below\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0070",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: |\n    first\n  below\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0071",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: |\n    first\n  below\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0072",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: |\n\n  text\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0073",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: |\n\n  text\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0074",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: |\n\n  text\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0075",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: |\n\n  text\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0076",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  first\n    deeper\n  back\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0077",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  first\n    deeper\n  back\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0078",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  first\n    deeper\n  back\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0079",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  first\n    deeper\n  back\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0080",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: >-\n    first\n  below\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0081",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: >-\n    first\n  below\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0082",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: >-\n    first\n  below\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0083",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: >-\n    first\n  below\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0084",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: >-\n\n  text\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0085",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: >-\n\n  text\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0086",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: >-\n\n  text\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0087",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: >-\n\n  text\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0088",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: |2\n  first\n    deeper\n  back\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0089",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: |2\n  first\n    deeper\n  back\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0090",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: |2\n  first\n    deeper\n  back\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0091",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: |2\n  first\n    deeper\n  back\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0092",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: |2\n    first\n  below\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0093",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: |2\n    first\n  below\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0094",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: |2\n    first\n  below\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0095",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: |2\n    first\n  below\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0096",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: |2\n\n  text\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0097",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: |2\n\n  text\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0098",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: |2\n\n  text\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0099",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: |2\n\n  text\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0100",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: >+\n  first\n    deeper\n  back\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0101",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: >+\n  first\n    deeper\n  back\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0102",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: >+\n  first\n    deeper\n  back\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0103",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: >+\n  first\n    deeper\n  back\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0104",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: >+\n    first\n  below\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0105",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: >+\n    first\n  below\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0106",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: >+\n    first\n  below\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0107",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: >+\n    first\n  below\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0108",
+      "family": "block",
+      "spelling": 0,
+      "yaml": "zzz: >+\n\n  text\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0109",
+      "family": "block",
+      "spelling": 1,
+      "yaml": "zzz: >+\n\n  text\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0110",
+      "family": "block",
+      "spelling": 2,
+      "yaml": "zzz: >+\n\n  text\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0111",
+      "family": "block",
+      "spelling": 3,
+      "yaml": "zzz: >+\n\n  text\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0112",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  -\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0113",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  -\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0114",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  -\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0115",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  -\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0116",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz:\n  ---\n  &a x\n      value: v\n    deeper\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0117",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz:\n  ---\n  &a x\n      value: v\n    deeper\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0118",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz:\n  ---\n  &a x\n      value: v\n    deeper\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0119",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz:\n  ---\n  &a x\n      value: v\n    deeper\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0120",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz:\n  : bar\n      value: v\n  ...\n  bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0121",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz:\n  : bar\n      value: v\n  ...\n  bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0122",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz:\n  : bar\n      value: v\n  ...\n  bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0123",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz:\n  : bar\n      value: v\n  ...\n  bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0124",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  ?\tb\n  bar # c\n  }\n  'x'\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0125",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  ?\tb\n  bar # c\n  }\n  'x'\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0126",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  ?\tb\n  bar # c\n  }\n  'x'\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0127",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  ?\tb\n  bar # c\n  }\n  'x'\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0128",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0129",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0130",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0131",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0132",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n      value: v\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0133",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n      value: v\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0134",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n      value: v\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0135",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n      value: v\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0136",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  ...\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0137",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  ...\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0138",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  ...\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0139",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  ...\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0140",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n  ---\n  *a\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0141",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n  ---\n  *a\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0142",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n  ---\n  *a\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0143",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n  ---\n  *a\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0144",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n  tools:\n  bar # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0145",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n  tools:\n  bar # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0146",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n  tools:\n  bar # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0147",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n  tools:\n  bar # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0148",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  !t x\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0149",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  !t x\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0150",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  !t x\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0151",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  !t x\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0152",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  ,x\n  'x'\n  ? a\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0153",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  ,x\n  'x'\n  ? a\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0154",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  ,x\n  'x'\n  ? a\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0155",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  ,x\n  'x'\n  ? a\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0156",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz:\n  %x\n  ...\n  %x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0157",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz:\n  %x\n  ...\n  %x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0158",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz:\n  %x\n  ...\n  %x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0159",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz:\n  %x\n  ...\n  %x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0160",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  a :b\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0161",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  a :b\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0162",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  a :b\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0163",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  a :b\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0164",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  %x\n        : w\n  }\n  # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0165",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  %x\n        : w\n  }\n  # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0166",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  %x\n        : w\n  }\n  # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0167",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  %x\n        : w\n  }\n  # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0168",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n        : w\n   odd\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0169",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n        : w\n   odd\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0170",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n        : w\n   odd\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0171",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n        : w\n   odd\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0172",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n    - type: t\n  ,x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0173",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n    - type: t\n  ,x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0174",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n    - type: t\n  ,x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0175",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n    - type: t\n  ,x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0176",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  \"x\"\n  ---\n  %x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0177",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  \"x\"\n  ---\n  %x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0178",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  \"x\"\n  ---\n  %x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0179",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  \"x\"\n  ---\n  %x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0180",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz:\n  @x\n        : w\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0181",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz:\n  @x\n        : w\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0182",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz:\n  @x\n        : w\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0183",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz:\n  @x\n        : w\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0184",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  : bar\n  &a x\n  # c\n  a :b\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0185",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  : bar\n  &a x\n  # c\n  a :b\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0186",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  : bar\n  &a x\n  # c\n  a :b\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0187",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  : bar\n  &a x\n  # c\n  a :b\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0188",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  a: b\n  a: b\n  %x\n  bar # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0189",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  a: b\n  a: b\n  %x\n  bar # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0190",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  a: b\n  a: b\n  %x\n  bar # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0191",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  a: b\n  a: b\n  %x\n  bar # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0192",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  `x`\n  ,x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0193",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  `x`\n  ,x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0194",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  `x`\n  ,x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0195",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  `x`\n  ,x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0196",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: # c\n  %x\n  tools:\n  ]\n  tools:\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0197",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: # c\n  %x\n  tools:\n  ]\n  tools:\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0198",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: # c\n  %x\n  tools:\n  ]\n  tools:\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0199",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: # c\n  %x\n  tools:\n  ]\n  tools:\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0200",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n  ,x\n  bar\n      value: v\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0201",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n  ,x\n  bar\n      value: v\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0202",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n  ,x\n  bar\n      value: v\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0203",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n  ,x\n  bar\n      value: v\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0204",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  @x\n  ,x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0205",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  @x\n  ,x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0206",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  @x\n  ,x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0207",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  @x\n  ,x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0208",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: # c\n# c\n  &a x\n    - type: t\n  ]\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0209",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: # c\n# c\n  &a x\n    - type: t\n  ]\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0210",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: # c\n# c\n  &a x\n    - type: t\n  ]\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0211",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: # c\n# c\n  &a x\n    - type: t\n  ]\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0212",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n  %x\n   odd\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0213",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n  %x\n   odd\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0214",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n  %x\n   odd\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0215",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n  %x\n   odd\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0216",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n   odd\n  tools:\n  bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0217",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n   odd\n  tools:\n  bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0218",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n   odd\n  tools:\n  bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0219",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n   odd\n  tools:\n  bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0220",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n  !t x\n  : bar\n  bar # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0221",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n  !t x\n  : bar\n  bar # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0222",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n  !t x\n  : bar\n  bar # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0223",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n  !t x\n  : bar\n  bar # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0224",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  ,x\n  }\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0225",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  ,x\n  }\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0226",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  ,x\n  }\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0227",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  ,x\n  }\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0228",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  ,x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0229",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  ,x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0230",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  ,x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0231",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  ,x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0232",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "interface:\n\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0233",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "interface:\n\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0234",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "interface:\n\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0235",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "interface:\n\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0236",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz:\n  ---\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0237",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz:\n  ---\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0238",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz:\n  ---\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0239",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz:\n  ---\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0240",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  a :b\n  -\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0241",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  a :b\n  -\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0242",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  a :b\n  -\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0243",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  a :b\n  -\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0244",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  # c\n  }\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0245",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  # c\n  }\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0246",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  # c\n  }\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0247",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  # c\n  }\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0248",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  ...\n        : w\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0249",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  ...\n        : w\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0250",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  ...\n        : w\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0251",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  ...\n        : w\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0252",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  `x`\n  ---\n  %x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0253",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  `x`\n  ---\n  %x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0254",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  `x`\n  ---\n  %x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0255",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  `x`\n  ---\n  %x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0256",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "interface:\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0257",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "interface:\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0258",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "interface:\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0259",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "interface:\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0260",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  display_name: v\n      value: v\n  ...\n  @x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0261",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  display_name: v\n      value: v\n  ...\n  @x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0262",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  display_name: v\n      value: v\n  ...\n  @x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0263",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  display_name: v\n      value: v\n  ...\n  @x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0264",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  bar#c\n  bar # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0265",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  bar#c\n  bar # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0266",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  bar#c\n  bar # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0267",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  bar#c\n  bar # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0268",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  display_name: v\n  ? a\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0269",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  display_name: v\n  ? a\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0270",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  display_name: v\n  ? a\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0271",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  display_name: v\n  ? a\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0272",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  %x\n  ,x\n  ? a\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0273",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  %x\n  ,x\n  ? a\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0274",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  %x\n  ,x\n  ? a\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0275",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  %x\n  ,x\n  ? a\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0276",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n  @x\n    - type: t\n  }\n  tools:\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0277",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n  @x\n    - type: t\n  }\n  tools:\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0278",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n  @x\n    - type: t\n  }\n  tools:\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0279",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n  @x\n    - type: t\n  }\n  tools:\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0280",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  a: b\n        : w\n  !t x\n  @x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0281",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  a: b\n        : w\n  !t x\n  @x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0282",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  a: b\n        : w\n  !t x\n  @x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0283",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  a: b\n        : w\n  !t x\n  @x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0284",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: # c\n  ?\tb\n  *a\n  %x\n  %x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0285",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: # c\n  ?\tb\n  *a\n  %x\n  %x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0286",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: # c\n  ?\tb\n  *a\n  %x\n  %x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0287",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: # c\n  ?\tb\n  *a\n  %x\n  %x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0288",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  !t x\n  tools:\n  ]\n  ,x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0289",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  !t x\n  tools:\n  ]\n  ,x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0290",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  !t x\n  tools:\n  ]\n  ,x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0291",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  !t x\n  tools:\n  ]\n  ,x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0292",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  *a\n  bar # c\n  display_name: v\n  a: b\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0293",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  *a\n  bar # c\n  display_name: v\n  a: b\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0294",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  *a\n  bar # c\n  display_name: v\n  a: b\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0295",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  *a\n  bar # c\n  display_name: v\n  a: b\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0296",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  &a x\n  a :b\n  a :b\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0297",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  &a x\n  a :b\n  a :b\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0298",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  &a x\n  a :b\n  a :b\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0299",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  &a x\n  a :b\n  a :b\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0300",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  a :b\n    deeper\n  *a\n  %x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0301",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  a :b\n    deeper\n  *a\n  %x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0302",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  a :b\n    deeper\n  *a\n  %x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0303",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  a :b\n    deeper\n  *a\n  %x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0304",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n    more\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0305",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n    more\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0306",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n    more\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0307",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n    more\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0308",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  - a\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0309",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  - a\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0310",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  - a\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0311",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  - a\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0312",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n# c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0313",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n# c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0314",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n# c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0315",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n# c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0316",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  ?\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0317",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  ?\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0318",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  ?\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0319",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  ?\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0320",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  'x'\n  @x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0321",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  'x'\n  @x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0322",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  'x'\n  @x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0323",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  'x'\n  @x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0324",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  bar#c\n    deeper\n# c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0325",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  bar#c\n    deeper\n# c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0326",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  bar#c\n    deeper\n# c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0327",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  bar#c\n    deeper\n# c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0328",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: -a\n# c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0329",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: -a\n# c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0330",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: -a\n# c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0331",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: -a\n# c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0332",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  ? a\n  bar#c\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0333",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  ? a\n  bar#c\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0334",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  ? a\n  bar#c\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0335",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  ? a\n  bar#c\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0336",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz:\n\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0337",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz:\n\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0338",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz:\n\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0339",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz:\n\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0340",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  {a: b}\n  a: b\n  ? a\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0341",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  {a: b}\n  a: b\n  ? a\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0342",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  {a: b}\n  a: b\n  ? a\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0343",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  {a: b}\n  a: b\n  ? a\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0344",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n      value: v\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0345",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n      value: v\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0346",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n      value: v\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0347",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n      value: v\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0348",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  bar#c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0349",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  bar#c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0350",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  bar#c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0351",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  bar#c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0352",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0353",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0354",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0355",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0356",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: # c\n    - type: t\n  &a x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0357",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: # c\n    - type: t\n  &a x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0358",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: # c\n    - type: t\n  &a x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0359",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: # c\n    - type: t\n  &a x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0360",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0361",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0362",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0363",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0364",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n  ,x\n  bar # c\n  - a\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0365",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n  ,x\n  bar # c\n  - a\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0366",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n  ,x\n  bar # c\n  - a\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0367",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n  ,x\n  bar # c\n  - a\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0368",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  `x`\n  ,x\n  &a x\n        : w\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0369",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  `x`\n  ,x\n  &a x\n        : w\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0370",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  `x`\n  ,x\n  &a x\n        : w\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0371",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  `x`\n  ,x\n  &a x\n        : w\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0372",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  bar # c\n  a:\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0373",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  bar # c\n  a:\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0374",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  bar # c\n  a:\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0375",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  bar # c\n  a:\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0376",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n  bar\n\n  a: b\n  }\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0377",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n  bar\n\n  a: b\n  }\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0378",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n  bar\n\n  a: b\n  }\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0379",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n  bar\n\n  a: b\n  }\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0380",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  : bar\n  ?\tb\n  &a x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0381",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  : bar\n  ?\tb\n  &a x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0382",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  : bar\n  ?\tb\n  &a x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0383",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  : bar\n  ?\tb\n  &a x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0384",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  ...\n        : w\n  ]\n  ---\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0385",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  ...\n        : w\n  ]\n  ---\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0386",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  ...\n        : w\n  ]\n  ---\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0387",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  ...\n        : w\n  ]\n  ---\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0388",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  'x'\n  # c\n  {a: b}\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0389",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  'x'\n  # c\n  {a: b}\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0390",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  'x'\n  # c\n  {a: b}\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0391",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  'x'\n  # c\n  {a: b}\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0392",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n  -\tb\n  ...\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0393",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n  -\tb\n  ...\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0394",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n  -\tb\n  ...\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0395",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n  -\tb\n  ...\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0396",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n   odd\n  %x\n      value: v\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0397",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n   odd\n  %x\n      value: v\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0398",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n   odd\n  %x\n      value: v\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0399",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n   odd\n  %x\n      value: v\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0400",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  `x`\n  }\n   odd\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0401",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  `x`\n  }\n   odd\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0402",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  `x`\n  }\n   odd\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0403",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  `x`\n  }\n   odd\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0404",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n    more\n  : bar\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0405",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n    more\n  : bar\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0406",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n    more\n  : bar\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0407",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n    more\n  : bar\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0408",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "interface:\n  display_name: v\n  `x`\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0409",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "interface:\n  display_name: v\n  `x`\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0410",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "interface:\n  display_name: v\n  `x`\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0411",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "interface:\n  display_name: v\n  `x`\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0412",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n    deeper\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0413",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n    deeper\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0414",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n    deeper\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0415",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n    deeper\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0416",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  :\tb\n  [a]\n\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0417",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  :\tb\n  [a]\n\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0418",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  :\tb\n  [a]\n\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0419",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  :\tb\n  [a]\n\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0420",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n  \"x\"\n  tools:\n\n   odd\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0421",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n  \"x\"\n  tools:\n\n   odd\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0422",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n  \"x\"\n  tools:\n\n   odd\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0423",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n  \"x\"\n  tools:\n\n   odd\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0424",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0425",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0426",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0427",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0428",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: -a\n  [a]\n  # c\n  # c\n      value: v\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0429",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: -a\n  [a]\n  # c\n  # c\n      value: v\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0430",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: -a\n  [a]\n  # c\n  # c\n      value: v\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0431",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: -a\n  [a]\n  # c\n  # c\n      value: v\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0432",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  ,x\n  ?\tb\n  %x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0433",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  ,x\n  ?\tb\n  %x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0434",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  ,x\n  ?\tb\n  %x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0435",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  ,x\n  ?\tb\n  %x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0436",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: # c\n  a :b\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0437",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: # c\n  a :b\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0438",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: # c\n  a :b\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0439",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: # c\n  a :b\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0440",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  'x'\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0441",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  'x'\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0442",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  'x'\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0443",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  'x'\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0444",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  - a\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0445",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  - a\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0446",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  - a\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0447",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  - a\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0448",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: -a\n  -\tb\n  a:\tb\n  # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0449",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: -a\n  -\tb\n  a:\tb\n  # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0450",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: -a\n  -\tb\n  a:\tb\n  # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0451",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: -a\n  -\tb\n  a:\tb\n  # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0452",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n    - type: t\n  {a: b}\n      value: v\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0453",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n    - type: t\n  {a: b}\n      value: v\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0454",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n    - type: t\n  {a: b}\n      value: v\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0455",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n    - type: t\n  {a: b}\n      value: v\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0456",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: -a\n  @x\n      value: v\n  ,x\n  'x'\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0457",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: -a\n  @x\n      value: v\n  ,x\n  'x'\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0458",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: -a\n  @x\n      value: v\n  ,x\n  'x'\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0459",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: -a\n  @x\n      value: v\n  ,x\n  'x'\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0460",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  ...\n  bar#c\n  a :b\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0461",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  ...\n  bar#c\n  a :b\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0462",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  ...\n  bar#c\n  a :b\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0463",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  ...\n  bar#c\n  a :b\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0464",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: -a\n  @x\n  a :b\n  ,x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0465",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: -a\n  @x\n  a :b\n  ,x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0466",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: -a\n  @x\n  a :b\n  ,x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0467",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: -a\n  @x\n  a :b\n  ,x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0468",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n   odd\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0469",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n   odd\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0470",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n   odd\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0471",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n   odd\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0472",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  : bar\n      value: v\n  }\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0473",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  : bar\n      value: v\n  }\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0474",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  : bar\n      value: v\n  }\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0475",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  : bar\n      value: v\n  }\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0476",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n# c\n    more\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0477",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n# c\n    more\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0478",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n# c\n    more\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0479",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n# c\n    more\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0480",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n  tools:\n  ?\tb\n  *a\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0481",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n  tools:\n  ?\tb\n  *a\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0482",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n  tools:\n  ?\tb\n  *a\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0483",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n  tools:\n  ?\tb\n  *a\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0484",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: # c\n  'x'\n        : w\n  &a x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0485",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: # c\n  'x'\n        : w\n  &a x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0486",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: # c\n  'x'\n        : w\n  &a x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0487",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: # c\n  'x'\n        : w\n  &a x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0488",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0489",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0490",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0491",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0492",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  ,x\n  :\tb\n# c\n  bar # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0493",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  ,x\n  :\tb\n# c\n  bar # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0494",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  ,x\n  :\tb\n# c\n  bar # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0495",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  ,x\n  :\tb\n# c\n  bar # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0496",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n  ?\tb\n  ? a\n  'x'\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0497",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n  ?\tb\n  ? a\n  'x'\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0498",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n  ?\tb\n  ? a\n  'x'\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0499",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n  ?\tb\n  ? a\n  'x'\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0500",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "interface:\n  : bar\n  -\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0501",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "interface:\n  : bar\n  -\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0502",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "interface:\n  : bar\n  -\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0503",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "interface:\n  : bar\n  -\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0504",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "interface:\n  a: b\n  a :b\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0505",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "interface:\n  a: b\n  a :b\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0506",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "interface:\n  a: b\n  a :b\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0507",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "interface:\n  a: b\n  a :b\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0508",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "interface:\n  \"x\"\n    more\n      value: v\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0509",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "interface:\n  \"x\"\n    more\n      value: v\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0510",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "interface:\n  \"x\"\n    more\n      value: v\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0511",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "interface:\n  \"x\"\n    more\n      value: v\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0512",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n  ? a\n  bar#c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0513",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n  ? a\n  bar#c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0514",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n  ? a\n  bar#c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0515",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n  ? a\n  bar#c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0516",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n  \"x\"\n  ,x\n  a :b\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0517",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n  \"x\"\n  ,x\n  a :b\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0518",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n  \"x\"\n  ,x\n  a :b\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0519",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n  \"x\"\n  ,x\n  a :b\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0520",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  ]\n  a :b\n  %x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0521",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  ]\n  a :b\n  %x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0522",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  ]\n  a :b\n  %x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0523",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  ]\n  a :b\n  %x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0524",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: # c\n  ...\n  :\tb\n  ...\n  ---\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0525",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: # c\n  ...\n  :\tb\n  ...\n  ---\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0526",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: # c\n  ...\n  :\tb\n  ...\n  ---\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0527",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: # c\n  ...\n  :\tb\n  ...\n  ---\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0528",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  a :b\n  -\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0529",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  a :b\n  -\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0530",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  a :b\n  -\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0531",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  a :b\n  -\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0532",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0533",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0534",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0535",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0536",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: a:b\n  @x\n  `x`\n  &a x\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0537",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: a:b\n  @x\n  `x`\n  &a x\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0538",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: a:b\n  @x\n  `x`\n  &a x\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0539",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: a:b\n  @x\n  `x`\n  &a x\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0540",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  a:\tb\n  - a\n\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0541",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  a:\tb\n  - a\n\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0542",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  a:\tb\n  - a\n\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0543",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  a:\tb\n  - a\n\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0544",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "x: -a\n  ---\n  ?\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0545",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "x: -a\n  ---\n  ?\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0546",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "x: -a\n  ---\n  ?\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0547",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "x: -a\n  ---\n  ?\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0548",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  ...\n  }\n  display_name: v\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0549",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  ...\n  }\n  display_name: v\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0550",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  ...\n  }\n  display_name: v\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0551",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  ...\n  }\n  display_name: v\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0552",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: |\n  display_name: v\n  'x'\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0553",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: |\n  display_name: v\n  'x'\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0554",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: |\n  display_name: v\n  'x'\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0555",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: |\n  display_name: v\n  'x'\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0556",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  ?\tb\n  }\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0557",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  ?\tb\n  }\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0558",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  ?\tb\n  }\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0559",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  ?\tb\n  }\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0560",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  [a]\n    more\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0561",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  [a]\n    more\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0562",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  [a]\n    more\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0563",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  [a]\n    more\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0564",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n  !t x\n  : bar\n  # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0565",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n  !t x\n  : bar\n  # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0566",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n  !t x\n  : bar\n  # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0567",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n  !t x\n  : bar\n  # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0568",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: >-\n  : bar\n  display_name: v\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0569",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: >-\n  : bar\n  display_name: v\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0570",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: >-\n  : bar\n  display_name: v\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0571",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: >-\n  : bar\n  display_name: v\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0572",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "dependencies:\n   odd\n\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0573",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "dependencies:\n   odd\n\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0574",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "dependencies:\n   odd\n\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0575",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "dependencies:\n   odd\n\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0576",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "interface:\n  ---\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0577",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "interface:\n  ---\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0578",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "interface:\n  ---\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0579",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "interface:\n  ---\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0580",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo # c\n      value: v\n  a: b\n    more\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0581",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo # c\n      value: v\n  a: b\n    more\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0582",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo # c\n      value: v\n  a: b\n    more\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0583",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo # c\n      value: v\n  a: b\n    more\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0584",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n    - type: t\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0585",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n    - type: t\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0586",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n    - type: t\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0587",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n    - type: t\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0588",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  a: b\n    - type: t\n    - type: t\n  :\tb\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0589",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  a: b\n    - type: t\n    - type: t\n  :\tb\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0590",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  a: b\n    - type: t\n    - type: t\n  :\tb\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0591",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  a: b\n    - type: t\n    - type: t\n  :\tb\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0592",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: \"q\"\n  ---\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0593",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: \"q\"\n  ---\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0594",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: \"q\"\n  ---\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0595",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: \"q\"\n  ---\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0596",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: # c\n    deeper\n  [a]\n# c\n# c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0597",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: # c\n    deeper\n  [a]\n# c\n# c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0598",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: # c\n    deeper\n  [a]\n# c\n# c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0599",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: # c\n    deeper\n  [a]\n# c\n# c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0600",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: foo\n  a:\tb\n  # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0601",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: foo\n  a:\tb\n  # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0602",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: foo\n  a:\tb\n  # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0603",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: foo\n  a:\tb\n  # c\npolicy :\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0604",
+      "family": "seeded",
+      "spelling": 0,
+      "yaml": "zzz: 'q'\n  }\n  bar#c\n  display_name: v\n  # c\npolicy:\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0605",
+      "family": "seeded",
+      "spelling": 1,
+      "yaml": "zzz: 'q'\n  }\n  bar#c\n  display_name: v\n  # c\n\"policy\":\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0606",
+      "family": "seeded",
+      "spelling": 2,
+      "yaml": "zzz: 'q'\n  }\n  bar#c\n  display_name: v\n  # c\n'policy':\n  allow_implicit_invocation: false\n"
+    },
+    {
+      "name": "probe-0607",
+      "family": "seeded",
+      "spelling": 3,
+      "yaml": "zzz: 'q'\n  }\n  bar#c\n  display_name: v\n  # c\npolicy :\n  allow_implicit_invocation: false\n"
+    }
+  ]
+}
