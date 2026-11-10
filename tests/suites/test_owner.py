@@ -260,6 +260,42 @@ class VersionTwoApplication(OwnerCase):
 
 
 class Program(unittest.TestCase):
+    def test_supplemental_corpus_has_exact_generated_pairs_and_ruby_verdicts(self):
+        from ref_patterns import generate_pairs, SEEDS
+
+        with open(os.path.join(support.FIXTURES, "owner", "ref-patterns-generated.json")) as handle:
+            fixture = json.load(handle)
+        self.assertEqual(fixture["seeds"], list(SEEDS))
+        self.assertEqual(fixture["oracle"]["expression"], "File.fnmatch(pattern, string, File::FNM_PATHNAME)")
+        self.assertTrue(fixture["oracle"]["ruby_version"])
+        rows = fixture["cases"]
+        self.assertEqual([row[:2] for row in rows], generate_pairs())
+        fnmatch = self.program_functions("_bracket", "_component", "fnmatch")["fnmatch"]
+        for pattern, string, expected in rows:
+            with self.subTest(pattern=pattern, string=string):
+                self.assertIsInstance(expected, bool)
+                self.assertIs(fnmatch(pattern, string), expected)
+
+    def test_generated_pairs_are_bounded_repeatable_and_cover_pattern_families(self):
+        script = os.path.join(support.REPO, "tests", "ref_patterns.py")
+        code, out, err = support.run_cli(script, ["pairs"])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(support.run_cli(script, ["pairs"]), (code, out, err))
+        pairs = json.loads(out)
+        self.assertGreater(len(pairs), 1000)
+        self.assertLessEqual(len(pairs), 20000)
+        self.assertEqual(len(pairs), len(set(tuple(pair) for pair in pairs)))
+        for pattern, string in (
+            ("refs/heads/[!-z]ain", "refs/heads/main"),
+            ("refs/heads/[m-a]ain", "refs/heads/main"),
+            ("refs/heads/[a-z]ain", "refs/heads/main"),
+            ("refs/heads/**/main", "refs/heads/main"),
+            ("refs/heads/**//main", "refs/heads/a//main"),
+            ("refs/heads/*", "refs/heads/a/b"),
+            ("refs/heads/\\*", "refs/heads/*"),
+        ):
+            self.assertIn([pattern, string], pairs)
+
     def test_the_entry_is_bash_3_2_with_the_notice_on_line_two(self):
         text = support.read_text(TEMPLATE)
         lines = text.split("\n")
