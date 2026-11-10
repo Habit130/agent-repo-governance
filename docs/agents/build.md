@@ -47,6 +47,42 @@ the macOS compatibility command still runs every suite under `/usr/bin/python3`.
 
 ## Suites
 
+### Unpublished model development
+
+The release check permits one draft: the highest consecutive numeric version in the
+store, identified by the absence of `change-note.md`. All earlier versions must have
+valid change notes. A sole unpublished v1 remains valid for bootstrap. Draft files may
+accumulate changes across PRs; an all-released store is also valid. Multiple drafts,
+a draft below a released version, gaps, non-version entries and malformed notes fail.
+
+Merge fixes, release a model, install machine components/skills, and adopt a version in
+a repository are separate decisions. habit chooses a coherent accumulated update without
+a fixed issue-count threshold; urgent bugs or severe usability problems may justify an
+earlier installation. Installation does not automatically Upgrade repositories.
+
+A separately approved release delivery adds the valid final change note to the default
+branch. Once a version's note exists on the comparison base, its complete tree is frozen:
+adding, deleting or editing a file, changing a mode, removing the version or removing its
+note all fail. Keep released versions unchanged and develop fixes in the next draft.
+
+Ordinary store/render/compare selection stays released-only. Explicit draft rendering
+and comparison require the existing per-call `--allow-unreleased` in isolated tests or
+sandboxes. Installation may copy draft bytes without advancing the installed governance
+version; this needs no filtering mechanism. Apply `AGENTS.md`'s verification-by-change
+requirements to each draft delivery, and obtain habit's approval before model scenarios.
+
+Offline coverage uses Seam E's additive `release-check/drafts/lifecycle.json`: draft
+creation, two updates, release, frozen-tree mutations and invalid layouts. Each transition
+also runs through depth-two PR-merge and squash-push histories with CI's base/head contract.
+The historical `new-version-without-note.json` now expects notes PASS;
+`second-version-while-first-unreleased.json` remains rejected. The render suite uses a
+copy of released v1/v2 plus draft v3 through the real store/render/compare entries; explicit
+v1/v2 comparisons still pass, and ordinary comparison still targets installed v2, reporting
+drift for v1. It checks no-write draft refusals and opt-in isolation. The machine-install
+suite proves copied draft bytes leave installed version at v2 in a disposable home.
+
+### Suite index
+
 `SUITES` in `tests/run.py` names each suite, its module under `tests/suites/` and its job.
 Later deliveries add theirs there, under the job #44 §11 names.
 
@@ -61,7 +97,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `parser-fixtures` | The machine parser and each stored version of the governed-side parser against every shared parser fixture, one test per registration and fixture; versioned registrations retain v1 coverage while checking v2 against the same expectations | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in | linux |
-| `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits in both shapes | linux |
+| `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits, plus `drafts/lifecycle.json`'s draft creation, updates, release, frozen mutations and invalid layouts in both shapes | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `suite-runner` | Real suites CLI with isolated synthetic modules: concurrent rendezvous, serial scheduling and longest-first order, interpreter identity, complete output blocks, selection and worker limits, counts and summaries, failures/errors/load failures/crashes with a passing sibling | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
@@ -760,7 +796,8 @@ Its docstring gives each step and what each assertion reads.
 
 Version 1 is released once `generator/govern-repository/store/1/change-note.md` is on the
 default branch (#44 §4). From then on the release check freezes `store/1/` byte for byte, a
-defect becomes a later version, and a version's templates, manifest and note arrive in one PR.
+defect becomes a later version, developed as an unpublished draft that a separate release
+delivery freezes by adding its note (Unpublished model development, above).
 `govern.py change-note <path>` reads a note's two fields.
 
 The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI, the

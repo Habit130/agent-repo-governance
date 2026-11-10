@@ -1,0 +1,23 @@
+{
+  "steps": [
+    {"name": "create-draft", "write": {"2/manifest.json": "{\"version\": 2}\n", "2/templates/policy.md": "first draft\n"}},
+    {"name": "first-update", "write": {"2/templates/policy.md": "revised draft\n"}},
+    {"name": "second-update", "write": {"2/templates/extra.md": "final addition\n", "2/templates/policy.md": {"content": "final draft\n", "mode": "100755"}}},
+    {"name": "release", "write": {"2/change-note.md": "urgency: when convenient\nmust-act: no\n\n发布累积的修改。\n"}}
+  ],
+  "after_release": [
+    {"name": "edit", "write": {"2/templates/policy.md": "changed after release\n"}},
+    {"name": "add", "write": {"2/templates/new.md": "new after release\n"}},
+    {"name": "delete", "remove": ["2/templates/extra.md"]},
+    {"name": "mode", "write": {"2/templates/policy.md": {"content": "final draft\n", "mode": "100644"}}},
+    {"name": "unfreeze", "remove": ["2/change-note.md"]},
+    {"name": "remove-version", "remove": ["2/change-note.md", "2/manifest.json", "2/templates/policy.md", "2/templates/extra.md"]}
+  ],
+  "invalid_layouts": [
+    {"name": "two-drafts", "remove": ["2/change-note.md"], "write": {"3/manifest.json": "{\"version\": 3}\n"}, "failures": ["notes"]},
+    {"name": "lower-draft", "base": "empty", "remove": ["1/change-note.md"], "failures": ["notes"]},
+    {"name": "gap", "write": {"4/manifest.json": "{\"version\": 4}\n"}, "failures": ["consecutive"]},
+    {"name": "stray", "write": {"draft/manifest.json": "{}\n"}, "failures": ["consecutive"]},
+    {"name": "malformed-release", "write": {"2/change-note.md": "urgency: later\nmust-act: no\n\n正文。\n"}, "failures": ["note-fields"]}
+  ]
+}

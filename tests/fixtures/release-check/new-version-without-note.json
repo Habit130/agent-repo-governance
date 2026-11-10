@@ -16,7 +16,7 @@
     "fixtures": "PASS",
     "frozen": "PASS",
     "note-fields": "PASS",
-    "notes": "FAIL"
+    "notes": "PASS"
   },
   "head": {
     "generator/govern-repository/store/1/change-note.md": "urgency: when convenient\nmust-act: yes\n\nversion 1 第一次发布：Initialize 会写入 governance。\n",

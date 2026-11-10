@@ -1,8 +1,8 @@
 """The release check (#44 §11): compare a PR's base and head trees and print one line per rule.
 
 It is keyed on the change note. A version whose note is on the base is released and frozen;
-version directories are consecutive integers from 1; only version 1, while it is the only
-version, may lack its note; every note's fields parse; and no fixture is removed or renamed.
+version directories are consecutive integers from 1; only the highest version may lack
+its note and accumulate draft changes; every note's fields parse; and no fixture is removed or renamed.
 Two INFO lines list the fixtures added and changed, which a PR's body or change note
 mentions.
 """
@@ -88,10 +88,10 @@ def rule_consecutive(head, strays):
 
 def rule_notes(head):
     missing = sorted(v for v, files in head.items() if store.CHANGE_NOTE not in files)
-    if missing == [1] and sorted(head) == [1]:
-        return True, "only version 1 exists, and it may change until its note is added"
+    if missing and missing == [max(head)]:
+        return True, "version %d is the only draft and the highest version; it may change until its note is added" % missing[0]
     if missing:
-        return False, "version %s has no change note; a version's templates, manifest and note arrive in one PR" % (
+        return False, "version %s has no change note; only one draft is allowed, at the highest version" % (
             ", ".join(str(v) for v in missing)
         )
     return True, "every version at the head has its change note"
