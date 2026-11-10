@@ -29,6 +29,10 @@ worked.
 | 8. Committed whitespace | `git show --format= --check HEAD` | After committing. | Working: no output |
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
 
+With unpublished v3 present (#140), stored form checks 549 paths; compatibility checks
+85 Python files and 8 shell entries. Linux runs 861 tests and the full suite runs 1236.
+The table's Initialize counts are historical.
+
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
 the copies verification (Skill copies, below) also worked at Initialize: 16 copies pass,
 and the copies and the license are byte-identical with upstream.
@@ -75,10 +79,10 @@ Offline coverage uses Seam E's additive `release-check/drafts/lifecycle.json`: d
 creation, two updates, release, frozen-tree mutations and invalid layouts. Each transition
 also runs through depth-two PR-merge and squash-push histories with CI's base/head contract.
 The historical `new-version-without-note.json` now expects notes PASS;
-`second-version-while-first-unreleased.json` remains rejected. The render suite uses a
-copy of released v1/v2 plus draft v3 through the real store/render/compare entries; explicit
-v1/v2 comparisons still pass, and ordinary comparison still targets installed v2, reporting
-drift for v1. It checks no-write draft refusals and opt-in isolation. The machine-install
+`second-version-while-first-unreleased.json` remains rejected. The render suite copies the real
+store, including released v1/v2 and unpublished v3, and exercises the store/render/compare
+entries; explicit v1/v2 comparisons still pass, and ordinary comparison still targets
+installed v2, reporting drift for v1. It checks no-write draft refusals and opt-in isolation. The machine-install
 suite proves copied draft bytes leave installed version at v2 in a disposable home.
 
 ### Suite index

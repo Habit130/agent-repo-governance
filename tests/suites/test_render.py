@@ -8,7 +8,6 @@ import subprocess
 import unittest
 
 import support
-from draft_support import add_draft
 
 FOUR_CLASSES = os.path.join(support.FIXTURES, "stores", "four-classes")
 VALUES = ["--repository", "Habit130/tally", "--default-branch", "main"]
@@ -120,7 +119,6 @@ class Rendering(RenderCase):
     def test_real_store_draft_opt_in_is_per_call_and_released_repositories_still_compare(self):
         root = self.path("draft-store")
         shutil.copytree(support.REAL_STORE, root)
-        add_draft(root)
         code, facts = support.govern(["store", "--store", root])
         self.assertEqual((code, facts["versions"], facts["released"], facts["installed_version"]),
                          (0, [1, 2, 3], [1, 2], 2))
