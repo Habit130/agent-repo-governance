@@ -30,9 +30,10 @@ Choose it; habit approves it with the spec and tickets.
   one PR (`builder.md`, Whole-spec delivery). Recommend it, and habit approves it with the
   spec, when each ticket is small and the combined diff stays reviewable in one pass.
   Foreseen-high tickets join it only when they are high for the same reason and none holds a
-  one-way door: a data migration, a destructive operation, a release or publishing. A ticket
-  with a one-way door always gets its own PR. Record the choice in the spec's Delivery
-  section; the Builder's start instruction is
+  one-way door: a data migration, a destructive operation, a release or publishing. Then
+  every ticket of that spec is high for that reason, since a high PR holds only its high
+  part (`review.md`, Minimum reviews). A ticket with a one-way door always gets its own PR.
+  Record the choice in the spec's Delivery section; the Builder's start instruction is
   `Role: Builder. Spec: #<n>. Skills: implement-spec, tdd.`, with the skills the tickets
   name.
 
@@ -40,7 +41,8 @@ Choose it; habit approves it with the spec and tickets.
 
 - A spec holds `to-spec`'s sections plus a Delivery section: the shape chosen above, and why.
 - After `to-tickets`, remove `ready-for-agent` from the spec; only its tickets are
-  dispatched.
+  dispatched. A spec approved for whole-spec delivery is the exception: it keeps the label,
+  its tickets never take it, and it is dispatched as one entry.
 - Close any spec still open once all its tickets are done as defined in `issue-tracker.md`,
   Sub-issues and blocking.
 

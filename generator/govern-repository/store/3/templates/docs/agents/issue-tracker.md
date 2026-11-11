@@ -36,7 +36,8 @@ GitHub shares one number space between issues and PRs: resolve a bare `#42` with
 
 ## Tickets
 
-- **Dispatch**: `triage-labels.md`, `ready-for-agent`.
+- **Dispatch**: `triage-labels.md`, `ready-for-agent`. A spec approved for whole-spec
+  delivery is dispatched as one, its tickets with it (`planner.md`, Specs).
 - **Claim**: `gh issue edit <n> --repo @@repository@@ --add-assignee @me`. It is the Builder's
   first write, and it posts no comment. An assigned ticket is claimed. A Builder on a
   whole-spec delivery claims the spec and each of its tickets (`builder.md`).

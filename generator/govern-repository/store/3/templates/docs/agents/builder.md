@@ -55,8 +55,8 @@ below apply to it as to a ticket, with these differences:
   the Builder's own branch from step 3, and only that branch is pushed.
 - **One PR** closes the spec and its tickets, with a `Closes` line for each. Its tier is the
   highest tier any part reaches.
-- Self-verification, the evidence comment and every review cover that one PR, against the
-  spec and every ticket.
+- Verification is every ticket's. Self-verification, the evidence comment and every review
+  cover that one PR, against the spec and every ticket.
 - The PR opens at step 7, after self-verification, never earlier as a draft. Where
   `implement-spec` says otherwise, this section wins.
 - Each ticket stays frozen (Escalations, The ticket must change). Anything the dispatch
@@ -79,8 +79,9 @@ below apply to it as to a ticket, with these differences:
 6. **Self-verify**: run the Verification again on the committed head, then start a subagent
    with no conversation context (`review.md`, Subagents with no conversation context). Its
    task: run `code-review` on the committed diff against its merge-base with the default
-   branch, with the ticket as the spec and `AGENTS.md`'s Code Review Rules as the
-   standards, and classify the tier on its own. Deal with its findings before the PR opens,
+   branch, with the ticket as the spec (for a whole-spec delivery, the spec and every
+   ticket) and `AGENTS.md`'s Code Review Rules as the standards, and classify the tier on
+   its own. Deal with its findings before the PR opens,
    and take its tier when it is higher.
 7. **Open the PR**: push, then fill `.github/PULL_REQUEST_TEMPLATE.md`, which wins over
    `pr`'s shape, writing Summary and Merge Danger with `pr`, and the `Risk:` line

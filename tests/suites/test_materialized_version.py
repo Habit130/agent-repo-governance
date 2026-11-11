@@ -380,6 +380,26 @@ class VersionThreeHandoffs(VersionThreeRendered):
         self.assertNotIn("make sense only merged together", shape)
         self.assertIn("only the high part in the PR", self.text("docs/agents/review.md"))
 
+    def test_whole_spec_delivery_reaches_dispatch_labels_reviews_and_tiers(self):
+        specs = flat(level_two_section(self.text("docs/agents/planner.md"), "## Specs", "planner.md"))
+        self.assertIn("approved for whole-spec delivery is the exception: it keeps the label, its "
+                      "tickets never take it", specs)
+        labels = flat(self.text("docs/agents/triage-labels.md"))
+        self.assertIn("unless habit approved it for whole-spec delivery: then the spec keeps it and its "
+                      "tickets never take it", labels)
+        tracker = flat(self.text("docs/agents/issue-tracker.md"))
+        self.assertIn("A spec approved for whole-spec delivery is dispatched as one", tracker)
+        shape = flat(level_two_section(self.text("docs/agents/planner.md"), "## Delivery shape", "planner.md"))
+        self.assertIn("every ticket of that spec is high for that reason, since a high PR holds only its "
+                      "high part", shape)
+        reviewer = flat(self.text("docs/agents/reviewer.md"))
+        self.assertIn("for a whole-spec PR, the spec and every ticket it closes", reviewer)
+        self.assertIn("for a whole-spec PR, every ticket's", reviewer)
+        builder = flat(self.text("docs/agents/builder.md"))
+        self.assertIn("with the ticket as the spec (for a whole-spec delivery, the spec and every ticket)",
+                      builder)
+        self.assertIn("Verification is every ticket's", builder)
+
     def test_the_merge_summary_terminal_copy_is_unchanged(self):
         terminal = flat(level_three_section(self.text("docs/agents/review.md"), "### In the terminal"))
         self.assertIn(flat("""- **First line**: the tier, the verdict, and the Important, Nit and Pre-existing counts.
