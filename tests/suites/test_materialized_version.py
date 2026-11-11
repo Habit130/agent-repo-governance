@@ -305,6 +305,17 @@ class VersionThreeHandoffs(VersionThreeRendered):
         self.assertEqual([m.group(1) for m in POINTER.finditer(examples)], [])
         self.assertNotIn("diff", examples)
 
+    def test_each_example_start_instruction_and_command_stands_alone_in_its_own_block(self):
+        examples = level_two_section(self.text(self.HANDOFF), "## Examples", self.HANDOFF)
+        blocks = re.findall(r"```text\n(.*?)\n *```", examples, re.S)
+        copied = [b for b in blocks if re.search(r"^\s*(Role: |ghm )", b, re.M)]
+        self.assertGreaterEqual(len(copied), 5, blocks)
+        for block in copied:
+            self.assertEqual(len([line for line in block.split("\n") if line.strip()]), 1, block)
+        outside = re.sub(r"```text\n.*?\n *```", "", examples, flags=re.S)
+        self.assertNotIn("Role: ", outside)
+        self.assertNotIn("|", examples)
+
     def test_no_builder_or_reviewer_text_offers_a_next_ticket_or_progress(self):
         for path in self.ROLE_TEXTS:
             text = self.text(path)
@@ -383,7 +394,7 @@ class VersionThreeHandoffs(VersionThreeRendered):
 
     def test_a_start_request_names_the_shared_resource_it_takes(self):
         talking = flat(level_two_section(self.text(AGENTS), "## Talking to habit and to other agents", AGENTS))
-        self.assertIn("any shared resource the session takes", talking)
+        self.assertIn("any shared resource it takes", talking)
         self.assertIn("never a list of options", talking)
 
 

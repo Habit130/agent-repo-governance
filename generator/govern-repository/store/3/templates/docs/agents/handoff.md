@@ -77,16 +77,21 @@ A mid-session request, from a Builder:
 Builder → habit：ticket 要求的 Actions secret SYNC_TOKEN 还不存在。请在仓库的 Actions secrets 设置页面按这个名字添加它，完成后回复"继续"。
 ```
 
-A Builder's final handoff to the Reviewer, at medium:
+A Builder's final handoff to the Reviewer, at medium. The start instruction is a block of
+its own; the message's prose sits outside it:
 
 ```text
 Builder → habit：PR #57 已开，medium，self-verification 和 review bot 均已 clear。
 
 给 habit：在 Claude Code 中开一个新 session，同一模型即可，medium 允许同模型 review。
 粘贴给 agent：
+```
 
+```text
 Role: Reviewer. PR: #57. Skills: code-review. Post on the PR: the Comment review, the Reviewer status and, when clear, the Merge summary.
+```
 
+```text
 本 session 保持打开，自行等待 PR merge，merge 后报告结果；无需回复。
 ```
 
@@ -95,29 +100,40 @@ A Reviewer's final handoff, at medium:
 ```text
 Reviewer → habit：PR #57 clear，Merge summary 已发在 PR 上。
 
-1. 运行：ghm pr merge 57 --admin --squash --match-head-commit 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
+1. 运行：
+```
 
+```text
+ghm pr merge 57 --admin --squash --match-head-commit 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
+```
+
+```text
 本 session 可以关闭。
 ```
 
-A Planner's final handoff with a dispatch plan:
+A Planner's final handoff with a dispatch plan, a list whose every start instruction is a
+block of its own:
 
 ```text
-Planner → habit：spec #40 的三张 ticket 已批准，派发计划也已写在 #40 上。
+Planner → habit：spec #40 的三张 ticket 已批准，派发计划也已写在 #40 上。本 session 可以关闭。
 
 派发计划：
+```
 
 1. #41，现在即可派发。
 
+   ```text
    Role: Builder. Ticket: #41. Skills: tdd.
+   ```
 
 2. #42，与 #41 并行：两者没有共享文件或资源。
 
+   ```text
    Role: Builder. Ticket: #42. Skills: tdd.
+   ```
 
 3. #43，在 #41 merge 之后。
 
+   ```text
    Role: Builder. Ticket: #43. Skills: tdd, pr.
-
-本 session 可以关闭。
-```
+   ```
