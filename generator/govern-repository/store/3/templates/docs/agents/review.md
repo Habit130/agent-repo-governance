@@ -233,8 +233,8 @@ In the terminal, after the summary:
    `ghm pr merge <n> --admin --squash --match-head-commit <sha>`, with the full head SHA.
    It is the only governed merge path.
 2. **The next ticket.** When this merge unblocks a ticket in the same spec, a start request
-   for a Builder on the first unclaimed one: open, unassigned, and with every blocker merged
-   once this PR is.
+   for a Builder on the first unclaimed one: open, unassigned, and unblocked by
+   `issue-tracker.md`'s blocking rules once this PR merges.
 3. **Misses.** The count of open miss records, `gh issue list --label miss --state open`.
    When any is open, a start request for a Planner session in which habit invokes `retro` on
    the oldest.

@@ -30,8 +30,9 @@ GitHub shares one number space between issues and PRs: resolve a bare `#42` with
   `gh issue create`, or `gh issue edit <n> --repo @@repository@@ --add-blocked-by <blocker>`
   (`--remove-blocked-by` to undo) on an existing issue.
 - **Read both**: `gh issue view <n> --repo @@repository@@ --json parent,subIssues,blockedBy,blocking`.
-  A ticket is unblocked once every blocker under `blockedBy` has merged, its PR closing it; a
-  wayfinder ticket, once every blocker is closed.
+  A ticket is unblocked once every blocker under `blockedBy` is done: a PR-delivered
+  ticket has merged, its PR closing it; a results-comment ticket (`builder.md`) is closed
+  as completed. A wayfinder ticket is unblocked once every blocker is closed.
 
 ## Tickets
 
@@ -40,8 +41,9 @@ GitHub shares one number space between issues and PRs: resolve a bare `#42` with
   first write, and it posts no comment. An assigned ticket is claimed.
 - **A published ticket is frozen** (`planner.md`, Tickets). It carries no digests or contract
   versions, since GitHub keeps the body's edit history. Evidence and records go in comments.
-- **Work closes through PRs**: a PR's `Closes #<n>` lines close those issues when habit merges
-  it (`.github/PULL_REQUEST_TEMPLATE.md`).
+- **Closing**: results-comment tickets follow `builder.md`, Results-comment tickets.
+  For PR delivery, a PR's `Closes #<n>` lines close those issues when habit merges it
+  (`.github/PULL_REQUEST_TEMPLATE.md`).
 
 ## Pull requests as a triage surface
 
