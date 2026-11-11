@@ -33,7 +33,9 @@ PR-delivered ticket. No tier, review, evidence comment, Merge summary or after-m
 applies to a results-comment ticket.
 
 After reading and claiming (steps 1 and 2), execute the ticket and run its Verification.
-Post one English results comment answering each acceptance criterion, naming the
+Completion requires passing Verification and every acceptance criterion met. Otherwise,
+leave the ticket open and stop under Escalations for habit's decision.
+On completion, post one English results comment answering each acceptance criterion, naming the
 verification run and its result, and stating what was not done. The Secrets rules and the
 ticket's limits on what may leave the machine bind that comment. Then close the ticket as
 completed; if it is its spec's last open sub-issue, also close the spec. Give habit a Chinese
