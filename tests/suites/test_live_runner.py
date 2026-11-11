@@ -107,7 +107,7 @@ class ProbeCase(support.TempDirCase):
 class Registry(unittest.TestCase):
     def test_the_gate_and_owner_probes_register_in_the_one_shape(self):
         known = probes.registered()
-        self.assertEqual(list(known), ["gate-trigger", "gate-reruns", "gate-source", "gate-rulesets",
+        self.assertEqual(list(known), ["merge-watch-cancelled", "gate-trigger", "gate-reruns", "gate-source", "gate-rulesets",
                                         "merge-watch-clean", "merge-watch-miss", "owner-report", "owner-state", "owner-rerun", "owner-recovery", "owner-private-secret"])
         for name in ("gate-trigger", "gate-reruns", "gate-source", "gate-rulesets"):
             self.assertEqual(known[name].sandboxes, ("public", "private"))
@@ -1581,6 +1581,96 @@ class EndToEndCommands(support.TempDirCase):
                 self.assertIn(os.path.join(parent, name), out)
                 self.assertEqual(os.listdir(parent), [".claude"])
                 self.assertEqual([e["args"][:2] for e in environment.read_log(scratch)], [["pr", "view"]])
+
+
+class CancelledRunProbe(ProbeCase):
+    def test_cancelled_probe_is_public_and_prepares_v3_without_changing_other_probes(self):
+        probe = probes.registered()["merge-watch-cancelled"]
+        self.assertEqual(probe.sandboxes, ("public",))
+        self.assertEqual(live.model_version(["merge-watch-cancelled", "merge-watch-miss"]), 3)
+        self.assertEqual(live.model_version(["merge-watch-miss"]), 2)
+
+    def recorded(self):
+        with open(os.path.join(support.FIXTURES, "live-runner", "cancelled-run.json")) as handle:
+            fixture = json.load(handle)
+        context = self.context()
+        context.remember("cancelled_run_setup", fixture["setup"])
+        context.api = lambda path: fixture["answers"][path]
+        calls = []
+        def gh(args, stdin=None):
+            calls.append(args)
+            return (0, fixture["log"], "") if args[0] == "api" else (0, "", "")
+        context.gh = gh
+        return fixture, context, calls
+
+    def test_recorded_timeout_is_observed_then_its_record_is_closed(self):
+        fixture, context, calls = self.recorded()
+        results = self.results("merge-watch-cancelled", context)
+        self.assertEqual(self.failed(results), [])
+        self.assertEqual(len(results), 6)
+        self.assertEqual([args[:3] for args in calls if args[0] == "issue"], [["issue", "close", "9"]])
+        # A rerun reads the already closed record without another close.
+        fixture["answers"]["repos/" + PUBLIC + "/issues?labels=miss&state=all&per_page=100&page=1"][0]["state"] = "closed"
+        calls.clear()
+        self.assertEqual(self.failed(self.results("merge-watch-cancelled", context)), [])
+        self.assertFalse(any(args[0] == "issue" for args in calls))
+
+    def test_incomplete_or_wrong_evidence_never_closes_a_record(self):
+        prefix = "repos/" + PUBLIC
+        for defect in ("success", "in_progress", "manual_cancel", "wrong_event", "wrong_branch", "wrong_sha",
+                       "wrong_author", "wrong_body", "old_record", "wrong_label", "no_log", "wrong_watch_event",
+                       "unsafe_workflow", "changed_marker", "no_record", "duplicate_record", "close_failed"):
+            with self.subTest(defect=defect):
+                fixture, context, calls = self.recorded()
+                answers = fixture["answers"]
+                runs = answers[prefix + "/actions/runs?head_sha=" + "b" * 40 + "&per_page=100&page=1"]["workflow_runs"]
+                records = answers[prefix + "/issues?labels=miss&state=all&per_page=100&page=1"]
+                if defect == "success": runs[0]["conclusion"] = "success"
+                elif defect == "in_progress": runs[0]["status"] = "in_progress"
+                elif defect == "manual_cancel": answers[prefix + "/check-runs/200/annotations?per_page=100&page=1"] = []
+                elif defect == "wrong_event": runs[0]["event"] = "pull_request"
+                elif defect == "wrong_branch": runs[0]["head_branch"] = "feature"
+                elif defect == "wrong_sha": runs[0]["head_sha"] = "a" * 40
+                elif defect == "wrong_author": records[0]["user"]["login"] = "Habit098"
+                elif defect == "wrong_body": records[0]["body"] = records[0]["body"].replace("concluded cancelled", "failed")
+                elif defect == "old_record": records[0]["created_at"] = "2020-01-01T00:00:00Z"
+                elif defect == "wrong_label": records[0]["labels"].append({"name": "other"})
+                elif defect == "no_log": fixture["log"] = "No miss in this workflow_run event."
+                elif defect == "wrong_watch_event": runs[1]["event"] = "push"
+                elif defect == "unsafe_workflow": answers[prefix + "/contents/" + fixture["setup"]["workflow"] + "?ref=main"]["content"] = ""
+                elif defect == "changed_marker": answers[prefix + "/contents/" + fixture["setup"]["marker"] + "?ref=main"]["content"] = ""
+                elif defect == "no_record": records.clear()
+                elif defect == "duplicate_record": records.append(dict(records[0]))
+                elif defect == "close_failed": answers[prefix + "/issues/9"]["state"] = "open"
+                self.assertTrue(self.failed(self.results("merge-watch-cancelled", context)))
+                if defect != "close_failed":
+                    self.assertFalse(any(args[0] == "issue" for args in calls), calls)
+
+    def test_prepare_stops_on_existing_red_record_in_later_page(self):
+        from probes import cancelled_run
+        context = self.context()
+        seen = []
+        def api(path):
+            seen.append(path)
+            if path.endswith("page=1"):
+                return [{"body": "Category: missing-review"}] * 100
+            return [{"body": "Category: red-default-branch"}]
+        context.api = api
+        with self.assertRaises(probes.ProbeError):
+            cancelled_run.preflight(context)
+        self.assertEqual(len(seen), 2)
+
+    def test_staged_workflow_times_out_only_for_the_render_marker(self):
+        from probes import cancelled_run
+        root = self.path("sandbox")
+        os.makedirs(os.path.join(root, ".github", "workflows"))
+        setup = cancelled_run.stage(root, "live-checks/unique.md", "main")
+        text = support.read_text(os.path.join(root, setup["workflow"]))
+        self.assertIn('paths: ["live-checks/unique.md"]', text)
+        self.assertIn('branches: ["main"]', text)
+        self.assertIn("timeout-minutes: 1", text)
+        self.assertIn("run: sleep 120", text)
+        self.assertNotIn("pull_request", text)
 
 
 if __name__ == "__main__":

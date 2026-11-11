@@ -10,9 +10,11 @@ open. Each case under `tests/fixtures/merge-watch/cases/` holds:
 - `expected`, each record's title and body, written from `issue-tracker.md`'s format.
 
 The record is `tests/fixtures/merge-watch/record.yml`. The script loads from version 1's
-store, beside the gate script it imports.
+store, beside the gate script it imports. Version 3 cases under `v3/` load its draft
+handler separately and check its records against the version 3 tracker format.
 """
 
+import importlib.util
 import json
 import os
 import re
@@ -32,6 +34,11 @@ import merge_watch  # noqa: E402
 
 FIXTURES = os.path.join(support.FIXTURES, "merge-watch")
 CASES = os.path.join(FIXTURES, "cases")
+V3_CASES = os.path.join(FIXTURES, "v3")
+_spec = importlib.util.spec_from_file_location("merge_watch_v3", os.path.join(
+    support.REAL_STORE, "3", "templates", "dot-github", "governance", "merge_watch.py"))
+watch_v3 = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(watch_v3)
 WORKFLOW = ".github/workflows/merge-watch.yml"
 SCRIPT = ".github/governance/merge_watch.py"
 ISSUE_TRACKER = os.path.join(support.REAL_STORE, "1", "templates", "docs", "agents", "issue-tracker.md")
@@ -86,9 +93,9 @@ for _name in case_names():
     _add_case(_name)
 
 
-def record_format():
+def record_format(version="1"):
     """issue-tracker.md's miss record format: (the six field names in order, kind by category)."""
-    text = support.read_text(ISSUE_TRACKER)
+    text = support.read_text(os.path.join(support.REAL_STORE, version, "templates", "docs", "agents", "issue-tracker.md"))
     section = text.split("\n### Format\n", 1)[1].split("\n### Examples\n", 1)[0]
     block = section.split("```text\n", 1)[1].split("```", 1)[0]
     fields = [line.split(":", 1)[0] for line in block.strip("\n").split("\n")]
@@ -99,8 +106,8 @@ def record_format():
 class RecordFormat(unittest.TestCase):
     """CRIT-6: every record Seam 2 expects, and every one the script gives, field by field against issue-tracker.md."""
 
-    def assert_record(self, rec, where):
-        fields, kinds = record_format()
+    def assert_record(self, rec, where, version="1"):
+        fields, kinds = record_format(version)
         lines = rec["body"].split("\n")
         self.assertEqual(rec["body"][-1], "\n", where)
         self.assertEqual([line.split(": ", 1)[0] for line in lines[:6]], fields, where)
@@ -115,7 +122,9 @@ class RecordFormat(unittest.TestCase):
         self.assertEqual(values["Found by"], "Merge watch", where)
         self.assertEqual(values["Bug issue"], "none", where)
         self.assertNotIn("\n", values["Observed"])
-        for sha in re.findall(r"\b[0-9a-f]{7,}\b", values["Observed"]):
+        # Numeric GitHub run IDs in URLs are not commit SHAs.
+        prose = re.sub(r"https?://\S+", "", values["Observed"])
+        for sha in re.findall(r"\b[0-9a-f]{7,}\b", prose):
             self.assertEqual(len(sha), 40, (where, "Observed names full commit SHAs"))
 
     def test_the_format_is_read_from_the_template(self):
@@ -321,6 +330,19 @@ class Entry(Rendered):
             items = merge_watch.GitHub()("repos/o/r/issues/1/comments")
         self.assertEqual(len(items), 101)
         self.assertEqual(reads, ["repos/o/r/issues/1/comments?per_page=100&page=1", "repos/o/r/issues/1/comments?per_page=100&page=2"])
+
+
+class VersionThree(unittest.TestCase):
+    assert_record = RecordFormat.assert_record
+
+    def test_recorded_events(self):
+        for path in sorted(os.listdir(V3_CASES)):
+            with self.subTest(case=path):
+                case = load(os.path.join(V3_CASES, path))
+                records = watch_v3.decide(case["event_name"], case["event"], agent_account(), recorded(case["github"]))
+                self.assertEqual(records, [dict(item, labels=["miss"]) for item in case["expected"]])
+                for item in records:
+                    self.assert_record(item, path, "3")
 
 
 if __name__ == "__main__":

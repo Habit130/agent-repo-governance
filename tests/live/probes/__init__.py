@@ -2,7 +2,8 @@
 
 A probe is one `Probe` in a module's `PROBES` tuple in this package. The runner imports
 every module here and collects them, so a live-check delivery adds its probes as a new module
-and never changes the runner. A probe has:
+and normally needs no runner change. The cancelled-run probe also stages a workflow in
+the render PR through prepare. A probe has:
 
 - `name`: unique across modules, given to `live.py prepare` and `live.py probe` as `--probe`.
 - `sandboxes`: the sandboxes it runs in, `public`, `private` or both.

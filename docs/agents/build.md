@@ -29,8 +29,9 @@ worked.
 | 8. Committed whitespace | `git show --format= --check HEAD` | After committing. | Working: no output |
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
 
-With unpublished v3 present (#140), stored form checks 549 paths; compatibility checks
-85 Python files and 8 shell entries. Linux runs 861 tests and the full suite runs 1236.
+With unpublished v3 and the cancelled-run coverage (#140, #135), stored form checks 565
+paths; compatibility checks 86 Python files and 8 shell entries. Linux runs 862 tests and
+the full suite runs 1242.
 The table's Initialize counts are historical.
 
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
@@ -615,7 +616,8 @@ blocks anything and is never a required check.
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
   answers a REST path with GitHub's list, every page joined, or raises `ReadError`. Its
   output is the records to open. A new case joins `tests/fixtures/merge-watch/cases/` and is
-  never renamed; the suite's docstring gives a case's shape.
+  never renamed; the suite's docstring gives a case's shape. Version 3 cases live separately
+  under `tests/fixtures/merge-watch/v3/`, preserving version 1's expected wording.
 - **GitHub's facts it relies on**, from github/docs at `6cbe641`, read 2026-10-30:
   - `on.workflow_run.workflows` takes the patterns of the workflow syntax's Filter pattern
     cheat sheet ("You can use special characters in path, branch, tag, and workflow name
@@ -676,8 +678,9 @@ item failed or missing, 2 stopped before any write).
   `tests/fixtures/owner/cases/` and is never renamed.
 - **Live checks** run through `tests/live/live.py` as the agent account, in the two
   sandboxes only. Its docstring lists the subcommands; `tests/live/probes/__init__.py` gives
-  the one probe shape, and a live-check delivery adds its probes as a module there without
-  changing the runner. One check, for a sandbox:
+  the one probe shape. Probes normally add only a module; the cancelled-run probe also
+  stages its workflow in the render PR and selects version 3 during prepare. One check,
+  for a sandbox:
   1. habit runs `live.py sandbox-command`'s line once, then connects Bugbot (the Cursor
      GitHub App's repository access) and the Codex review bot (its connector's repository
      list) for both sandboxes. `live.py seed --sandbox <s>` then accepts the invitation and
@@ -868,8 +871,26 @@ Its docstring gives each step and what each assertion reads.
   timed out in the TLS handshake with that host from habit's machine, while `curl` reached
   it, and `GODEBUG=tlsmlkem=0` cleared it. When the probes report that a log couldn't be
   read with `TLS handshake timeout`, run `live.py probe` with that variable set.
-- **Not covered:** `workflow_run`. Planting a red default branch would take a new sandbox
-  workflow, and neither #41's seam 4 nor #61's criteria ask for it.
+- **Cancelled default-branch run (#135):** prepare the public sandbox with
+  `--probe merge-watch-cancelled --probe merge-watch-miss`. This combination renders the
+  unpublished version 3 with the existing unreleased opt-in; other probes retain version 2.
+  Prepare refuses an existing open `red-default-branch` record. Resolve that record before
+  preparing; the probe never closes an unrelated record.
+  The render PR includes a unique workflow and marker. Only a default-branch push changing
+  that marker triggers the workflow; its sole job sleeps for two minutes with a one-minute
+  timeout. habit merges the render PR and runs the printed owner command, as usual.
+  Run `live.py probe` after GitHub completes the timeout and Merge watch's `workflow_run`
+  run; if still pending, retry. The probe reads the cancelled run, GitHub's timeout
+  annotation, Merge watch's own successful run and log, and the exact six-field miss record
+  from GitHub. A manual cancellation is insufficient evidence.
+  Once every assertion passes, it closes only that verified sandbox record and reads back
+  its closed state. The marker and workflow remain as evidence: later pushes leave the
+  unique marker unchanged, so they do not trigger the timeout. Preserve both together;
+  deleting the marker alone would trigger it again. Post the passing results with
+  `live.py probe --post`; `merge-watch-miss` also verifies the render merge's push path.
+  The offline `live-runner` cases check these judgments, including wrong or absent evidence,
+  and do not claim live GitHub behavior. #135 omits `merge-watch-clean` because review
+  judgment is unchanged and that probe needs both bots and about 40 minutes.
 - **The private sandbox (#53)** takes the same probes, unchanged: `prepare --sandbox private`
   and the same `--probe` names. They read the repository and default branch from the
   context, and habit's commands name that repository.
