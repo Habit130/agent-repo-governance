@@ -245,6 +245,148 @@ class VersionThreeReviewerStartAndReread(VersionThreeRendered):
                 self.assertNotIn(bot, text)
 
 
+def flat(text):
+    """A text with its whitespace runs collapsed to single spaces."""
+    return " ".join(text.split())
+
+
+def level_three_section(text, heading):
+    """One level-3 section: its heading line up to the next level-2 or level-3 heading."""
+    body = text.split("\n" + heading + "\n", 1)[1]
+    return re.split(r"\n#{2,3} ", body, 1)[0]
+
+
+class VersionThreeHandoffs(VersionThreeRendered):
+    """#150: two light forms of message to habit, Planner-only dispatch plans, whole-spec delivery."""
+
+    HANDOFF = "docs/agents/handoff.md"
+    ROLE_TEXTS = ("docs/agents/builder.md", "docs/agents/reviewer.md", "docs/agents/review.md")
+
+    def rendered_paths(self):
+        return sorted(os.path.relpath(os.path.join(root, name), self.dest)
+                      for root, _, files in os.walk(self.dest) for name in files)
+
+    def test_the_manifest_writes_the_handoff_file_and_agents_points_to_it(self):
+        manifest = store.Store(support.REAL_STORE).manifest(3)
+        entries = [e for e in manifest["templates"] if e["path"] == self.HANDOFF]
+        self.assertEqual(entries, [{"path": self.HANDOFF, "class": "fixed", "mode": "100644"}])
+        handoff = self.text(self.HANDOFF)
+        self.assertEqual(handoff.split("\n", 1)[0], MARKDOWN_NOTICE.replace("version 1", "version 3"))
+        agents = self.text(AGENTS)
+        self.assertIn("`docs/agents/handoff.md`", level_two_section(
+            agents, "## Talking to habit and to other agents", AGENTS))
+        self.assertIn("`docs/agents/handoff.md`", level_two_section(agents, "## Where to find more", AGENTS))
+
+    def test_handoff_defines_three_kinds_the_moments_and_three_constant_parts_in_order(self):
+        handoff = self.text(self.HANDOFF)
+        kinds = flat(level_two_section(handoff, "## Three kinds of message", self.HANDOFF))
+        for kind in ("**Ordinary conversation**", "**A mid-session request**", "**A final handoff**"):
+            self.assertIn(kind, kinds)
+        self.assertIn("An escalation is a mid-session request", kinds)
+        final = flat(level_two_section(handoff, "## A final handoff", self.HANDOFF))
+        for moment in ("**Planner**", "**Builder**", "**Reviewer**", "**Any role**", "after its Merge summary",
+                       "the after-merge report", "with the merge command",
+                       "cannot continue and another must take over"):
+            self.assertIn(moment, final)
+        parts = ["1. **The conclusion.**", "2. **What habit does next**", "3. **This session**"]
+        found = [final.find(part) for part in parts]
+        self.assertTrue(all(index >= 0 for index in found), found)
+        self.assertEqual(found, sorted(found))
+        for optional in ("**The dispatch plan**", "**Unfinished or risky**", "left out"):
+            self.assertIn(optional, final)
+        examples = level_two_section(handoff, "## Examples", self.HANDOFF)
+        self.assertIn("illustrations, never a template", flat(examples))
+
+    def test_handoff_names_no_review_bot_trigger_or_path_in_its_examples(self):
+        handoff = self.text(self.HANDOFF)
+        for bot in ("Bugbot", "Codex", "@cursor", "@codex"):
+            self.assertNotIn(bot, handoff)
+        examples = level_two_section(handoff, "## Examples", self.HANDOFF)
+        self.assertEqual([m.group(1) for m in POINTER.finditer(examples)], [])
+        self.assertNotIn("diff", examples)
+
+    def test_no_builder_or_reviewer_text_offers_a_next_ticket_or_progress(self):
+        for path in self.ROLE_TEXTS:
+            text = self.text(path)
+            for phrase in ("next ticket", "first unclaimed", "first unblocked"):
+                self.assertNotIn(phrase, text, path)
+        merge = flat(level_three_section(self.text("docs/agents/review.md"), "### The merge handoff"))
+        for kept in ("ghm pr merge <n> --admin --squash --match-head-commit <sha>",
+                     "say merged in the Builder's terminal", "can be closed", "retro"):
+            self.assertIn(kept, merge)
+        self.assertNotIn("**The next ticket.**", merge)
+        rules = flat(level_two_section(self.text(self.HANDOFF), "## Only the Planner arranges what comes next",
+                                       self.HANDOFF))
+        for phrase in ("name no next ticket and show no progress", "only when above zero",
+                       "the Planner must rearrange", "a Planner start request"):
+            self.assertIn(phrase, rules)
+
+    def test_planner_defines_the_dispatch_plan_its_parent_issue_copy_and_its_owner(self):
+        planner = flat(level_two_section(self.text("docs/agents/planner.md"), "## Tickets", "planner.md"))
+        for phrase in ("**The dispatch plan.**", "every approved ticket", "dispatch order",
+                       "start instruction and its condition", "parent issue", "Only a Planner updates it",
+                       "a list, never a table", "its own block", "surely can run together",
+                       "When unsure, one"):
+            self.assertIn(phrase, planner)
+        self.assertNotIn("first unblocked", planner)
+
+    def test_the_start_forms_and_the_builder_limit_agree_everywhere(self):
+        spec_starts, ticket_starts = [], []
+        for path in self.rendered_paths():
+            text = self.text(path)
+            spec_starts += [(path, flat(s)) for s in re.findall(r"`(Role: Builder\. Spec: [^`]*)`", text)]
+            ticket_starts += [(path, flat(s)) for s in re.findall(r"`(Role: Builder\. Ticket: #<n>[^`]*)`", text)]
+        self.assertEqual(len({s for _, s in spec_starts}), 1, spec_starts)
+        self.assertEqual({p for p, _ in spec_starts} >= {AGENTS, "docs/agents/builder.md",
+                                                         "docs/agents/planner.md"}, True, spec_starts)
+        spec = spec_starts[0][1]
+        self.assertEqual(spec, "Role: Builder. Spec: #<n>. Skills: implement-spec, tdd.")
+        self.assertEqual(len({s for _, s in ticket_starts}), 1, ticket_starts)
+        agents = self.text(AGENTS)
+        start = flat(level_two_section(agents, "## How to start", AGENTS))
+        self.assertIn(ticket_starts[0][1], start)
+        self.assertIn(spec, start)
+        limit = flat(level_two_section(agents, "## Hard limits", AGENTS))
+        self.assertIn("**Builder**: one delivery, one ticket or one spec habit approved for whole-spec "
+                      "delivery, in a fresh session", limit)
+        builder = flat(level_two_section(self.text("docs/agents/builder.md"), "## Whole-spec delivery",
+                                         "builder.md"))
+        for phrase in (spec, "the spec and each of its tickets", "its own worktree", "in the Builder's role",
+                       "one integration branch", "only that branch is pushed", "**One PR** closes the spec",
+                       "highest tier any part reaches", "`planner.md`, Delivery shape"):
+            self.assertIn(phrase, builder)
+        tracker = flat(self.text("docs/agents/issue-tracker.md"))
+        self.assertIn("claims the spec and each of its tickets", tracker)
+
+    def test_the_foreseen_high_rule_is_stated_once_in_the_planner(self):
+        places = [path for path in self.rendered_paths()
+                  if "high for the same reason" in flat(self.text(path))]
+        self.assertEqual(places, ["docs/agents/planner.md"])
+        shape = flat(level_two_section(self.text("docs/agents/planner.md"), "## Delivery shape", "planner.md"))
+        for phrase in ("habit approves it with the spec", "each ticket is small",
+                       "reviewable in one pass", "one-way door", "always gets its own PR"):
+            self.assertIn(phrase, shape)
+        self.assertNotIn("make sense only merged together", shape)
+        self.assertIn("only the high part in the PR", self.text("docs/agents/review.md"))
+
+    def test_the_merge_summary_terminal_copy_is_unchanged(self):
+        terminal = flat(level_three_section(self.text("docs/agents/review.md"), "### In the terminal"))
+        self.assertIn(flat("""- **First line**: the tier, the verdict, and the Important, Nit and Pre-existing counts.
+- **Seven items:**
+  1. the tier and why;
+  2. what changed, in three to five bullets;
+  3. each acceptance criterion, met or not;
+  4. the evidence, in plain words;
+  5. each finding in one sentence, with its answer;
+  6. what the checks don't cover;
+  7. how to revert."""), terminal)
+
+    def test_a_start_request_names_the_shared_resource_it_takes(self):
+        talking = flat(level_two_section(self.text(AGENTS), "## Talking to habit and to other agents", AGENTS))
+        self.assertIn("any shared resource the session takes", talking)
+        self.assertIn("never a list of options", talking)
+
+
 # The governance gate (#41 §8): its workflow and the one script it runs.
 GATE_FILES = (".github/workflows/governance-gate.yml", ".github/governance/gate.py")
 # Merge watch (#41 §9): its workflow and the one script it runs, beside the gate's.

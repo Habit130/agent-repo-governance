@@ -38,7 +38,8 @@ GitHub shares one number space between issues and PRs: resolve a bare `#42` with
 
 - **Dispatch**: `triage-labels.md`, `ready-for-agent`.
 - **Claim**: `gh issue edit <n> --repo @@repository@@ --add-assignee @me`. It is the Builder's
-  first write, and it posts no comment. An assigned ticket is claimed.
+  first write, and it posts no comment. An assigned ticket is claimed. A Builder on a
+  whole-spec delivery claims the spec and each of its tickets (`builder.md`).
 - **A published ticket is frozen** (`planner.md`, Tickets). It carries no digests or contract
   versions, since GitHub keeps the body's edit history. Evidence and records go in comments.
 - **Closing**: results-comment tickets follow `builder.md`, Results-comment tickets.

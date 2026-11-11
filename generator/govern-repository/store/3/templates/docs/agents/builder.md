@@ -39,9 +39,29 @@ On completion, post one English results comment answering each acceptance criter
 verification run and its result, and stating what was not done. The Secrets rules and the
 ticket's limits on what may leave the machine bind that comment. Then close the ticket as
 completed; if it is its spec's last open sub-issue, also close the spec. Give habit a Chinese
-summary in the terminal.
+summary in the terminal, as a final handoff (`handoff.md`).
 
 This is Builder execution work, separate from the Planner's wayfinder tickets.
+
+## Whole-spec delivery
+
+A spec habit approved for whole-spec delivery (`planner.md`, Delivery shape) is one
+delivery, started with `Role: Builder. Spec: #<n>. Skills: implement-spec, tdd.`. The Steps
+below apply to it as to a ticket, with these differences:
+
+- **Claim** the spec and each of its tickets.
+- **Build** with `implement-spec`: subagents build the tickets, each in its own worktree, in
+  the Builder's role, which its task names. Their work merges onto one integration branch,
+  the Builder's own branch from step 3, and only that branch is pushed.
+- **One PR** closes the spec and its tickets, with a `Closes` line for each. Its tier is the
+  highest tier any part reaches.
+- Self-verification, the evidence comment and every review cover that one PR, against the
+  spec and every ticket.
+- The PR opens at step 7, after self-verification, never earlier as a draft. Where
+  `implement-spec` says otherwise, this section wins.
+- Each ticket stays frozen (Escalations, The ticket must change). Anything the dispatch
+  plan didn't foresee, such as a ticket that should split off, goes back to the Planner
+  (`handoff.md`).
 
 ## Steps
 
@@ -92,6 +112,9 @@ A start request in `AGENTS.md`'s two parts:
   `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
   Reviewer status and, when clear, the Merge summary.`
 
+It is a final handoff (`handoff.md`): the session stays open, waiting on the PR, and says
+the words habit uses on return.
+
 ## Syncing and waiting
 
 - **Sync** only on a conflict or habit's request, by merging the default branch in. A pushed
@@ -103,8 +126,8 @@ A start request in `AGENTS.md`'s two parts:
 ## Escalations
 
 Stop the affected work, put the full question and the options in the terminal, and leave
-one "Waiting on habit: …" line on the PR or ticket (`AGENTS.md`, Talking to habit and to
-other agents).
+one "Waiting on habit: …" line on the PR or ticket (`handoff.md`, Three kinds of
+message).
 
 - **The ticket must change.** Propose the change on the ticket, and edit it only after
   habit's agreement is recorded there.
@@ -135,6 +158,8 @@ This section applies to PR delivery.
 - At medium and high, keep waiting on the PR until it merges; at high, habit says "merged"
   in this terminal. Then remove your worktree. A Builder that can't wait leaves its
   worktree, and nobody nudges it.
+- The after-merge report is a final handoff (`handoff.md`). It reports this delivery only;
+  what is dispatched next is the Planner's dispatch plan.
 - Before any after-merge report, reread from GitHub, for the PR's exact head at merge: each
   required review's result, at medium and high the Comment review and the `Reviewer` status,
   and the Merge summary. The report states only what that reading shows.
@@ -153,7 +178,7 @@ This section applies to PR delivery.
 ## Closing a spec
 
 Results-comment tickets close their spec as described above. For PR delivery, a
-whole-spec PR through `implement-spec` closes the spec and its tickets. Otherwise, when
+whole-spec PR closes the spec and its tickets (Whole-spec delivery). Otherwise, when
 your ticket is the spec's last open sub-issue, add `Closes #<spec>`. There is no spec-level
 acceptance.
 
