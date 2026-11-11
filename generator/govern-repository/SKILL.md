@@ -10,7 +10,13 @@ metadata:
 
 This run is a high Builder delivery. It takes no arguments and starts from the repository's
 directory. `<entry>` below is `/usr/bin/python3 <this skill's directory>/scripts/govern.py`.
-Each subcommand prints JSON; save each report in a temporary directory outside the checkout.
+Each subcommand prints JSON; save each report in the run's report directory below.
+
+**Temporary paths.** Allocate a fresh, unique directory with `mktemp -d` outside the checkout
+for this run's reports. For each temporary worktree, allocate another fresh directory the
+same way and give Git an unused child path inside it. Stop and preserve any pre-existing
+work at an intended destination; never reuse or clear another run's directory or worktree.
+Cleanup removes only paths this run allocated and worktrees it created.
 
 **The harness.** The run happens only in Claude Code or OpenCode. In the Codex harness,
 deepseekharness or anything else, stop before any other step and tell habit in Chinese where
@@ -91,8 +97,8 @@ conflict habit confirms. At Repair, make none of them.
 - **Required checks.** Propose a job only when `inspect` reads it as `every_pr: true` and not
   uncertain, under its reported `name`. Name every other job and why it can't be required.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
-  worktree of your own, so the checkout stays untouched. A manifest whose `extraction` is
-  `unsupported` has its commands read from the file by you. Record each command you ran and
+  worktree allocated as **Temporary paths** above, so the checkout stays untouched. A manifest
+  whose `extraction` is `unsupported` has its commands read from the file by you. Record each command you ran and
   whether it worked, with the cause of a failure. A failing command is a fact for `build.md`
   and the issue, never a question or an option for habit: the run never changes the
   repository's code, build or CI configuration to make one pass, which is separate work.
@@ -159,7 +165,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    reaches Writing does this, Upgrade included, even when its confirmation names no labels.
    Preserve existing same-name, same-purpose labels with different descriptions. Their
    manifest descriptions are creation defaults. Escalate a purpose conflict before writing.
-2. Make your own worktree on a new branch from the latest `origin` default branch.
+2. Allocate a worktree as **Temporary paths** above, on a new branch from the latest
+   `origin` default branch.
 3. Render: `<entry> render --dest <worktree> --repository <owner/name> --default-branch
    <branch> --confirmed <file>`, the file holding JSON with `sensitive_paths` and
    `required_checks`. Upgrade keeps the confirmed values habit didn't change. When `mode`
@@ -195,9 +202,9 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
    give habit `<entry> owner-command --repository <owner/name>`'s command, with each of the
    report's `lines` verbatim beside it and each unverified item named. Hand it once per run.
    When it is false, the run ends here with the Chinese report.
-3. After habit's run, fetch `origin` and run `<entry> mode` once in a temporary worktree of the
-   default branch's head. It reads the rulesets and readable settings as the agent account, and
-   `<entry> preconditions` reads your own permission and, on a private repository, whether
+3. After habit's run, fetch `origin` and allocate a temporary worktree as **Temporary paths**
+   above at the default branch's head, then run `<entry> mode` once there. It reads the rulesets
+   and readable settings as the agent account, and `<entry> preconditions` reads your own permission and, on a private repository, whether
    the rules are in effect: its `private` item and `rules_in_effect`. Report on the issue in
    English, where there is one, and to habit in Chinese, with whatever stays unread beside
    habit's owner-script report. When the `private` item fails, the issue records

@@ -357,6 +357,18 @@ class SkillFiles(unittest.TestCase):
             self.assertIn(want, step.split("\n   - ")[1 + matched[0]], said)
         self.assertEqual(len(branches), len(ends))
 
+    def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):
+        text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
+        self.assertIn("**Temporary paths.**", text)
+        allocation = text.split("**Temporary paths.**", 1)[1].split("\n\n", 1)[0]
+        for required in ("mktemp -d", "outside the checkout", "unused child path",
+                         "Stop and preserve", "only paths this run allocated"):
+            self.assertIn(required, allocation)
+        for section in (text.split("- **Commands.**", 1)[1].split("- **Actions secrets.**", 1)[0],
+                        text.split("## 5. Writing", 1)[1].split("3. Render:", 1)[0],
+                        text.split("3. After habit's run", 1)[1]):
+            self.assertIn("Temporary paths", section)
+
     def test_codex_reads_the_skill_as_user_only(self):
         sys.path.insert(0, os.path.join(support.REPO, "machine", "scripts"))
         from machinelib import skills

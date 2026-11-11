@@ -12,9 +12,12 @@ A recording is {"tool": ..., "calls": [{"args": [...], "stdout": ..., "stderr": 
 the environment, so a recording can name paths inside a throwaway home. A call with a
 recorded "stdin" matches only that input. A "once" call answers one time, by the log, then
 the next match answers. An entry with "accepts" instead of "args" answers any call starting
-with those arguments, for calls that hold text a run wrote: a body the call names by
-`--body-file` or `-F`, or sends on stdin with `-`, goes into the log under "body". An
-accepting `issue view` entry with "created_issue": true serves the issues the log shows the
+with those arguments. Both "args" and "accepts" entries log a readable `--body-file`
+or body-file `-F` under "body". An unreadable file fails before recording a successful
+call or applying effects, leaving a failed log entry and any "once" response unconsumed.
+For `api` and `workflow run`, `-F` is a field, not a body file. An accepting entry also
+logs a body sent on stdin with `-`; exact entries match stdin through recorded "stdin".
+An accepting `issue view` entry with "created_issue": true serves the issues the log shows the
 run creating, numbered from 1 in order, with their later `issue edit` title and body: plain,
 as `--json` fields, or one field by `--jq .<field>`; a number the run never created fails.
 An accepting `label list` or `api repos/<repo>/labels` entry with "labels" serves those
@@ -86,11 +89,8 @@ def body_of(args):
             name = args[args.index(flag) + 1]
             if name == "-":
                 return sys.stdin.read()
-            try:
-                with open(name, encoding="utf-8") as handle:
-                    return handle.read()
-            except (OSError, ValueError) as error:
-                return "unreadable: %s" % error
+            with open(name, encoding="utf-8") as handle:
+                return handle.read()
     return None
 
 
@@ -221,10 +221,22 @@ def main(argv):
         log({"tool": tool, "args": args, "recorded": False, "error": str(error)})
         return fail(tool, str(error))
 
+    body = None
+    # These commands use -F for fields. Leave stdin to the matching entry below.
+    field_command = args[:1] == ["api"] or args[:2] == ["workflow", "run"]
+    body_file = _flag(args, "--body-file", *(() if field_command else ("-F",)))
+    if tool == "gh" and body_file is not None and body_file != "-":
+        try:
+            body = body_of(args)
+        except (OSError, ValueError) as error:
+            message = "cannot read body file: %s" % error
+            log({"tool": tool, "args": args, "recorded": False, "error": message})
+            return fail(tool, message)
+
     for index, call in enumerate(calls):
         if "accepts" in call and args[: len(call["accepts"])] == call["accepts"]:
             entry = {"tool": tool, "args": args, "recorded": True, "call": index}
-            body = body_of(args)
+            body = body_of(args) if body_file == "-" else body
             if body is not None:
                 entry["body"] = body
             if call.get("created_issue") or "labels" in call:
@@ -249,6 +261,8 @@ def main(argv):
             entry = {"tool": tool, "args": args, "recorded": True, "call": index}
             if stdin is not None:
                 entry["stdin"] = stdin
+            if body is not None:
+                entry["body"] = body
             log(entry)
             apply_effects(call)
             if call.get("delay"):
