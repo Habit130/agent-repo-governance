@@ -128,6 +128,19 @@ class StandInGitHub(StandInCase):
                 self.assertEqual(len(creates), 1)
                 self.assert_nothing_reached_the_real_tools()
 
+    def test_workflow_fields_are_not_read_as_body_files(self):
+        recording = self.path("workflow-fields.json")
+        args = ["workflow", "run", "check.yml", "-F", "key=value"]
+        for matching in ("args", "accepts"):
+            with self.subTest(matching=matching):
+                with open(recording, "w") as handle:
+                    json.dump({"tool": "gh", "calls": [
+                        {matching: args, "stdout": "dispatched\n"}]}, handle)
+                self.env["STANDIN_GH_RECORDING"] = recording
+                self.assertEqual(self.call(["gh"] + args), (0, "dispatched\n", ""))
+                self.assertNotIn("body", self.calls()[-1])
+                self.assert_nothing_reached_the_real_tools()
+
     def test_a_stray_call_fails_and_never_reaches_github(self):
         code, out, err = self.call(["gh", "pr", "merge", "1", "--repo", "Habit130/tally", "--squash"])
         self.assertNotEqual(code, 0)
