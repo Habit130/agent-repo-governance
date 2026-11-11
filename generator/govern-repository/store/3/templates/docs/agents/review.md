@@ -42,16 +42,19 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 
 ## Rerun-only passes
 
-A required check (one named in the governance record) that failed, timed out or was cancelled
-on a head, then passed on that head with no change to the commit, the PR or the configuration,
-is a **rerun-only pass**. It counts as unrepaired. A governance gate run after a PR body edit
-is a repair, not a rerun-only pass.
+Required checks here are the fixed governance gate plus the checks named in the governance
+record. A required check that failed, timed out or was cancelled on a head, then passed on
+that same head, is a **rerun-only pass** unless a change to an input or configuration used
+by that check repairs the failure. A rerun-only pass counts as unrepaired. An unrelated PR
+edit is not a repair. A governance gate run after a PR body edit qualifies as repaired only
+when the edit corrects the failed gate input, such as its Risk declaration.
 
 The Reviewer and the Merge summary's writer inspect the required checks' run history on the
 head, earlier attempts included: GitHub's default listing shows only the latest attempt.
-Compare changes between attempts with the evidence comment. For each rerun-only pass,
-confirm the linked issue is open and covers its cause; no linked open issue is an Important
-finding. The Builder owns ticketing the cause (`builder.md`, step 9).
+Compare changes between attempts with the evidence comment, verifying that each claimed
+repair addresses that check's failure. For each rerun-only pass, confirm the linked issue
+is open and covers its cause; no linked open issue is an Important finding. The Builder
+owns ticketing the cause (`builder.md`, step 9).
 
 ## Subagents with no conversation context
 
@@ -120,6 +123,8 @@ One PR comment by the Builder, bound to the head it names and updated on every n
 
 - the head's full SHA;
 - each verification command and its result;
+- for a required check that passed after a repair on this head, the failed run, the
+  repair and why it fixes that check's failure;
 - each required check's rerun-only pass on this head, with the failed run and the cause's open
   issue, or an explicit statement that there were none;
 - the self-verification subagent's finding count, and how each finding was handled;

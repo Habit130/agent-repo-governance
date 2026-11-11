@@ -121,9 +121,9 @@ class VersionThreeRerunPolicy(support.TempDirCase):
 
     def test_review_defines_reruns_and_requires_history_and_head_bound_evidence(self):
         review = self.text("docs/agents/review.md")
-        rule = level_two_section(review, "## Rerun-only passes", "review.md")
-        for phrase in ("governance record", "failed, timed out or was cancelled", "no change",
-                       "commit, the PR or the configuration", "unrepaired", "body edit",
+        rule = " ".join(level_two_section(review, "## Rerun-only passes", "review.md").split())
+        for phrase in ("governance record", "failed, timed out or was cancelled",
+                       "unrepaired", "body edit",
                        "repair", "Reviewer", "Merge summary", "earlier attempts",
                        "latest attempt", "Important", "open issue"):
             self.assertIn(phrase, rule)
@@ -137,6 +137,17 @@ class VersionThreeRerunPolicy(support.TempDirCase):
         important = agents.split("- **Important**", 1)[1].split("- **Nit**", 1)[0]
         self.assertIn("rerun-only pass", important)
         self.assertIn("no linked open issue", important)
+
+    def test_rerun_repairs_are_check_specific_and_include_the_fixed_gate(self):
+        review = self.text("docs/agents/review.md")
+        rule = " ".join(level_two_section(review, "## Rerun-only passes", "review.md").split())
+        for phrase in ("fixed governance gate plus", "checks named in the governance record",
+                       "input or configuration used by that check repairs the failure",
+                       "An unrelated PR edit is not a repair",
+                       "corrects the failed gate input"):
+            self.assertIn(phrase, rule)
+        evidence = " ".join(level_two_section(review, "## Evidence comment", "review.md").split())
+        self.assertIn("repair and why it fixes that check's failure", evidence)
 
     def test_version_three_keeps_copy_budget_routing_and_skill_contracts(self):
         agents = self.text("AGENTS.md")
