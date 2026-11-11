@@ -1,0 +1,44 @@
+{
+  "description": "Regression for #130: GitHub run 42723692011 cancelled after its job time limit on #126 squash commit; read 2026-11-10.",
+  "event_name": "workflow_run",
+  "event": {
+    "action": "completed",
+    "workflow_run": {
+      "name": "CI",
+      "path": ".github/workflows/ci.yml",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "head_branch": "main",
+      "head_sha": "6b0995149f3be81a2175dbfae220087d3dc86da6",
+      "html_url": "https://github.com/Habit130/agent-repo-governance/actions/runs/42723692011"
+    },
+    "repository": {
+      "full_name": "Habit130/agent-repo-governance",
+      "default_branch": "main"
+    }
+  },
+  "github": {
+    "repos/Habit130/agent-repo-governance/commits/6b0995149f3be81a2175dbfae220087d3dc86da6/pulls": [
+      {
+        "number": 126,
+        "state": "closed",
+        "merged_at": "2026-11-09T23:50:35Z",
+        "merge_commit_sha": "6b0995149f3be81a2175dbfae220087d3dc86da6",
+        "base": {
+          "ref": "main"
+        },
+        "head": {
+          "sha": "88a1d2e9eb88f70d3f5f6995b2cbf5fb43423620"
+        }
+      }
+    ],
+    "repos/Habit130/agent-repo-governance/issues?labels=miss&state=open": []
+  },
+  "expected": [
+    {
+      "title": "Miss: escape, red-default-branch in #126",
+      "body": "Merged PR: #126\nKind: escape\nCategory: red-default-branch\nObserved: Workflow CI concluded cancelled on its push-triggered run https://github.com/Habit130/agent-repo-governance/actions/runs/42723692011 at commit 6b0995149f3be81a2175dbfae220087d3dc86da6.\nFound by: Merge watch\nBug issue: none\n"
+    }
+  ]
+}

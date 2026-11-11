@@ -33,8 +33,10 @@ On `push` to the default branch, for each pushed commit:
   A body with no readable `Risk:` line is judged at high.
 
 On `workflow_run`, a push-triggered run on the default branch of any workflow but Merge watch
-that concludes `failure` records an escape, `red-default-branch`, naming the merged PR of the
-run's commit, unless a `red-default-branch` record is already open.
+that concludes `failure`, `cancelled`, `timed_out` or `startup_failure` records an escape,
+`red-default-branch`, naming the merged PR of the run's commit, unless such a record is
+already open. Manual cancellation or a `cancel-in-progress` group on the default branch
+may open a false record; that cost is accepted because a false record beats a lost one.
 
 A format it can't read, or a GitHub read that fails, counts that review or fact as absent, so
 it yields a false miss record, never a blocked merge. A record whose title and `Observed:`
@@ -283,7 +285,7 @@ def _on_workflow_run(event, read, repository, default_branch, open_records):
     run = event["workflow_run"]
     if (
         run.get("event") != "push"
-        or run.get("conclusion") != "failure"
+        or run.get("conclusion") not in ("failure", "cancelled", "timed_out", "startup_failure")
         or run.get("head_branch") != default_branch
         or (run.get("path") or "").split("@")[0] == WORKFLOW
     ):
@@ -297,7 +299,8 @@ def _on_workflow_run(event, read, repository, default_branch, open_records):
         pull = None
     return [record(
         pull["number"] if pull else None, "escape", "red-default-branch",
-        "Workflow %s failed on its push-triggered run %s at commit %s." % (run.get("name"), run.get("html_url"), sha),
+        "Workflow %s concluded %s on its push-triggered run %s at commit %s."
+        % (run.get("name"), run.get("conclusion"), run.get("html_url"), sha),
     )]
 
 

@@ -1,0 +1,103 @@
+{
+  "setup": {
+    "workflow": ".github/workflows/live-cancelled-probe-135.yml",
+    "marker": "live-checks/probe-135.md"
+  },
+  "answers": {
+    "repos/Habit130/governance-sandbox/pulls/3": {
+      "merged": true,
+      "merge_commit_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "merged_at": "2026-11-10T02:00:00Z"
+    },
+    "repos/Habit130/governance-sandbox/actions/runs?head_sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb&per_page=100&page=1": {
+      "workflow_runs": [
+        {
+          "id": 100,
+          "name": "live-cancelled-run",
+          "path": ".github/workflows/live-cancelled-probe-135.yml",
+          "event": "push",
+          "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "head_branch": "main",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "html_url": "https://github.com/Habit130/governance-sandbox/actions/runs/100"
+        },
+        {
+          "id": 101,
+          "path": ".github/workflows/merge-watch.yml",
+          "event": "workflow_run",
+          "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/Habit130/governance-sandbox/actions/runs/101"
+        }
+      ]
+    },
+    "repos/Habit130/governance-sandbox/actions/runs/100/jobs?per_page=100&page=1": {
+      "jobs": [
+        {
+          "name": "timeout",
+          "conclusion": "cancelled",
+          "check_run_url": "https://api.github.com/repos/Habit130/governance-sandbox/check-runs/200"
+        }
+      ]
+    },
+    "repos/Habit130/governance-sandbox/check-runs/200/annotations?per_page=100&page=1": [
+      {
+        "message": "The job running on runner has exceeded the maximum execution time of 1 minutes."
+      }
+    ],
+    "repos/Habit130/governance-sandbox/actions/runs/101/jobs": {
+      "jobs": [
+        {
+          "id": 201,
+          "name": "merge-watch"
+        }
+      ]
+    },
+    "repos/Habit130/governance-sandbox/issues?labels=miss&state=all&per_page=100&page=1": [
+      {
+        "number": 9,
+        "title": "Miss: escape, red-default-branch in #3",
+        "body": "Merged PR: #3\nKind: escape\nCategory: red-default-branch\nObserved: Workflow live-cancelled-run concluded cancelled on its push-triggered run https://github.com/Habit130/governance-sandbox/actions/runs/100 at commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.\nFound by: Merge watch\nBug issue: none\n",
+        "user": {
+          "login": "github-actions[bot]"
+        },
+        "labels": [
+          {
+            "name": "miss"
+          }
+        ],
+        "created_at": "2026-11-10T02:03:00Z",
+        "state": "open",
+        "html_url": "https://github.com/Habit130/governance-sandbox/issues/9"
+      }
+    ],
+    "repos/Habit130/governance-sandbox/issues/9": {
+      "number": 9,
+      "title": "Miss: escape, red-default-branch in #3",
+      "body": "Merged PR: #3\nKind: escape\nCategory: red-default-branch\nObserved: Workflow live-cancelled-run concluded cancelled on its push-triggered run https://github.com/Habit130/governance-sandbox/actions/runs/100 at commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.\nFound by: Merge watch\nBug issue: none\n",
+      "user": {
+        "login": "github-actions[bot]"
+      },
+      "labels": [
+        {
+          "name": "miss"
+        }
+      ],
+      "created_at": "2026-11-10T02:03:00Z",
+      "state": "closed",
+      "html_url": "https://github.com/Habit130/governance-sandbox/issues/9"
+    },
+    "repos/Habit130/governance-sandbox/contents/.github/workflows/live-cancelled-probe-135.yml?ref=main": {
+      "content": "bmFtZTogbGl2ZS1jYW5jZWxsZWQtcnVuCm9uOgogIHB1c2g6CiAgICBicmFuY2hlczogWyJtYWluIl0KICAgIHBhdGhzOiBbImxpdmUtY2hlY2tzL3Byb2JlLTEzNS5tZCJdCnBlcm1pc3Npb25zOgogIGNvbnRlbnRzOiByZWFkCmpvYnM6CiAgdGltZW91dDoKICAgIHJ1bnMtb246IHVidW50dS1sYXRlc3QKICAgIHRpbWVvdXQtbWludXRlczogMQogICAgc3RlcHM6CiAgICAgIC0gcnVuOiBzbGVlcCAxMjAK"
+    },
+    "repos/Habit130/governance-sandbox/contents/live-checks/probe-135.md?ref=main": {
+      "content": "dW5pcXVlIG1hcmtlcgo="
+    },
+    "repos/Habit130/governance-sandbox/contents/live-checks/probe-135.md?ref=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": {
+      "content": "dW5pcXVlIG1hcmtlcgo="
+    }
+  },
+  "log": "2026-11-10T02:02:00Z MISS Miss: escape, red-default-branch in #3. Workflow live-cancelled-run concluded cancelled on its push-triggered run https://github.com/Habit130/governance-sandbox/actions/runs/100 at commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.\n"
+}

@@ -188,8 +188,14 @@ def context(state, directory):
                           state["commit"], state.get("sandbox_pr"), directory)
 
 
+def model_version(names):
+    return 3 if "merge-watch-cancelled" in names else VERSION
+
+
 def cmd_prepare(args):
     chosen = chosen_probes(args.probe, args.sandbox)
+    version = model_version(args.probe)
+    cancelled_setup = None
     commit = run(["git", "-C", REPO, "rev-parse", "HEAD"]).stdout.strip()
     if run(["git", "-C", REPO, "status", "--porcelain"]).stdout.strip():
         raise RunnerError("this checkout has uncommitted changes, so a result couldn't name the commit it ran on")
@@ -198,6 +204,10 @@ def cmd_prepare(args):
         raise RunnerError("PR #%s's head is %s, not this checkout's %s: push first" % (args.pr, pull["headRefOid"][:12], commit[:12]))
     repository, fixture = sandbox_name(args.sandbox), seed_fixture()
     directory = check_directory(args.directory, args.sandbox)
+    if "merge-watch-cancelled" in args.probe:
+        from probes import cancelled_run
+        cancelled_run.preflight(probes.Context(repository, args.sandbox, fixture["default_branch"],
+                                               fixture["confirmed"], commit, None, directory))
     work = tempfile.mkdtemp(prefix="live-render-")
     try:
         clone = os.path.join(work, "sandbox")
@@ -211,19 +221,21 @@ def cmd_prepare(args):
         confirmed = os.path.join(work, "confirmed.json")
         with open(confirmed, "w") as handle:
             json.dump(fixture["confirmed"], handle)
-        rendered = run([sys.executable, GOVERN, "render", "--store", STORE, "--version", str(VERSION), "--allow-unreleased",
+        rendered = run([sys.executable, GOVERN, "render", "--store", STORE, "--version", str(version), "--allow-unreleased",
                         "--dest", clone, "--repository", repository, "--default-branch", default_branch,
                         "--confirmed", confirmed], check=False)
         if rendered.returncode != 0:
-            raise RunnerError("rendering version %d failed: %s" % (VERSION, rendered.stdout.strip()))
+            raise RunnerError("rendering version %d failed: %s" % (version, rendered.stdout.strip()))
         # The check's record, so a sandbox PR exists even when the sandbox already holds this render.
         record = os.path.join(clone, "live-checks", "%s.md" % branch.split("/", 1)[1])
         os.makedirs(os.path.dirname(record), exist_ok=True)
         with open(record, "w") as handle:
             handle.write("Live check of governance model version %d from %s at %s, probes: %s.\n"
-                         % (VERSION, THIS_REPOSITORY, commit, ", ".join(args.probe)))
+                         % (version, THIS_REPOSITORY, commit, ", ".join(args.probe)))
+        if "merge-watch-cancelled" in args.probe:
+            cancelled_setup = cancelled_run.stage(clone, os.path.relpath(record, clone), default_branch)
         run(["git", "-C", clone, "add", "-A"])
-        run(["git", "-C", clone, "commit", "-q", "-m", "Live check: governance version %d at %s" % (VERSION, commit[:12])])
+        run(["git", "-C", clone, "commit", "-q", "-m", "Live check: governance version %d at %s" % (version, commit[:12])])
         head = run(["git", "-C", clone, "rev-parse", "HEAD"]).stdout.strip()
         run(["git", "-C", clone, "push", "-q", "origin", "HEAD:refs/heads/%s" % branch])
     finally:
@@ -231,10 +243,10 @@ def cmd_prepare(args):
     body = (
         "A live check of governance model version %d from %s#%s at `%s`, opened by `tests/live/live.py prepare`.\n\n"
         "Risk: high — rewrites the sandbox's governance files, the gate workflow and the owner script among them\n"
-        % (VERSION, THIS_REPOSITORY, args.pr, commit)
+        % (version, THIS_REPOSITORY, args.pr, commit)
     )
     url = run(["gh", "pr", "create", "--repo", repository, "--base", default_branch, "--head", branch,
-               "--title", "Live check: governance version %d at %s" % (VERSION, commit[:12]), "--body-file", "-"],
+               "--title", "Live check: governance version %d at %s" % (version, commit[:12]), "--body-file", "-"],
               stdin=body).stdout.strip()
     number = int(url.rstrip("/").split("/")[-1])
     state = {"pr": args.pr, "commit": commit, "sandbox": repository, "visibility": args.sandbox, "branch": branch,
@@ -245,6 +257,8 @@ def cmd_prepare(args):
     print("Check directory: %s" % directory)
     print("")
     ctx = context(state, directory)
+    if cancelled_setup:
+        ctx.remember(cancelled_run.SETUP, cancelled_setup)
     print("habit's commands, in order, each with the ! prefix in Claude Code:")
     print("1. Merge the sandbox PR once its checks are green:")
     print("   ghm pr merge %d --repo %s --admin --squash --match-head-commit %s" % (number, repository, head))

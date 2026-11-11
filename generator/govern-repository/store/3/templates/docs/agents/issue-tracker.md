@@ -121,7 +121,7 @@ Bug issue: <#n | none>
 
 | Category | Kind | Observed names |
 | --- | --- | --- |
-| `red-default-branch` | escape | the failed push-triggered workflow run on the default branch: its workflow, run link and commit |
+| `red-default-branch` | escape | the push-triggered workflow run on the default branch concluding `failure`, `cancelled`, `timed_out` or `startup_failure`: its workflow, run link and commit |
 | `revert` | escape | the PR that reverted the merged PR, and whether its body had a `Reverts:` line |
 | `missing-review` | process miss | the declared tier, the merged head, and each missing review by its Merge summary kind (`review.md`), or `merge-summary` |
 | `push-without-pr` | process miss | the commit pushed to the default branch with no merged PR |
