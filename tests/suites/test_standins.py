@@ -90,6 +90,44 @@ class StandInGitHub(StandInCase):
         self.assertEqual([c["recorded"] for c in self.calls()], [True, False])
         self.assertEqual(self.calls()[1]["stdin"], "a different body\n")
 
+    def test_unreadable_body_fails_before_creation_and_retry_creates_one_issue(self):
+        body = self.path("body.md")
+        recording = self.path("body-file.json")
+        effect = self.path("created")
+        args = ["issue", "create", "--title", "Govern", "--body-file", body]
+        for matching in ("accepts", "args"):
+            with self.subTest(matching=matching):
+                if os.path.exists(body):
+                    os.remove(body)
+                if os.path.exists(self.env["STANDIN_LOG"]):
+                    os.remove(self.env["STANDIN_LOG"])
+                if os.path.exists(effect):
+                    os.remove(effect)
+                with open(recording, "w") as handle:
+                    json.dump({"tool": "gh", "calls": [
+                        {matching: args if matching == "args" else ["issue", "create"],
+                         "stdout": "url\n", "once": True,
+                         "effects": [{"path": effect, "write": "created"}]},
+                        {"accepts": ["issue", "view"], "created_issue": True}]}, handle)
+                self.env["STANDIN_GH_RECORDING"] = recording
+                code, out, err = self.call(["gh"] + args)
+                self.assertNotEqual(code, 0)
+                self.assertEqual(out, "")
+                self.assertIn("body", err)
+                self.assertFalse(self.calls()[0]["recorded"])
+                self.assertFalse(os.path.exists(effect))
+                self.assertNotEqual(self.call(["gh", "issue", "view", "1"])[0], 0)
+                with open(body, "w") as handle:
+                    handle.write("readable body")
+                self.assertEqual(self.call(["gh"] + args)[:2], (0, "url\n"))
+                code, out, _ = self.call(["gh", "issue", "view", "1", "--json", "title,body"])
+                self.assertEqual(code, 0)
+                self.assertEqual(json.loads(out), {"title": "Govern", "body": "readable body"})
+                self.assertNotEqual(self.call(["gh", "issue", "view", "2"])[0], 0)
+                creates = [c for c in self.calls() if c["args"][:2] == ["issue", "create"] and c["recorded"]]
+                self.assertEqual(len(creates), 1)
+                self.assert_nothing_reached_the_real_tools()
+
     def test_a_stray_call_fails_and_never_reaches_github(self):
         code, out, err = self.call(["gh", "pr", "merge", "1", "--repo", "Habit130/tally", "--squash"])
         self.assertNotEqual(code, 0)

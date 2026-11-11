@@ -86,11 +86,8 @@ def body_of(args):
             name = args[args.index(flag) + 1]
             if name == "-":
                 return sys.stdin.read()
-            try:
-                with open(name, encoding="utf-8") as handle:
-                    return handle.read()
-            except (OSError, ValueError) as error:
-                return "unreadable: %s" % error
+            with open(name, encoding="utf-8") as handle:
+                return handle.read()
     return None
 
 
@@ -221,10 +218,21 @@ def main(argv):
         log({"tool": tool, "args": args, "recorded": False, "error": str(error)})
         return fail(tool, str(error))
 
+    body = None
+    # API -F is a field, not a body file. Leave stdin to the matching entry below.
+    body_file = _flag(args, "--body-file", *(() if args[:1] == ["api"] else ("-F",)))
+    if tool == "gh" and body_file is not None and body_file != "-":
+        try:
+            body = body_of(args)
+        except (OSError, ValueError) as error:
+            message = "cannot read body file: %s" % error
+            log({"tool": tool, "args": args, "recorded": False, "error": message})
+            return fail(tool, message)
+
     for index, call in enumerate(calls):
         if "accepts" in call and args[: len(call["accepts"])] == call["accepts"]:
             entry = {"tool": tool, "args": args, "recorded": True, "call": index}
-            body = body_of(args)
+            body = body_of(args) if body_file == "-" else body
             if body is not None:
                 entry["body"] = body
             if call.get("created_issue") or "labels" in call:
@@ -249,6 +257,8 @@ def main(argv):
             entry = {"tool": tool, "args": args, "recorded": True, "call": index}
             if stdin is not None:
                 entry["stdin"] = stdin
+            if body is not None:
+                entry["body"] = body
             log(entry)
             apply_effects(call)
             if call.get("delay"):
