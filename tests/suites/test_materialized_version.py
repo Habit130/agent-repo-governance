@@ -89,8 +89,8 @@ class VersionTwoPolicy(support.TempDirCase):
         self.assertIn("purpose conflict", labels)
         self.assertNotIn("exact description", labels)
 
-class VersionThreeRerunPolicy(support.TempDirCase):
-    """#136: instructions observed through the approved rendered-text seam."""
+class VersionThreeRendered(support.TempDirCase):
+    """Version 3 rendered into the tally sample: the approved rendered-text seam."""
 
     def setUp(self):
         super().setUp()
@@ -106,6 +106,10 @@ class VersionThreeRerunPolicy(support.TempDirCase):
 
     def text(self, path):
         return support.read_text(os.path.join(self.dest, path))
+
+
+class VersionThreeRerunPolicy(VersionThreeRendered):
+    """#136: instructions observed through the approved rendered-text seam."""
 
     def test_builder_owns_each_required_check_rerun_cause_before_handover(self):
         builder = self.text("docs/agents/builder.md")
@@ -180,6 +184,66 @@ class VersionThreeRerunPolicy(support.TempDirCase):
             case["event_name"], case["event"], watch_tests.agent_account(),
             watch_tests.recorded(case["github"]),
         ), [])
+
+class VersionThreeReviewerStartAndReread(VersionThreeRendered):
+    """#149: the Reviewer start carries its writes; the after-merge report rereads GitHub."""
+
+    REREAD = ("Before any after-merge report, reread from GitHub, for the PR's exact head at "
+              "merge: each required review's result, at medium and high the Comment review and "
+              "the `Reviewer` status, and the Merge summary. The report states only what that "
+              "reading shows.")
+
+    def reviewer_starts(self):
+        """Every Reviewer start the rendered tree or the generator procedure prints."""
+        paths = [os.path.join(root, name) for root, _, files in os.walk(self.dest) for name in files]
+        paths.append(os.path.join(os.path.dirname(os.path.dirname(support.GOVERN)), "SKILL.md"))
+        starts = []
+        for path in paths:
+            starts += [" ".join(found.split())
+                       for found in re.findall(r"`(Role: Reviewer\.[^`]*)`", support.read_text(path))]
+        return starts
+
+    def test_every_rendered_reviewer_start_is_one_instruction_naming_its_writes(self):
+        starts = self.reviewer_starts()
+        self.assertGreaterEqual(len(starts), 2, starts)
+        self.assertEqual(len(set(starts)), 1, starts)
+        start = starts[0]
+        self.assertTrue(start.startswith("Role: Reviewer. PR: #<n>. Skills: code-review. "), start)
+        for write in ("Comment review", "Reviewer status", "Merge summary", "when clear"):
+            self.assertIn(write, start)
+        reviewer = level_two_section(self.text("docs/agents/reviewer.md"), "## Start", "reviewer.md")
+        self.assertIn(start, " ".join(reviewer.split()))
+        handoff = level_two_section(self.text("docs/agents/builder.md"), "## The Reviewer handoff",
+                                    "builder.md")
+        self.assertIn(start, " ".join(handoff.split()))
+
+    def test_reviewer_start_names_the_writes_and_the_stop_and_tell_rule(self):
+        start = " ".join(level_two_section(self.text("docs/agents/reviewer.md"), "## Start",
+                                           "reviewer.md").split())
+        for phrase in ("habit's start asks for", "Comment review", "`Reviewer` status",
+                       "Merge summary", "cannot make them", "stops and tells habit",
+                       "instead of posting a summary alone"):
+            self.assertIn(phrase, start)
+
+    def test_builder_and_the_procedure_reread_the_exact_head_before_the_after_merge_report(self):
+        after = " ".join(level_two_section(self.text("docs/agents/builder.md"), "## After merge",
+                                           "builder.md").split())
+        self.assertIn(self.REREAD, after)
+        skill = support.read_text(os.path.join(os.path.dirname(os.path.dirname(support.GOVERN)),
+                                               "SKILL.md"))
+        procedure = " ".join(skill.split("## 6. After merge", 1)[1].split())
+        self.assertIn(self.REREAD, procedure)
+
+    def test_new_text_names_no_review_bot(self):
+        start = level_two_section(self.text("docs/agents/reviewer.md"), "## Start", "reviewer.md")
+        writes = [p for p in start.split("\n\n") if "habit's start asks for" in p]
+        self.assertEqual(len(writes), 1, start)
+        texts = writes + [self.REREAD]
+        texts += self.reviewer_starts()
+        for text in texts:
+            for bot in ("Bugbot", "Codex"):
+                self.assertNotIn(bot, text)
+
 
 # The governance gate (#41 §8): its workflow and the one script it runs.
 GATE_FILES = (".github/workflows/governance-gate.yml", ".github/governance/gate.py")
