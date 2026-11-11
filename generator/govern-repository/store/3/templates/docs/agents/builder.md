@@ -18,12 +18,37 @@ habit's explicit request for a change, with no ticket, makes the session a Build
 - Work that needs more than one session, a spec or further decisions: hand habit a start
   request for a Planner instead, and stop. A fresh Builder builds what the Planner produces.
 
+## Results-comment tickets
+
+A ticket whose body carries the exact line `Delivery: results comment, no PR` is a
+results-comment ticket. habit approves this delivery by approving the ticket; there is no
+separate label or approval record. A ticket without the line follows the PR steps below.
+A Builder cannot choose this delivery: adding the line to a frozen ticket requires habit's
+recorded agreement (Escalations, The ticket must change). Direct requests use the PR path.
+
+The work changes no tracked repository file, creates no branch and pushes nothing. Working
+files stay in ignored local paths or on the tracker. If a repository change becomes
+necessary, stop and escalate as "the ticket must change"; habit decides on a separate
+PR-delivered ticket. No tier, review, evidence comment, Merge summary or after-merge step
+applies to a results-comment ticket.
+
+After reading and claiming (steps 1 and 2), execute the ticket and run its Verification.
+Post one English results comment answering each acceptance criterion, naming the
+verification run and its result, and stating what was not done. The Secrets rules and the
+ticket's limits on what may leave the machine bind that comment. Then close the ticket as
+completed; if it is its spec's last open sub-issue, also close the spec. Give habit a Chinese
+summary in the terminal.
+
+This is Builder execution work, separate from the Planner's wayfinder tickets.
+
 ## Steps
 
 1. **Read** `AGENTS.md`, this file, `review.md`, the ticket and its spec, and
    `docs/agents/build.md`.
 2. **Claim**: assign the ticket to yourself (`issue-tracker.md`). It is your first write,
    and it posts no comment.
+   For a results-comment ticket, continue with Results-comment tickets above and stop
+   these steps here. The remaining steps are for PR delivery.
 3. **Worktree**: your own, on a new branch from the latest `origin` default branch:
    `git fetch origin`, then
    `git worktree add -b <branch> <path> origin/<default branch>`.
@@ -100,6 +125,8 @@ Secrets).
 
 ## After merge
 
+This section applies to PR delivery.
+
 - `Closes` closes the ticket, and the merge is the completion record.
 - At medium and high, keep waiting on the PR until it merges; at high, habit says "merged"
   in this terminal. Then remove your worktree. A Builder that can't wait leaves its
@@ -118,7 +145,8 @@ Secrets).
 
 ## Closing a spec
 
-A whole-spec PR through `implement-spec` closes the spec and its tickets. Otherwise, when
+Results-comment tickets close their spec as described above. For PR delivery, a
+whole-spec PR through `implement-spec` closes the spec and its tickets. Otherwise, when
 your ticket is the spec's last open sub-issue, add `Closes #<spec>`. There is no spec-level
 acceptance.
 

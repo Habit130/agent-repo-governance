@@ -40,7 +40,8 @@ Orientation only; the role files and `review.md` hold the rules.
 1. An idea, an incoming issue or a bug reaches a Planner, who turns it into tickets habit
    approves.
 2. habit dispatches a ticket by starting a Builder on it.
-3. The Builder implements, self-verifies and opens one PR declaring its risk tier.
+3. The Builder follows `builder.md`: a results-comment ticket ends there; otherwise it
+   implements, self-verifies and opens one PR declaring its risk tier.
 4. The tier's reviews run: Bugbot at every tier, a Reviewer session from medium, and the
    Codex review bot at high.
 5. habit reads the Merge summary and merges with the pinned merge command.
@@ -55,8 +56,9 @@ Orientation only; the role files and `review.md` hold the rules.
   changes.
 - **Planner**: writes the tracker freely, and the repository only for `GLOSSARY.md` and ADRs,
   through its own docs PR; never product code.
-- **Builder**: one ticket, one branch, one PR, in a fresh session. It edits its ticket only
-  after habit's agreement is recorded there.
+- **Builder**: one ticket in a fresh session; one branch and one PR unless `builder.md`,
+  Results-comment tickets, applies. It edits its ticket only after habit's agreement is
+  recorded there.
 - **Reviewer**: only at medium and high, in a context that didn't write the change. It never
   pushes, and never edits the PR, tickets or labels.
 

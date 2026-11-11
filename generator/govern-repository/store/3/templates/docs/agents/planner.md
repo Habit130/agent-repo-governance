@@ -22,7 +22,10 @@ to habit; this file points there.
 Choose it; habit approves it with the spec and tickets.
 
 - Work one Builder session can finish: one ticket.
-- Larger work: `to-spec`, then `to-tickets`, one PR per ticket.
+- Larger work: `to-spec`, then `to-tickets`, one PR per ticket by default.
+- For work within `builder.md`'s Results-comment tickets bounds, choose that delivery.
+  Put its declaration line in the ticket body, including for a triaged agent brief, and
+  name the choice in the spec's Delivery section when a spec exists.
 - The whole spec through `implement-spec`, in one PR, only when its tickets make sense only
   merged together and their combined diff stays reviewable, and never with a foreseen-high
   ticket. A foreseen-high part gets its own ticket.
@@ -32,12 +35,15 @@ Choose it; habit approves it with the spec and tickets.
 - A spec holds `to-spec`'s sections plus a Delivery section: the shape chosen above, and why.
 - After `to-tickets`, remove `ready-for-agent` from the spec; only its tickets are
   dispatched.
-- Close any spec still open once all its tickets have merged.
+- Close any spec still open once all its tickets are done by `issue-tracker.md`'s
+  closing rules.
 
 ## Tickets
 
 A ticket holds `to-tickets`' body, or triage's agent brief, plus:
 
+- **Delivery**: for a results-comment ticket, the declaration in `builder.md`,
+  Results-comment tickets.
 - **Skills**: which skill covers which part.
 - **Verification**: the commands the Builder runs and the Reviewer reruns, from
   `docs/agents/build.md`. At high, identify actual default-branch product verification;
