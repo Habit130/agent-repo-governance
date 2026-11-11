@@ -9,7 +9,13 @@ the review rules apply; this file points there.
 ## Start
 
 habit starts the Reviewer once the PR is open and Bugbot's findings are answered, with
-`Role: Reviewer. PR: #<n>. Skills: code-review.`
+`Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
+Reviewer status and, when clear, the Merge summary.`
+
+These writes are what habit's start asks for: the Comment review, the `Reviewer` status and,
+when clear, the Merge summary (Outputs), whatever policy the default branch holds. A Reviewer
+that cannot make them, under a read-only instruction or a denied permission, stops and tells
+habit instead of posting a summary alone.
 
 Read `AGENTS.md`, this file, `review.md`, and the PR: its diff, its ticket and spec, the
 review bots' findings with the Builder's answers, and the evidence comment. The Builder's

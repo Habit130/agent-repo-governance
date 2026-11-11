@@ -197,6 +197,9 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
 1. Wait on the PR as the role file says. Complete its product smoke on the exact merged
    commit: the actual default-branch product run, or the ticket's predetermined local smoke.
    Failure or unavailability leaves delivery incomplete and is escalated to habit.
+   Before any after-merge report, reread from GitHub, for the PR's exact head at merge:
+   each required review's result, the Comment review, the `Reviewer` status and the Merge
+   summary. The report states only what that reading shows.
 2. Run `<entry> handover --mode-facts <saved mode report>`, adding
    `--required-checks-changed` when habit's answer changed them. When `owner_command` is true,
    give habit `<entry> owner-command --repository <owner/name>`'s command, with each of the

@@ -88,7 +88,9 @@ A start request in `AGENTS.md`'s two parts:
     Worktree mode.
   - At high, the ready Codex review bot request for this head (`review.md`, Review bots).
     Give habit a fresh one after each repair push.
-- **"粘贴给 agent"** is `Role: Reviewer. PR: #<n>. Skills: code-review.`
+- **"粘贴给 agent"** is
+  `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
+  Reviewer status and, when clear, the Merge summary.`
 
 ## Syncing and waiting
 
@@ -133,6 +135,9 @@ This section applies to PR delivery.
 - At medium and high, keep waiting on the PR until it merges; at high, habit says "merged"
   in this terminal. Then remove your worktree. A Builder that can't wait leaves its
   worktree, and nobody nudges it.
+- Before any after-merge report, reread from GitHub, for the PR's exact head at merge: each
+  required review's result, the Comment review, the `Reviewer` status and the Merge summary.
+  The report states only what that reading shows.
 - **Product smoke** verifies the exact merged commit. When default-branch product build or
   test CI exists, confirm its run for that commit passes. Otherwise state its absence; a
   high-risk ticket must have predetermined an executable local smoke, which runs on that
