@@ -34,11 +34,24 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
   head binds.
 - **Before any merge:** required checks green; the evidence comment on the head; the
   `Risk:` line present; a Merge summary naming the head; no open Important finding from any
-  review on the head.
+  review on the head; rerun-only passes checked as below.
 - **High adds:** before-and-after evidence in plain words; each one-way door rehearsed on a
   copy, the result attached and its recovery performed once; every finding answered, Nits
   included; only the high part in the PR; habit's go-ahead after merge for each
   one-way-door step (`builder.md`, After merge).
+
+## Rerun-only passes
+
+A required check (one named in the governance record) that failed, timed out or was cancelled
+on a head, then passed on that head with no change to the commit, the PR or the configuration,
+is a **rerun-only pass**. It counts as unrepaired. A governance gate run after a PR body edit
+is a repair, not a rerun-only pass.
+
+The Reviewer and the Merge summary's writer inspect the required checks' run history on the
+head, earlier attempts included: GitHub's default listing shows only the latest attempt.
+Compare changes between attempts with the evidence comment. For each rerun-only pass,
+confirm the linked issue is open and covers its cause; no linked open issue is an Important
+finding. The Builder owns ticketing the cause (`builder.md`, step 9).
 
 ## Subagents with no conversation context
 
@@ -107,6 +120,8 @@ One PR comment by the Builder, bound to the head it names and updated on every n
 
 - the head's full SHA;
 - each verification command and its result;
+- each required check's rerun-only pass on this head, with the failed run and the cause's open
+  issue, or an explicit statement that there were none;
 - the self-verification subagent's finding count, and how each finding was handled;
 - `pr`'s before-and-after evidence.
 
@@ -131,7 +146,8 @@ review. At high it is the high-risk report.
 
 ### Checks first
 
-On the head the summary names:
+On the head the summary names, perform the history and issue checks in Rerun-only passes
+and link each cause's open issue in the summary. Then check:
 
 1. Each review the tier requires ran on that head and is clear. The only exceptions are for
    a review bot still unavailable after the retry and escalation (Review state):

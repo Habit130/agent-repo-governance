@@ -89,6 +89,87 @@ class VersionTwoPolicy(support.TempDirCase):
         self.assertIn("purpose conflict", labels)
         self.assertNotIn("exact description", labels)
 
+class VersionThreeRerunPolicy(support.TempDirCase):
+    """#136: instructions observed through the approved rendered-text seam."""
+
+    def setUp(self):
+        super().setUp()
+        self.dest = self.path("rendered")
+        confirmed = self.path("confirmed.json")
+        with open(confirmed, "w") as handle:
+            json.dump(materialized.tally_fixture()["confirmed"], handle)
+        code, facts = support.govern([
+            "render", "--version", "3", "--allow-unreleased", "--dest", self.dest,
+            "--repository", "Habit130/tally", "--default-branch", "main", "--confirmed", confirmed,
+        ])
+        self.assertEqual(code, 0, facts)
+
+    def text(self, path):
+        return support.read_text(os.path.join(self.dest, path))
+
+    def test_builder_owns_each_required_check_rerun_cause_before_handover(self):
+        builder = self.text("docs/agents/builder.md")
+        handover = builder.split("9. **Hand over**:", 1)[1].split("## The Reviewer handoff", 1)[0]
+        self.assertIn("rerun-only pass", handover)
+        self.assertIn("open issue", handover)
+        self.assertIn("needs-triage", handover)
+        self.assertIn("failed run", handover)
+        self.assertIn("how it ended", handover)
+        self.assertIn("outside cause", handover)
+        self.assertIn("Merge summary", handover)
+        self.assertNotIn("Planner", handover)
+
+    def test_review_defines_reruns_and_requires_history_and_head_bound_evidence(self):
+        review = self.text("docs/agents/review.md")
+        rule = level_two_section(review, "## Rerun-only passes", "review.md")
+        for phrase in ("governance record", "failed, timed out or was cancelled", "no change",
+                       "commit, the PR or the configuration", "unrepaired", "body edit",
+                       "repair", "Reviewer", "Merge summary", "earlier attempts",
+                       "latest attempt", "Important", "open issue"):
+            self.assertIn(phrase, rule)
+        evidence = level_two_section(review, "## Evidence comment", "review.md")
+        for phrase in ("rerun-only pass", "failed run", "issue"):
+            self.assertIn(phrase, evidence)
+        summary = level_two_section(review, "## Merge summary", "review.md")
+        self.assertIn("Rerun-only passes", summary)
+        self.assertIn("cause's open issue", summary)
+        agents = self.text("AGENTS.md")
+        important = agents.split("- **Important**", 1)[1].split("- **Nit**", 1)[0]
+        self.assertIn("rerun-only pass", important)
+        self.assertIn("no linked open issue", important)
+
+    def test_version_three_keeps_copy_budget_routing_and_skill_contracts(self):
+        agents = self.text("AGENTS.md")
+        bugbot = self.text(".cursor/BUGBOT.md")
+        self.assertEqual(bugbot.split("\n\n", 1)[1],
+                         level_two_section(agents, CODE_REVIEW_RULES, AGENTS))
+        self.assertEqual(budget_failures(agents.encode("utf-8")), [])
+        manifest = store.Store(support.REAL_STORE).manifest(3)
+        self.assertEqual(routing_failures(self.dest, [e["path"] for e in manifest["templates"]]), [])
+        self.assertEqual(skill_mismatches(self.dest, manifest["relied_on_skills"]), [])
+        for role, path in ROLE_FILES.items():
+            self.assertEqual(role_skills(self.text(path), path), ROLE_SKILLS[role])
+
+    def test_merge_watch_reads_the_rendered_summary_with_a_cause_issue(self):
+        import test_merge_watch as watch_tests
+
+        review = self.text("docs/agents/review.md")
+        header = review.split("```text\n", 1)[1].split("\n```", 1)[0]
+        self.assertEqual(header.splitlines(), [
+            "## Merge summary: <tier> at <short sha>",
+            "Required reviews: <kind>=<state>, <kind>=<state>",
+        ])
+        case = watch_tests.load(os.path.join(watch_tests.CASES, "high-complete.json"))
+        comments = case["github"]["repos/Habit130/tally/issues/42/comments"]
+        comments[-1]["body"] = header.replace("<tier>", "high").replace("<short sha>", "1a95462").replace(
+            "<kind>=<state>, <kind>=<state>",
+            "self-verification=clear, bugbot=clear, codex=clear, reviewer=clear",
+        ) + "\n\nRerun-only pass: required CI; cause: https://github.com/Habit130/tally/issues/43\n"
+        self.assertEqual(watch_tests.watch_v3.decide(
+            case["event_name"], case["event"], watch_tests.agent_account(),
+            watch_tests.recorded(case["github"]),
+        ), [])
+
 # The governance gate (#41 §8): its workflow and the one script it runs.
 GATE_FILES = (".github/workflows/governance-gate.yml", ".github/governance/gate.py")
 # Merge watch (#41 §9): its workflow and the one script it runs, beside the gate's.

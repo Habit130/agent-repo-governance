@@ -30,6 +30,7 @@ A change takes the highest tier any part of it reaches.
   - a blocking Bugbot finding;
   - a security review's HIGH or MEDIUM;
   - a declared tier below what the change warrants;
+  - a required check's rerun-only pass with no linked open issue for its cause (`review.md`);
   - an edit to fixed content in any PR but the generator's own: a file whose notice says
     only the generator changes it, the record's `confirmed` part aside, or the text between
     governance markers;
