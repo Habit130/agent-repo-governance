@@ -136,8 +136,8 @@ This section applies to PR delivery.
   in this terminal. Then remove your worktree. A Builder that can't wait leaves its
   worktree, and nobody nudges it.
 - Before any after-merge report, reread from GitHub, for the PR's exact head at merge: each
-  required review's result, the Comment review, the `Reviewer` status and the Merge summary.
-  The report states only what that reading shows.
+  required review's result, at medium and high the Comment review and the `Reviewer` status,
+  and the Merge summary. The report states only what that reading shows.
 - **Product smoke** verifies the exact merged commit. When default-branch product build or
   test CI exists, confirm its run for that commit passes. Otherwise state its absence; a
   high-risk ticket must have predetermined an executable local smoke, which runs on that

@@ -189,16 +189,18 @@ class VersionThreeReviewerStartAndReread(VersionThreeRendered):
     """#149: the Reviewer start carries its writes; the after-merge report rereads GitHub."""
 
     REREAD = ("Before any after-merge report, reread from GitHub, for the PR's exact head at "
-              "merge: each required review's result, the Comment review, the `Reviewer` "
-              "status and the Merge summary. The report states only what that reading shows.")
+              "merge: each required review's result, at medium and high the Comment review and "
+              "the `Reviewer` status, and the Merge summary. The report states only what that "
+              "reading shows.")
 
     def reviewer_starts(self):
+        """Every Reviewer start the rendered tree or the generator procedure prints."""
+        paths = [os.path.join(root, name) for root, _, files in os.walk(self.dest) for name in files]
+        paths.append(os.path.join(os.path.dirname(os.path.dirname(support.GOVERN)), "SKILL.md"))
         starts = []
-        for root, _, files in os.walk(self.dest):
-            for name in files:
-                text = support.read_text(os.path.join(root, name))
-                starts += [" ".join(found.split())
-                           for found in re.findall(r"`(Role: Reviewer\.[^`]*)`", text)]
+        for path in paths:
+            starts += [" ".join(found.split())
+                       for found in re.findall(r"`(Role: Reviewer\.[^`]*)`", support.read_text(path))]
         return starts
 
     def test_every_rendered_reviewer_start_is_one_instruction_naming_its_writes(self):
