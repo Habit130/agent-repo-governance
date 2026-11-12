@@ -119,17 +119,17 @@ GitHub Copilot's PR reviewer, which starts only on habit's own request in the br
 One review bot that a tier requires, named by its position, `bot-1` or `bot-2`, never by a bot. Two slots are filled by two different review bots.
 
 **Enabled review bots**:
-The ordered list of review bots that habit confirmed for a repository. Its order is the order of preference, and a supported bot left off it is disabled: never requested, awaited or counted.
+The ordered list of review bots that habit confirmed for a repository. Its order is the order of preference, and a supported bot left off it is disabled.
 
 **Fallback**:
-The next enabled review bot filling a bot slot whose first bot was unavailable.
+At medium, the next enabled review bot filling the bot slot when the first was unavailable. High has no fallback.
 
 **Waiver**:
-habit's approval, in habit's own PR comment, that one named required review or verification goes unmet for one PR at one head. A new head voids it.
+habit's approval, in habit's own PR comment, that one named required review or verification goes unmet for one PR at one head.
 _Avoid_: reduction, substitution, skip
 
 **Rerun-only pass**:
-A required check that failed on a head and then passed on the same head with nothing repaired. It counts as unrepaired until an issue covers its cause.
+A required check that failed on a head and then passed on the same head with nothing repaired. It counts as unrepaired.
 
 **Self-verification**:
 The Builder's check before its PR opens. It runs the ticket's verification commands, then a context-free subagent reviews the committed diff and classifies the tier independently.
@@ -235,14 +235,14 @@ The reversible encoding in which this repository keeps skill copies, templates a
 ## Versions
 
 **Governance model version**:
-An increasing integer naming one released state of what the governance model lands in a repository.
+An increasing integer naming one state of what the governance model lands in a repository.
 
 **Draft version**:
-The one unreleased governance model version, the highest in the template store. Changes accumulate in it across PRs until its release.
+The unreleased governance model version: at most one, the highest in the template store. Changes accumulate in it across PRs until its release.
 _Avoid_: unpublished model, candidate
 
 **Release**:
-Adding a draft version's change note to the default branch. From then on the version is frozen, and the next install makes it the installed version.
+Adding a draft version's change note to the default branch, which freezes that version.
 
 **Installed version**:
 The highest released governance model version in the template store that the install put on the machine.
