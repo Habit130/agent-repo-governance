@@ -26,6 +26,11 @@ _VERSION_NAME = re.compile(r"^[1-9][0-9]*$")
 _SKILL_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _COLOR = re.compile(r"^[0-9A-Fa-f]{6}$")
 _MANIFEST_KEYS = {"version", "templates", "relied_on_skills", "labels"}
+# Optional, from version 3 (#148): the review bots the version supports, which its record's
+# confirmed `review_bots` lists from, and the generated files an earlier version wrote that
+# this one removes.
+_OPTIONAL_MANIFEST_KEYS = {"review_bots", "retired"}
+REVIEW_BOTS = ("codex", "copilot")
 _TEMPLATE_KEYS = {"path", "class", "mode"}
 _LABEL_KEYS = {"name", "color", "description"}
 
@@ -79,8 +84,9 @@ def parse_change_note(data):
 
 def validate_manifest(manifest, version):
     """Check a parsed manifest's shape; validate skill types before deduplicating."""
-    if not isinstance(manifest, dict) or set(manifest) != _MANIFEST_KEYS:
-        raise StoreError("version %d's manifest must hold exactly %s" % (version, ", ".join(sorted(_MANIFEST_KEYS))))
+    if not isinstance(manifest, dict) or not _MANIFEST_KEYS <= set(manifest) <= _MANIFEST_KEYS | _OPTIONAL_MANIFEST_KEYS:
+        raise StoreError("version %d's manifest must hold exactly %s, and optionally %s" % (
+            version, ", ".join(sorted(_MANIFEST_KEYS)), " and ".join(sorted(_OPTIONAL_MANIFEST_KEYS))))
     if manifest["version"] != version:
         raise StoreError("version %d's manifest names version %r" % (version, manifest["version"]))
 
@@ -113,6 +119,18 @@ def validate_manifest(manifest, version):
             raise StoreError("version %d's relied-on skill %r isn't a lowercase-hyphenated name" % (version, skill))
     if len(set(skills)) != len(skills):
         raise StoreError("version %d's relied-on skills must be a list without repeats" % version)
+
+    bots = manifest.get("review_bots", [])
+    if (not isinstance(bots, list) or not bots or any(bot not in REVIEW_BOTS for bot in bots)
+            or len(set(bots)) != len(bots)) and "review_bots" in manifest:
+        raise StoreError("version %d's review bots must be a non-empty list from %s, none twice" % (version, ", ".join(REVIEW_BOTS)))
+    retired = manifest.get("retired", [])
+    if not isinstance(retired, list) or len(set(map(str, retired))) != len(retired):
+        raise StoreError("version %d's retired paths must be a list without repeats" % version)
+    for path in retired:
+        if not isinstance(path, str) or path in paths:
+            raise StoreError("version %d retires %r, which isn't a path or is one of its own templates" % (version, path))
+        storedform.encode(path)
 
     labels = manifest["labels"]
     if not isinstance(labels, list):

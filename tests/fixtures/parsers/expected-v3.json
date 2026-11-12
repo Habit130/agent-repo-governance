@@ -1,0 +1,175 @@
+{
+  "description": "Expected results of the version 3 record fixtures (#148), for the parsers that read version 3 records: the machine parser and version 3's governed parser. From version 3 the record's confirmed part may also hold review_bots, last, the ordered list of enabled review bots, each one a bot version 3 supports (codex, copilot) and none twice; a record below version 3 holds no such key, and a record without it parses to the same shape as before. record_v3 maps each file under record-v3/ to its result, in the shapes tests/suites/parsers.py describes.",
+  "record_v3": {
+    "bot-as-mapping.yml": "doesn't parse",
+    "both-bots.yml": {
+      "version": 3,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ],
+        "review_bots": [
+          "codex",
+          "copilot"
+        ]
+      }
+    },
+    "bots-as-scalar.yml": "doesn't parse",
+    "bots-before-checks.yml": "doesn't parse",
+    "capitalized-bot.yml": "doesn't parse",
+    "duplicate-bot.yml": "doesn't parse",
+    "later-version-with-bots.yml": {
+      "version": 4,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ],
+        "review_bots": [
+          "codex",
+          "copilot"
+        ]
+      }
+    },
+    "no-bots-enabled.yml": {
+      "version": 3,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ],
+        "review_bots": []
+      }
+    },
+    "order-kept.yml": {
+      "version": 3,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ],
+        "review_bots": [
+          "copilot",
+          "codex"
+        ]
+      }
+    },
+    "plain-scalar-bot.yml": {
+      "version": 3,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ],
+        "review_bots": [
+          "copilot"
+        ]
+      }
+    },
+    "review-bots-missing.yml": {
+      "version": 3,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    },
+    "unsupported-bot.yml": "doesn't parse",
+    "version-two-with-bots.yml": "doesn't parse",
+    "version-two-without-bots.yml": {
+      "version": 2,
+      "agent_account": "Habit098",
+      "sensitive_paths": [
+        {
+          "pattern": "**/AGENTS.md",
+          "floor": "medium"
+        }
+      ],
+      "confirmed": {
+        "sensitive_paths": [
+          {
+            "pattern": "src/auth/**",
+            "floor": "high"
+          }
+        ],
+        "required_checks": [
+          "test"
+        ]
+      }
+    }
+  }
+}

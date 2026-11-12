@@ -3,7 +3,8 @@
 It checks the content and mode of every fixed file, of every fixed part between its markers,
 and of the record up to its `confirmed:` key, and names each difference. The record's
 confirmed values are the repository's own, and skeletons become repository-owned content, so
-neither is compared.
+neither is compared. A file the version retires that an earlier version generated is a
+difference, `retired`, since rendering removes it.
 """
 
 import os
@@ -130,6 +131,10 @@ def compare(store, worktree, repository, default_branch, version=None, allow_unr
         actual_mode = storedform.mode_of(found_path)
         if actual_mode != entry["mode"]:
             differ("mode", "expected %s, found %s" % (entry["mode"], actual_mode))
+
+    for path in render.retired_generated(root, manifest):
+        differences.append({"path": path, "class": "retired", "kind": "retired",
+                            "detail": "version %d no longer writes it, and rendering removes it" % version})
 
     differences.sort(key=lambda difference: difference["path"])
     return {

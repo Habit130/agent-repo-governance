@@ -144,3 +144,55 @@ class MachineParserRefusals(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VersionThreeReviewBots(support.TempDirCase):
+    """#148: from version 3 the confirmed values hold the enabled review bots, in preference order."""
+
+    def render(self, version, confirmed):
+        dest = self.path("out-%d" % len(os.listdir(self.tmp)))
+        values = self.path("confirmed-%d.json" % len(os.listdir(self.tmp)))
+        with open(values, "w") as handle:
+            json.dump(confirmed, handle)
+        code, facts = support.govern(
+            [
+                "render", "--store", support.REAL_STORE, "--version", str(version), "--allow-unreleased",
+                "--dest", dest, "--repository", "Habit130/tally", "--default-branch", "main",
+                "--confirmed", values,
+            ]
+        )
+        return code, facts, dest
+
+    def test_version_three_renders_the_list_habit_confirmed_and_reads_it_back(self):
+        for bots in (["codex", "copilot"], ["copilot", "codex"], ["copilot"], []):
+            confirmed = dict(TALLY, review_bots=bots)
+            code, facts, dest = self.render(3, confirmed)
+            self.assertEqual(code, 0, facts)
+            with open(os.path.join(dest, *RECORD.split("/")), "rb") as handle:
+                data = handle.read()
+            self.assertEqual(record.parse(data)["confirmed"], confirmed)
+            text = data.decode("utf-8")
+            listed = "".join('    - "%s"\n' % bot for bot in bots)
+            self.assertTrue(text.endswith("  review_bots:\n" + listed), text)
+
+    def test_version_three_refuses_no_list_and_writes_nothing(self):
+        code, facts, dest = self.render(3, TALLY)
+        self.assertEqual(code, 2, facts)
+        self.assertIn("review_bots", facts["error"])
+        self.assertFalse(os.path.exists(dest))
+
+    def test_version_three_refuses_a_list_the_record_would_not_read(self):
+        for bots in (["bugbot"], ["codex", "codex"], ["Codex"], "codex", [["codex"]], [None]):
+            code, facts, dest = self.render(3, dict(TALLY, review_bots=bots))
+            self.assertEqual(code, 2, (bots, facts))
+            self.assertFalse(os.path.exists(dest), bots)
+
+    def test_versions_one_and_two_refuse_a_list_and_render_as_before_without_one(self):
+        for version in (1, 2):
+            code, facts, dest = self.render(version, dict(TALLY, review_bots=["codex"]))
+            self.assertEqual(code, 2, (version, facts))
+            self.assertFalse(os.path.exists(dest), version)
+            code, facts, dest = self.render(version, TALLY)
+            self.assertEqual(code, 0, (version, facts))
+            with open(os.path.join(dest, *RECORD.split("/")), "rb") as handle:
+                self.assertEqual(record.parse(handle.read())["confirmed"], TALLY)

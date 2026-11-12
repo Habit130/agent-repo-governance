@@ -87,8 +87,8 @@ below apply to it as to a ticket, with these differences:
    `pr`'s shape, writing Summary and Merge Danger with `pr`, and the `Risk:` line
    (`review.md`, The tier). Post the evidence comment (`review.md`, Evidence comment), and
    update it on every new head before requesting its reviews.
-8. **Review**: request Bugbot on every head that needs review (`review.md`, Review bots),
-   answer findings and run rounds (`review.md`).
+8. **Review**: from medium, get each bot slot's review on every head that needs one, through
+   habit's requests (`review.md`, Review bots); answer findings and run rounds (`review.md`).
 9. **Hand over**: for each required check's rerun-only pass on the head (`review.md`,
    Rerun-only passes), link an open issue for its cause. Open it yourself as `needs-triage`,
    naming the check, the failed run and how it ended, or link an open issue that already
@@ -107,8 +107,9 @@ A start request in `AGENTS.md`'s two parts:
     OpenCode whatever it is set to.
   - For a Codex harness session, a Local-mode chat in this repository's directory, not
     Worktree mode.
-  - At high, the ready Codex review bot request for this head (`review.md`, Review bots).
-    Give habit a fresh one after each repair push.
+  - Each review bot request the tier's slots need on this head, as `review.md`'s Review bots
+    gives it: a command or a browser step. Give habit fresh ones after each repair push, and
+    the next enabled bot's request when a slot's bot is unavailable.
 - **"粘贴给 agent"** is
   `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
   Reviewer status and, when clear, the Merge summary.`
@@ -134,7 +135,8 @@ message).
   habit's agreement is recorded there.
 - **An unforeseen high**: the change turns out high, and the ticket's Risk notes didn't
   foresee it.
-- **The round cap**, or a review bot that stays unavailable (`review.md`).
+- **The round cap**, or a bot slot with no enabled bot left (`review.md`, Review bots).
+  habit waits, or waives the slot; you may draft the waiver line (`review.md`, Waivers).
 - **An Actions secret** the ticket names is missing, or the work needs one the ticket
   doesn't name.
 - **Reverting a one-way door.**

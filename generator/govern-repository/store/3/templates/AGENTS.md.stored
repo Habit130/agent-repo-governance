@@ -121,8 +121,7 @@ Orientation only; the role files and `review.md` hold the rules.
 
 ## Code Review Rules
 
-These rules bind every review: the self-verification subagent's, the Reviewer's, the Codex
-review bot's, and Bugbot's through its copy in `.cursor/BUGBOT.md`. How they apply is in
+These rules bind every review, each review bot's included. How they apply is in
 `docs/agents/review.md`.
 
 ### Risk tiers
@@ -145,16 +144,17 @@ A change takes the highest tier any part of it reaches.
 ### Findings
 
 - **Important** blocks the merge while open:
-  - the Codex review bot's P0 or P1;
-  - a blocking Bugbot finding;
+  - a review bot's Important finding (`review.md`, Review bots);
   - a security review's HIGH or MEDIUM;
   - a declared tier below what the change warrants;
+  - a review or authorization exception stated anywhere broader than at its narrowest
+    (`review.md`, Exceptions);
   - a required check's rerun-only pass with no linked open issue for its cause (`review.md`);
   - an edit to fixed content in any PR but the generator's own: a file whose notice says
     only the generator changes it, the record's `confirmed` part aside, or the text between
     governance markers;
   - a credential value in a diff, PR text or comment, named by its type and location only.
-- **Nit** never blocks: a non-blocking Bugbot finding; a security review's LOW.
+- **Nit** never blocks: a review bot's Nit; a security review's LOW.
 - **Pre-existing** never blocks: anything the change didn't introduce, whatever its
   severity.
 

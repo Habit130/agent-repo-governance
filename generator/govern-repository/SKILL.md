@@ -96,6 +96,10 @@ conflict habit confirms. At Repair, make none of them.
   secret-handling code, data migrations. Each gets a medium or high floor.
 - **Required checks.** Propose a job only when `inspect` reads it as `every_pr: true` and not
   uncertain, under its reported `name`. Name every other job and why it can't be required.
+- **Review bots**, when the version's manifest lists `review_bots`: propose those bots,
+  enabled in the manifest's order, and name what each needs from habit (the `preconditions`
+  checklist). habit's answer sets the record's enabled list and its order; a shorter list is
+  allowed, its missing slots covered only by habit's waivers.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
   worktree allocated as **Temporary paths** above, so the checkout stays untouched. A manifest
   whose `extraction` is `unsupported` has its commands read from the file by you. Record each command you ran and
@@ -120,11 +124,18 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   information; (6) any precondition step still open for habit; (7) the Actions secrets with
   proposed purposes and issuing services; (8) the labels to create; (9) on a private
   repository, that GitHub detects and blocks no credential there and that Actions minutes are
-   limited, for habit's acknowledgment. Files to keep or remove join item 3.
+   limited, for habit's acknowledgment; (10) when the version's manifest lists
+  `review_bots`, the enabled review bots in preference order. Files to keep or remove join
+  item 3.
 - **Upgrade** holds only: every change note after the record's version, combined, and what
-  they mean here; confirmed values the new version newly needs; repository-owned content that
-  conflicts with the new fixed rules; any ruleset or required-check change, applied after
-  merge; the selected product smoke; and anything unverified.
+  they mean here; confirmed values the new version newly needs, such as the enabled review
+  bots when its manifest lists `review_bots` and the record holds none; each generated file
+  the new version's manifest `retired`, which rendering removes, with any step that leaves
+  to habit, such as disconnecting the Cursor GitHub App once its rule file is gone;
+  repository-owned content that conflicts with the new fixed rules; any ruleset or
+  required-check change, applied after merge; the selected product smoke; and anything
+  unverified. The Upgrade's own PR is reviewed under the policy on the default branch, the
+  old version's; the new version's rules bind from the first PR after it merges.
 - **Repair with drift** holds only the drift found, how it is restored, the selected product
   smoke, and anything unverified.
 
@@ -169,7 +180,11 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    `origin` default branch.
 3. Render: `<entry> render --dest <worktree> --repository <owner/name> --default-branch
    <branch> --confirmed <file>`, the file holding JSON with `sensitive_paths` and
-   `required_checks`. Upgrade keeps the confirmed values habit didn't change. When `mode`
+   `required_checks`, plus `review_bots`, habit's list, when the version's manifest lists
+   `review_bots`. Render refuses without it and writes nothing; no session invents the
+   list. Upgrade keeps the confirmed values habit didn't change. Render removes each retired
+   file an earlier version generated and lists it under `removed`; a file there the
+   generator didn't write stays. When `mode`
    listed `drift.markers`, first run `<entry> mend-markers --worktree <worktree>`: it gives each
    mixed file one well-formed marker block at the record's version, restoring the markers or
    rebuilding the governance part as `repair` says, and keeps the file's repository-owned

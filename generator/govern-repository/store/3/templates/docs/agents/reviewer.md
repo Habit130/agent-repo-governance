@@ -8,7 +8,8 @@ the review rules apply; this file points there.
 
 ## Start
 
-habit starts the Reviewer once the PR is open and Bugbot's findings are answered, with
+habit starts the Reviewer once the PR is open and its self-verification findings are dealt
+with, with
 `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
 Reviewer status and, when clear, the Merge summary.`
 
@@ -37,10 +38,10 @@ conversation stays unread; the review rests on what GitHub holds.
    with, saying why.
 6. **Rerun the ticket's Verification** in your worktree; for a whole-spec PR, every
    ticket's.
-7. **At high**, wait for the Codex review bot's result on the head (`review.md`, Review
-   state) and judge the Builder's answers to it. When the tier's reason involves
-   authentication, privacy or secret handling, run the security review (`review.md`,
-   Security review).
+7. **Wait for each bot slot's review** on the head, or habit's waiver of it (`review.md`,
+   Review bots and Waivers), and judge the Builder's answers to its findings. At high, when
+   the tier's reason involves authentication, privacy or secret handling, run the security
+   review (`review.md`, Security review).
 8. **Remove your worktree** once the outputs are posted.
 
 Wait in your harness when it can wait. Otherwise stop and say what you wait for, and habit
@@ -75,7 +76,7 @@ Put the question and the options in the terminal, and leave one "Waiting on habi
 on the PR (`handoff.md`, Three kinds of message), when:
 
 - a finding turns on a product or scope decision the ticket doesn't settle;
-- the Codex review bot stays unavailable at high (`review.md`, Review state);
+- a bot slot has no enabled bot left (`review.md`, Review bots);
 - a permission is denied.
 
 ## Skills this role relies on

@@ -51,6 +51,11 @@ SEED = os.path.join(REPO, "tests", "fixtures", "repositories", "sandbox")
 STORE = os.path.join(REPO, "generator", "govern-repository", "store")
 GOVERN = os.path.join(SCRIPTS, "govern.py")
 VERSION = 2
+# The probes that need version 3's draft, and its enabled review bots there, in order (#135, #148).
+VERSION_3_PROBES = ("merge-watch-cancelled", "merge-watch-v3-clean", "merge-watch-v3-waived", "merge-watch-v3-miss")
+V3_REVIEW_BOTS = ["codex", "copilot"]
+# Probes whose legitimate merges move the default branch the gate probes require unchanged.
+MERGING_PROBES = ("merge-watch-clean", "merge-watch-v3-clean", "merge-watch-v3-waived", "merge-watch-v3-miss")
 # Step 4 hands habit the owner-script command in every check; its report is this input.
 OWNER_REPORT = "owner_report"
 
@@ -175,21 +180,31 @@ def chosen_probes(names, sandbox):
     if wrong:
         raise RunnerError("these probes don't run in the %s sandbox: %s" % (sandbox, ", ".join(wrong)))
     gates = [name for name in names if name.startswith("gate-")]
-    if gates and "merge-watch-clean" in names:
-        raise RunnerError("gate probes (%s) are incompatible with merge-watch-clean: its legitimate merge moves "
+    merging = [name for name in names if name in MERGING_PROBES]
+    if gates and merging:
+        raise RunnerError("gate probes (%s) are incompatible with %s: its legitimate merge moves "
                           "the default branch that the gate check requires unchanged; prepare separate checks"
-                          % ", ".join(gates))
+                          % (", ".join(gates), ", ".join(merging)))
     return [known[name] for name in names]
 
 
 def context(state, directory):
     fixture = seed_fixture()
-    return probes.Context(state["sandbox"], state["visibility"], fixture["default_branch"], fixture["confirmed"],
+    confirmed = confirmed_values(model_version(state.get("probes") or []), fixture)
+    return probes.Context(state["sandbox"], state["visibility"], fixture["default_branch"], confirmed,
                           state["commit"], state.get("sandbox_pr"), directory)
 
 
 def model_version(names):
-    return 3 if "merge-watch-cancelled" in names else VERSION
+    return 3 if any(name in VERSION_3_PROBES for name in names) else VERSION
+
+
+def confirmed_values(version, fixture):
+    """The sandbox's confirmed values for a version: the seed's, plus version 3's enabled review bots."""
+    confirmed = dict(fixture["confirmed"])
+    if version >= 3:
+        confirmed["review_bots"] = list(V3_REVIEW_BOTS)
+    return confirmed
 
 
 def cmd_prepare(args):
@@ -220,7 +235,7 @@ def cmd_prepare(args):
         run(["git", "-C", clone, "checkout", "-q", "-b", branch])
         confirmed = os.path.join(work, "confirmed.json")
         with open(confirmed, "w") as handle:
-            json.dump(fixture["confirmed"], handle)
+            json.dump(confirmed_values(version, fixture), handle)
         rendered = run([sys.executable, GOVERN, "render", "--store", STORE, "--version", str(version), "--allow-unreleased",
                         "--dest", clone, "--repository", repository, "--default-branch", default_branch,
                         "--confirmed", confirmed], check=False)

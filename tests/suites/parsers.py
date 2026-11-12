@@ -1,13 +1,16 @@
 """The parsers registered for the shared parser fixtures (#44 §5: machine and governed sides).
 
 The machine parser registers once; the governed parser registers once per stored version,
-so immutable v1 and candidate v2 each run against every shared expectation. These are versioned
+so immutable v1 and v2 and draft v3 each run against every shared expectation. These are versioned
 copies of the same governed-side parser, not additional parser implementations. Each `Parser`
-in `PARSERS` has a name and two adapters.
+in `PARSERS` has a name and two adapters. `V3_PARSERS` names the ones that read a version 3
+record, whose confirmed part also holds `review_bots` (#148); they alone run the version 3
+record fixtures.
 
 - `record(data)` takes a record file's bytes. It returns the record as
   `{"version": int, "agent_account": str, "sensitive_paths": [{"pattern": str, "floor": str}],
-  "confirmed": {"sensitive_paths": [...], "required_checks": [str]}}`, or `DOESNT_PARSE`.
+  "confirmed": {"sensitive_paths": [...], "required_checks": [str]}}`, or `DOESNT_PARSE`. From
+  version 3, `confirmed` also holds `"review_bots": [str]`.
 - `pr_body(text)` takes a PR body as text. It returns `{"risk": ..., "reverts": ...}`:
   `risk` is `{"tier": str, "reason": str}` or one of `"missing"`, `"more than one"` and
   `"malformed"`; `reverts` is `None`, `{"sha": str}`, `"more than one"` or `"malformed"`.
@@ -52,6 +55,7 @@ def load_gate(version=1):
 
 gate = load_gate()
 gate_v2 = load_gate(2)
+gate_v3 = load_gate(3)
 
 
 def governed_record(data):
@@ -68,6 +72,13 @@ def governed_v2_record(data):
         return DOESNT_PARSE
 
 
+def governed_v3_record(data):
+    try:
+        return gate_v3.parse_record(data)
+    except gate_v3.RecordError:
+        return DOESNT_PARSE
+
+
 PARSERS = (
     # The generator's library: the drift check, the governed-repository list and the
     # scenario runner use it.
@@ -75,4 +86,8 @@ PARSERS = (
     # The gate script: the gate, Merge watch's script and the owner script use it.
     Parser("governed", governed_record, gate.parse_body),
     Parser("governed-v2", governed_v2_record, gate_v2.parse_body),
+    Parser("governed-v3", governed_v3_record, gate_v3.parse_body),
 )
+
+# The parsers that read version 3's confirmed review_bots.
+V3_PARSERS = ("machine", "governed-v3")

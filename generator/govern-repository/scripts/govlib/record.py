@@ -18,10 +18,14 @@ scalars, and `#` comments. Anything else doesn't parse. In detail:
   scalars, directives, document markers or duplicate keys.
 
 The keys come in this order: `version`, a positive integer written plain; `agent_account`;
-`sensitive_paths`; then `confirmed`, holding `sensitive_paths` and `required_checks`. Each
-sensitive path is a `pattern`, kept as written, with a `floor` of `medium` or `high`. A list
-key with no items is an empty list: in YAML its value is null, and the record reads null
-there as no items. `parse` returns the record as plain dicts, lists, strings and an int.
+`sensitive_paths`; then `confirmed`, holding `sensitive_paths` and `required_checks` and,
+from version 3, optionally `review_bots`: the enabled review bots in preference order, each
+`codex` or `copilot`, none twice. Rendering requires it of a version whose manifest lists
+review bots (`render.check_confirmed`). Each sensitive path is a `pattern`, kept as written,
+with a `floor` of `medium` or `high`. A list key with no items is an empty list: in YAML its
+value is null, and the record reads null there as no items. `parse` returns the record as
+plain dicts, lists, strings and an int, with `review_bots` under `confirmed` only when the
+record holds it.
 """
 
 import re
@@ -48,6 +52,10 @@ _VERSION = re.compile(r"[1-9][0-9]*")
 
 RECORD_KEYS = ("version", "agent_account", "sensitive_paths", "confirmed")
 CONFIRMED_KEYS = ("sensitive_paths", "required_checks")
+# From version 3 the confirmed part also lists the enabled review bots, in preference order.
+REVIEW_BOTS_VERSION = 3
+CONFIRMED_KEYS_V3 = CONFIRMED_KEYS + ("review_bots",)
+REVIEW_BOTS = ("codex", "copilot")
 PATH_KEYS = ("pattern", "floor")
 
 
@@ -287,6 +295,20 @@ def _required_check(node, line):
     return _text(node, getattr(node, "line", line), "a required check")
 
 
+def _review_bot(node, line):
+    bot = _text(node, getattr(node, "line", line), "a review bot")
+    if bot not in REVIEW_BOTS:
+        _fail(getattr(node, "line", line), "names the review bot %r; a review bot is one of %s" % (bot, ", ".join(REVIEW_BOTS)))
+    return bot
+
+
+def _confirmed_keys(version, node):
+    """The keys a record's confirmed part holds, in order: review_bots last, from version 3, when listed."""
+    if version >= REVIEW_BOTS_VERSION and isinstance(node, _Mapping) and any(key.text == "review_bots" for key, _ in node.entries):
+        return CONFIRMED_KEYS_V3
+    return CONFIRMED_KEYS
+
+
 def parse(data):
     """The record in data's bytes, or RecordError when it doesn't parse."""
     try:
@@ -301,9 +323,11 @@ def parse(data):
     version, line = entries["version"]
     if not isinstance(version, _Scalar) or version.quoted or not _VERSION.fullmatch(version.text):
         _fail(line, "must give version as a positive integer, written plain")
-    confirmed = _keys(entries["confirmed"][0], CONFIRMED_KEYS, "confirmed", entries["confirmed"][1])
-    return {
-        "version": int(version.text),
+    number = int(version.text)
+    node, line = entries["confirmed"]
+    confirmed = _keys(node, _confirmed_keys(number, node), "confirmed", line)
+    parsed = {
+        "version": number,
         "agent_account": _text(*entries["agent_account"], what="agent_account"),
         "sensitive_paths": _list(*entries["sensitive_paths"], what="sensitive_paths", item=_sensitive_path),
         "confirmed": {
@@ -311,3 +335,9 @@ def parse(data):
             "required_checks": _list(*confirmed["required_checks"], what="required_checks", item=_required_check),
         },
     }
+    if "review_bots" in confirmed:
+        bots = _list(*confirmed["review_bots"], what="review_bots", item=_review_bot)
+        if len(set(bots)) != len(bots):
+            _fail(confirmed["review_bots"][1], "lists a review bot twice")
+        parsed["confirmed"]["review_bots"] = bots
+    return parsed
