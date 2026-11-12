@@ -32,7 +32,8 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 
 - Kinds don't substitute for each other. Minimums are floors: every review that runs on a
   head binds. Two results from one provider on one head fill one bot slot.
-- habit's waiver is the only way a required review goes unmet (Waivers).
+- habit's waiver is the only way a required review goes unmet; a waived Reviewer session
+  leaves the Merge summary to the Builder (Waivers).
 - **Before any merge:** required checks green; the evidence comment on the head; the
   `Risk:` line present; a Merge summary naming the head; no open Important finding from any
   review on the head; rerun-only passes checked as below.
@@ -114,8 +115,9 @@ Everything specific to one provider sits in its subsection.
   count toward required approvals stays off, and Copilot's monthly AI credits are shared
   with habit's other use.
 - **Never the only judge** of fixed content or an instruction file: such a change is at
-  least medium, so a Reviewer session judges it too. A PR touching a sensitive path whose
-  only completed bot review is Copilot's says so in its Merge summary.
+  least medium, so a Reviewer session judges it too, and that session isn't waived while
+  Copilot's is the head's only completed bot review (Waivers). A PR touching a sensitive path
+  whose only completed bot review is Copilot's says so in its Merge summary.
 
 ## Review state
 
@@ -142,10 +144,13 @@ verification table, for one PR at one head.
   account's quoting habit included, and free text in a summary approve nothing.
 - **A new head voids it.** The same waiver on the new head needs a new comment.
 - **Never waived**: the required status checks, the `Risk:` line, the evidence comment and
-  the Merge summary.
+  the Merge summary; nor a Reviewer session that a review bot's subsection keeps.
+- **A waived Reviewer session** leaves the Merge summary to the Builder: it runs the checks,
+  writes the summary, at high as the high-risk report, and gives the merge handoff.
 - No agent writes, edits or widens a waiver, and a waiver authorizes no merge by an agent.
 - Merge watch checks each review waiver's author, head and item after the merge. The Merge
-  summary's writer checks a verification waiver the same way.
+  summary's writer checks a verification waiver the same way, and any condition a review
+  bot's subsection puts on a Reviewer waiver.
 
 ## Exceptions
 
@@ -207,7 +212,8 @@ The Code Review Rules map these ratings onto finding categories.
 ## Merge summary
 
 Written by the Builder at low, and by the Reviewer at medium and high, after the last clear
-review. At high it is the high-risk report.
+review; by the Builder when habit waived the Reviewer session (Waivers). At high it is the
+high-risk report.
 
 ### Checks first
 

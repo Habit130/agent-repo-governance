@@ -37,11 +37,16 @@ On `push` to the default branch, for each pushed commit:
     account, the agent account included, count the review as missing.
 
   The repository owner is the owner in the repository's full name, a user account, as the
-  generator requires. A body with no readable `Risk:` line is judged at high. A merge whose
-  base record is below version 3, such as an Upgrade's own PR, follows that version's review
-  rules, which this script doesn't hold: its reviews aren't judged, and the run says so in a
-  `NOTE` line. A base record that can't be read or doesn't parse enables no provider, so its
-  bot slots read as missing, a false miss.
+  generator requires. It doesn't check a condition a review bot's subsection in `review.md`
+  puts on a Reviewer waiver, such as Copilot never judging fixed content alone; the Merge
+  summary's writer does. A body with no readable `Risk:` line is judged at high.
+
+  A merge whose base record is below version 3, such as an Upgrade's own PR, follows that
+  version's review rules. This script judges what every version requires: the Reviewer's
+  status from medium, and a Merge summary for the tier and head with a `Required reviews:`
+  line of any kinds. Its review bots follow rules this script doesn't hold, so they aren't
+  judged, and the run says so in a `NOTE` line. A base record that can't be read or doesn't
+  parse enables no provider, so its bot slots read as missing, a false miss.
 
 On `workflow_run`, a push-triggered run on the default branch of any workflow but Merge watch
 that concludes `failure`, `cancelled`, `timed_out` or `startup_failure` records an escape,
@@ -301,6 +306,25 @@ def waived(pull, owner):
     return kinds
 
 
+def earlier_version_missing(pull, agent_account, tier):
+    """What every version requires of a merge onto a base below version 3: the Reviewer's
+    status from medium, and the agent account's Merge summary titled for the tier and head with
+    a `Required reviews:` line, whatever kinds that version's line names."""
+    missing = []
+    if tier != "low" and not _reviewer(pull, agent_account):
+        missing.append("reviewer")
+    for comment in reversed(pull.comments()):
+        if not _same_login((comment.get("user") or {}).get("login"), agent_account):
+            continue
+        lines = (comment.get("body") or "").replace("\r\n", "\n").split("\n")
+        title = SUMMARY_TITLE.fullmatch(lines[0].rstrip(" \t"))
+        if title and title.group(1) == tier and title.group(2) == pull.head[:7]:
+            if len(lines) > 1 and lines[1].startswith(SUMMARY_REVIEWS):
+                return missing
+            break
+    return missing + [MERGE_SUMMARY]
+
+
 def enabled_bots(read, repository, base):
     """(the record's version at the merge's base, its enabled review bots); (None, []) when it can't be read."""
     try:
@@ -332,8 +356,13 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
                 used.add(provider)
             else:
                 missing.add(slot)
-    else:
-        filled = [bot for bot in bots if done(bot)]
+    elif slots:
+        filled = []
+        for bot in bots:
+            if len(filled) == len(slots):
+                break
+            if done(bot):
+                filled.append(bot)
         missing.update(slots[len(filled):])
     if "reviewer" in REQUIRED[tier] and "reviewer" not in waivers and not _reviewer(pull, agent_account):
         missing.add("reviewer")
@@ -372,12 +401,13 @@ def _judge_pull(read, repository, agent_account, pull, squash, base, notes):
     else:
         tier, declared = "high", "declared no readable tier (its `Risk:` line is %s), judged at high" % risk
     version, bots = enabled_bots(read, repository, base)
+    facts = Pull(read, repository, number, head)
     if version is not None and version < REVIEW_BOTS_VERSION:
-        notes.append("#%d merged onto a base whose record is at version %d; its reviews follow that version's "
+        notes.append("#%d merged onto a base whose record is at version %d; its review bots follow that version's "
                      "rules, which this script doesn't judge." % (number, version))
-        return records
-    owner = repository.split("/")[0]
-    missing = missing_reviews(Pull(read, repository, number, head), agent_account, owner, tier, bots)
+        missing = earlier_version_missing(facts, agent_account, tier)
+    else:
+        missing = missing_reviews(facts, agent_account, repository.split("/")[0], tier, bots)
     if missing:
         records.append(record(
             number, "process miss", "missing-review",

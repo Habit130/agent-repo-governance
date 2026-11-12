@@ -376,8 +376,23 @@ class VersionThree(unittest.TestCase):
     def test_a_base_below_version_three_is_not_judged_and_says_so(self):
         notes = []
         self.assertEqual(self.decide_v3("review-base-at-version-two", notes), [])
-        self.assertEqual(notes, ["#42 merged onto a base whose record is at version 2; its reviews follow that "
+        self.assertEqual(notes, ["#42 merged onto a base whose record is at version 2; its review bots follow that "
                                  "version's rules, which this script doesn't judge."])
+        (rec,) = self.decide_v3("review-base-at-version-two-unreviewed")
+        self.assertIn("lacks: reviewer, merge-summary.", rec["body"])
+
+    def test_low_reads_no_bot(self):
+        for name in ("review-low-no-bot", "review-low-missing-summary"):
+            case = load(os.path.join(V3_CASES, name + ".json"))
+            reads = []
+            inner = recorded_v3(case["github"])
+
+            def spy(path):
+                reads.append(path)
+                return inner(path)
+
+            self.decide_v3(name, read=spy)
+            self.assertEqual([path for path in reads if "/reviews" in path or "/check-runs" in path], [], name)
 
     def test_a_disabled_bot_is_never_read_or_reported(self):
         def never(pull):

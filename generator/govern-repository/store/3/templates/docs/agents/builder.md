@@ -93,8 +93,9 @@ below apply to it as to a ticket, with these differences:
    Rerun-only passes), link an open issue for its cause. Open it yourself as `needs-triage`,
    naming the check, the failed run and how it ended, or link an open issue that already
    covers it. An outside cause, such as a GitHub outage, still needs the issue. Record each
-   in the evidence comment; the Merge summary links each issue. Then, at low, write the
-   Merge summary; at medium and high, hand habit the Reviewer handoff below and wait on
+   in the evidence comment; the Merge summary links each issue. Then, at low, or when habit
+   waived the Reviewer session for this head (`review.md`, Waivers), write the Merge
+   summary; otherwise, at medium and high, hand habit the Reviewer handoff below and wait on
    the PR.
 
 ## The Reviewer handoff

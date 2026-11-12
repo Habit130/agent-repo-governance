@@ -263,6 +263,21 @@ class VersionThreeReviewProviders(VersionThreeRendered):
             line = form.replace("<item>", item).replace("<full head sha>", head).replace("<reason>", "why")
             self.assertIsNone(watch_tests.watch_v3.WAIVER.fullmatch(line), line)
 
+    def test_a_reviewer_waiver_keeps_copilot_from_judging_alone_and_names_the_summary_writer(self):
+        review = self.review()
+        waivers = flat(level_two_section(review, "## Waivers", "review.md"))
+        self.assertIn("nor a Reviewer session that a review bot's subsection keeps", waivers)
+        self.assertIn("A waived Reviewer session** leaves the Merge summary to the Builder", waivers)
+        self.assertIn("and any condition a review bot's subsection puts on a Reviewer waiver", waivers)
+        copilot = flat(level_three_section(review, "### Copilot code review"))
+        self.assertIn("that session isn't waived while Copilot's is the head's only completed bot review (Waivers)", copilot)
+        minimum = flat(level_two_section(review, "## Minimum reviews", "review.md"))
+        self.assertIn("a waived Reviewer session leaves the Merge summary to the Builder (Waivers)", minimum)
+        summary = flat(review.split("\n## Merge summary\n", 1)[1].split("### Checks first", 1)[0])
+        self.assertIn("by the Builder when habit waived the Reviewer session (Waivers)", summary)
+        builder = flat(self.text("docs/agents/builder.md").split("9. **Hand over**:", 1)[1].split("## The Reviewer handoff", 1)[0])
+        self.assertIn("or when habit waived the Reviewer session for this head (`review.md`, Waivers), write the Merge summary", builder)
+
     def test_the_exception_consistency_rule_is_stated_once_and_applied_in_review(self):
         agents = self.text(AGENTS)
         important = flat(agents.split("- **Important**", 1)[1].split("- **Nit**", 1)[0])

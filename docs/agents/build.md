@@ -30,8 +30,8 @@ worked.
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
 
 With unpublished v3 and its review-provider coverage (#140, #135, #148), stored form checks
-615 paths; compatibility checks 87 Python files and 8 shell entries. Linux runs 1038 tests
-and the full suite runs 1431.
+616 paths; compatibility checks 87 Python files and 8 shell entries. Linux runs 1040 tests
+and the full suite runs 1433.
 The table's Initialize counts are historical.
 
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
@@ -641,9 +641,12 @@ is the full statement; in short:
 - A review waived by the repository owner's own PR comment, `Waiver: <item> at <40-hex head>
   — <reason>` as its first line, counts as present; any other author, another head or an
   item outside the review kinds counts for nothing.
-- A merge whose base record is below version 3, such as an Upgrade's own PR, isn't judged
-  for reviews: its version's rules apply, and the run prints a `NOTE` line. A base record
-  that can't be read or doesn't parse enables no bot, a false miss.
+- A merge whose base record is below version 3, such as an Upgrade's own PR, is judged only
+  for what every version requires: the `Reviewer` status from medium and a Merge summary for
+  the tier and head with a `Required reviews:` line of any kinds. Its review bots follow
+  rules version 3 doesn't hold, so they aren't judged, and the run prints a `NOTE` line. A
+  base record that can't be read or doesn't parse enables no bot, a false miss.
+- At low no bot's endpoint is read, so an unreadable one can't fail the run.
 - `decide` takes an optional `notes` list for those lines, and `read` answers a
   `contents` path with the file's text.
 
