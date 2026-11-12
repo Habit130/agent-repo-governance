@@ -56,7 +56,11 @@ class FreshMachine(InstallCase):
     """A fresh machine, with the Codex stand-in replaying real output (CRIT-1, CRIT-3, CRIT-4)."""
 
     def test_copied_draft_does_not_advance_installed_governance_version(self):
+        # Every real version is released, so the source carries a planted draft one past the highest.
         source_store = os.path.join(self.source, "generator", "govern-repository", "store")
+        self.assertEqual(support.plant_draft(source_store), 4)
+        support.git(self.source, "add", "-A")
+        support.git(self.source, "commit", "-q", "-m", "a draft")
         env = self.env()
         code, out = self.install(env)
         self.assertEqual(code, 0, out)
@@ -66,7 +70,7 @@ class FreshMachine(InstallCase):
         self.assertEqual((code, err), (0, ""), out)
         facts = json.loads(out)
         self.assertEqual((facts["versions"], facts["released"], facts["installed_version"]),
-                         ([1, 2, 3], [1, 2], 2))
+                         ([1, 2, 3, 4], [1, 2, 3], 3))
 
     def test_installs_every_step_and_passes_the_check(self):
         recording = ms.merge_codex_recordings(self.path("codex.json"), "codex-execpolicy.json", "codex-prompt-input-ready.json")

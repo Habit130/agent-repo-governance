@@ -29,9 +29,9 @@ worked.
 | 8. Committed whitespace | `git show --format= --check HEAD` | After committing. | Working: no output |
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
 
-With unpublished v3 and its review-provider coverage (#140, #135, #148), stored form checks
-616 paths; compatibility checks 87 Python files and 8 shell entries. Linux runs 1040 tests
-and the full suite runs 1433.
+With version 3 released and its review-provider coverage (#140, #135, #148, #158), stored
+form checks 620 paths; compatibility checks 87 Python files and 8 shell entries. Linux runs
+1044 tests and the full suite runs 1439.
 The table's Initialize counts are historical.
 
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
@@ -80,13 +80,16 @@ Offline coverage uses Seam E's additive `release-check/drafts/lifecycle.json`: d
 creation, two updates, release, frozen-tree mutations and invalid layouts. Each transition
 also runs through depth-two PR-merge and squash-push histories with CI's base/head contract.
 The historical `new-version-without-note.json` now expects notes PASS;
-`second-version-while-first-unreleased.json` remains rejected. The render suite copies the real
-store, including released v1/v2 and unpublished v3, and exercises the store/render/compare
-entries; explicit v1/v2 comparisons still pass, and ordinary comparison still targets
-installed v2, reporting drift for v1. It checks no-write draft refusals and opt-in isolation. The machine-install
-suite proves copied draft bytes leave installed version at v2 in a disposable home.
+`second-version-while-first-unreleased.json` remains rejected. Every real version is
+released since version 3's cut (#158), so the draft tests plant one in a copy of the store:
+`support.plant_draft` copies the highest version as the next one, without its change note.
+The render suite copies the real store, released v1 to v3, plants draft v4, and exercises
+the store/render/compare entries; explicit v1 to v3 comparisons pass, and ordinary
+comparison targets installed v3, reporting drift for v1 and v2. It checks no-write draft
+refusals and opt-in isolation. The machine-install suite proves copied draft bytes, the
+planted v4, leave the installed version at v3 in a disposable home.
 
-Version 3's draft (#148) adds two optional manifest keys, which `store.py` checks:
+Version 3 (#148) adds two optional manifest keys, which `store.py` checks:
 `review_bots`, the review bots the version supports (`codex`, `copilot`), and `retired`,
 generated paths an earlier version wrote that this one removes (`.cursor/BUGBOT.md`). When a
 manifest lists `review_bots`, render requires the confirmed `review_bots` list, from those
@@ -112,7 +115,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering; version 3's `review_bots` rendered, read back and refused when missing or malformed (#148) | linux |
 | `parser-fixtures` | The machine parser and each stored version of the governed-side parser against every shared parser fixture, one test per registration and fixture; versioned registrations retain v1 coverage while checking v2 against the same expectations | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
-| `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in; version 3's cases under `v3/`, its review cases (#148) among them, judged by version 3's script beside version 3's gate | linux |
+| `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in; version 3's cases under `v3/`, its review cases (#148) and its no-record base cases (#158) among them, judged by version 3's script beside version 3's gate; GitHub's own `Not Found` told apart from a failed read | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits, plus `drafts/lifecycle.json`'s draft creation, updates, release, frozen mutations and invalid layouts in both shapes | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `suite-runner` | Real suites CLI with isolated synthetic modules: concurrent rendezvous, serial scheduling and longest-first order, interpreter identity, complete output blocks, selection and worker limits, counts and summaries, failures/errors/load failures/crashes with a passing sibling | linux |
@@ -122,7 +125,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `machine-wizard` | Seam C: the account wizard in a throwaway home against the stand-in GitHub, whose logins take effect there; the walkthrough's steps, calls and last line, the machine check's identity item on its end state, a rerun changing nothing, each stop and the next run picking up, planted credential shapes in every answer and file it reads, and `machine/wizard.sh` from a fresh clone of a local origin | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
-| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, version 3's review probes (#148) the same way with version 3's script, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets`; the cut's `reset` and `end-to-end` against a local bare sandbox and the stand-in with no harness's variables, an ignored file beside the generator left out of the plugin and its identity, each refusal leaving nothing behind; the reset staging exactly the seed's tree, the plugin holding the committed generator under `cut`, habit's start line under `/bin/bash` with every scenario setting the generator reads unset | macos |
+| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, version 3's review probes (#148) the same way with version 3's script, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets`; the cut's `reset` and `end-to-end` against a local bare sandbox, each naming the version cut and its review bots and refusing a version that names none and the stand-in with no harness's variables, an ignored file beside the generator left out of the plugin and its identity, each refusal leaving nothing behind; the reset staging exactly the seed's tree, the plugin holding the committed generator under `cut`, habit's start line under `/bin/bash` with every scenario setting the generator reads unset | macos |
 | `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place; the handover rule, the skill files' four conditions and the identity hash, and the scenario settings | macos |
 | `scenario-runner` | Seam B's runner with no model: the stand-in accepting a run's writes, the issue's block parsed, each assertion on planted evidence, and the three-run rule | macos |
 
@@ -135,7 +138,7 @@ standing arrangement, verbatim:
 > 同意， 同意推荐。
 
 At a release, the cutting PR's end-to-end Initialize of the public sandbox remains
-required, unchanged, as Initialize's behavioral check (Version 1's cut and the end-to-end
+required, unchanged, as Initialize's behavioral check (Cutting a version and the end-to-end
 run, below). This repository's Upgrade to the newly released version is Upgrade's
 behavioral check; a failure there is a miss, repaired in a later version. Repair and
 OpenCode have no behavioral check before release. This gap is accepted; a failure in use
@@ -626,14 +629,19 @@ come from version 2's fixed templates under `generator/govern-repository/store/2
 records, from which facts, and how an unreadable fact yields a false miss record; it never
 blocks anything and is never a required check.
 
-**Version 3's draft (#148)** judges reviews by responsibility, not provider. Its docstring
-is the full statement; in short:
+**Version 3 (#148)** judges reviews by responsibility, not provider. This repository runs
+version 2's Merge watch until its Upgrade (#159). Version 3's docstring is the full
+statement; in short:
 
 - The tier requires `self-verification` and `merge-summary` at every tier, `bot-1` and
   `reviewer` from medium, and `bot-2` at high. No bot is looked for at low.
 - A bot slot is filled by a completed review on the head from a bot enabled in the record's
   confirmed `review_bots` at the merge's base: the pushed commit's parent, read through the
-  contents API at that commit, never the merged tree. `PROVIDERS` holds one reader per bot,
+  contents API at that commit, not the merged tree. The one exception (#158) is a base with
+  no record at all, as at an Initialize, where the record at the squash commit names the bots
+  and the run prints a `NOTE` line. "No record" is GitHub's own answer, HTTP 404 with the
+  message `Not Found`, raised as `NotFound` and never listed as unreadable; any other
+  failure, a missing ref's 404 among them, stays a read that failed. `PROVIDERS` holds one reader per bot,
   `codex` and `copilot`; a disabled bot is never read. One provider fills one slot.
 - The Merge summary's `Required reviews:` line is `review.md`'s version 3 grammar, read by
   `parse_reviews`: a line leaving out a required kind, or a bot slot's provider, doesn't
@@ -654,12 +662,14 @@ is the full statement; in short:
   `contents` path with the file's text.
 
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
-  answers a REST path with GitHub's list, every page joined, or raises `ReadError`. Its
+  answers a REST path with GitHub's list, every page joined, or raises `ReadError`
+  (version 3: `NotFound`, its subclass, for a file GitHub says isn't there). Its
   output is the records to open. A new case joins `tests/fixtures/merge-watch/cases/` and is
   never renamed; the suite's docstring gives a case's shape. Version 3 cases live separately
   under `tests/fixtures/merge-watch/v3/`, preserving version 1's expected wording; #148's
   review cases there are named `review-*`, and the suite loads version 3's script beside
-  version 3's gate.
+  version 3's gate. A version 3 case's optional `not_found` lists the paths GitHub answers
+  with its own `Not Found`; the `review-base-without-record-*` cases (#158) use it.
 - **GitHub's facts it relies on**, from github/docs at `6cbe641`, read 2026-10-30:
   - `on.workflow_run.workflows` takes the patterns of the workflow syntax's Filter pattern
     cheat sheet ("You can use special characters in path, branch, tag, and workflow name
@@ -732,9 +742,10 @@ item failed or missing, 2 stopped before any write).
   the one probe shape. Probes normally add only a module; the cancelled-run probe also
   stages its workflow in the render PR and selects version 3 during prepare. One check,
   for a sandbox:
-  1. habit runs `live.py sandbox-command`'s line once, then connects Bugbot (the Cursor
-     GitHub App's repository access) and the Codex review bot (its connector's repository
-     list) for both sandboxes. `live.py seed --sandbox <s>` then accepts the invitation and
+  1. habit runs `live.py sandbox-command`'s line once, then connects the review bots the
+     check's version uses for both sandboxes: the Codex review bot (its connector's
+     repository list) and Copilot code review for version 3, plus, for version 2's probes
+     only, the Cursor GitHub App's repository access. `live.py seed --sandbox <s>` then accepts the invitation and
      seeds the empty default branch from `tests/fixtures/repositories/sandbox/`, whose
      `fixture.json` holds the sandboxes' fixed confirmed values.
    2. `live.py prepare --pr <n> --sandbox <s> --probe <name>...`, at this checkout's pushed
@@ -916,7 +927,8 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
 
 ## Merge watch's live check
 
-`tests/live/probes/merge_watch.py` holds Merge watch's probes (#41 §9, seam 4):
+`tests/live/probes/merge_watch.py` holds version 2's Merge watch probes (#41 §9, seam 4),
+the version this repository runs until #159:
 `merge-watch-clean` for a head with every review, and `merge-watch-miss` for a planted miss.
 Its docstring gives each step and what each assertion reads. `merge_watch_v3.py` holds
 version 3's (#148), described below under Version 3's review probes.
@@ -949,8 +961,9 @@ version 3's (#148), described below under Version 3's review probes.
   it, and `GODEBUG=tlsmlkem=0` cleared it. When the probes report that a log couldn't be
   read with `TLS handshake timeout`, run `live.py probe` with that variable set.
 - **Cancelled default-branch run (#135):** prepare the public sandbox with
-  `--probe merge-watch-cancelled --probe merge-watch-miss`. This combination renders the
-  unpublished version 3 with the existing unreleased opt-in; other probes retain version 2.
+  `--probe merge-watch-cancelled --probe merge-watch-miss`. This combination renders
+  version 3, still passing the per-call opt-in it needed as a draft; other probes retain
+  version 2.
   Prepare refuses an existing open `red-default-branch` record. Resolve that record before
   preparing; the probe never closes an unrelated record.
   The render PR includes a unique workflow and marker. Only a default-branch push changing
@@ -977,17 +990,22 @@ version 3's (#148), described below under Version 3's review probes.
   sets every unlisted permission to `none`. A run's log comes from
   `actions/jobs/<id>/logs`, the gate's read, through `gh api --allow-escape-sequences`.
 
-## Version 1's cut and the end-to-end run
+## Cutting a version and the end-to-end run
 
-Version 1 is released once `generator/govern-repository/store/1/change-note.md` is on the
-default branch (#44 §4). From then on the release check freezes `store/1/` byte for byte, a
-defect becomes a later version, developed as an unpublished draft that a separate release
-delivery freezes by adding its note (Unpublished model development, above).
-`govern.py change-note <path>` reads a note's two fields.
+A version is released once its `generator/govern-repository/store/<n>/change-note.md` is on
+the default branch (#44 §4): version 1 by #107, version 2 by #124 and version 3 by #158's
+PR. From then on the release check freezes `store/<n>/` byte for byte, and a defect becomes
+a later version, developed as an unpublished draft that a separate release delivery freezes
+by adding its note (Unpublished model development, above). `govern.py change-note <path>`
+reads a note's two fields.
 
-The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI, the
-Commands' steps pass on the head. Every result names the head, so a later
-push reruns them, the live checks and this run, with a fresh reset.
+The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI
+and the Commands' steps pass on the head. Every result names the head, so a later push
+reruns them, the live checks and this run, with a fresh reset. The version cut is the
+highest released one in the store: `reset` reads this checkout's, and `end-to-end` the
+store in the plugin it builds from the head's commit. Both print that version and its
+review bots, from its manifest's `review_bots`, and refuse a version whose manifest names
+none.
 
 1. **The reset.** `live.py reset --sandbox public` opens a sandbox PR whose commit holds exactly
    the materialized seed, `tests/fixtures/repositories/sandbox/repo/`, checked against the
@@ -1004,30 +1022,38 @@ push reruns them, the live checks and this run, with a fresh reset.
    `CLAUDE.local.md`, which a session there would load. It clones the sandbox afresh. Beside the
    clone it builds the session-only plugin `cut` from the head's committed generator
    (`git archive`), so an ignored file in this checkout stays out. The seed holds no record, so
-   the run is an Initialize. It writes `end-to-end.json`: the before state, with the rulesets'
-   enforcement and the plugin's identity hash, which the run's issue must name. Then it prints
-   habit's line. It runs from any harness or a plain terminal.
+   the run is an Initialize at the version cut. It writes `end-to-end.json`: the before state,
+   with the rulesets' enforcement, the version and its review bots, and the plugin's identity
+   hash, which the run's issue must name. Then it prints habit's line. It runs from any harness
+   or a plain terminal.
 3. **habit's run.** habit starts Claude Code with that line in a terminal of their own, never
    with `!`. The line sets no `GOVERN_SCENARIO_` setting, so the run reads real GitHub as the
    agent account on the real machine. habit types `/cut:govern-repository`: the bare name
    resolves the installed copy. habit answers the confirmation, which lists the three rulesets
-   for the owner script to replace. Then habit follows that run's Builder through the high path:
-   Bugbot, habit's Codex review bot request, a Reviewer on another vendor, the high-risk
-   report, the pinned merge, saying merged, and the owner-script command, which makes Gate
-   active again.
-4. **The outcomes.** The cut's Builder posted each step's outcome on the cutting PR, naming the head.
-   The issue's `generator_identity` equals `end-to-end.json`'s identity; the Initialize PR's
-   head carries a completed Bugbot check, the Codex review bot's completed marker, the
-   Reviewer's Comment review and `Reviewer` status, and the high-risk report; habit's squash
-   merge, Merge watch's push run on it, and the rulesets after the owner-script run. The live
-   checks for the owner script, the gate and Merge watch then run through `prepare` and
-   `probe` as the run's probes. If the runner can't take that order, they run before the
-   reset, and the handback records why.
+   for the owner script to replace and, from version 3, the review bots to enable. Then habit
+   follows that run's Builder through the high path, as the launch prints it: for version 3, the
+   Codex review bot request it hands over and a Copilot request in the browser at the Lite
+   effort; a Reviewer in another vendor's harness started with exactly the start instruction
+   the run prints, nothing added (#149); the high-risk report, the pinned merge, saying merged,
+   and the owner-script command, which makes Gate active again.
+4. **The outcomes.** The cutting PR's Builder posts each step's outcome on the cutting PR,
+   naming the head. The issue's `generator_identity` equals `end-to-end.json`'s identity; the
+   rendered record is at the version cut, with habit's review-bot list; the Initialize PR's
+   head carries each enabled bot's completed review (for version 3, the Codex review bot's
+   completed marker, and Copilot's review with its check run), the Reviewer's Comment review
+   and `Reviewer` status, the version's Merge summary, and the high-risk report; habit's
+   squash merge, Merge watch's push run on it, which from version 3 reads the bots from the
+   record the merge adds and says `No miss in this push event.` with no `UNREADABLE` line;
+   the run's after-merge report; and the rulesets after the owner-script run. The version's
+   live checks then run on the same head through `prepare` and `probe`.
 
-After the merge habit runs the install (README.md), which brings released version 1 to the
-machine, and this repository's first Initialize follows as its own generator run. The cut's
-record that habit reads says to run the install, that version 1 was cut, and its urgency
-(#44 §8, Trigger).
+After the merge habit runs the install (README.md), which brings the released version to the
+machine; a repository adopts it by its own Upgrade, this one's for version 3 being #159. The
+cut's Merge summary says that the version was cut, its urgency, and that habit runs the
+install (#44 §8, Trigger).
+
+Version 1's cut (#107, 2026-11-05) ran the same way with version 1's facts: Bugbot and the Codex review
+bot on the Initialize PR, and a Reviewer start habit extended by hand.
 
 ## Operational constraints
 

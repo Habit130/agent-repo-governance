@@ -43,8 +43,10 @@ def evidence(**changes):
 class VersionTwoSetup(support.TempDirCase):
     def test_actual_candidate_preconditions_and_each_starting_mode(self):
         from pathlib import Path
+        # The scenarios hold version 2's data. With version 3 released in the real store, a repository at
+        # version 2 is an Upgrade, so repair-files no longer starts a Repair; scenarios aren't run (#139).
         for name, expected in (("initialize-planted", "Initialize"), ("upgrade", "Upgrade"),
-                               ("repair-files", "Repair")):
+                               ("repair-files", "Upgrade")):
             with self.subTest(scenario=name):
                 scratch = Path(self.path(name))
                 scratch.mkdir()
