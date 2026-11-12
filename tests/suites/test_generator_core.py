@@ -589,3 +589,31 @@ class Checklist(support.TempDirCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReviewBotsPrecondition(unittest.TestCase):
+    """#148: the review-bots item names the installed version's supported bots."""
+
+    def item(self, manifest, private=False):
+        from govlib import preconditions
+        run = preconditions.Run()
+        preconditions.review_bots_item(run, manifest, "Habit130/tally", private)
+        return run.items, run.checklist
+
+    def test_version_three_names_the_codex_review_bot_and_copilot_and_no_bugbot(self):
+        items, checklist = self.item({"review_bots": ["codex", "copilot"]}, private=True)
+        self.assertEqual(items, [{"item": "review bots", "status": "habit", "detail":
+                                  "the agent can't read the Codex review bot's or Copilot code review's connection"}])
+        (step,) = checklist
+        self.assertEqual(step["step"], "review bots")
+        self.assertIn("the Codex review bot", step["detail"])
+        self.assertIn("Copilot code review", step["detail"])
+        self.assertNotIn("Bugbot", step["detail"])
+        self.assertTrue(step["detail"].endswith("to Habit130/tally; on a private repository, each one's access to it"))
+
+    def test_a_version_without_review_bots_keeps_bugbot_and_the_codex_review_bot(self):
+        items, checklist = self.item({"version": 2})
+        self.assertEqual(items[0]["detail"], "the agent can't read Bugbot's or the Codex review bot's connection")
+        self.assertEqual(checklist[0]["detail"],
+                         "connect Bugbot (the Cursor GitHub App's repository access) and the Codex review bot "
+                         "(its connector's repository list) to Habit130/tally")

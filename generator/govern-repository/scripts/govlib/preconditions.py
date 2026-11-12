@@ -18,7 +18,9 @@ accepting habit's invitation) or `not checked` (an earlier item it needs failed)
 - machine check: the installed machine check passes against the machine home;
 - machine skill set: every relied-on skill is a managed skill in the installed state;
 - versions: the store has a released version, and the record is no newer than it;
-- review bots: their connection is on habit's checklist, since the agent can't read it.
+- review bots: their connection is on habit's checklist, since the agent can't read it; the
+  bots are the installed version's manifest's `review_bots`, or Bugbot and the Codex review
+  bot for a version without them.
 
 Nothing here writes.
 """
@@ -50,6 +52,34 @@ class Run(object):
         if command:
             entry["command"] = command
         self.checklist.append(entry)
+
+
+# Each review bot habit connects, by its name in a version's manifest (#148), as (whose
+# connection the agent can't read, the step habit takes).
+REVIEW_BOTS = {
+    "codex": ("the Codex review bot's", "the Codex review bot (its connector's repository list)"),
+    "copilot": ("Copilot code review's", "Copilot code review (offered as a PR reviewer by habit's Copilot plan)"),
+}
+
+
+def review_bots_item(result, manifest, repository, private):
+    """The review bots on habit's checklist: the installed version's supported bots, or version 1 and 2's pair."""
+    where = repository or "the repository"
+    if not manifest or "review_bots" not in manifest:
+        result.add("review bots", "habit", "the agent can't read Bugbot's or the Codex review bot's connection")
+        result.ask(
+            "review bots",
+            "connect Bugbot (the Cursor GitHub App's repository access) and the Codex review bot (its connector's "
+            "repository list) to %s%s" % (where, "; on a private repository, both apps' access to it" if private else ""),
+        )
+        return
+    bots = [REVIEW_BOTS[bot] for bot in manifest["review_bots"]]
+    result.add("review bots", "habit", "the agent can't read %s connection" % " or ".join(whose for whose, _ in bots))
+    result.ask(
+        "review bots",
+        "connect %s to %s%s" % (" and ".join(step for _, step in bots), where,
+                               "; on a private repository, each one's access to it" if private else ""),
+    )
 
 
 def invite_command(repository):
@@ -223,13 +253,7 @@ def run(worktree, home, store_root, env=None):
             else:
                 result.add("versions", "pass", "installed version %d; the record is no newer" % installed)
 
-    result.add("review bots", "habit", "the agent can't read Bugbot's or the Codex review bot's connection")
-    private = bool(data and data.get("private"))
-    result.ask(
-        "review bots",
-        "connect Bugbot (the Cursor GitHub App's repository access) and the Codex review bot (its connector's "
-        "repository list) to %s%s" % (repository or "the repository", "; on a private repository, both apps' access to it" if private else ""),
-    )
+    review_bots_item(result, manifest, repository, bool(data and data.get("private")))
 
     order = dict((item, index) for index, item in enumerate(ITEMS))
     result.items.sort(key=lambda entry: order[entry["item"]])

@@ -142,7 +142,8 @@ class Rendering(RenderCase):
             self.assertEqual(code, 2, facts)
             self.assertIn("unreleased", facts["error"])
             self.assertEqual(snapshot_tree(dest), before)
-        code, facts = self.render(root, dest, extra=["--version", "3", "--allow-unreleased"])
+        code, facts = self.render(root, dest, confirmed=dict(TALLY_CONFIRMED, review_bots=["codex", "copilot"]),
+                                  extra=["--version", "3", "--allow-unreleased"])
         self.assertEqual((code, facts["version"]), (0, 3), facts)
         code, facts = support.govern(["compare", "--store", root, "--worktree", dest,
                                      "--version", "3", "--allow-unreleased"] + VALUES)
@@ -520,3 +521,77 @@ class IntoAWorktree(RenderCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VersionThreeRetiresTheBugbotRuleFile(RenderCase):
+    """#148: an Upgrade from version 2 removes the generated Bugbot rule file and nothing else under `.cursor/`."""
+
+    V3 = dict(TALLY_CONFIRMED, review_bots=["codex", "copilot"])
+    BUGBOT = ".cursor/BUGBOT.md"
+    OTHERS = {".cursor/rules/team.mdc": "Our own Cursor rule.\n", ".cursor/BUGBOT-notes.md": "Our notes.\n",
+              ".cursor/environment.json": "{}\n"}
+
+    def version_two_tree(self):
+        dest = self.path("worktree")
+        code, facts = self.render(support.REAL_STORE, dest, extra=["--version", "2"])
+        self.assertEqual(code, 0, facts)
+        self.assertTrue(os.path.isfile(os.path.join(dest, *self.BUGBOT.split("/"))))
+        support.write_tree(dest, self.OTHERS)
+        return dest
+
+    def upgrade(self, dest, confirmed=V3):
+        return self.render(support.REAL_STORE, dest, confirmed=confirmed, extra=["--version", "3", "--allow-unreleased"])
+
+    def compare(self, dest):
+        return support.govern(["compare", "--store", support.REAL_STORE, "--worktree", dest, "--version", "3",
+                               "--allow-unreleased"] + VALUES)
+
+    def test_the_manifest_retires_it_and_writes_it_no_more(self):
+        from govlib import store
+        manifest = store.Store(support.REAL_STORE).manifest(3)
+        self.assertEqual(manifest["retired"], [self.BUGBOT])
+        self.assertEqual(manifest["review_bots"], ["codex", "copilot"])
+        self.assertNotIn(self.BUGBOT, [entry["path"] for entry in manifest["templates"]])
+        self.assertFalse(os.path.exists(os.path.join(support.REAL_STORE, "3", "templates", "dot-cursor")))
+
+    def test_compare_names_the_generated_file_still_there(self):
+        dest = self.version_two_tree()
+        code, facts = self.compare(dest)
+        self.assertEqual(code, 1, facts)
+        retired = [d for d in facts["differences"] if d["path"] == self.BUGBOT]
+        self.assertEqual(retired, [{"path": self.BUGBOT, "class": "retired", "kind": "retired",
+                                    "detail": "version 3 no longer writes it, and rendering removes it"}])
+
+    def test_the_upgrade_removes_it_and_leaves_the_rest_of_cursor(self):
+        dest = self.version_two_tree()
+        code, facts = self.upgrade(dest)
+        self.assertEqual(code, 0, facts)
+        self.assertEqual(facts["removed"], [self.BUGBOT])
+        self.assertFalse(os.path.exists(os.path.join(dest, *self.BUGBOT.split("/"))))
+        for path, text in self.OTHERS.items():
+            self.assertEqual(support.read_text(os.path.join(dest, *path.split("/"))), text, path)
+        code, facts = self.compare(dest)
+        self.assertEqual((code, facts["differences"]), (0, []), facts)
+
+    def test_a_rule_file_the_generator_did_not_write_is_left_and_not_a_difference(self):
+        dest = self.path("worktree")
+        support.write_tree(dest, {self.BUGBOT: "Our own Bugbot rules.\n"})
+        code, facts = self.upgrade(dest)
+        self.assertEqual((code, facts["removed"]), (0, []), facts)
+        self.assertEqual(support.read_text(os.path.join(dest, ".cursor", "BUGBOT.md")), "Our own Bugbot rules.\n")
+        code, facts = self.compare(dest)
+        self.assertEqual((code, facts["differences"]), (0, []), facts)
+
+    def test_an_upgrade_without_the_review_bot_list_refuses_and_writes_or_removes_nothing(self):
+        dest = self.version_two_tree()
+        before = snapshot_tree(dest)
+        code, facts = self.upgrade(dest, confirmed=TALLY_CONFIRMED)
+        self.assertEqual(code, 2, facts)
+        self.assertIn("review_bots", facts["error"])
+        self.assertEqual(snapshot_tree(dest), before)
+
+    def test_versions_one_and_two_retire_nothing(self):
+        for version in (1, 2):
+            dest = self.path("v%d" % version)
+            code, facts = self.render(support.REAL_STORE, dest, extra=["--version", str(version)])
+            self.assertEqual((code, facts["removed"]), (0, []), facts)

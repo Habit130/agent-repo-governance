@@ -33,6 +33,7 @@ if LIVE not in sys.path:
 import live  # noqa: E402
 import probes  # noqa: E402
 from probes import merge_watch as watch_probes  # noqa: E402
+from probes import merge_watch_v3 as v3_probes  # noqa: E402
 from probes import owner as owner_probes  # noqa: E402
 from probes import gate as gate_probes  # noqa: E402
 
@@ -108,7 +109,8 @@ class Registry(unittest.TestCase):
     def test_the_gate_and_owner_probes_register_in_the_one_shape(self):
         known = probes.registered()
         self.assertEqual(list(known), ["merge-watch-cancelled", "gate-trigger", "gate-reruns", "gate-source", "gate-rulesets",
-                                        "merge-watch-clean", "merge-watch-miss", "owner-report", "owner-state", "owner-rerun", "owner-recovery", "owner-private-secret"])
+                                        "merge-watch-clean", "merge-watch-miss", "merge-watch-v3-clean", "merge-watch-v3-waived",
+                                        "merge-watch-v3-miss", "owner-report", "owner-state", "owner-rerun", "owner-recovery", "owner-private-secret"])
         for name in ("gate-trigger", "gate-reruns", "gate-source", "gate-rulesets"):
             self.assertEqual(known[name].sandboxes, ("public", "private"))
         for probe in known.values():
@@ -1076,6 +1078,12 @@ class MergeWatchProbes(support.TempDirCase):
             self.recorded_miss(**case)
             self.assertTrue(self.failed(self.miss()), case)
 
+    def test_version_threes_slot_names_read_as_the_missing_bot_reviews(self):
+        observed = "Merged head %s, declared high, lacks: bot-1, bot-2, reviewer, merge-summary." % RENDER_HEAD
+        self.sandbox.watch_run(RENDER_SQUASH, 40, "MISS %s. %s" % ("Miss: process miss, missing-review in #3", observed))
+        self.sandbox.issues.append(miss_issue(observed=observed))
+        self.assertEqual(self.failed(self.miss()), [])
+
     def test_a_record_for_another_head_is_not_this_checks(self):
         self.recorded_miss(observed=RENDER_OBSERVED.replace(RENDER_HEAD, "e" * 40))
         self.assertTrue(self.failed(self.miss()))
@@ -1094,6 +1102,203 @@ class MergeWatchProbes(support.TempDirCase):
         for _, _, line in watch_probes.habits_commands(self.sandbox):
             self.assertIn("--repo %s " % PRIVATE, line)
             self.assertNotIn("--repo %s " % PUBLIC, line)
+
+
+V3_HEADS = {"merge-watch-v3-clean": "1" * 40, "merge-watch-v3-waived": "2" * 40, "merge-watch-v3-miss": "3" * 40}
+V3_PULLS = {"merge-watch-v3-clean": 7, "merge-watch-v3-waived": 8, "merge-watch-v3-miss": 9}
+V3_SQUASH = "8" * 40
+
+
+class MergeWatchV3Sandbox(MergeWatchSandbox):
+    """The public sandbox rendered from version 3, with each probe PR's comments, reviews and check runs apart."""
+
+    def __init__(self, directory):
+        MergeWatchSandbox.__init__(self, directory)
+        self.confirmed = live.confirmed_values(3, live.seed_fixture())
+        self.pr_comments, self.reviews, self.copilot_runs = {}, {}, {}
+        self.answer = set()  # (pull, bot) pairs whose review appears once read.
+
+    def gh(self, args, stdin=None):
+        args = list(args)
+        if args[:2] == ["pr", "comment"]:
+            body = stdin if stdin is not None else args[args.index("--body") + 1]
+            self.pr_comments.setdefault(int(args[2]), []).append({"user": {"login": "Habit098"}, "body": body})
+            self.writes.append(("comment", int(args[2]), body))
+            return 0, "https://github.com/%s/pull/%s#issuecomment-1\n" % (self.repository, args[2]), ""
+        return MergeWatchSandbox.gh(self, args, stdin)
+
+    def head_of(self, pull):
+        return self.pulls[pull]["head"]["sha"]
+
+    def read(self, path):
+        short = path.split("repos/%s/" % self.repository, 1)[1]
+        for pull, bot in sorted(self.answer):
+            head = self.head_of(pull)
+            if bot == "codex" and not [c for c in self.pr_comments.get(pull, []) if c["user"]["login"] == CODEX_BOT]:
+                self.pr_comments.setdefault(pull, []).append(codex_marker(head=head))
+            if bot == "copilot" and not self.reviews.get(pull):
+                self.reviews[pull] = [{"id": 5839759179, "user": {"login": "copilot-pull-request-reviewer[bot]"},
+                                       "state": "COMMENTED", "commit_id": head, "is_copilot_code_review": True}]
+                self.copilot_runs[head] = [{"name": "copilot-pull-request-reviewer", "status": "completed",
+                                            "conclusion": "success", "app": {"slug": "github-actions"}}]
+        if short.startswith("issues/") and "/comments" in short:
+            return 0, json.dumps(self.pr_comments.get(int(short.split("/")[1]), [])), ""
+        if short.startswith("pulls/") and "/reviews" in short:
+            return 0, json.dumps(self.reviews.get(int(short.split("/")[1]), [])), ""
+        if "/check-runs" in short:
+            return 0, json.dumps({"check_runs": self.copilot_runs.get(short.split("/")[1], [])}), ""
+        return MergeWatchSandbox.read(self, path)
+
+    def habit_comment(self, pull, body):
+        self.pr_comments.setdefault(pull, []).append({"user": {"login": "Habit130"}, "body": body})
+
+    def merge_pull(self, pull):
+        self.pulls[pull].update({"merged": True, "merge_commit_sha": V3_SQUASH, "merged_at": "2026-11-11T03:00:00Z"})
+
+
+class MergeWatchV3Probes(support.TempDirCase):
+    """#148's probes offline: each probe PR's steps, and the real version 3 script judging what they post."""
+
+    def setUp(self):
+        support.TempDirCase.setUp(self)
+        self.sandbox = MergeWatchV3Sandbox(tempfile.mkdtemp(prefix="check-", dir=self.tmp))
+        for module, names in ((v3_probes, ("CODEX_WAIT_SECONDS", "COPILOT_WAIT_SECONDS", "POLL_SECONDS")),
+                              (watch_probes, ("RUN_WAIT_SECONDS", "POLL_SECONDS"))):
+            for name in names:
+                patcher = mock.patch.object(module, name, -1 if "WAIT" in name else 0)
+                patcher.start()
+                self.addCleanup(patcher.stop)
+
+        def opened(context, spec):
+            number, head = V3_PULLS[spec.name], V3_HEADS[spec.name]
+            context.pulls[number] = {"number": number, "merged": False, "head": {"sha": head}, "merge_commit_sha": None}
+            return {"pull": number, "branch": "live/%s-3-x" % spec.name, "head": head,
+                    "url": "https://github.com/%s/pull/%d" % (PUBLIC, number)}
+        patcher = mock.patch.object(v3_probes, "_open_pull", opened)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def run_probe(self, name):
+        return probes.run(probes.registered()[name], self.sandbox)
+
+    def failed(self, results):
+        return [r.assertion for r in results if not r.passed]
+
+    def spec(self, name):
+        return next(spec for spec in v3_probes.SPECS if spec.name == name)
+
+    def to_ready(self, name):
+        spec, pull = self.spec(name), V3_PULLS[name]
+        self.run_probe(name)
+        if "codex" in spec.bots:
+            self.sandbox.habit_comment(pull, v3_probes.CODEX_REQUEST)
+        if spec.habit_waiver:
+            self.sandbox.habit_comment(pull, v3_probes.waiver_line(spec.habit_waiver, V3_HEADS[name], v3_probes.HABIT_WAIVER_REASON))
+        self.sandbox.answer.update((pull, bot) for bot in spec.bots)
+        return self.run_probe(name)
+
+    def judged_by_the_script(self, name):
+        """What version 3's Merge watch makes of the probe PR as it stands, the base enabling both bots."""
+        import test_merge_watch as watch_tests
+        script = watch_tests.watch_v3
+        pull = V3_PULLS[name]
+
+        def read(path):
+            code, out, _ = self.sandbox.read(path)
+            if code != 0:
+                raise script.ReadError(path)
+            answer = json.loads(out)
+            return answer["check_runs"] if isinstance(answer, dict) and "check_runs" in answer else answer
+        facts = script.Pull(read, PUBLIC, pull, V3_HEADS[name])
+        return script.missing_reviews(facts, "Habit098", "Habit130", "high", list(live.V3_REVIEW_BOTS))
+
+    def test_the_probes_are_registered_for_the_public_sandbox_and_render_version_three_with_both_bots(self):
+        known = probes.registered()
+        for name in v3_probes.NAMES:
+            self.assertEqual(known[name].sandboxes, ("public",))
+        self.assertEqual(live.model_version(list(v3_probes.NAMES)), 3)
+        self.assertEqual(live.model_version(["merge-watch-clean"]), 2)
+        self.assertEqual(live.confirmed_values(3, live.seed_fixture())["review_bots"], ["codex", "copilot"])
+        self.assertNotIn("review_bots", live.confirmed_values(2, live.seed_fixture()))
+        with self.assertRaises(live.RunnerError):
+            live.chosen_probes(["gate-trigger", "merge-watch-v3-clean"], "public")
+
+    def test_the_first_run_posts_only_the_status_and_planted_data_and_writes_habits_targets(self):
+        for name in v3_probes.NAMES:
+            results = self.run_probe(name)
+            self.assertIn("not yet", results[0].detail, name)
+        bodies = [w[2] for w in self.sandbox.writes if w[0] == "comment"]
+        self.assertEqual(bodies, [v3_probes.waiver_line("bot-2", V3_HEADS["merge-watch-v3-miss"], v3_probes.AGENT_WAIVER_REASON) + "\n"])
+        self.assertEqual([w[0] for w in self.sandbox.writes].count("status"), 3)
+        for body in bodies:
+            self.assertNotIn("@codex", body)
+        files = sorted(os.listdir(self.sandbox.directory))
+        for expected in ("merge_watch_v3_clean_codex.txt", "merge_watch_v3_clean_copilot.txt",
+                         "merge_watch_v3_waived_copilot.txt", "merge_watch_v3_waived_waiver.txt", "merge_watch_v3_miss_codex.txt"):
+            self.assertIn(expected, files)
+        self.assertFalse([f for f in files if f.endswith("_merge.txt")])
+        before = list(self.sandbox.writes)
+        for name in v3_probes.NAMES:
+            self.run_probe(name)
+        self.assertEqual(self.sandbox.writes, before)
+
+    def test_each_probe_reaches_ready_and_the_real_script_judges_its_pr_as_planned(self):
+        expected = {"merge-watch-v3-clean": [], "merge-watch-v3-waived": [], "merge-watch-v3-miss": ["bot-2", "merge-summary"]}
+        for name in v3_probes.NAMES:
+            results = self.to_ready(name)
+            self.assertEqual(self.failed(results), ["habit merged the PR at the ready head"], name)
+            self.assertTrue(os.path.isfile(os.path.join(self.sandbox.directory, v3_probes.target(self.spec(name), "merge"))))
+            self.assertEqual(self.judged_by_the_script(name), expected[name], name)
+            summaries = [w[2] for w in self.sandbox.writes if w[0] == "comment" and w[1] == V3_PULLS[name]
+                         and w[2].startswith("## Merge summary")]
+            self.assertEqual(len(summaries), 1, name)
+
+    def test_a_bot_that_never_answers_is_an_environment_blocker(self):
+        name = "merge-watch-v3-clean"
+        self.run_probe(name)
+        self.sandbox.habit_comment(7, v3_probes.CODEX_REQUEST)
+        self.sandbox.answer.add((7, "codex"))
+        results = self.run_probe(name)
+        self.assertIn("no completed review by copilot", results[0].detail)
+        self.assertIn("environment blocker", results[0].detail)
+        self.assertFalse(os.path.isfile(os.path.join(self.sandbox.directory, "merge_watch_v3_clean_merge.txt")))
+
+    def test_the_waived_probe_waits_for_habits_own_waiver(self):
+        name = "merge-watch-v3-waived"
+        self.run_probe(name)
+        self.sandbox.pr_comments.setdefault(8, []).append(
+            {"user": {"login": "Habit098"}, "body": v3_probes.waiver_line("bot-1", V3_HEADS[name], v3_probes.HABIT_WAIVER_REASON)})
+        self.assertIn("waiver comment", self.run_probe(name)[0].assertion)
+
+    def test_after_the_merges_merge_watchs_run_decides(self):
+        for name in v3_probes.NAMES:
+            self.to_ready(name)
+        self.sandbox.merge_pull(7)
+        self.sandbox.watch_run(V3_SQUASH, 51, "No miss in this push event.")
+        self.assertEqual(self.failed(self.run_probe("merge-watch-v3-clean")), [])
+        self.sandbox.watch_run(V3_SQUASH, 51, "NOTE #7 merged onto a base whose record is at version 2; it isn't judged.\n"
+                               "2026-10-31T01:01:01.3Z No miss in this push event.")
+        self.assertEqual(self.failed(self.run_probe("merge-watch-v3-clean")),
+                         ["the run read every fact: no missing review, no unreadable fact, no note"])
+        self.sandbox.merge_pull(9)
+        title, observed = v3_probes._missing_review(self.spec("merge-watch-v3-miss"), {"pull": 9, "head": V3_HEADS["merge-watch-v3-miss"]})
+        self.assertEqual(observed, "Merged head %s, declared high, lacks: bot-2, merge-summary." % V3_HEADS["merge-watch-v3-miss"])
+        self.sandbox.watch_run(V3_SQUASH, 52, "MISS %s. %s" % (title, observed))
+        self.assertIn("GitHub holds that record, opened by Merge watch's token with the six field lines",
+                      self.failed(self.run_probe("merge-watch-v3-miss")))
+        record = miss_issue(number=9, observed=observed)
+        record["created_at"] = "2026-11-11T03:01:00Z"
+        self.sandbox.issues.append(record)
+        self.assertEqual(self.failed(self.run_probe("merge-watch-v3-miss")), [])
+
+    def test_habits_steps_add_up_to_two_requests_per_bot_and_one_waiver(self):
+        lines = [line for name in v3_probes.NAMES for _, _, line in probes.registered()[name].commands(self.sandbox)]
+        self.assertEqual(sum("@codex review" in line for line in lines), 2)
+        self.assertEqual(sum("Copilot" in line for line in lines), 2)
+        self.assertEqual(sum("Waiver: bot-1 at $h" in line for line in lines), 1)
+        self.assertEqual(sum("ghm pr merge" in line for line in lines), 3)
+        for line in lines:
+            self.assertIn("--repo %s " % PUBLIC if "ghm" in line else "echo", line)
 
 
 class MergeWatchCommands(support.TempDirCase):

@@ -29,9 +29,9 @@ worked.
 | 8. Committed whitespace | `git show --format= --check HEAD` | After committing. | Working: no output |
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
 
-With unpublished v3 and the cancelled-run coverage (#140, #135), stored form checks 565
-paths; compatibility checks 86 Python files and 8 shell entries. Linux runs 862 tests and
-the full suite runs 1242.
+With unpublished v3 and its review-provider coverage (#140, #135, #148), stored form checks
+616 paths; compatibility checks 87 Python files and 8 shell entries. Linux runs 1040 tests
+and the full suite runs 1433.
 The table's Initialize counts are historical.
 
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
@@ -86,6 +86,17 @@ entries; explicit v1/v2 comparisons still pass, and ordinary comparison still ta
 installed v2, reporting drift for v1. It checks no-write draft refusals and opt-in isolation. The machine-install
 suite proves copied draft bytes leave installed version at v2 in a disposable home.
 
+Version 3's draft (#148) adds two optional manifest keys, which `store.py` checks:
+`review_bots`, the review bots the version supports (`codex`, `copilot`), and `retired`,
+generated paths an earlier version wrote that this one removes (`.cursor/BUGBOT.md`). When a
+manifest lists `review_bots`, render requires the confirmed `review_bots` list, from those
+bots and none twice, and refuses without it, writing nothing; versions 1 and 2 refuse the key.
+Render removes a retired path only when its first line carries the generated notice, and
+lists it under `removed`; exact comparison reports such a file as a `retired` difference.
+The preconditions' review-bots item names the installed version's bots, or Bugbot and the
+Codex review bot for a version without them. The `render` and `record` suites cover the
+Upgrade from a version 2 tree and Initialize.
+
 ### Suite index
 
 `SUITES` in `tests/run.py` names each suite, its module under `tests/suites/` and its job.
@@ -95,13 +106,13 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | --- | --- | --- |
 | `stored-form` | Stored form's round trip, materializing, and the stored-form check failing on planted paths | linux |
 | `store` | Version 1's manifest, the change-note parser fixtures, released and installed versions | linux |
-| `render` | Rendering's placeholders, confirmed values and unreleased versions, into a temporary directory and a worktree | linux |
+| `render` | Rendering's placeholders, confirmed values and unreleased versions, into a temporary directory and a worktree; version 3's retired Bugbot rule file removed from a version 2 tree (#148) | linux |
 | `compare` | Exact comparison naming each difference | linux |
 | `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; each fixed file's notice, the Markdown form an HTML comment on line 1 (`MARKDOWN_NOTICE`); the mixed files' markers, well formed at version 1, with their notice as the first line inside them (`MIXED_NOTICE`) and their skeleton text after the end marker left uncompared; `AGENTS.md`'s sections in order and its bytes within `AGENTS_BUDGET`; `.cursor/BUGBOT.md` equal to its notice, a blank line and `AGENTS.md`'s Code Review Rules section, heading included; every path pointer in a Markdown file version 1 writes naming a file version 1 writes, with what stays outside in `UNROUTED`; no root `CLAUDE.md`, `AGENTS.override.md` or `.codex/` written; the `build.md` skeleton written with no notice and left uncompared; the role files' skill lists against #41 §13 and the relied-on list; the PR template's comment lines, continuation lines included, none starting with `Risk:` or `Reverts:`, and its one `Risk:` line, once filled, read by both parsers; `triage-labels.md` against the manifest's labels; Merge watch's workflow and script with the notice, their mode and exact comparison; planted mismatches failing; later templates' seam-3 checks join it | linux |
-| `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering | linux |
+| `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering; version 3's `review_bots` rendered, read back and refused when missing or malformed (#148) | linux |
 | `parser-fixtures` | The machine parser and each stored version of the governed-side parser against every shared parser fixture, one test per registration and fixture; versioned registrations retain v1 coverage while checking v2 against the same expectations | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
-| `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in | linux |
+| `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in; version 3's cases under `v3/`, its review cases (#148) among them, judged by version 3's script beside version 3's gate | linux |
 | `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits, plus `drafts/lifecycle.json`'s draft creation, updates, release, frozen mutations and invalid layouts in both shapes | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `suite-runner` | Real suites CLI with isolated synthetic modules: concurrent rendezvous, serial scheduling and longest-first order, interpreter identity, complete output blocks, selection and worker limits, counts and summaries, failures/errors/load failures/crashes with a passing sibling | linux |
@@ -111,7 +122,7 @@ Later deliveries add theirs there, under the job #44 §11 names.
 | `machine-list` | Seam C: the list's lines, header, private mark, miss count, sandbox skip and account refusal | macos |
 | `machine-wizard` | Seam C: the account wizard in a throwaway home against the stand-in GitHub, whose logins take effect there; the walkthrough's steps, calls and last line, the machine check's identity item on its end state, a rerun changing nothing, each stop and the next run picking up, planted credential shapes in every answer and file it reads, and `machine/wizard.sh` from a fresh clone of a local origin | macos |
 | `owner` | Seam D: every case in `tests/fixtures/owner/cases/` run through the rendered owner script against the stand-in, its writes, bodies and report lines exact; the token refusal, the embedded program parsed as 3.9, and the owner-script command against a local origin | macos |
-| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets`; the cut's `reset` and `end-to-end` against a local bare sandbox and the stand-in with no harness's variables, an ignored file beside the generator left out of the plugin and its identity, each refusal leaving nothing behind; the reset staging exactly the seed's tree, the plugin holding the committed generator under `cut`, habit's start line under `/bin/bash` with every scenario setting the generator reads unset | macos |
+| `live-runner` | The live-check runner offline: the probe registry, the owner probes reading Seam D's reports and the stand-in's agent view, the gate probes judging recorded setups and rejections, Merge watch's probes against a small sandbox of their own with the real script judging their Merge summary, version 3's review probes (#148) the same way with version 3's script, the result comment, and habit's commands under `/bin/bash`; the real gate attempts command with test-local git and gh stand-ins, stopping at each possible success, carrying on after preparation failures, and its captured stopped and healthy output through `gate-rulesets`; the cut's `reset` and `end-to-end` against a local bare sandbox and the stand-in with no harness's variables, an ignored file beside the generator left out of the plugin and its identity, each refusal leaving nothing behind; the reset staging exactly the seed's tree, the plugin holding the committed generator under `cut`, habit's start line under `/bin/bash` with every scenario setting the generator reads unset | macos |
 | `generator-core` | Seam A: every case in `tests/fixtures/generator/cases/` through the one entry, against the stand-in GitHub, synthetic stores and installed fixture homes, its exit codes and facts as `generator_support.py`'s docstring defines them; in every case no stand-in call writes but the invitation's acceptance and the worktree and home are unchanged; each probed harness's names judged as ADR 0013 requires; drift's target against `tests/target_state.py`, and the agent account's recorded view of a Gate in place; the handover rule, the skill files' four conditions and the identity hash, and the scenario settings | macos |
 | `scenario-runner` | Seam B's runner with no model: the stand-in accepting a run's writes, the issue's block parsed, each assertion on planted evidence, and the three-run rule | macos |
 
@@ -600,7 +611,9 @@ expectations, retaining immutable v1 coverage while checking the candidate.
   reads as LF.
 - **The shared parser fixtures**: `tests/fixtures/parsers/`, with every fixture's expected
   result in `expected.json`, where the inputs `git diff --check` would flag sit as inline
-  texts. The `parser-fixtures` suite runs each fixture against every parser in `PARSERS` in
+  texts. Version 3's record fixtures (#148), whose confirmed part may hold `review_bots`, sit
+  under `record-v3/` with `expected-v3.json`, and run only against `V3_PARSERS`: the machine
+  parser and version 3's governed parser. The `parser-fixtures` suite runs each fixture against every parser in `PARSERS` in
   `tests/suites/parsers.py`. A parser registers as one more `Parser` there, whose adapters
   return the shapes that file's docstring gives, so registering changes no fixture or
   expected result. A record that doesn't parse expects only "doesn't parse".
@@ -613,11 +626,40 @@ come from version 2's fixed templates under `generator/govern-repository/store/2
 records, from which facts, and how an unreadable fact yields a false miss record; it never
 blocks anything and is never a required check.
 
+**Version 3's draft (#148)** judges reviews by responsibility, not provider. Its docstring
+is the full statement; in short:
+
+- The tier requires `self-verification` and `merge-summary` at every tier, `bot-1` and
+  `reviewer` from medium, and `bot-2` at high. No bot is looked for at low.
+- A bot slot is filled by a completed review on the head from a bot enabled in the record's
+  confirmed `review_bots` at the merge's base: the pushed commit's parent, read through the
+  contents API at that commit, never the merged tree. `PROVIDERS` holds one reader per bot,
+  `codex` and `copilot`; a disabled bot is never read. One provider fills one slot.
+- The Merge summary's `Required reviews:` line is `review.md`'s version 3 grammar, read by
+  `parse_reviews`: a line leaving out a required kind, or a bot slot's provider, doesn't
+  read, so `merge-summary` is recorded (#89 F1). `reduced` and `substituted` are gone.
+- A review waived by the repository owner's own PR comment, `Waiver: <item> at <40-hex head>
+  — <reason>` as its first line, counts as present; any other author, another head or an
+  item outside the review kinds counts for nothing.
+- A merge whose base record is below version 3, such as an Upgrade's own PR, is judged only
+  for what every version requires: the `Reviewer` status from medium and a Merge summary for
+  the tier and head with a `Required reviews:` line of any kinds. Its review bots follow
+  rules version 3 doesn't hold, so they aren't judged, and the run prints a `NOTE` line.
+  habit accepted this transition exception on
+  [PR #157](https://github.com/Habit130/agent-repo-governance/pull/157#issuecomment-6812806697),
+  verbatim: "同意推荐并继续推进吧"; that PR's Reviewer checks the old bots before the merge. A
+  base record that can't be read or doesn't parse enables no bot, a false miss.
+- At low no bot's endpoint is read, so an unreadable one can't fail the run.
+- `decide` takes an optional `notes` list for those lines, and `read` answers a
+  `contents` path with the file's text.
+
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
   answers a REST path with GitHub's list, every page joined, or raises `ReadError`. Its
   output is the records to open. A new case joins `tests/fixtures/merge-watch/cases/` and is
   never renamed; the suite's docstring gives a case's shape. Version 3 cases live separately
-  under `tests/fixtures/merge-watch/v3/`, preserving version 1's expected wording.
+  under `tests/fixtures/merge-watch/v3/`, preserving version 1's expected wording; #148's
+  review cases there are named `review-*`, and the suite loads version 3's script beside
+  version 3's gate.
 - **GitHub's facts it relies on**, from github/docs at `6cbe641`, read 2026-10-30:
   - `on.workflow_run.workflows` takes the patterns of the workflow syntax's Filter pattern
     cheat sheet ("You can use special characters in path, branch, tag, and workflow name
@@ -636,6 +678,15 @@ blocks anything and is never a required check.
   - The list endpoint `commits/{ref}/statuses` gives each status's `creator`, newest first;
     the combined `commits/{ref}/status` doesn't, so the script reads the list (GitHub's REST
     reference for commit statuses, read 2026-10-30).
+  - Copilot code review, observed on the two sandboxes in #131 (2026-11-10 and 11-11), not
+    documented: a review by `copilot-pull-request-reviewer[bot]` with
+    `is_copilot_code_review` true and `commit_id` the head, and a `copilot-pull-request-reviewer`
+    check run from the `github-actions` app, completed `success`, on the head. After a push
+    the old review keeps its old `commit_id` and the new head has no check run until a new
+    request. The workflow token with `pull-requests`, `checks` and `actions` read reads all
+    of it. A request from the agent account is silently dropped, and Copilot's own review
+    event starts a workflow only after approval, so Merge watch reads Copilot on its push
+    run. A change in these fields yields false miss records, never a blocked merge.
 - **The live check** is below, under Merge watch's live check.
 
 ## The owner script and live checks
@@ -812,6 +863,31 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   stop marker, not the outer pipeline status, tells the judge which attempts were skipped.
   These stand-in runs make no claim about live protection behavior; real attempts remain
   habit-only.
+- **Version 3's review probes (#148)**, public sandbox only: prepare with
+  `--probe merge-watch-v3-clean --probe merge-watch-v3-waived --probe merge-watch-v3-miss`.
+  Any of them renders version 3 with the per-call opt-in and the confirmed `review_bots`
+  `codex`, `copilot` (`live.py`, `V3_REVIEW_BOTS`); the seed's fixture stays as it is. Gate
+  probes refuse to share the check, since these merge. Each probe opens its own PR at high
+  and posts the agent's `Reviewer` status:
+  - `merge-watch-v3-clean`: habit requests the Codex review bot and Copilot; the summary
+    names `bot-1=clear(codex)` and `bot-2=clear(copilot)`. Merge watch records no miss.
+  - `merge-watch-v3-waived`: habit requests Copilot only and posts the waiver of `bot-1` on
+    the head from the printed command. Merge watch records no miss.
+  - `merge-watch-v3-miss`: habit requests the Codex review bot only; the probe posts an
+    agent-account waiver of `bot-2` as planted data, and the summary leaves the Reviewer
+    out. Merge watch records one `missing-review` record lacking `bot-2, merge-summary`.
+
+  The steps are the clean probe's: a first `live.py probe` opens the PRs and writes the
+  targets; habit runs the printed steps (two Codex review bot requests, two Copilot
+  requests in the browser at Lite, about 6 AI credits each by #63's measurement, and one
+  waiver comment); a second run waits for each bot within its wait (30 minutes for the
+  Codex review bot, 15 for Copilot), posts each summary and reports `READY`; habit runs
+  each printed pinned merge; a last run judges Merge watch's own push runs and posts with
+  `--post`. A bot that doesn't answer stops its probe as an environment blocker, never a
+  pass. A run whose log holds a `NOTE` line fails the clean and waived probes.
+- **`merge-watch-miss` under version 3** reads `bot-2` as the missing second bot where
+  earlier versions write `codex`, so #135's combination keeps working on version 3's
+  render.
 - **The private sandbox (#53)** takes the same probes, unchanged: `prepare --sandbox private`
   and the same `--probe` names. They read the repository, default branch and confirmed checks
   from the context, and `gate-trigger` expects the event policy skipped (`已跳过`) there.
@@ -842,7 +918,8 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
 
 `tests/live/probes/merge_watch.py` holds Merge watch's probes (#41 §9, seam 4):
 `merge-watch-clean` for a head with every review, and `merge-watch-miss` for a planted miss.
-Its docstring gives each step and what each assertion reads.
+Its docstring gives each step and what each assertion reads. `merge_watch_v3.py` holds
+version 3's (#148), described below under Version 3's review probes.
 
 - **The planted miss is the render PR.** It is declared high and nothing reviews it, so its
   merge always leaves a `missing-review` record, and `merge-watch-miss` judges that record.

@@ -35,10 +35,24 @@ import merge_watch  # noqa: E402
 FIXTURES = os.path.join(support.FIXTURES, "merge-watch")
 CASES = os.path.join(FIXTURES, "cases")
 V3_CASES = os.path.join(FIXTURES, "v3")
-_spec = importlib.util.spec_from_file_location("merge_watch_v3", os.path.join(
-    support.REAL_STORE, "3", "templates", "dot-github", "governance", "merge_watch.py"))
-watch_v3 = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(watch_v3)
+GOVERNANCE_V3 = os.path.join(support.REAL_STORE, "3", "templates", "dot-github", "governance")
+
+
+def _load_v3(name):
+    spec = importlib.util.spec_from_file_location("%s_v3" % name, os.path.join(GOVERNANCE_V3, name + ".py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# Version 3's script imports the gate beside it as `gate`: give it version 3's while it loads.
+gate_v3 = _load_v3("gate")
+_gate_v1 = sys.modules["gate"]
+sys.modules["gate"] = gate_v3
+try:
+    watch_v3 = _load_v3("merge_watch")
+finally:
+    sys.modules["gate"] = _gate_v1
 WORKFLOW = ".github/workflows/merge-watch.yml"
 SCRIPT = ".github/governance/merge_watch.py"
 ISSUE_TRACKER = os.path.join(support.REAL_STORE, "1", "templates", "docs", "agents", "issue-tracker.md")
@@ -64,6 +78,16 @@ def recorded(github):
     def read(path):
         if path not in github:
             raise merge_watch.ReadError(path)
+        return github[path]
+
+    return read
+
+
+def recorded_v3(github):
+    """Version 3's reader: a path the case doesn't hold raises version 3's ReadError."""
+    def read(path):
+        if path not in github:
+            raise watch_v3.ReadError(path)
         return github[path]
 
     return read
@@ -339,10 +363,103 @@ class VersionThree(unittest.TestCase):
         for path in sorted(os.listdir(V3_CASES)):
             with self.subTest(case=path):
                 case = load(os.path.join(V3_CASES, path))
-                records = watch_v3.decide(case["event_name"], case["event"], agent_account(), recorded(case["github"]))
+                records = watch_v3.decide(case["event_name"], case["event"], agent_account(), recorded_v3(case["github"]))
                 self.assertEqual(records, [dict(item, labels=["miss"]) for item in case["expected"]])
                 for item in records:
                     self.assert_record(item, path, "3")
+
+    def decide_v3(self, name, notes=None, read=None):
+        case = load(os.path.join(V3_CASES, name + ".json"))
+        return watch_v3.decide(case["event_name"], case["event"], agent_account(),
+                               read or recorded_v3(case["github"]), notes)
+
+    def test_a_base_below_version_three_is_not_judged_and_says_so(self):
+        notes = []
+        self.assertEqual(self.decide_v3("review-base-at-version-two", notes), [])
+        self.assertEqual(notes, ["#42 merged onto a base whose record is at version 2; its review bots follow that "
+                                 "version's rules, which this script doesn't judge."])
+        (rec,) = self.decide_v3("review-base-at-version-two-unreviewed")
+        self.assertIn("lacks: reviewer, merge-summary.", rec["body"])
+
+    def test_low_reads_no_bot(self):
+        for name in ("review-low-no-bot", "review-low-missing-summary"):
+            case = load(os.path.join(V3_CASES, name + ".json"))
+            reads = []
+            inner = recorded_v3(case["github"])
+
+            def spy(path):
+                reads.append(path)
+                return inner(path)
+
+            self.decide_v3(name, read=spy)
+            self.assertEqual([path for path in reads if "/reviews" in path or "/check-runs" in path], [], name)
+
+    def test_a_disabled_bot_is_never_read_or_reported(self):
+        def never(pull):
+            raise AssertionError("the disabled Codex review bot was read")
+
+        with mock.patch.dict(watch_v3.PROVIDERS, {"codex": never}):
+            notes = []
+            self.assertEqual(self.decide_v3("review-disabled-bot-never-read", notes), [])
+            self.assertEqual(notes, [])
+            (rec,) = self.decide_v3("review-disabled-bot-fills-nothing")
+            self.assertIn("lacks: bot-1.", rec["body"])
+
+    def test_the_base_record_is_read_at_the_commit_before_the_squash(self):
+        case = load(os.path.join(V3_CASES, "review-shortened-list-judged-by-base.json"))
+        reads = []
+        inner = recorded_v3(case["github"])
+
+        def spy(path):
+            reads.append(path)
+            return inner(path)
+
+        self.assertEqual(self.decide_v3("review-shortened-list-judged-by-base", read=spy), [])
+        contents = [path for path in reads if "/contents/" in path]
+        self.assertEqual(contents, ["repos/Habit130/tally/contents/.github/governance/record.yml?ref=%s" % case["event"]["before"]])
+
+    def test_each_later_commit_in_a_push_takes_the_one_before_it_as_its_base(self):
+        case = load(os.path.join(V3_CASES, "review-low-no-bot.json"))
+        first = "2" * 40
+        event = dict(case["event"], commits=[{"id": first}, case["event"]["commits"][0]])
+        github = dict(case["github"], **{"repos/Habit130/tally/commits/%s/pulls" % first: []})
+        reads = []
+        inner = recorded_v3(github)
+
+        def spy(path):
+            reads.append(path)
+            return inner(path)
+
+        watch_v3.decide("push", event, agent_account(), spy)
+        self.assertIn("repos/Habit130/tally/contents/.github/governance/record.yml?ref=%s" % first, reads)
+
+    def test_a_contents_path_is_read_raw_and_once(self):
+        calls = []
+
+        def fake(args, stdout, stderr):
+            calls.append(args)
+            return subprocess.CompletedProcess(args, 0, b"version: 3\n", b"")
+
+        with mock.patch.object(watch_v3.subprocess, "run", fake):
+            text = watch_v3.GitHub()("repos/o/r/contents/.github/governance/record.yml?ref=abc")
+        self.assertEqual(text, "version: 3\n")
+        self.assertEqual(calls, [["gh", "api", "-H", "Accept: application/vnd.github.raw",
+                                  "repos/o/r/contents/.github/governance/record.yml?ref=abc"]])
+
+    def test_a_contents_read_that_fails_is_unreadable(self):
+        def fake(args, stdout, stderr):
+            return subprocess.CompletedProcess(args, 1, b"", b"HTTP 404: Not Found")
+
+        github = watch_v3.GitHub()
+        with mock.patch.object(watch_v3.subprocess, "run", fake):
+            with self.assertRaises(watch_v3.ReadError):
+                github("repos/o/r/contents/x?ref=abc")
+        self.assertEqual(github.unreadable, ["repos/o/r/contents/x?ref=abc: HTTP 404: Not Found"])
+
+    def test_the_script_names_no_retired_bot(self):
+        source = support.read_text(os.path.join(GOVERNANCE_V3, "merge_watch.py"))
+        for retired in ("bugbot", "Bugbot", "cursor", "reduced", "substituted"):
+            self.assertNotIn(retired, source)
 
 
 if __name__ == "__main__":

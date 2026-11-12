@@ -89,6 +89,10 @@ class VersionTwoPolicy(support.TempDirCase):
         self.assertIn("purpose conflict", labels)
         self.assertNotIn("exact description", labels)
 
+# Version 3's confirmed values for tally: its fixture's, plus the enabled review bots (#148).
+V3_REVIEW_BOTS = ["codex", "copilot"]
+
+
 class VersionThreeRendered(support.TempDirCase):
     """Version 3 rendered into the tally sample: the approved rendered-text seam."""
 
@@ -97,7 +101,7 @@ class VersionThreeRendered(support.TempDirCase):
         self.dest = self.path("rendered")
         confirmed = self.path("confirmed.json")
         with open(confirmed, "w") as handle:
-            json.dump(materialized.tally_fixture()["confirmed"], handle)
+            json.dump(dict(materialized.tally_fixture()["confirmed"], review_bots=V3_REVIEW_BOTS), handle)
         code, facts = support.govern([
             "render", "--version", "3", "--allow-unreleased", "--dest", self.dest,
             "--repository", "Habit130/tally", "--default-branch", "main", "--confirmed", confirmed,
@@ -153,11 +157,9 @@ class VersionThreeRerunPolicy(VersionThreeRendered):
         evidence = " ".join(level_two_section(review, "## Evidence comment", "review.md").split())
         self.assertIn("repair and why it fixes that check's failure", evidence)
 
-    def test_version_three_keeps_copy_budget_routing_and_skill_contracts(self):
+    def test_version_three_keeps_budget_routing_and_skill_contracts(self):
         agents = self.text("AGENTS.md")
-        bugbot = self.text(".cursor/BUGBOT.md")
-        self.assertEqual(bugbot.split("\n\n", 1)[1],
-                         level_two_section(agents, CODE_REVIEW_RULES, AGENTS))
+        self.assertFalse(os.path.exists(os.path.join(self.dest, ".cursor")))
         self.assertEqual(budget_failures(agents.encode("utf-8")), [])
         manifest = store.Store(support.REAL_STORE).manifest(3)
         self.assertEqual(routing_failures(self.dest, [e["path"] for e in manifest["templates"]]), [])
@@ -169,21 +171,130 @@ class VersionThreeRerunPolicy(VersionThreeRendered):
         import test_merge_watch as watch_tests
 
         review = self.text("docs/agents/review.md")
-        header = review.split("```text\n", 1)[1].split("\n```", 1)[0]
+        header = review.split("```text\n## Merge summary: <tier>", 1)[1].split("\n```", 1)[0]
         self.assertEqual(header.splitlines(), [
-            "## Merge summary: <tier> at <short sha>",
+            " at <short sha>",
             "Required reviews: <kind>=<state>, <kind>=<state>",
         ])
-        case = watch_tests.load(os.path.join(watch_tests.CASES, "high-complete.json"))
+        case = watch_tests.load(os.path.join(watch_tests.V3_CASES, "review-high-both.json"))
         comments = case["github"]["repos/Habit130/tally/issues/42/comments"]
-        comments[-1]["body"] = header.replace("<tier>", "high").replace("<short sha>", "1a95462").replace(
-            "<kind>=<state>, <kind>=<state>",
-            "self-verification=clear, bugbot=clear, codex=clear, reviewer=clear",
-        ) + "\n\nRerun-only pass: required CI; cause: https://github.com/Habit130/tally/issues/43\n"
+        comments[-1]["body"] = comments[-1]["body"].replace(
+            "\n\nThe tier", "\n\nRerun-only pass: required CI; cause: https://github.com/Habit130/tally/issues/43\n\nThe tier")
         self.assertEqual(watch_tests.watch_v3.decide(
             case["event_name"], case["event"], watch_tests.agent_account(),
-            watch_tests.recorded(case["github"]),
+            watch_tests.recorded_v3(case["github"]),
         ), [])
+
+
+class VersionThreeReviewProviders(VersionThreeRendered):
+    """#148: requirements name responsibilities, the providers sit in one place each, and Bugbot is gone."""
+
+    PROVIDER_NAMES = ("Codex review bot", "Copilot", "@codex", "(codex)", "(copilot)", "`codex`", "`copilot`")
+    SUBSECTIONS = ("### The Codex review bot", "### Copilot code review")
+
+    def rendered(self):
+        found = {}
+        for root, _, files in os.walk(self.dest):
+            for name in files:
+                full = os.path.join(root, name)
+                found[os.path.relpath(full, self.dest)] = support.read_text(full)
+        return found
+
+    def review(self):
+        return self.text("docs/agents/review.md")
+
+    def without_provider_places(self, path, text):
+        """The text with review.md's per-provider subsections and its example blocks taken out."""
+        if path != "docs/agents/review.md":
+            return text
+        for heading in self.SUBSECTIONS:
+            text = text.replace(heading + "\n" + level_three_section(text, heading), "")
+        return re.sub(r"```text\n.*?\n *```", "", text, flags=re.S)
+
+    def test_no_bugbot_name_trigger_or_file_is_rendered(self):
+        files = self.rendered()
+        self.assertNotIn(".cursor/BUGBOT.md", files)
+        for path, text in files.items():
+            for word in ("bugbot", "@cursor", "cursor review"):
+                self.assertNotIn(word, text.lower(), path)
+
+    def test_no_provider_is_named_outside_its_subsection_and_the_examples(self):
+        for path, text in self.rendered().items():
+            if not path.endswith(".md"):
+                continue
+            rest = self.without_provider_places(path, text)
+            for name in self.PROVIDER_NAMES:
+                self.assertNotIn(name, rest, path)
+        review = self.review()
+        for heading in self.SUBSECTIONS:
+            section = flat(level_three_section(review, heading))
+            for fact in ("**Name**", "**Request**", "**Wait**", "**Completed on the head**", "**Findings**"):
+                self.assertIn(fact, section, heading)
+
+    def test_minimum_reviews_name_slots_not_providers(self):
+        table = level_two_section(self.review(), "## Minimum reviews", "review.md")
+        row = [line for line in table.splitlines() if line.startswith("| Review bots |")]
+        self.assertEqual(row, ["| Review bots | — | one: `bot-1` | two, from two providers: `bot-1` and `bot-2` |"])
+        self.assertIn("Two results from one provider on one head fill one bot slot.", flat(table))
+
+    def test_reviews_examples_parse_with_merge_watchs_parser(self):
+        import test_merge_watch as watch_tests
+
+        # The fixed header's own example ends the level-2 section early, so read the whole file.
+        examples = re.findall(r"```text\n *## Merge summary: (low|medium|high) at [0-9a-f]{7}\n *(Required reviews: .*)\n",
+                              self.review())
+        self.assertEqual([tier for tier, _ in examples], ["high", "medium"])
+        for tier, line in examples:
+            self.assertIsNotNone(watch_tests.watch_v3.parse_reviews(line, tier), line)
+
+    def test_the_waiver_form_is_the_one_merge_watch_reads(self):
+        import test_merge_watch as watch_tests
+
+        waivers = level_two_section(self.review(), "## Waivers", "review.md")
+        (form,) = re.findall(r"```text\n *(Waiver: .*)\n", waivers)
+        self.assertEqual(form, "Waiver: <item> at <full head sha> \u2014 <reason>")
+        head = "1a954628a960aaef81d7b2d4521929579f3541e6"
+        for item in ("self-verification", "bot-1", "bot-2", "reviewer", "security", 'verification "Plus a live check"'):
+            line = form.replace("<item>", item).replace("<full head sha>", head).replace("<reason>", "why")
+            self.assertIsNotNone(watch_tests.watch_v3.WAIVER.fullmatch(line), line)
+        for never in ("required status checks", "`Risk:` line", "evidence comment", "Merge summary"):
+            self.assertIn(never, waivers)
+        for item in ("merge-summary", "risk", "governance-gate"):
+            line = form.replace("<item>", item).replace("<full head sha>", head).replace("<reason>", "why")
+            self.assertIsNone(watch_tests.watch_v3.WAIVER.fullmatch(line), line)
+
+    def test_a_reviewer_waiver_keeps_copilot_from_judging_alone_and_names_the_summary_writer(self):
+        review = self.review()
+        waivers = flat(level_two_section(review, "## Waivers", "review.md"))
+        self.assertIn("nor a Reviewer session that a review bot's subsection keeps", waivers)
+        self.assertIn("A waived Reviewer session** leaves the Merge summary to the Builder", waivers)
+        self.assertIn("and any condition a review bot's subsection puts on a Reviewer waiver", waivers)
+        copilot = flat(level_three_section(review, "### Copilot code review"))
+        self.assertIn("that session isn't waived while Copilot's is the head's only completed bot review (Waivers)", copilot)
+        minimum = flat(level_two_section(review, "## Minimum reviews", "review.md"))
+        self.assertIn("| Merge summary by | Builder | Reviewer, or the Builder when it is waived | Reviewer, or the "
+                      "Builder when it is waived, as the high-risk report |", minimum)
+        self.assertIn("a waived Reviewer session leaves the Merge summary to the Builder (Waivers)", minimum)
+        summary = flat(review.split("\n## Merge summary\n", 1)[1].split("### Checks first", 1)[0])
+        self.assertIn("by the Builder when habit waived the Reviewer session (Waivers)", summary)
+        builder = flat(self.text("docs/agents/builder.md").split("9. **Hand over**:", 1)[1].split("## The Reviewer handoff", 1)[0])
+        self.assertIn("or when habit waived the Reviewer session for this head (`review.md`, Waivers), write the Merge summary", builder)
+
+    def test_the_exception_consistency_rule_is_stated_once_and_applied_in_review(self):
+        agents = self.text(AGENTS)
+        important = flat(agents.split("- **Important**", 1)[1].split("- **Nit**", 1)[0])
+        self.assertIn("a review or authorization exception stated anywhere broader than at its narrowest", important)
+        self.assertIn("(`review.md`, Exceptions)", important)
+        rule = flat(level_two_section(self.review(), "## Exceptions", "review.md"))
+        for phrase in ("decision point", "machine-read grammar", "examples", "reports", "Important finding"):
+            self.assertIn(phrase, rule)
+
+    def test_the_merge_summary_says_no_independent_reviewer_at_low_and_lists_waivers(self):
+        terminal = flat(level_three_section(self.review(), "### In the terminal"))
+        self.assertIn("no reviewer independent of the Builder looked at the change", terminal)
+        self.assertIn("each waiver, with its item, reason and link, and each fallback", terminal)
+        self.assertNotIn("link each review bot", terminal)
+
 
 class VersionThreeReviewerStartAndReread(VersionThreeRendered):
     """#149: the Reviewer start carries its writes; the after-merge report rereads GitHub."""

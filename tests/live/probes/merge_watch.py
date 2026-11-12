@@ -58,8 +58,8 @@ REVIEWS = "Required reviews: self-verification=clear, bugbot=clear, codex=clear,
 RECORD_AUTHOR = "github-actions[bot]"
 FIELDS = ("Merged PR", "Kind", "Category", "Observed", "Found by", "Bug issue")
 _MARKER = re.compile(r"<!-- codex-review-state:v1 (\{.*?\}) -->", re.S)
-_OUTCOME = re.compile(r"(?m)^\S+\s(No miss in this \w+ event\.|MISS .*?|UNREADABLE .*?|FAIL opening .*?)\s*$")
-_OBSERVED = re.compile(r"^Observed: Merged head ([0-9a-f]{40}), declared high, lacks: ([a-z-]+(?:, [a-z-]+)*)\.$")
+_OUTCOME = re.compile(r"(?m)^\S+\s(No miss in this \w+ event\.|MISS .*?|UNREADABLE .*?|NOTE .*?|FAIL opening .*?)\s*$")
+_OBSERVED = re.compile(r"^Observed: Merged head ([0-9a-f]{40}), declared high, lacks: ([a-z0-9-]+(?:, [a-z0-9-]+)*)\.$")
 
 
 def _login(item):
@@ -326,8 +326,10 @@ def miss(context):
                [line.split(": ", 1)[0] for line in lines[:6]] == list(FIELDS)
                and lines[:3] == ["Merged PR: #%d" % context.sandbox_pr, "Kind: process miss", "Category: missing-review"]
                and lines[4:6] == ["Found by: Merge watch", "Bug issue: none"], " / ".join(lines[:6])),
+        # Version 3 names the high tier's second review-bot slot `bot-2` where earlier versions name `codex` (#148).
         Result("the record names the head and lacks every review the probes didn't post",
-               observed is not None and {"codex", "reviewer", "merge-summary"} <= lacks, lines[3] if len(lines) > 3 else "no Observed line"),
+               observed is not None and {"reviewer", "merge-summary"} <= lacks and bool({"codex", "bot-2"} & lacks),
+               lines[3] if len(lines) > 3 else "no Observed line"),
     ]
 
 
