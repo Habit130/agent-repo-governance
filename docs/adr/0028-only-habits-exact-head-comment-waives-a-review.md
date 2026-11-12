@@ -1,8 +1,8 @@
-# Only habit's own PR comment, naming the exact head, waives a required review
+# Only habit's own PR comment, naming the exact head, waives a required review or verification
 
 From version 3, a required review or verification goes unmet in one way only: habit's waiver. It is a PR comment from the repository owner's account whose first line names the item and the full head SHA. A new head voids it. Merge watch counts a waived review as present only when it finds that comment.
 
-Versions 1 and 2 let the Codex review bot stand in for Bugbot, and let habit accept one bot fewer at high, in a PR comment that the Merge summary linked. That wording was once written wider than the rule, and nothing checked who had approved.
+At low and medium, versions 1 and 2 let the Codex review bot stand in for an unavailable Bugbot. At high they let habit accept one bot fewer, in a PR comment that the Merge summary linked. Nothing checked who had approved, and the first wording of that exception was wider than the rule ([env: Merge summary review waiver followed #41's general wording past the one-bot-at-high limit](https://github.com/Habit130/agent-repo-governance/issues/77)).
 
 - An agent may draft the line. A comment by the agent account that quotes habit approves nothing, because a transcription can't be told from an invention.
 - Waiving review bots only, and having no waiver at all, were both rejected: habit holds the final decision and isn't locked out by an unavailable service.

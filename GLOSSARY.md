@@ -239,7 +239,6 @@ An increasing integer naming one state of what the governance model lands in a r
 
 **Draft version**:
 The unreleased governance model version: at most one, the highest in the template store. Changes accumulate in it across PRs until its release.
-_Avoid_: unpublished model, candidate
 
 **Release**:
 Adding a draft version's change note to the default branch, which freezes that version.
