@@ -12,3 +12,5 @@ Two ready-made routes were rejected:
 - The Agent SDK needs an API key.
 
 Decided in [How the generator and the install are verified before a version ships](https://github.com/Habit130/agent-repo-governance/issues/40).
+
+Scenarios are no longer run ([ADR 0030](0030-no-model-scenarios-releases-checked-by-real-runs.md)). This stays as the runner's design.
