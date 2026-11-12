@@ -227,18 +227,19 @@ Neither copy points at code: no paths, line numbers, diffs or snippets.
 
 ### The merge handoff
 
-In the terminal, after the summary:
+In the terminal, after the summary, as its writer's final handoff (`handoff.md`), whose
+conclusion the summary's first line gives:
 
 1. **The pinned merge command**, for habit to run:
    `ghm pr merge <n> --admin --squash --match-head-commit <sha>`, with the full head SHA.
    It is the only governed merge path.
-2. **The next ticket.** When this merge unblocks a ticket in the same spec, a start request
-   for a Builder on the first unclaimed one: open, unassigned, and unblocked by
-   `issue-tracker.md`'s blocking rules once this PR merges.
-3. **Misses.** The count of open miss records, `gh issue list --label miss --state open`.
-   When any is open, a start request for a Planner session in which habit invokes `retro` on
-   the oldest.
-4. **At high**: say merged in the Builder's terminal, so the Builder runs its after-merge
+2. **At high**: say merged in the Builder's terminal, so the Builder runs its after-merge
    steps.
+3. **Misses**, only when any is open: the count of open miss records,
+   `gh issue list --label miss --state open`, and a start request for a Planner session in
+   which habit invokes `retro` on the oldest.
+4. **This session**: the Reviewer's can be closed; a Builder at low says whether it stays
+   open, what it waits for and the words habit says on return.
 
+What is dispatched next comes from the Planner's dispatch plan, never from this handoff.
 Each start request takes the form `AGENTS.md`'s How to start gives.

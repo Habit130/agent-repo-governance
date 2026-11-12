@@ -17,7 +17,8 @@ when clear, the Merge summary (Outputs), whatever policy the default branch hold
 that cannot make them, under a read-only instruction or a denied permission, stops and tells
 habit instead of posting a summary alone.
 
-Read `AGENTS.md`, this file, `review.md`, and the PR: its diff, its ticket and spec, the
+Read `AGENTS.md`, this file, `review.md`, and the PR: its diff, its ticket and spec (for a
+whole-spec PR, the spec and every ticket it closes), the
 review bots' findings with the Builder's answers, and the evidence comment. The Builder's
 conversation stays unread; the review rests on what GitHub holds.
 
@@ -34,7 +35,8 @@ conversation stays unread; the review rests on what GitHub holds.
    and bugs. A direct-request ticket is judged against habit's quoted words.
 5. **Judge each answer** the Builder gave to a finding, and reopen a rejection you disagree
    with, saying why.
-6. **Rerun the ticket's Verification** in your worktree.
+6. **Rerun the ticket's Verification** in your worktree; for a whole-spec PR, every
+   ticket's.
 7. **At high**, wait for the Codex review bot's result on the head (`review.md`, Review
    state) and judge the Builder's answers to it. When the tier's reason involves
    authentication, privacy or secret handling, run the security review (`review.md`,
@@ -56,7 +58,7 @@ On the exact head, as the agent account:
   `gh api repos/{owner}/{repo}/statuses/<sha> -f context=Reviewer -f state=<state>`:
   `failure` while an Important finding is open, `success` otherwise.
 - **When clear**, the Merge summary, at high the high-risk report, and the merge handoff
-  (`review.md`, Merge summary).
+  (`review.md`, Merge summary), the Reviewer's final handoff (`handoff.md`).
 
 The review speaks in the Reviewer's voice only: it states findings and never commits the
 Builder to changes. Repairs are the Builder's: the Reviewer never pushes, and leaves the
@@ -70,7 +72,7 @@ Comment review and a new `Reviewer` status on it.
 ## Escalations
 
 Put the question and the options in the terminal, and leave one "Waiting on habit: …" line
-on the PR (`AGENTS.md`, Talking to habit and to other agents), when:
+on the PR (`handoff.md`, Three kinds of message), when:
 
 - a finding turns on a product or scope decision the ticket doesn't settle;
 - the Codex review bot stays unavailable at high (`review.md`, Review state);
