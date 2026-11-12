@@ -135,7 +135,9 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   repository-owned content that conflicts with the new fixed rules; any ruleset or
   required-check change, applied after merge; the selected product smoke; and anything
   unverified. The Upgrade's own PR is reviewed under the policy on the default branch, the
-  old version's; the new version's rules bind from the first PR after it merges.
+  old version's; the new version's rules bind from the first PR after it merges. The new
+  version's Merge watch may leave that PR's old review bots unjudged, so its Reviewer checks
+  them before the merge.
 - **Repair with drift** holds only the drift found, how it is restored, the selected product
   smoke, and anything unverified.
 

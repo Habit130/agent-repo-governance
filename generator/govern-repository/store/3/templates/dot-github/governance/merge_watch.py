@@ -45,7 +45,8 @@ On `push` to the default branch, for each pushed commit:
   version's review rules. This script judges what every version requires: the Reviewer's
   status from medium, and a Merge summary for the tier and head with a `Required reviews:`
   line of any kinds. Its review bots follow rules this script doesn't hold, so they aren't
-  judged, and the run says so in a `NOTE` line. A base record that can't be read or doesn't
+  judged, an accepted transition exception: that PR's Reviewer checks them before the merge.
+  The run says so in a `NOTE` line. A base record that can't be read or doesn't
   parse enables no provider, so its bot slots read as missing, a false miss.
 
 On `workflow_run`, a push-triggered run on the default branch of any workflow but Merge watch

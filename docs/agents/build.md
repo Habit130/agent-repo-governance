@@ -644,7 +644,10 @@ is the full statement; in short:
 - A merge whose base record is below version 3, such as an Upgrade's own PR, is judged only
   for what every version requires: the `Reviewer` status from medium and a Merge summary for
   the tier and head with a `Required reviews:` line of any kinds. Its review bots follow
-  rules version 3 doesn't hold, so they aren't judged, and the run prints a `NOTE` line. A
+  rules version 3 doesn't hold, so they aren't judged, and the run prints a `NOTE` line.
+  habit accepted this transition exception on
+  [PR #157](https://github.com/Habit130/agent-repo-governance/pull/157#issuecomment-6812806697),
+  verbatim: "同意推荐并继续推进吧"; that PR's Reviewer checks the old bots before the merge. A
   base record that can't be read or doesn't parse enables no bot, a false miss.
 - At low no bot's endpoint is read, so an unreadable one can't fail the run.
 - `decide` takes an optional `notes` list for those lines, and `read` answers a

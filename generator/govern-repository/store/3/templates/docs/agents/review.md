@@ -28,7 +28,7 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 | Reviewer session | — | yes | yes, a different vendor from the Builder |
 | Review bots | — | one: `bot-1` | two, from two providers: `bot-1` and `bot-2` |
 | Security review | — | — | when the tier's reason involves authentication, privacy or secret handling |
-| Merge summary by | Builder | Reviewer | Reviewer, as the high-risk report |
+| Merge summary by | Builder | Reviewer, or the Builder when it is waived | Reviewer, or the Builder when it is waived, as the high-risk report |
 
 - Kinds don't substitute for each other. Minimums are floors: every review that runs on a
   head binds. Two results from one provider on one head fill one bot slot.

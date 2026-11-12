@@ -272,6 +272,8 @@ class VersionThreeReviewProviders(VersionThreeRendered):
         copilot = flat(level_three_section(review, "### Copilot code review"))
         self.assertIn("that session isn't waived while Copilot's is the head's only completed bot review (Waivers)", copilot)
         minimum = flat(level_two_section(review, "## Minimum reviews", "review.md"))
+        self.assertIn("| Merge summary by | Builder | Reviewer, or the Builder when it is waived | Reviewer, or the "
+                      "Builder when it is waived, as the high-risk report |", minimum)
         self.assertIn("a waived Reviewer session leaves the Merge summary to the Builder (Waivers)", minimum)
         summary = flat(review.split("\n## Merge summary\n", 1)[1].split("### Checks first", 1)[0])
         self.assertIn("by the Builder when habit waived the Reviewer session (Waivers)", summary)
