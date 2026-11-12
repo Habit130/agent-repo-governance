@@ -26,10 +26,10 @@ On `push` to the default branch, for each pushed commit:
     record at the merge's base, the commit before the squash commit. A PR can't lower its own
     requirements by changing that list. When GitHub answers that the base holds no record at
     all, as at an Initialize, the record the merge adds names the providers instead: there is
-    no earlier list to lower, and the run says so in a `NOTE` line. With a readable summary, each slot needs the provider
-    it names, and no provider fills two slots; without one, each enabled provider with a
-    completed review fills one slot, in order. `PROVIDERS` holds one reader per provider, and
-    a provider not on the list is never read or reported;
+    no earlier list to lower, and the run says so in a `NOTE` line. With a readable summary,
+    each slot needs the provider it names, and no provider fills two slots; without one, each
+    enabled provider with a completed review fills one slot, in order. `PROVIDERS` holds one
+    reader per provider, and a provider not on the list is never read or reported;
   - **`reviewer`**: the agent account's newest `Reviewer` status on the head is `success`;
   - **`self-verification`**, and **`security`** when the summary lists it, are present when a
     summary that reads writes them `clear`, since nothing else on GitHub shows them;
