@@ -1,6 +1,6 @@
 # Governance model
 
-The language of the governance model that this repository builds: how habit and agents govern habit's GitHub repositories, and how the generator instantiates that model in each one. Every process term here describes governed repositories. This repository runs under its own operating contract, `AGENTS.md` and `docs/agents/`, until its first Initialize moves it onto the model, and until then that contract wins wherever the two differ.
+The language of the governance model that this repository builds: how habit and agents govern habit's GitHub repositories, and how the generator instantiates that model in each one. Every process term here describes governed repositories. Terms follow the newest governance model version in this repository's template store, a draft version included, so a term may describe a rule that a repository on an older version doesn't hold yet. What binds a repository, this one included, is its own `AGENTS.md` and `docs/agents/`.
 
 ## People and accounts
 
@@ -30,7 +30,7 @@ What a session is authorized to do: Planner, Builder or Reviewer.
 The role that turns ideas, incoming issues and maps into specs and tickets with habit.
 
 **Builder**:
-The role that takes one ticket, implements and self-verifies it, and carries its PR to the point where habit can merge.
+The role that takes one delivery, a ticket or a spec approved for whole-spec delivery, implements and self-verifies it, and carries its PR to the point where habit can merge.
 
 **Reviewer**:
 The role that reviews a medium or high PR from a context that didn't write it, and writes the Merge summary once the review is clear.
@@ -45,7 +45,7 @@ A session's two-part request that habit start another session: one part for habi
 The committed file holding one role's detailed workflow, which that role reads at session start.
 
 **Dispatch**:
-habit naming a ticket in a start instruction and starting its Builder. At medium and high it also covers starting the Reviewer, and at high requesting the Codex review bot on each head the Builder names.
+habit naming a ticket, or a spec approved for whole-spec delivery, in a start instruction and starting its Builder. At medium and high it also covers starting the Reviewer and requesting each review bot the Builder names on a head.
 
 **Escalation**:
 A session stopping for habit's decision. Examples: a blocked Builder, a scope change, an unforeseen high, the round cap, an unavailable review bot, a broken governance gate or a denied permission.
@@ -54,10 +54,19 @@ A session stopping for habit's decision. Examples: a blocked Builder, a scope ch
 habit asking a session for a change with no ticket. It makes the session a Builder, which records the request verbatim as an issue.
 
 **Delivery**:
-By default, one ticket built by one fresh Builder session on one branch into one PR. A whole-spec delivery builds a spec's tickets in one PR.
+By default, one ticket built by one fresh Builder session on one branch into one PR. A whole-spec delivery builds a spec's tickets in one PR, and a results-comment ticket is delivered with no PR.
 
 **Delivery shape**:
 Ticket by ticket or whole spec, chosen by the Planner and approved by habit.
+
+**Mid-session request**:
+A session's short request for one thing from habit, after which the session carries on. An escalation is one.
+
+**Final handoff**:
+A session's closing message to habit once it has no next step of its own: the conclusion, what habit does next, and whether the session can be closed.
+
+**Dispatch plan**:
+The Planner's ordered list of an effort's approved tickets, each with its start instruction and the condition for dispatching it. habit dispatches from it, and only a Planner changes it.
 
 ## Work items
 
@@ -72,6 +81,9 @@ The issue describing a build that takes more than one Builder session. `to-spec`
 
 **Agent brief**:
 Triage's comment that turns an incoming issue into a ticket and serves as its contract.
+
+**Results-comment ticket**:
+A ticket that changes nothing in the repository and that habit approved to be delivered with no PR. Its results comment completes it.
 
 **Risk note**:
 A ticket's statement of a risk that the diff won't show.
@@ -95,10 +107,29 @@ A path whose change is at least its floor, medium by default or high where habit
 The one committed list of sensitive paths and their floors, held in the governance record and read by the governance gate.
 
 **Review bot**:
-A PR-level AI reviewer that isn't a governed role session, such as Bugbot or the Codex review bot.
+A PR-level AI reviewer that isn't a governed role session, such as the Codex review bot or Copilot code review.
 
 **Codex review bot**:
 The PR reviewer that answers only habit's request comment and posts as `chatgpt-codex-connector[bot]`. It is distinct from the Codex harness.
+
+**Copilot code review**:
+GitHub Copilot's PR reviewer, which starts only on habit's own request in the browser and posts as `copilot-pull-request-reviewer[bot]`.
+
+**Bot slot**:
+One review bot that a tier requires, named by its position, `bot-1` or `bot-2`, never by a bot. Two slots are filled by two different review bots.
+
+**Enabled review bots**:
+The ordered list of review bots that habit confirmed for a repository. Its order is the order of preference, and a supported bot left off it is disabled.
+
+**Fallback**:
+At medium, the next enabled review bot filling the bot slot when the first was unavailable. High has no fallback.
+
+**Waiver**:
+habit's approval, in habit's own PR comment, that one named required review or verification goes unmet for one PR at one head.
+_Avoid_: reduction, substitution, skip
+
+**Rerun-only pass**:
+A required check that failed on a head and then passed on the same head with nothing repaired. It counts as unrepaired.
 
 **Self-verification**:
 The Builder's check before its PR opens. It runs the ticket's verification commands, then a context-free subagent reviews the committed diff and classifies the tier independently.
@@ -117,7 +148,7 @@ One issue that a review raises, rated Important, Nit or Pre-existing.
 An Important finding that is still open. No PR merges with one on its current head.
 
 **Review state**:
-Clear, flagged or unavailable, for one review on one head.
+Clear, flagged, waived or unavailable, for one review on one head.
 
 **Round**:
 Every required review has run on one head, and the Builder has responded.
@@ -130,7 +161,7 @@ _Avoid_: PR summary
 The Merge summary of a high PR. It adds why the PR is high, the one-way-door rehearsal and the steps awaiting habit's go-ahead.
 
 **Merge handoff**:
-The terminal message that follows the Merge summary, holding the pinned merge command and the next steps the merge opens for habit.
+The final handoff that follows the Merge summary, holding the pinned merge command. It names no next ticket: that comes from the dispatch plan.
 
 **Pinned merge command**:
 habit's merge command, bound to the head the Merge summary describes, so a later push makes it fail.
@@ -190,7 +221,7 @@ The committed file naming the governance model version that a repository's gover
 Governance content identical in every governed repository at one governance model version. Only the generator changes it.
 
 **Confirmed value**:
-A value derived from a repository and confirmed by habit, kept in the governance record: a repository-specific sensitive path, its floor, or a required CI check.
+A value derived from a repository and confirmed by habit, kept in the governance record: a repository-specific sensitive path, its floor, a required CI check, or the enabled review bots.
 
 **Repository-owned content**:
 Governance content written once at Initialize and maintained afterwards by the repository's own PRs.
@@ -204,7 +235,13 @@ The reversible encoding in which this repository keeps skill copies, templates a
 ## Versions
 
 **Governance model version**:
-An increasing integer naming one released state of what the governance model lands in a repository.
+An increasing integer naming one state of what the governance model lands in a repository.
+
+**Draft version**:
+The unreleased governance model version: at most one, the highest in the template store. Changes accumulate in it across PRs until its release.
+
+**Release**:
+Adding a draft version's change note to the default branch, which freezes that version.
 
 **Installed version**:
 The highest released governance model version in the template store that the install put on the machine.
@@ -215,6 +252,9 @@ _Avoid_: release notes, changelog
 
 **Urgent version**:
 A version that fixes a way to break a hard rule, or without which a lagging repository goes wrong with the machine's skills. It upgrades before the repository's next delivery.
+
+**Retired file**:
+A generated file that an earlier version wrote and a later version removes at Upgrade.
 
 **Drift**:
 Any difference between a repository's governance and what its record's version plus its confirmed values produce.
@@ -290,6 +330,9 @@ A standing repository of habit's personal account used only for live checks. It 
 
 **Live check**:
 Verification against real GitHub, in a sandbox repository.
+
+**End-to-end run**:
+A release's Initialize of the public sandbox repository by the releasing commit's generator, followed through to habit's merge and the owner script.
 
 **Release check**:
 The CI check in this repository that freezes released governance model versions.

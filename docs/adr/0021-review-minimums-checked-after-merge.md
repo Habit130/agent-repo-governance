@@ -5,3 +5,5 @@ Merge watch checks each merged head for the reviews its declared tier requires. 
 A review-minimum check joins the governance gate only after a real process miss, by habit's decision and in a new version. Without a standing check, the rule that the gate gains such checks would fire only on escapes.
 
 Decided in [How governance measures itself and turns misses into checks or instructions](https://github.com/Habit130/agent-repo-governance/issues/36).
+
+From version 3, the only such exception is habit's waiver ([ADR 0028](0028-only-habits-exact-head-comment-waives-a-review.md)).
