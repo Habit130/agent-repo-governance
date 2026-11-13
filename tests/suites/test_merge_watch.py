@@ -10,8 +10,10 @@ open. Each case under `tests/fixtures/merge-watch/cases/` holds:
 - `expected`, each record's title and body, written from `issue-tracker.md`'s format.
 
 The record is `tests/fixtures/merge-watch/record.yml`. The script loads from version 1's
-store, beside the gate script it imports. Version 3 cases under `v3/` load its draft
-handler separately and check its records against the version 3 tracker format.
+store, beside the gate script it imports. Version 3 cases under `v3/` load its handler
+separately and check its records against the version 3 tracker format. A version 3 case may
+also hold `not_found`, the paths GitHub answers with its own 404 `Not Found`, which version
+3's reader raises as `NotFound` rather than as a read that failed.
 """
 
 import importlib.util
@@ -83,9 +85,11 @@ def recorded(github):
     return read
 
 
-def recorded_v3(github):
-    """Version 3's reader: a path the case doesn't hold raises version 3's ReadError."""
+def recorded_v3(github, not_found=()):
+    """Version 3's reader: a path in not_found raises NotFound, and any other path the case doesn't hold ReadError."""
     def read(path):
+        if path in not_found:
+            raise watch_v3.NotFound(path)
         if path not in github:
             raise watch_v3.ReadError(path)
         return github[path]
@@ -363,7 +367,8 @@ class VersionThree(unittest.TestCase):
         for path in sorted(os.listdir(V3_CASES)):
             with self.subTest(case=path):
                 case = load(os.path.join(V3_CASES, path))
-                records = watch_v3.decide(case["event_name"], case["event"], agent_account(), recorded_v3(case["github"]))
+                records = watch_v3.decide(case["event_name"], case["event"], agent_account(),
+                                          recorded_v3(case["github"], case.get("not_found", ())))
                 self.assertEqual(records, [dict(item, labels=["miss"]) for item in case["expected"]])
                 for item in records:
                     self.assert_record(item, path, "3")
@@ -371,7 +376,7 @@ class VersionThree(unittest.TestCase):
     def decide_v3(self, name, notes=None, read=None):
         case = load(os.path.join(V3_CASES, name + ".json"))
         return watch_v3.decide(case["event_name"], case["event"], agent_account(),
-                               read or recorded_v3(case["github"]), notes)
+                               read or recorded_v3(case["github"], case.get("not_found", ())), notes)
 
     def test_a_base_below_version_three_is_not_judged_and_says_so(self):
         notes = []
@@ -418,6 +423,40 @@ class VersionThree(unittest.TestCase):
         contents = [path for path in reads if "/contents/" in path]
         self.assertEqual(contents, ["repos/Habit130/tally/contents/.github/governance/record.yml?ref=%s" % case["event"]["before"]])
 
+    def test_a_base_without_a_record_is_judged_by_the_record_the_merge_adds_and_says_so(self):
+        case = load(os.path.join(V3_CASES, "review-base-without-record-initialize.json"))
+        reads, notes = [], []
+        inner = recorded_v3(case["github"], case["not_found"])
+
+        def spy(path):
+            reads.append(path)
+            return inner(path)
+
+        self.assertEqual(self.decide_v3("review-base-without-record-initialize", notes, read=spy), [])
+        record_at = "repos/Habit130/tally/contents/.github/governance/record.yml?ref=%s"
+        self.assertEqual([path for path in reads if "/contents/" in path],
+                         [record_at % case["event"]["before"], record_at % case["event"]["after"]])
+        self.assertEqual(notes, ["#42 merged onto a base with no governance record, so the record it adds names "
+                                 "the enabled review bots."])
+
+    def test_a_base_record_that_fails_to_read_never_reads_the_merged_tree(self):
+        case = load(os.path.join(V3_CASES, "review-base-record-unreadable.json"))
+        github = dict(case["github"], **{"repos/Habit130/tally/contents/.github/governance/record.yml?ref=%s"
+                                         % case["event"]["after"]: "version: 3\n"})
+        reads = []
+        inner = recorded_v3(github)
+
+        def spy(path):
+            reads.append(path)
+            return inner(path)
+
+        notes = []
+        (rec,) = self.decide_v3("review-base-record-unreadable", notes, read=spy)
+        self.assertIn("lacks: bot-1, bot-2.", rec["body"])
+        self.assertEqual([path for path in reads if "/contents/" in path],
+                         ["repos/Habit130/tally/contents/.github/governance/record.yml?ref=%s" % case["event"]["before"]])
+        self.assertEqual(notes, [])
+
     def test_each_later_commit_in_a_push_takes_the_one_before_it_as_its_base(self):
         case = load(os.path.join(V3_CASES, "review-low-no-bot.json"))
         first = "2" * 40
@@ -455,6 +494,39 @@ class VersionThree(unittest.TestCase):
             with self.assertRaises(watch_v3.ReadError):
                 github("repos/o/r/contents/x?ref=abc")
         self.assertEqual(github.unreadable, ["repos/o/r/contents/x?ref=abc: HTTP 404: Not Found"])
+
+    def test_githubs_own_not_found_is_no_failed_read(self):
+        body = (b'{"message":"Not Found","documentation_url":"https://docs.github.com/rest/repos/contents'
+                b'#get-repository-content","status":"404"}')
+
+        def fake(args, stdout, stderr):
+            return subprocess.CompletedProcess(args, 1, body, b"gh: Not Found (HTTP 404)\n")
+
+        github = watch_v3.GitHub()
+        with mock.patch.object(watch_v3.subprocess, "run", fake):
+            with self.assertRaises(watch_v3.NotFound):
+                github("repos/o/r/contents/.github/governance/record.yml?ref=abc")
+        self.assertEqual(github.unreadable, [])
+
+    def test_any_other_answer_to_a_contents_read_is_a_failed_read(self):
+        answers = [
+            (b'{"message":"No commit found for the ref abc","documentation_url":"https://docs.github.com/v3/repos/contents/",'
+             b'"status":"404"}', b"gh: No commit found for the ref abc (HTTP 404)\n"),
+            (b'{"message":"Not Found"}', b"gh: Not Found (HTTP 404)\n"),
+            (b'{"message":"Resource not accessible by integration","status":"403"}', b"gh: (HTTP 403)\n"),
+            (b"", b"error connecting to api.github.com\n"),
+        ]
+        for stdout, stderr in answers:
+            with self.subTest(stdout=stdout):
+                def fake(args, stdout_=None, stderr_=None, **kwargs):
+                    return subprocess.CompletedProcess(args, 1, stdout, stderr)
+
+                github = watch_v3.GitHub()
+                with mock.patch.object(watch_v3.subprocess, "run", fake):
+                    with self.assertRaises(watch_v3.ReadError) as raised:
+                        github("repos/o/r/contents/x?ref=abc")
+                self.assertNotIsInstance(raised.exception, watch_v3.NotFound)
+                self.assertEqual(len(github.unreadable), 1)
 
     def test_the_script_names_no_retired_bot(self):
         source = support.read_text(os.path.join(GOVERNANCE_V3, "merge_watch.py"))

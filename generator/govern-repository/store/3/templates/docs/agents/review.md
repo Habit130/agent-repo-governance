@@ -70,8 +70,10 @@ starting it, in whatever terms the harness's subagent tool uses for passing no h
 The record's confirmed `review_bots` lists the enabled review bots, in preference order. A PR
 is judged by the list on the default branch before it merges: the Builder, the Reviewer and
 Merge watch read it there, never from the PR's head, so a PR that changes the list leaves its
-own requirements as they were. A supported bot missing from the list is disabled: never
-requested, retried, awaited or counted, and never reported as unavailable.
+own requirements as they were. With no record on the default branch at all, as at an
+Initialize, the list the PR adds is the one, since there is no earlier list to lower. A
+supported bot missing from the list is disabled: never requested, retried, awaited or
+counted, and never reported as unavailable.
 
 - **Filling the slots.** At medium the Builder asks for the first enabled bot. When it is
   unavailable, the next enabled bot takes the slot, a **fallback**. At high the Builder asks

@@ -24,10 +24,12 @@ On `push` to the default branch, for each pushed commit:
     provider. One that doesn't read is absent: `merge-summary`;
   - **a bot slot** is filled by a completed review on the head from a provider enabled in the
     record at the merge's base, the commit before the squash commit. A PR can't lower its own
-    requirements by changing that list. With a readable summary, each slot needs the provider
-    it names, and no provider fills two slots; without one, each enabled provider with a
-    completed review fills one slot, in order. `PROVIDERS` holds one reader per provider, and
-    a provider not on the list is never read or reported;
+    requirements by changing that list. When GitHub answers that the base holds no record at
+    all, as at an Initialize, the record the merge adds names the providers instead: there is
+    no earlier list to lower, and the run says so in a `NOTE` line. With a readable summary,
+    each slot needs the provider it names, and no provider fills two slots; without one, each
+    enabled provider with a completed review fills one slot, in order. `PROVIDERS` holds one
+    reader per provider, and a provider not on the list is never read or reported;
   - **`reviewer`**: the agent account's newest `Reviewer` status on the head is `success`;
   - **`self-verification`**, and **`security`** when the summary lists it, are present when a
     summary that reads writes them `clear`, since nothing else on GitHub shows them;
@@ -48,6 +50,12 @@ On `push` to the default branch, for each pushed commit:
   judged, an accepted transition exception: that PR's Reviewer checks them before the merge.
   The run says so in a `NOTE` line. A base record that can't be read or doesn't
   parse enables no provider, so its bot slots read as missing, a false miss.
+
+  "No record" is GitHub's own answer for the path: HTTP 404 with the message `Not Found`
+  (`NotFound`). Any other answer, a missing ref's 404 among them, is a read that failed. The
+  workflow's token reads its own repository, so that answer can't mean the repository itself
+  is out of reach. A base also holds no record after a merged PR deleted it, a change that
+  reaches the record's own sensitive-path floor and is judged by the record before it.
 
 On `workflow_run`, a push-triggered run on the default branch of any workflow but Merge watch
 that concludes `failure`, `cancelled`, `timed_out` or `startup_failure` records an escape,
@@ -112,6 +120,10 @@ REVIEW_BOTS_VERSION = 3
 
 class ReadError(Exception):
     """GitHub couldn't give a fact Merge watch reads."""
+
+
+class NotFound(ReadError):
+    """GitHub answered that the file isn't there: HTTP 404 with the message `Not Found`."""
 
 
 def _same_login(a, b):
@@ -326,11 +338,15 @@ def earlier_version_missing(pull, agent_account, tier):
     return missing + [MERGE_SUMMARY]
 
 
-def enabled_bots(read, repository, base):
-    """(the record's version at the merge's base, its enabled review bots); (None, []) when it can't be read."""
+def enabled_bots(read, repository, ref):
+    """(the record's version at ref, its enabled review bots); (None, []) when it can't be read.
+
+    NotFound when GitHub answers that ref holds no record."""
     try:
-        text = read("repos/%s/contents/%s?ref=%s" % (repository, RECORD, base))
+        text = read("repos/%s/contents/%s?ref=%s" % (repository, RECORD, ref))
         parsed = gate.parse_record(text.encode("utf-8"))
+    except NotFound:
+        raise
     except (ReadError, gate.RecordError, AttributeError):
         return None, []
     return parsed["version"], [bot for bot in parsed["confirmed"].get("review_bots", []) if bot in PROVIDERS]
@@ -401,7 +417,15 @@ def _judge_pull(read, repository, agent_account, pull, squash, base, notes):
         tier, declared = risk["tier"], "declared %s" % risk["tier"]
     else:
         tier, declared = "high", "declared no readable tier (its `Risk:` line is %s), judged at high" % risk
-    version, bots = enabled_bots(read, repository, base)
+    try:
+        version, bots = enabled_bots(read, repository, base)
+    except NotFound:
+        notes.append("#%d merged onto a base with no governance record, so the record it adds names the enabled "
+                     "review bots." % number)
+        try:
+            version, bots = enabled_bots(read, repository, squash)
+        except NotFound:
+            version, bots = None, []
     facts = Pull(read, repository, number, head)
     if version is not None and version < REVIEW_BOTS_VERSION:
         notes.append("#%d merged onto a base whose record is at version %d; its review bots follow that version's "
@@ -521,9 +545,11 @@ class GitHub(object):
 
 
     def _file(self, path):
-        """A file's text at a ref, from the contents API's raw form."""
+        """A file's text at a ref, from the contents API's raw form; NotFound on GitHub's own answer that it isn't there."""
         result = subprocess.run(["gh", "api", "-H", "Accept: application/vnd.github.raw", path],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode != 0 and _not_found(result.stdout):
+            raise NotFound(path)
         try:
             if result.returncode != 0:
                 raise ValueError(" ".join(result.stderr.decode("utf-8", "replace").split()) or "gh failed")
@@ -531,6 +557,15 @@ class GitHub(object):
         except ValueError as error:
             self.unreadable.append("%s: %s" % (path, error))
             raise ReadError(path)
+
+
+def _not_found(stdout):
+    """Whether gh printed GitHub's error body for a missing file: status 404, message `Not Found`."""
+    try:
+        data = json.loads(stdout.decode("utf-8"))
+    except ValueError:
+        return False
+    return isinstance(data, dict) and data.get("status") == "404" and data.get("message") == "Not Found"
 
 
 def _post(repository, rec):

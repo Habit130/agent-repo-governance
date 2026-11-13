@@ -7,11 +7,14 @@
                    sandbox PR, and hand habit the pinned merge command, the owner-script command
                    and each probe's commands
   probe            step 5: run the named probes and post their results on this repository's PR
-  reset            version 1's cut: open the sandbox PR that returns a sandbox to its seed, and hand
+  reset            a version's cut: open the sandbox PR that returns a sandbox to its seed, and hand
                    habit the pinned merge and the Gate ruleset's disabling
-  end-to-end       version 1's cut: check the reset landed, build the head's generator as a
+  end-to-end       a version's cut: check the reset landed, build the head's generator as a
                    session-only plugin beside a fresh clone, and hand habit the line that starts
                    Claude Code there
+
+The version cut is the highest released one in the store, the generator's at the head for
+`end-to-end`; both name it and its review bots.
 
 Execution runs it as the agent account. habit runs only the printed steps: each command is one
 line with Claude Code's `!` prefix, except `end-to-end`'s start line, which habit runs in a
@@ -43,7 +46,7 @@ for _path in (HERE, os.path.join(REPO, "tests"), SCRIPTS, os.path.join(REPO, "ma
         sys.path.insert(0, _path)
 
 import probes  # noqa: E402
-from govlib import owner, storedform  # noqa: E402
+from govlib import owner, store, storedform  # noqa: E402
 from machinelib import AGENT, MAINTAINER, SANDBOXES  # noqa: E402
 
 THIS_REPOSITORY = "Habit130/agent-repo-governance"
@@ -56,6 +59,10 @@ VERSION_3_PROBES = ("merge-watch-cancelled", "merge-watch-v3-clean", "merge-watc
 V3_REVIEW_BOTS = ["codex", "copilot"]
 # Probes whose legitimate merges move the default branch the gate probes require unchanged.
 MERGING_PROBES = ("merge-watch-clean", "merge-watch-v3-clean", "merge-watch-v3-waived", "merge-watch-v3-miss")
+# What the cut's review bots are called, and the request habit makes for each in the end-to-end run.
+REVIEW_BOT_NAMES = {"codex": "the Codex review bot", "copilot": "Copilot code review"}
+REVIEW_BOT_REQUESTS = {"codex": "a Codex review bot request it hands you",
+                       "copilot": "a Copilot request you make in the browser at the Lite effort"}
 # Step 4 hands habit the owner-script command in every check; its report is this input.
 OWNER_REPORT = "owner_report"
 
@@ -341,7 +348,7 @@ def cmd_probe(args):
     return 0 if all(result.passed for _, result in results) else 1
 
 
-# Version 1's cut (#44 §11): the end-to-end run is an Initialize of the public sandbox, so the
+# A version's cut (#44 §11): the end-to-end run is an Initialize of the public sandbox, so the
 # sandbox returns to its seed first, and habit runs this commit's generator as in the scenarios.
 
 PLUGIN = "cut"
@@ -358,6 +365,26 @@ SCENARIO_SETTINGS = ("GOVERN_SCENARIO_STORE", "GOVERN_SCENARIO_HOME", "GOVERN_SC
 # isolation from user/managed configuration or arbitrary configured instruction imports.
 INSTRUCTION_FILES = ("AGENTS.md", "CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md", ".claude/AGENTS.md",
                      ".claude/rules/**/*.md")
+
+
+def cut_of(root, where="this checkout"):
+    """(the version a cut releases, its review bots): the store's highest released version, which must name its bots."""
+    templates = store.Store(root)
+    try:
+        version = templates.installed_version()
+        bots = templates.manifest(version).get("review_bots") if version else None
+    except store.StoreError as error:
+        raise RunnerError("the template store at %s can't be read: %s" % (where, error))
+    if not version:
+        raise RunnerError("the template store at %s has no released version to cut" % where)
+    if not bots:
+        raise RunnerError("version %d, the highest released at %s, names no review bots, so this runner can't print its "
+                          "review steps" % (version, where))
+    return version, list(bots)
+
+
+def review_bot_names(bots):
+    return " and ".join(REVIEW_BOT_NAMES[bot] for bot in bots)
 
 
 def seed_tree(work):
@@ -394,7 +421,7 @@ def build_plugin(repo, rev, directory):
     os.makedirs(os.path.dirname(manifest))
     with open(manifest, "w") as handle:
         json.dump({"name": PLUGIN, "version": "1.0.0",
-                   "description": "This commit's govern-repository, for version 1's end-to-end run only"}, handle, indent=2)
+                   "description": "This commit's govern-repository, for a cut's end-to-end run only"}, handle, indent=2)
         handle.write("\n")
     return skill
 
@@ -434,6 +461,7 @@ def rulesets_of(repository):
 
 
 def cmd_reset(args):
+    version, bots = cut_of(STORE)
     repository = sandbox_name(args.sandbox)
     gate = rulesets_of(repository).get("Gate")
     work = tempfile.mkdtemp(prefix="sandbox-reset-")
@@ -460,16 +488,17 @@ def cmd_reset(args):
     finally:
         shutil.rmtree(work, True)
     body = (
-        "Returns the sandbox to its seed, `tests/fixtures/repositories/sandbox/` in %s, so that version 1's end-to-end "
+        "Returns the sandbox to its seed, `tests/fixtures/repositories/sandbox/` in %s, so that version %d's end-to-end "
         "run starts an Initialize. It removes every governance file and `live-checks/`. Opened by "
         "`tests/live/live.py reset`; the head's tree is the seed's `%s`.\n\n"
         "Risk: high — removes the sandbox's governance, the gate workflow, the owner script and the record among them\n"
-        % (THIS_REPOSITORY, seed)
+        % (THIS_REPOSITORY, version, seed)
     )
     url = run(["gh", "pr", "create", "--repo", repository, "--base", default_branch, "--head", branch,
                "--title", "Reset the sandbox to its seed", "--body-file", "-"], stdin=body).stdout.strip()
     number = int(url.rstrip("/").split("/")[-1])
     print("Opened %s from %s at %s, whose tree is the seed's %s." % (url, branch, head[:12], seed[:12]))
+    print("Version %d's cut, whose review bots are %s." % (version, review_bot_names(bots)))
     print("")
     print("habit's steps, in order:")
     print("1. Once the reset PR's checks pass, merge it with the ! prefix in Claude Code:")
@@ -509,17 +538,21 @@ def cmd_end_to_end(args):
     except BaseException:
         shutil.rmtree(directory, True)
         raise
-    print("%s's %s is at the seed (%s), so the run is an Initialize; its rulesets are %s; the plugin's generator is %s."
-          % (repository, state["default_branch"], state["sandbox_head"][:12],
-             ", ".join("%s %s" % item for item in sorted(state["rulesets"].items())), state["identity"][:12]))
+    print("%s's %s is at the seed (%s), so the run is version %d's Initialize; its rulesets are %s; the plugin's "
+          "generator is %s." % (repository, state["default_branch"], state["sandbox_head"][:12], state["version"],
+                                ", ".join("%s %s" % item for item in sorted(state["rulesets"].items())),
+                                state["identity"][:12]))
     print("State: %s" % os.path.join(directory, "end-to-end.json"))
     print("")
     print("habit's steps, in order:")
     print("1. In a terminal of your own, not with Claude Code's ! prefix, start Claude Code there with this commit's generator:")
     print("   %s" % start_command(state["checkout"], state["plugin"]))
     print("2. Type %s, never the bare /govern-repository, and answer its confirmation." % SKILL_COMMAND)
-    print("3. Then follow that run's Builder to the end: its Codex review bot request, the Reviewer it names, the high-risk")
-    print("   report, the pinned merge, saying merged in its terminal, and the owner-script command it hands over.")
+    print("3. Then follow that run's Builder to the end:")
+    for bot in state["review_bots"]:
+        print("   - %s;" % REVIEW_BOT_REQUESTS[bot])
+    print("   - a Reviewer in another vendor's harness started with exactly the start instruction the run prints, nothing added;")
+    print("   - the high-risk report, the pinned merge, saying merged in its terminal, and the owner-script command it hands over.")
     return 0
 
 
@@ -549,8 +582,11 @@ def launch(pr, commit, repository, directory):
                           % (repository, "; ".join(wrong)))
     # The seed holds no record, so the run is an Initialize. The plugin is the commit's generator exported clean, so
     # its identity is the head's that the run's issue must name, whatever an ignored file in this checkout holds.
-    head_identity = identity(os.path.join(build_plugin(REPO, commit, plugin), "scripts", "govern.py"))
-    state = {"pr": pr, "commit": commit, "identity": head_identity, "sandbox": repository,
+    skill = build_plugin(REPO, commit, plugin)
+    version, bots = cut_of(os.path.join(skill, "store"), commit[:12])
+    head_identity = identity(os.path.join(skill, "scripts", "govern.py"))
+    state = {"pr": pr, "commit": commit, "identity": head_identity, "version": version, "review_bots": bots,
+             "sandbox": repository,
              "default_branch": default_branch, "sandbox_head": run(["git", "-C", checkout, "rev-parse", "HEAD"]).stdout.strip(),
              "rulesets": enforcement, "checkout": checkout, "plugin": plugin,
              "started": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}
