@@ -624,14 +624,14 @@ expectations, retaining immutable v1 coverage while checking the candidate.
 ## Merge watch
 
 The rendered `.github/workflows/merge-watch.yml` and `.github/governance/merge_watch.py`
-come from version 2's fixed templates under `generator/govern-repository/store/2/templates/`
-(#41 §9). Their behavior is unchanged from version 1. The script's docstring gives what it
+come from version 3's fixed templates under `generator/govern-repository/store/3/templates/`
+(#41 §9), since this repository's Upgrade (#159). The script's docstring gives what it
 records, from which facts, and how an unreadable fact yields a false miss record; it never
 blocks anything and is never a required check.
 
-**Version 3 (#148)** judges reviews by responsibility, not provider. This repository runs
-version 2's Merge watch until its Upgrade (#159). Version 3's docstring is the full
-statement; in short:
+**Version 3 (#148)** judges reviews by responsibility, not provider, where versions 1 and 2
+read Bugbot and the Codex review bot by name. Version 3's docstring is the full statement;
+in short:
 
 - The tier requires `self-verification` and `merge-summary` at every tier, `bot-1` and
   `reviewer` from medium, and `bot-2` at high. No bot is looked for at low.
@@ -679,12 +679,14 @@ statement; in short:
     named by its file path.
   - `workflow_run` fires only for a workflow file on the default branch, its `branches`
     filter names the branch the triggering run ran on, and chaining stops at three levels.
-  - Bugbot's check run comes from the app `cursor` (PR #85's head `bfec87b`), and Cursor
-    concludes a finished review `success`, `neutral` (findings, a newer commit's
-    cancellation, or an internal error) or `failure` (findings, when set to fail on them),
-    and never `skipped` (Cursor's Bugbot docs, CI check statuses, read 2026-10-30); the Codex
-    review bot keeps one summary comment per PR by `chatgpt-codex-connector[bot]`, edited in
-    place, holding `<!-- codex-review-state:v1 {...} -->` (PRs #66 to #85).
+  - The Codex review bot keeps one summary comment per PR by
+    `chatgpt-codex-connector[bot]`, edited in place, holding
+    `<!-- codex-review-state:v1 {...} -->` (PRs #66 to #85).
+  - History, read by versions 1 and 2 only, which version 3 retired: Bugbot's check run came
+    from the app `cursor` (PR #85's head `bfec87b`), and Cursor concluded a finished review
+    `success`, `neutral` (findings, a newer commit's cancellation, or an internal error) or
+    `failure` (findings, when set to fail on them), and never `skipped` (Cursor's Bugbot
+    docs, CI check statuses, read 2026-10-30).
   - The list endpoint `commits/{ref}/statuses` gives each status's `creator`, newest first;
     the combined `commits/{ref}/status` doesn't, so the script reads the list (GitHub's REST
     reference for commit statuses, read 2026-10-30).
@@ -701,8 +703,8 @@ statement; in short:
 
 ## The owner script and live checks
 
-The rendered `.github/governance/owner.sh` comes from version 2's fixed template
-`generator/govern-repository/store/2/templates/dot-github/governance/owner.sh` (#44 §7). Its
+The rendered `.github/governance/owner.sh` comes from version 3's fixed template
+`generator/govern-repository/store/3/templates/dot-github/governance/owner.sh` (#44 §7). Its
 docstring gives the preconditions, the order of writes and the exit codes (0 in place, 1 an
 item failed or missing, 2 stopped before any write).
 
@@ -928,7 +930,8 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
 ## Merge watch's live check
 
 `tests/live/probes/merge_watch.py` holds version 2's Merge watch probes (#41 §9, seam 4),
-the version this repository runs until #159:
+the version this repository ran until its Upgrade (#159), kept for sandbox checks of
+version 2's render:
 `merge-watch-clean` for a head with every review, and `merge-watch-miss` for a planted miss.
 Its docstring gives each step and what each assertion reads. `merge_watch_v3.py` holds
 version 3's (#148), described below under Version 3's review probes.

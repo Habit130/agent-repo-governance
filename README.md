@@ -55,7 +55,7 @@ GitHub:https://github.com/habit130/agent-repo-governance
 
 ## 项目状态
 
-本仓库已完成 Initialize，目前运行 version 2，升级到 version 3 是单独的 ticket（#159）。治理工具和 machine skills 的安装流程已交付。后续修复与改进仍按独立 ticket 推进；其他仓库的治理落地分别交付。
+本仓库已完成 Initialize，并已升级到 version 3（#159）。治理工具和 machine skills 的安装流程已交付。后续修复与改进仍按独立 ticket 推进；其他仓库的治理落地分别交付。
 
 ## Agent instructions
 
