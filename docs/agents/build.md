@@ -29,9 +29,9 @@ worked.
 | 8. Committed whitespace | `git show --format= --check HEAD` | After committing. | Working: no output |
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
 
-With version 3 released and its review-provider coverage (#140, #135, #148, #158), stored
-form checks 620 paths; compatibility checks 87 Python files and 8 shell entries. Linux runs
-1044 tests and the full suite runs 1439.
+With version 3 released and its review-provider coverage (#140, #135, #148, #158), and
+unpublished v4 present (#168), stored form checks 639 paths; compatibility checks 89 Python
+files and 9 shell entries. Linux runs 1044 tests and the full suite runs 1439.
 The table's Initialize counts are historical.
 
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
