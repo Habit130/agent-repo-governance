@@ -56,11 +56,8 @@ class FreshMachine(InstallCase):
     """A fresh machine, with the Codex stand-in replaying real output (CRIT-1, CRIT-3, CRIT-4)."""
 
     def test_copied_draft_does_not_advance_installed_governance_version(self):
-        # Every real version is released, so the source carries a planted draft one past the highest.
+        # The source carries the real store's draft, version 4.
         source_store = os.path.join(self.source, "generator", "govern-repository", "store")
-        self.assertEqual(support.plant_draft(source_store), 4)
-        support.git(self.source, "add", "-A")
-        support.git(self.source, "commit", "-q", "-m", "a draft")
         env = self.env()
         code, out = self.install(env)
         self.assertEqual(code, 0, out)
