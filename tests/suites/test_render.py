@@ -117,11 +117,9 @@ class RenderCase(support.TempDirCase):
 
 class Rendering(RenderCase):
     def test_real_store_draft_opt_in_is_per_call_and_released_repositories_still_compare(self):
-        # Every real version is released, so the draft is planted: a copy of the highest without its note.
+        # The real store's draft, version 4, in a copy so the test can check nothing was written.
         root = self.path("draft-store")
         shutil.copytree(support.REAL_STORE, root)
-        draft = support.plant_draft(root)
-        self.assertEqual(draft, 4)
         code, facts = support.govern(["store", "--store", root])
         self.assertEqual((code, facts["versions"], facts["released"], facts["installed_version"]),
                          (0, [1, 2, 3, 4], [1, 2, 3], 3))

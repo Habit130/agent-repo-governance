@@ -1763,8 +1763,7 @@ class EndToEndCommands(support.TempDirCase):
     def test_the_cut_reads_the_highest_released_version_and_its_review_bots(self):
         store = self.path("store")
         shutil.copytree(support.REAL_STORE, store)
-        self.assertEqual(live.cut_of(store), (3, ["codex", "copilot"]))
-        support.plant_draft(store)
+        # The real store's draft, version 4, is passed over.
         self.assertEqual(live.cut_of(store), (3, ["codex", "copilot"]))
         self.assertEqual(live.review_bot_names(["copilot"]), "Copilot code review")
         os.remove(os.path.join(store, "3", "change-note.md"))

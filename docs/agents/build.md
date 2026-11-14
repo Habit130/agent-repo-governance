@@ -80,14 +80,12 @@ Offline coverage uses Seam E's additive `release-check/drafts/lifecycle.json`: d
 creation, two updates, release, frozen-tree mutations and invalid layouts. Each transition
 also runs through depth-two PR-merge and squash-push histories with CI's base/head contract.
 The historical `new-version-without-note.json` now expects notes PASS;
-`second-version-while-first-unreleased.json` remains rejected. Every real version is
-released since version 3's cut (#158), so the draft tests plant one in a copy of the store:
-`support.plant_draft` copies the highest version as the next one, without its change note.
-The render suite copies the real store, released v1 to v3, plants draft v4, and exercises
-the store/render/compare entries; explicit v1 to v3 comparisons pass, and ordinary
-comparison targets installed v3, reporting drift for v1 and v2. It checks no-write draft
-refusals and opt-in isolation. The machine-install suite proves copied draft bytes, the
-planted v4, leave the installed version at v3 in a disposable home.
+`second-version-while-first-unreleased.json` remains rejected. The render suite copies the
+real store, including released v1 to v3 and unpublished v4 (#168), and exercises the
+store/render/compare entries; explicit v1 to v3 comparisons pass, and ordinary comparison
+targets installed v3, reporting drift for v1 and v2. It checks no-write draft refusals and
+opt-in isolation. The machine-install suite proves copied draft bytes leave the installed
+version at v3 in a disposable home, and the live runner's cut passes over the draft.
 
 Version 3 (#148) adds two optional manifest keys, which `store.py` checks:
 `review_bots`, the review bots the version supports (`codex`, `copilot`), and `retired`,
