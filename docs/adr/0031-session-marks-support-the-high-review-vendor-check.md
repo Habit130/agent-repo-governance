@@ -1,0 +1,13 @@
+# Session marks support the high review's different-vendor rule
+
+In version 4, Builder and Reviewer sessions record their harness, model and model vendor on GitHub. Every Builder session that pushed a commit to the PR stays in its evidence comment across heads and takeovers; each Reviewer records its own mark in its Comment review. At high, the Reviewer compares its vendor with every such Builder's before reviewing, stopping for habit when any Builder mark is missing or any vendor matches. At medium it records its own mark without comparing vendors or requiring Builder marks.
+
+The high tier already required a different vendor, but the Builder's terminal handoff and habit's memory were the only evidence. All sessions use one agent account, and a takeover can lose the earlier Builder's identity. Session marks make the comparison available to the Reviewer without the Builder's conversation. The comparison concerns the maker of the model actually running, not the harness or the service routing to that model.
+
+A mark uses only the model detail supplied by the session's own system prompt, retaining a family name when no finer name is given. A harness configuration file gives a default, not necessarily the running model. When the prompt is insufficient, or an earlier Builder's mark is missing, habit supplies the answer and the mark attributes it to habit.
+
+This is an instruction-only guard against honest mistakes, not proof of identity or protection against deliberate misstatements. Every Builder marks at every tier, Reviewers mark at medium and high, and only high compares vendors. Self-verification subagents and review bots are outside its scope. The high-risk report names each Builder's and the Reviewer's vendor; the gate, Merge watch and the Merge summary's fixed lines do not check marks.
+
+No new waiver is created. If no different vendor is available, only habit's existing exact-head `reviewer` waiver, subject to all its existing limits, permits proceeding without a qualifying Reviewer. A same-vendor review that runs still binds, but does not meet the requirement: the summary records `reviewer=waived`, the Builder writes the high-risk report, and its evidence discloses the vendor overlap. The waiver's authority remains [ADR 0028](0028-only-habits-exact-head-comment-waives-a-review.md).
+
+Decided in [the session-mark ticket](https://github.com/Habit130/agent-repo-governance/issues/171) as part of [the version 4 planning round](https://github.com/Habit130/agent-repo-governance/issues/167). Version 4 is an unpublished draft; until a repository adopts it, its existing different-vendor rule continues through the Builder's Reviewer handoff, with no interim session-mark requirement.
