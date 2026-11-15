@@ -94,7 +94,9 @@ V3_REVIEW_BOTS = ["codex", "copilot"]
 
 
 class VersionThreeRendered(support.TempDirCase):
-    """Version 3 rendered into the tally sample: the approved rendered-text seam."""
+    """Render the selected version once into tally at the approved rendered-text seam."""
+
+    VERSION = 3
 
     def setUp(self):
         super().setUp()
@@ -103,7 +105,7 @@ class VersionThreeRendered(support.TempDirCase):
         with open(confirmed, "w") as handle:
             json.dump(dict(materialized.tally_fixture()["confirmed"], review_bots=V3_REVIEW_BOTS), handle)
         code, facts = support.govern([
-            "render", "--version", "3", "--allow-unreleased", "--dest", self.dest,
+            "render", "--version", str(self.VERSION), "--allow-unreleased", "--dest", self.dest,
             "--repository", "Habit130/tally", "--default-branch", "main", "--confirmed", confirmed,
         ])
         self.assertEqual(code, 0, facts)
@@ -115,14 +117,7 @@ class VersionThreeRendered(support.TempDirCase):
 class VersionFourSessionMarks(VersionThreeRendered):
     """#171: the session policy at the existing rendered-text seam, not model behavior."""
 
-    def setUp(self):
-        super().setUp()
-        code, facts = support.govern([
-            "render", "--version", "4", "--allow-unreleased", "--dest", self.dest,
-            "--repository", "Habit130/tally", "--default-branch", "main",
-            "--confirmed", self.path("confirmed.json"),
-        ])
-        self.assertEqual(code, 0, facts)
+    VERSION = 4
 
     def test_builder_marks_have_one_definition_and_survive_takeover_and_head_updates(self):
         review = self.text("docs/agents/review.md")
@@ -164,6 +159,16 @@ class VersionFourSessionMarks(VersionThreeRendered):
             self.assertNotIn("other than yours", self.text(path))
         minimum = flat(level_two_section(self.text("docs/agents/review.md"), "## Minimum reviews", "review.md"))
         self.assertIn("different from every Builder session", minimum)
+
+    def test_every_new_head_reenters_the_vendor_check_before_the_next_round(self):
+        reviewer = self.text("docs/agents/reviewer.md")
+        steps = level_two_section(reviewer, "## Steps", "reviewer.md")
+        pin = flat(steps.split("2. **Pin the head.**", 1)[1].split("3. **Worktree.**", 1)[0])
+        self.assertIn("restart at step 1", pin)
+        new_head = flat(level_two_section(reviewer, "## A new head", "reviewer.md"))
+        for phrase in ("restart at step 1", "before reviewing", "new Builder marks",
+                       "`review.md`'s Rounds", "new Comment review", "new `Reviewer` status"):
+            self.assertIn(phrase, new_head)
 
     def test_same_vendor_waiver_stays_in_waivers_and_fixed_summary_lines_stay_unchanged(self):
         review = self.text("docs/agents/review.md")

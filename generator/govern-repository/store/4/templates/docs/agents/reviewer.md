@@ -34,7 +34,7 @@ rests on what GitHub holds.
    supplies the missing mark; if no different vendor is available, see `review.md`, Waivers.
    At medium, record your own mark without comparing vendors or requiring Builder marks.
 2. **Pin the head.** Note the PR's exact head SHA. Everything below concerns that head; if
-   it moves, start again on the new one.
+   it moves, restart at step 1 for the new head.
 3. **Worktree.** Check the head out in your own detached worktree:
    `git fetch origin pull/<n>/head`, then `git worktree add --detach <path> FETCH_HEAD`.
 4. **Classify the tier** yourself against the Code Review Rules. It can only rise: when
@@ -78,7 +78,8 @@ PR, tickets and labels as they are (`AGENTS.md`, Hard limits).
 
 ## A new head
 
-After a repair push or a sync, review the new head as `review.md`'s Rounds say, with a new
+After a repair push or a sync, restart at step 1 before reviewing the new head, so the
+check includes any new Builder marks. Review as `review.md`'s Rounds say, with a new
 Comment review and a new `Reviewer` status on it.
 
 ## Escalations
