@@ -184,6 +184,40 @@ class ProbeSelection(support.TempDirCase):
                                 self.assertEqual(handle.read(), "existing work\n")
 
 
+class ChosenVersion(support.TempDirCase):
+    """`prepare --version` renders a later version, the unpublished draft included, for any probes (#169)."""
+
+    def test_a_chosen_version_replaces_the_probes_own_and_never_goes_below_it(self):
+        gates = ["gate-trigger", "gate-reruns", "gate-source", "gate-rulesets", "owner-state", "owner-rerun"]
+        self.assertEqual(live.model_version(gates), 2)
+        self.assertEqual(live.model_version(gates, 4), 4)
+        self.assertEqual(live.model_version(["merge-watch-v3-clean"], 4), 4)
+        with self.assertRaises(live.RunnerError):
+            live.model_version(["merge-watch-v3-clean"], 2)
+        self.assertEqual(live.confirmed_values(4, live.seed_fixture())["review_bots"], ["codex", "copilot"])
+
+    def test_probes_read_the_prepared_version_back(self):
+        state = {"sandbox": PUBLIC, "visibility": "public", "commit": COMMIT, "sandbox_pr": 1,
+                 "probes": ["gate-trigger", "owner-state"]}
+        self.assertNotIn("review_bots", live.context(state, self.tmp).confirmed)
+        state["version"] = 4
+        self.assertEqual(live.context(state, self.tmp).confirmed["review_bots"], ["codex", "copilot"])
+
+    def test_prepare_refuses_a_version_below_the_probes_before_tools_or_setup(self):
+        import contextlib
+        import io
+
+        args = ["prepare", "--pr", "7", "--sandbox", "public", "--probe", "merge-watch-v3-clean", "--version", "2"]
+        out = io.StringIO()
+        with mock.patch.object(live, "run", side_effect=AssertionError("tool before refusal")) as run, \
+                mock.patch.object(live, "check_directory", side_effect=AssertionError("persistent setup")) as setup, \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(live.main(args), 2)
+        run.assert_not_called()
+        setup.assert_not_called()
+        self.assertIn("--version 2 is below version 3", out.getvalue())
+
+
 class OwnerReport(ProbeCase):
     def test_a_first_run_on_a_public_repository_passes(self):
         context = self.context("public", {"owner_report": owner_report(self.path("run"), "public-from-nothing")})

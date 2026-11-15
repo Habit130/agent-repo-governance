@@ -259,6 +259,61 @@ class VersionTwoApplication(OwnerCase):
         self.assertEqual(ow.writes(result["log"]), [])
 
 
+EVENT_POLICY_SUBJECT = "pull_request_target 事件策略"
+# Version 4's sentence on what a missing event policy blocks (#169), written out here rather than read from the script.
+EVENT_POLICY_CONSEQUENCE = (
+    "自 2026-12-02 起，没有这条策略时 GitHub 会在此仓库拦截 pull_request_target，governance-gate 就不会报告结果，"
+    "设好这条策略之前任何 PR 都无法合并"
+)
+EVENT_POLICY_BY_HAND = "请在 Settings → Actions → Policies 手动设一次："
+EVENT_POLICY_RERUN = "设好后重新运行本脚本确认"
+V4_TEMPLATE = os.path.join(support.REAL_STORE, "4", "templates", "dot-github", "governance", "owner.sh")
+
+
+class VersionFourEventPolicy(OwnerCase):
+    """Version 4's missing event policy says what it blocks; its private skip line is version 3's."""
+
+    def event_policy_line(self, case):
+        result = self.run_case(case)
+        self.assert_safe(result)
+        (detail,) = [detail for _, subject, detail in ms.lines(result["out"]) if subject == EVENT_POLICY_SUBJECT]
+        return result, detail
+
+    def test_a_missing_policy_says_what_it_blocks_with_the_manual_steps(self):
+        for name in ("v4-event-policy-api-cannot-create", "v4-event-policy-unreadable"):
+            result, detail = self.event_policy_line(ow.load_case(name))
+            self.assertEqual(result["code"], 1, name)
+            self.assertIn("[缺失] %s：" % EVENT_POLICY_SUBJECT, result["out"], name)
+            self.assertIn(EVENT_POLICY_CONSEQUENCE, detail, name)
+            self.assertIn(EVENT_POLICY_BY_HAND, detail, name)
+            self.assertTrue(detail.endswith(EVENT_POLICY_RERUN), detail)
+
+    def test_version_3s_missing_policy_line_stays_as_it_was(self):
+        case = ow.load_case("v4-event-policy-api-cannot-create")
+        case["version"] = 3
+        _, detail = self.event_policy_line(case)
+        self.assertNotIn("2026-12-02", detail)
+
+    def test_every_missing_line_in_the_template_carries_the_consequence(self):
+        program = embedded_program(support.read_text(V4_TEMPLATE))
+        missing = [line for line in program.splitlines() if 'report.line("缺失", EVENT_POLICY_SUBJECT' in line]
+        self.assertEqual(len(missing), 3, missing)
+        for line in missing:
+            self.assertIn("EVENT_POLICY_MISSING", line)
+            self.assertNotIn("EVENT_POLICY_BY_HAND", line)
+
+    def test_a_private_repositorys_skip_line_is_version_3s(self):
+        details = []
+        for version in (3, 4):
+            case = ow.load_case("private-from-nothing")
+            case["version"] = version
+            result, detail = self.event_policy_line(case)
+            self.assertIn("[已跳过] %s：" % EVENT_POLICY_SUBJECT, result["out"])
+            details.append(detail)
+        self.assertEqual(details[0], details[1])
+        self.assertNotIn("2026-12-02", details[1])
+
+
 class Program(unittest.TestCase):
     def test_supplemental_corpus_has_exact_generated_pairs_and_ruby_verdicts(self):
         from ref_patterns import generate_pairs, SEEDS

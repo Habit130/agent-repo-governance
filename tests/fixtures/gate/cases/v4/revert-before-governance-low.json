@@ -1,0 +1,41 @@
+{
+  "description": "Version 4: the same revert of a commit whose parent holds no record, declared low, is not a pure revert, and the high floor fails it.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "record_in": "govern",
+  "default": [
+    {
+      "name": "sensitive",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2 sensitive\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    },
+    {
+      "name": "govern",
+      "files": {}
+    },
+    {
+      "name": "later",
+      "files": {
+        "docs/guide.md": "guide, later\n"
+      }
+    }
+  ],
+  "branch_from": "later",
+  "head": [
+    {
+      "name": "revert",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    }
+  ],
+  "body": "Risk: low — reverting the squash commit\nReverts: {sensitive}\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}

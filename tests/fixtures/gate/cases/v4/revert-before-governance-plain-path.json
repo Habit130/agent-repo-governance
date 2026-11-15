@@ -1,0 +1,39 @@
+{
+  "description": "Version 4: a revert of a commit from before the record that touches no sensitive path, declared low, passes, not as a pure revert.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "record_in": "govern",
+  "default": [
+    {
+      "name": "plain",
+      "files": {
+        "src/report.ts": "report, changed\n"
+      }
+    },
+    {
+      "name": "govern",
+      "files": {}
+    },
+    {
+      "name": "later",
+      "files": {
+        "docs/guide.md": "guide, later\n"
+      }
+    }
+  ],
+  "branch_from": "later",
+  "head": [
+    {
+      "name": "revert",
+      "files": {
+        "src/report.ts": "report\n"
+      }
+    }
+  ],
+  "body": "Risk: low — reverting the squash commit\nReverts: {plain}\n",
+  "expected": {
+    "passed": true,
+    "rules": [],
+    "pure_revert": false
+  }
+}

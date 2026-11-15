@@ -198,7 +198,8 @@ continue from the step the PR has reached.
   commit on a fresh branch, and name the commit's full SHA in the body's `Reverts:` line,
   where the PR template's comment says.
 - Once the governance gate confirms it, it takes the low path, even on sensitive paths.
-  Unconfirmed, it is tiered as usual.
+  Unconfirmed, it is tiered as usual. The gate confirms only a commit that landed under
+  governance, one whose parent already holds the governance record.
 - A revert follows the same issue rules as any other change.
 - A revert without a `Reverts:` line: open a miss record for the reverted PR when you open
   yours.

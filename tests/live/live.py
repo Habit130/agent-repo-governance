@@ -197,13 +197,19 @@ def chosen_probes(names, sandbox):
 
 def context(state, directory):
     fixture = seed_fixture()
-    confirmed = confirmed_values(model_version(state.get("probes") or []), fixture)
+    confirmed = confirmed_values(state.get("version") or model_version(state.get("probes") or []), fixture)
     return probes.Context(state["sandbox"], state["visibility"], fixture["default_branch"], confirmed,
                           state["commit"], state.get("sandbox_pr"), directory)
 
 
-def model_version(names):
-    return 3 if any(name in VERSION_3_PROBES for name in names) else VERSION
+def model_version(names, chosen=None):
+    """The version a check renders: the probes' own, or a later one the check chose, such as an unpublished draft."""
+    needed = 3 if any(name in VERSION_3_PROBES for name in names) else VERSION
+    if chosen is None:
+        return needed
+    if chosen < needed:
+        raise RunnerError("--version %d is below version %d, which these probes need" % (chosen, needed))
+    return chosen
 
 
 def confirmed_values(version, fixture):
@@ -216,7 +222,7 @@ def confirmed_values(version, fixture):
 
 def cmd_prepare(args):
     chosen = chosen_probes(args.probe, args.sandbox)
-    version = model_version(args.probe)
+    version = model_version(args.probe, args.version)
     cancelled_setup = None
     commit = run(["git", "-C", REPO, "rev-parse", "HEAD"]).stdout.strip()
     if run(["git", "-C", REPO, "status", "--porcelain"]).stdout.strip():
@@ -272,7 +278,7 @@ def cmd_prepare(args):
               stdin=body).stdout.strip()
     number = int(url.rstrip("/").split("/")[-1])
     state = {"pr": args.pr, "commit": commit, "sandbox": repository, "visibility": args.sandbox, "branch": branch,
-             "sandbox_pr": number, "sandbox_head": head, "probes": args.probe}
+             "sandbox_pr": number, "sandbox_head": head, "probes": args.probe, "version": version}
     with open(os.path.join(directory, "prepared.json"), "w") as handle:
         json.dump(state, handle, indent=2, sort_keys=True)
     print("Opened %s from %s at %s, rendering %s." % (url, branch, head[:12], commit[:12]))
@@ -609,6 +615,7 @@ def build_parser():
     preparing.add_argument("--sandbox", choices=("public", "private"), required=True)
     preparing.add_argument("--probe", action="append", required=True, help="a probe this check will run; repeat")
     preparing.add_argument("--directory", help="the check directory; default: a new temporary one")
+    preparing.add_argument("--version", type=int, help="render this version, unpublished included; default: the probes' own")
     preparing.set_defaults(run=cmd_prepare)
     probing = commands.add_parser("probe", help="step 5")
     probing.add_argument("--state", required=True, help="prepared.json in the check directory")

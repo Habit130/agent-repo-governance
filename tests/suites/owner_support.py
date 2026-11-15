@@ -7,6 +7,8 @@ itself. The live check's probes compare the sandbox with the same target.
 A case under `tests/fixtures/owner/cases/` names a starting GitHub state and the writes and
 report lines it expects:
 
+- `version`: the version rendered, 1 when absent; a version whose manifest lists review bots
+  takes them all as its confirmed `review_bots`.
 - `visibility`: `public` or `private`. `account`: the login `gh api user` answers.
 - `checkout`: `head`, `behind` (GitHub's default branch has moved on) or `modified` (a
   tracked file is changed in the working tree).
@@ -347,8 +349,13 @@ def prepare(root, case):
     fixture = materialized.tally_fixture()
     worktree = materialized.tally_worktree(root)
     confirmed = os.path.join(root, "confirmed.json")
+    values = {"sensitive_paths": fixture["confirmed"]["sensitive_paths"], "required_checks": case.get("required_checks", [])}
+    with open(os.path.join(support.REAL_STORE, version, "manifest.json"), encoding="utf-8") as handle:
+        bots = json.load(handle).get("review_bots")
+    if bots:
+        values["review_bots"] = bots
     with open(confirmed, "w") as handle:
-        json.dump({"sensitive_paths": fixture["confirmed"]["sensitive_paths"], "required_checks": case.get("required_checks", [])}, handle)
+        json.dump(values, handle)
     code, facts = support.govern(
         ["render", "--store", support.REAL_STORE, "--version", version, "--allow-unreleased", "--dest", worktree,
          "--repository", REPOSITORY, "--default-branch", BRANCH, "--confirmed", confirmed]
