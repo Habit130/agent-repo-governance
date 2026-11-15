@@ -30,9 +30,9 @@ worked.
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. | Working: empty on `main` |
 
 With version 3 released and its review-provider coverage (#140, #135, #148, #158), and
-unpublished v4 present (#168), stored form checks 639 paths; compatibility checks 89 Python
-files and 9 shell entries. With v4's revert rule and event-policy line (#169), Linux runs
-1075 tests and the full suite runs 1479.
+unpublished v4 present (#168), compatibility checks 89 Python files and 9 shell entries.
+With v4's revert rule and event-policy line and their fixtures (#169), stored form checks
+646 paths, Linux runs 1075 tests and the full suite runs 1479.
 The table's Initialize counts are historical.
 
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
