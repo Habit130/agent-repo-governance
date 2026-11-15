@@ -1,0 +1,35 @@
+{
+  "description": "Version 4: a revert of the commit that first added the record, declared low, is not a pure revert, and the record's medium floor fails it.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "record_in": "govern",
+  "default": [
+    {
+      "name": "later",
+      "files": {
+        "docs/guide.md": "guide, later\n"
+      }
+    },
+    {
+      "name": "govern",
+      "files": {}
+    }
+  ],
+  "branch_from": "govern",
+  "head": [
+    {
+      "name": "revert",
+      "files": {
+        ".github/governance/record.yml": null
+      }
+    }
+  ],
+  "body": "Risk: low — reverting the squash commit\nReverts: {govern}\n",
+  "expected": {
+    "passed": false,
+    "rules": [
+      "Floors"
+    ],
+    "pure_revert": false
+  }
+}

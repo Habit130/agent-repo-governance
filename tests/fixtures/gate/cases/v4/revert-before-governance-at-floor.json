@@ -1,0 +1,39 @@
+{
+  "description": "Version 4: that revert of a commit from before the record, declared at the high floor, passes, not as a pure revert.",
+  "author": "Habit098",
+  "owner": "Habit130",
+  "record_in": "govern",
+  "default": [
+    {
+      "name": "sensitive",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2 sensitive\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    },
+    {
+      "name": "govern",
+      "files": {}
+    },
+    {
+      "name": "later",
+      "files": {
+        "docs/guide.md": "guide, later\n"
+      }
+    }
+  ],
+  "branch_from": "later",
+  "head": [
+    {
+      "name": "revert",
+      "files": {
+        "src/auth/login.ts": "login 1\nlogin 2\nlogin 3\nlogin 4\nlogin 5\n"
+      }
+    }
+  ],
+  "body": "Risk: high — reverting the squash commit\nReverts: {sensitive}\n",
+  "expected": {
+    "passed": true,
+    "rules": [],
+    "pure_revert": false
+  }
+}

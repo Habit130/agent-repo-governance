@@ -1,0 +1,75 @@
+{
+  "description": "Version 4: GitHub's API can't read the event policies on a public repository: the policy is reported missing, in Chinese, with what a missing policy blocks from 2026-12-02 and habit's one-time setting, nothing is written, and the run exits 1.",
+  "version": 4,
+  "visibility": "public",
+  "required_checks": [
+    "test"
+  ],
+  "start": "target",
+  "github": {
+    "event_policy": "unreadable"
+  },
+  "exit": 1,
+  "report": [
+    [
+      "通过",
+      "账户"
+    ],
+    [
+      "通过",
+      "副本"
+    ],
+    [
+      "通过",
+      "记录"
+    ],
+    [
+      "已就位",
+      "Actions 可运行工作流"
+    ],
+    [
+      "已就位",
+      "Gate 规则集"
+    ],
+    [
+      "已就位",
+      "Merge 规则集"
+    ],
+    [
+      "已就位",
+      "History 规则集"
+    ],
+    [
+      "已就位",
+      "main 的经典分支保护"
+    ],
+    [
+      "已就位",
+      "仅 squash 合并"
+    ],
+    [
+      "已就位",
+      "合并后删除 head 分支"
+    ],
+    [
+      "已就位",
+      "auto-merge 关闭"
+    ],
+    [
+      "已就位",
+      "Actions 不能创建或批准 PR"
+    ],
+    [
+      "已就位",
+      "secret scanning"
+    ],
+    [
+      "已就位",
+      "push protection"
+    ],
+    [
+      "缺失",
+      "pull_request_target 事件策略"
+    ]
+  ]
+}

@@ -8,10 +8,14 @@ under `tests/fixtures/gate/cases/` builds a repository under the system temporar
   takes the case's `default` commits;
 - the head branches from the commit `branch_from` names and takes the case's `head` commits;
 - a commit's `files` map paths to content, or to null for a deletion;
+- `record_in`, when a case gives it, names the default commit that adds `record.yml`, and the
+  first commit holds `base.json`'s tree alone, so the commits before it predate governance;
 - `{name}` in the body becomes that commit's SHA.
 
 `expected` names the failed rules in order, by the label each failure line starts with, and
-whether the PR is a pure revert. The gate script loads from version 1's store.
+whether the PR is a pure revert. The cases directly under `cases/` were written for version 1
+and are judged by version 1's gate script and by version 4's; those under `cases/v4/` by
+version 4's alone.
 """
 
 import json
@@ -29,8 +33,10 @@ import support
 from standins import environment
 
 gate = parsers.gate
+gate_v4 = parsers.load_gate(4)
 FIXTURES = os.path.join(support.FIXTURES, "gate")
 CASES = os.path.join(FIXTURES, "cases")
+V4_CASES = os.path.join(CASES, "v4")
 RECORD = ".github/governance/record.yml"
 WORKFLOW = ".github/workflows/governance-gate.yml"
 SCRIPT = ".github/governance/gate.py"
@@ -58,10 +64,12 @@ def build(root, case):
     """The case's repository: (repo, the default branch's head, the PR's head, SHAs by commit name)."""
     repo = support.init_repo(tempfile.mkdtemp(prefix="repo-", dir=root))
     base = load(os.path.join(FIXTURES, "base.json"))["files"]
-    files = dict(base, **{RECORD: support.read_text(os.path.join(FIXTURES, "record.yml"))})
+    record = {RECORD: support.read_text(os.path.join(FIXTURES, "record.yml"))}
+    files = dict(base) if case.get("record_in") else dict(base, **record)
     shas = {"base": apply(repo, files, "base")}
     for commit in case["default"]:
-        shas[commit["name"]] = apply(repo, commit["files"], commit["name"])
+        changes = dict(commit["files"], **record) if commit["name"] == case.get("record_in") else commit["files"]
+        shas[commit["name"]] = apply(repo, changes, commit["name"])
     default_head = support.git(repo, "rev-parse", "HEAD").strip()
     support.git(repo, "checkout", "-q", "-b", "pr", shas[case["branch_from"]])
     for commit in case["head"]:
@@ -85,30 +93,37 @@ class GateCase(support.TempDirCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def judge(self, name):
-        case = load(os.path.join(CASES, name + ".json"))
+    def judge(self, name, script=gate, cases=CASES):
+        case = load(os.path.join(cases, name + ".json"))
         repo, default_head, head, shas = build(self.tmp, case)
-        result = gate.verdict(repo, case["author"], case["owner"], body_of(case, shas), default_head, head)
+        result = script.verdict(repo, case["author"], case["owner"], body_of(case, shas), default_head, head)
         return case, result
 
 
 class SeamOne(GateCase):
-    """Filled below: one test per case file."""
+    """Filled below: one test per case file and gate script that judges it."""
 
 
-def _add_case(name):
+def _add_case(name, label, script, cases):
     def test(self):
-        case, result = self.judge(name)
+        case, result = self.judge(name, script, cases)
         rules = [line.split(":", 1)[0] for line in result["failures"]]
         got = {"passed": result["passed"], "rules": rules, "pure_revert": result["pure_revert"]}
         self.assertEqual(got, case["expected"], result["failures"])
 
-    test.__doc__ = "gate case %s" % name
-    setattr(SeamOne, "test_" + re.sub(r"[^A-Za-z0-9]+", "_", name), test)
+    test.__doc__ = "gate case %s, judged by version %s" % (name, label[1:])
+    setattr(SeamOne, "test_%s_%s" % (label, re.sub(r"[^A-Za-z0-9]+", "_", name)), test)
 
 
-for _file in sorted(os.listdir(CASES)):
-    _add_case(_file[: -len(".json")])
+def _case_names(directory):
+    return [name[: -len(".json")] for name in sorted(os.listdir(directory)) if name.endswith(".json")]
+
+
+for _name in _case_names(CASES):
+    _add_case(_name, "v1", gate, CASES)
+    _add_case(_name, "v4", gate_v4, CASES)
+for _name in _case_names(V4_CASES):
+    _add_case(_name, "v4", gate_v4, V4_CASES)
 
 
 class FailureLines(GateCase):
@@ -138,6 +153,19 @@ class FailureLines(GateCase):
         self.assertNotIn('"src/token.ts"', line)
         self.assertIn("high floor", line)
         self.assertIn("`Risk: high — <reason>`", line)
+
+    def test_version_4s_floor_line_says_a_named_commit_from_before_governance_wasnt_confirmed(self):
+        for name in ("revert-before-governance-low", "revert-of-the-governing-commit"):
+            case, result = self.judge(name, gate_v4, V4_CASES)
+            (line,) = result["failures"]
+            self.assertNotIn("\n", line)
+            self.assertTrue(line.startswith("Floors: "), line)
+            self.assertIn("isn't confirmed as a pure revert: its parent holds no %s, so the commit predates governance. Fix: " % RECORD, line)
+            self.assertRegex(line, r"`Reverts: [0-9a-f]{40}` isn't confirmed")
+        for name in ("revert-before-governance-at-floor", "revert-before-governance-plain-path"):
+            self.assertEqual(self.judge(name, gate_v4, V4_CASES)[1]["failures"], [], name)
+        _, result = self.judge("revert-with-resolved-conflict", gate_v4)
+        self.assertNotIn("predates governance", result["failures"][0])
 
     def test_each_risk_line_problem_has_its_own_line(self):
         self.assertIn("no `Risk:` line", self.failures("risk-missing")[0])
