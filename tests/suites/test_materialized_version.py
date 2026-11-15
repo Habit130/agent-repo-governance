@@ -114,6 +114,74 @@ class VersionThreeRendered(support.TempDirCase):
         return support.read_text(os.path.join(self.dest, path))
 
 
+class VersionFourSkillInvocations(VersionThreeRendered):
+    """#172: rendered instructions only; no check of messages or model behavior."""
+
+    VERSION = 4
+
+    def test_start_instructions_separate_habits_invocation_from_session_skills(self):
+        habit_skills = {"to-spec", "to-tickets", "triage", "wayfinder", "retro", "implement-spec"}
+        instructions = []
+        for root, _, files in os.walk(self.dest):
+            for name in files:
+                if name.endswith(".md"):
+                    text = support.read_text(os.path.join(root, name))
+                    instructions.extend(re.findall(r"Role: [^`\n]+?Skills: ([^.]+)\.", flat(text)))
+        self.assertTrue(instructions)
+        for skills in instructions:
+            self.assertFalse(habit_skills.intersection(s.strip() for s in skills.split(",")), skills)
+        for path in ("AGENTS.md", "docs/agents/planner.md", "docs/agents/builder.md"):
+            text = flat(self.text(path))
+            self.assertIn("habit invokes: implement-spec.", text, path)
+            self.assertIn("Role: Builder. Spec: #<n>. Skills: tdd.", text, path)
+
+    def test_harness_translations_limit_one_paste_to_tested_first_messages(self):
+        start = flat(level_two_section(self.text("AGENTS.md"), "## How to start", "AGENTS.md"))
+        claude = start.split("**Claude Code**:", 1)[1].split("**OpenCode**:", 1)[0]
+        self.assertIn("first message", claude)
+        self.assertIn("one paste is verified", claude)
+        self.assertIn("`/name <arguments>`", claude)
+        for harness, following in (("OpenCode", "deepseekharness"), ("deepseekharness", "Codex harness")):
+            translation = start.split("**%s**:" % harness, 1)[1].split("**%s**:" % following, 1)[0]
+            self.assertIn("One paste is unverified", translation)
+            self.assertIn("two-step form", translation)
+        codex = start.split("**Codex harness**:", 1)[1]
+        for phrase in ("`$name` in both the app and the CLI", "app's first message",
+                       "one paste is verified", "CLI one paste is unverified", "two-step form"):
+            self.assertIn(phrase, codex)
+        self.assertNotIn("`@name`", codex)
+        translation = flat(self.text(".claude/CLAUDE.md"))
+        for phrase in ("first message", "`/name <arguments>`", "one paste is verified",
+                       "terminal argument is unverified", "two-step form"):
+            self.assertIn(phrase, translation)
+
+    def test_invocation_rule_is_central_and_requests_route_to_it(self):
+        agents = self.text("AGENTS.md")
+        talking = level_two_section(agents, "## Talking to habit and to other agents", "AGENTS.md")
+        self.assertIn("**User-invoked skills**:", talking)
+        rule = flat(talking.split("**User-invoked skills**:", 1)[1].split("\n- ", 1)[0])
+        for phrase in ("any message", "explicit action of habit's", "whole invocation line",
+                       "arguments", "which session", "stops", "mid-session request",
+                       "started for work", "without habit's invocation",
+                       "never reads the skill's text to follow it", "replaces the invocation"):
+            self.assertIn(phrase, rule)
+        for path in ("docs/agents/planner.md", "docs/agents/builder.md", "docs/agents/reviewer.md"):
+            skills = flat(level_two_section(self.text(path), "## Skills this role relies on", path))
+            self.assertIn("User-invoked skills", skills, path)
+            self.assertNotIn("never reads the skill's text", self.text(path), path)
+        planner = flat(self.text("docs/agents/planner.md"))
+        self.assertIn("Reaching `to-spec`, `to-tickets`, `triage` or `wayfinder` mid-session", planner)
+        self.assertIn("habit invokes: retro #<miss>.", planner)
+        self.assertIn("canonical form", planner)
+        self.assertIn("terminal translation", planner)
+        handoff = self.text("docs/agents/handoff.md")
+        for section in ("## Three kinds of message", "## A final handoff"):
+            self.assertIn("User-invoked skills", level_two_section(handoff, section, "handoff.md"))
+        for phrase in ("invocation alone in its own block", "Typing it is habit's reply",
+                       "no other words", "本 session", "/to-spec", "$retro #51"):
+            self.assertIn(phrase, flat(handoff))
+
+
 class VersionFourSessionMarks(VersionThreeRendered):
     """#171: the session policy at the existing rendered-text seam, not model behavior."""
 

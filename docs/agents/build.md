@@ -98,6 +98,14 @@ the rendered policy's source, retention, stop conditions and existing-waiver bou
 and that the Merge summary's fixed lines stay unchanged. These are text checks, not model
 behavior evidence. This draft adds no rule to a repository until it adopts version 4.
 
+Version 4's skill-invocation wording (#172) separates habit's invocations from a start
+instruction's session-called skills. Its canonical form is translated for the named
+harness: one paste as a fresh session's first message is verified by habit for Claude Code
+and the Codex app; the other forms remain unverified and use two steps. The
+`materialized-version` suite checks the rendered start forms, harness boundaries and
+references to the single invocation rule. These are offline text checks, not checks of
+messages or model behavior. No existing fixture's name, path or verdict changes.
+
 Version 3 (#148) adds two optional manifest keys, which `store.py` checks:
 `review_bots`, the review bots the version supports (`codex`, `copilot`), and `retired`,
 generated paths an earlier version wrote that this one removes (`.cursor/BUGBOT.md`). When a

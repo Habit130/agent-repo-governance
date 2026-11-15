@@ -46,8 +46,14 @@ This is Builder execution work, separate from the Planner's wayfinder tickets.
 ## Whole-spec delivery
 
 A spec habit approved for whole-spec delivery (`planner.md`, Delivery shape) is one
-delivery, started with `Role: Builder. Spec: #<n>. Skills: implement-spec, tdd.`. The Steps
-below apply to it as to a ticket, with these differences:
+delivery, with this canonical start form (`AGENTS.md`, How to start):
+
+```text
+habit invokes: implement-spec.
+Role: Builder. Spec: #<n>. Skills: tdd.
+```
+
+The Steps below apply to it as to a ticket, with these differences:
 
 - **Claim** the spec and each of its tickets.
 - **Build** with `implement-spec`: subagents build the tickets, each in its own worktree, in
@@ -101,7 +107,7 @@ below apply to it as to a ticket, with these differences:
 
 ## The Reviewer handoff
 
-A start request in `AGENTS.md`'s two parts:
+A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
 
 - **"给 habit"** names the harness, the model and why.
   - At medium the same model may review. At high choose a vendor different from every
@@ -220,4 +226,5 @@ original with a link to it.
 ## Skills this role relies on
 
 - habit invokes: `implement-spec`, for a whole-spec delivery only.
+  Apply `AGENTS.md`, Talking to habit and to other agents, User-invoked skills.
 - The session calls: `tdd`, `code-review`, `pr`, `diagnosing-bugs`, `codebase-design`, `prototype`, `research`, `grilling`, `writing-for-agents`.

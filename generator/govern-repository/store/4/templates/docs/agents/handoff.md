@@ -18,6 +18,10 @@ Only the last two have rules.
    options in the terminal, and one "Waiting on habit: …" line on the PR or ticket.
 3. **A final handoff**: after it the session itself has no next step (below).
 
+For a mid-session skill request, apply `AGENTS.md`, Talking to habit and to other agents,
+User-invoked skills. Put the invocation alone in its own block and say to type it in this
+session. Typing it is habit's reply; no other words are needed.
+
 ## A final handoff
 
 It comes only at these moments:
@@ -32,7 +36,8 @@ It comes only at these moments:
 It always holds, in this order:
 
 1. **The conclusion.**
-2. **What habit does next**, numbered in order, each command whole.
+2. **What habit does next**, numbered in order, each command whole. For skill invocations,
+   apply `AGENTS.md`, Talking to habit and to other agents, User-invoked skills.
 3. **This session**: whether it can be closed, or stays open, with what it waits for and the
    words habit says on return.
 
@@ -60,8 +65,9 @@ unfinished.
     ticket: one sentence saying the Planner must rearrange, with a Planner start request,
     and no order of their own.
 - **The dispatch plan** is the Planner's: `planner.md`, Tickets. It is a list, never a
-  table, and each start instruction stands alone in its own block so habit can copy it whole.
-  Every start request follows the same layout.
+  table, and each terminal start form stands alone in its own block so habit can copy it
+  whole. Its GitHub copy uses the canonical form (`AGENTS.md`, How to start).
+  Every start request follows `AGENTS.md`'s layout for its harness.
 - **More than one start request** is ready at once only when the tickets surely can run
   together: no shared files and no shared resource. When unsure, one. Each start request
   still holds one start instruction.
@@ -75,6 +81,32 @@ A mid-session request, from a Builder:
 
 ```text
 Builder → habit：ticket 要求的 Actions secret SYNC_TOKEN 还不存在。请在仓库的 Actions secrets 设置页面按这个名字添加它，完成后回复"继续"。
+```
+
+A Planner's mid-session request in Claude Code:
+
+```text
+Planner → habit：范围已经明确，下一步需要 habit 在本 session 调用 to-spec。请发送下面这一行，发送即为回复，无需补充其他文字。
+```
+
+```text
+/to-spec
+```
+
+A start request from a Codex app session, for a retro on miss #51. Its canonical GitHub
+form is `habit invokes: retro #51.` followed by `Role: Planner. Issue: #51.`, and its
+terminal form is:
+
+```text
+Builder → habit：miss #51 已记录，需要 Planner 处理。
+
+给 habit：在本仓库的 Codex app Local mode 新开 chat，使用当前模型，由 Planner 处理该 miss；不占用共享资源。habit 将下面整块作为首条消息发送，同时调用 retro 并启动 Planner。
+粘贴给 agent：
+```
+
+```text
+$retro #51
+Role: Planner. Issue: #51.
 ```
 
 A Builder's final handoff to the Reviewer, at medium. The start instruction is a block of
