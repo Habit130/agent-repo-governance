@@ -25,7 +25,7 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 | | low | medium | high |
 | --- | --- | --- | --- |
 | Self-verification | yes | yes | yes |
-| Reviewer session | — | yes | yes, a different vendor from the Builder |
+| Reviewer session | — | yes | yes, a vendor different from every Builder session that pushed to the PR, judged by the session marks |
 | Review bots | — | one: `bot-1` | two, from two providers: `bot-1` and `bot-2` |
 | Security review | — | — | when the tier's reason involves authentication, privacy or secret handling |
 | Merge summary by | Builder | Reviewer, or the Builder when it is waived | Reviewer, or the Builder when it is waived, as the high-risk report |
@@ -41,6 +41,27 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
   copy, the result attached and its recovery performed once; every finding answered, Nits
   included; only the high part in the PR; habit's go-ahead after merge for each
   one-way-door step (`builder.md`, After merge).
+
+## Session marks
+
+A session mark is the session's own statement, for sessions and habit to read. It guards
+against honest mistakes, not deliberate misstatements; Merge watch and the governance gate
+do not check it. Each Builder marks at every tier, and each Reviewer at medium and high:
+
+```text
+Session: <role> — <harness>, <model>, <vendor> (<source>)
+```
+
+The role is Builder or Reviewer. The harness is where the session runs; the model is its
+name in the session's own system prompt; the vendor is the model's maker, not a service
+routing to it. The source is `from the harness` when that prompt supplies the model and
+its vendor follows from the name. Record only the detail supplied: a family such as GPT-6
+stays a family, never a guessed finer model name. Read the prompt, never a harness
+configuration file: that file's default can differ from the session's choice.
+
+When the prompt names no model, or its vendor is unclear, the session asks habit in a
+mid-session request and records the answer with `(as habit said)`. The same source applies
+when habit supplies a missing earlier Builder's mark.
 
 ## Rerun-only passes
 
@@ -149,6 +170,12 @@ verification table, for one PR at one head.
   the Merge summary; nor a Reviewer session that a review bot's subsection keeps.
 - **A waived Reviewer session** leaves the Merge summary to the Builder: it runs the checks,
   writes the summary, at high as the high-risk report, and gives the merge handoff.
+- **No different vendor available.** A same-vendor review at high does not meet the
+  Reviewer requirement. Only habit's existing `reviewer` waiver for that head, subject to
+  all the limits here, lets the PR proceed without a qualifying Reviewer. A same-vendor
+  review that runs still binds like any review on the head; the fixed line reads
+  `reviewer=waived`, the Builder writes the high-risk report, and its evidence sentence
+  says that the review ran on a Builder's vendor. If no review ran, say so.
 - No agent writes, edits or widens a waiver, and a waiver authorizes no merge by an agent.
 - Merge watch checks each review waiver's author, head and item after the merge. The Merge
   summary's writer checks a verification waiver the same way, and any condition a review
@@ -188,6 +215,8 @@ narrowest one is an Important finding.
 One PR comment by the Builder, bound to the head it names and updated on every new head:
 
 - the head's full SHA;
+- the session mark of every Builder session that pushed a commit to the PR, at every tier,
+  kept on every head's update (Session marks);
 - each verification command and its result;
 - for a required check that passed after a repair on this head, the failed run, the
   repair and why it fixes that check's failure;
@@ -292,6 +321,8 @@ In Chinese (`AGENTS.md`, Talking to habit and to other agents):
   plain words.
 - **The high-risk report adds** why the change is high, the rehearsal result, and each step
   awaiting habit's go-ahead, with what it does and whether it can be undone.
+  Its evidence item adds one plain sentence naming each Builder's and the Reviewer's vendor,
+  in both the terminal copy and the English copy; when the Reviewer is waived, follow Waivers.
 - **At low**, items 4 and 5 state only checkable facts, and the summary says that no
   reviewer independent of the Builder looked at the change.
 

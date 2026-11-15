@@ -86,7 +86,8 @@ below apply to it as to a ticket, with these differences:
 7. **Open the PR**: push, then fill `.github/PULL_REQUEST_TEMPLATE.md`, which wins over
    `pr`'s shape, writing Summary and Merge Danger with `pr`, and the `Risk:` line
    (`review.md`, The tier). Post the evidence comment (`review.md`, Evidence comment), and
-   update it on every new head before requesting its reviews.
+   update it on every new head before requesting its reviews, keeping every Builder's
+   session mark (`review.md`, Session marks).
 8. **Review**: from medium, get each bot slot's review on every head that needs one, through
    habit's requests (`review.md`, Review bots); answer findings and run rounds (`review.md`).
 9. **Hand over**: for each required check's rerun-only pass on the head (`review.md`,
@@ -103,9 +104,10 @@ below apply to it as to a ticket, with these differences:
 A start request in `AGENTS.md`'s two parts:
 
 - **"给 habit"** names the harness, the model and why.
-  - At medium the same model may review. At high it is a vendor other than yours: Claude
-    Code runs Anthropic models, deepseekharness DeepSeek, the Codex harness OpenAI, and
-    OpenCode whatever it is set to.
+  - At medium the same model may review. At high choose a vendor different from every
+    Builder mark on the PR (`review.md`, Session marks). As a hint for where to open it:
+    Claude Code runs Anthropic models, deepseekharness DeepSeek, the Codex harness OpenAI,
+    and OpenCode whatever it is set to. The model's vendor decides, not the harness.
   - For a Codex harness session, a Local-mode chat in this repository's directory, not
     Worktree mode.
   - Each review bot request the tier's slots need on this head, as `review.md`'s Review bots
@@ -191,6 +193,10 @@ acceptance.
 A new Builder session may take over an open PR. The ticket, the PR and their comments are
 the whole handoff: assign yourself, check the PR's branch out in your own worktree, and
 continue from the step the PR has reached.
+
+The taking-over Builder adds its own mark to the evidence comment and keeps the earlier
+ones (`review.md`, Session marks). When an earlier Builder that pushed left no mark, it
+asks habit and records the answer with `(as habit said)`.
 
 ## Pure reverts
 

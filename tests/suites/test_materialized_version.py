@@ -94,7 +94,9 @@ V3_REVIEW_BOTS = ["codex", "copilot"]
 
 
 class VersionThreeRendered(support.TempDirCase):
-    """Version 3 rendered into the tally sample: the approved rendered-text seam."""
+    """Render the selected version once into tally at the approved rendered-text seam."""
+
+    VERSION = 3
 
     def setUp(self):
         super().setUp()
@@ -103,13 +105,85 @@ class VersionThreeRendered(support.TempDirCase):
         with open(confirmed, "w") as handle:
             json.dump(dict(materialized.tally_fixture()["confirmed"], review_bots=V3_REVIEW_BOTS), handle)
         code, facts = support.govern([
-            "render", "--version", "3", "--allow-unreleased", "--dest", self.dest,
+            "render", "--version", str(self.VERSION), "--allow-unreleased", "--dest", self.dest,
             "--repository", "Habit130/tally", "--default-branch", "main", "--confirmed", confirmed,
         ])
         self.assertEqual(code, 0, facts)
 
     def text(self, path):
         return support.read_text(os.path.join(self.dest, path))
+
+
+class VersionFourSessionMarks(VersionThreeRendered):
+    """#171: the session policy at the existing rendered-text seam, not model behavior."""
+
+    VERSION = 4
+
+    def test_builder_marks_have_one_definition_and_survive_takeover_and_head_updates(self):
+        review = self.text("docs/agents/review.md")
+        marks = flat(level_two_section(review, "## Session marks", "review.md"))
+        for phrase in ("Session: <role> — <harness>, <model>, <vendor> (<source>)",
+                       "system prompt", "configuration file", "model's maker",
+                       "from the harness", "as habit said", "family", "asks habit",
+                       "honest mistakes", "Merge watch and the governance gate do not check"):
+            self.assertIn(phrase, marks)
+        evidence = flat(level_two_section(review, "## Evidence comment", "review.md"))
+        self.assertIn("every Builder session that pushed a commit to the PR", evidence)
+        builder = self.text("docs/agents/builder.md")
+        takeover = flat(level_two_section(builder, "## Takeover", "builder.md"))
+        for phrase in ("adds its own mark", "keeps the earlier ones", "asks habit", "(as habit said)"):
+            self.assertIn(phrase, takeover)
+        for path in ("docs/agents/builder.md", "docs/agents/reviewer.md"):
+            self.assertIn("`review.md`, Session marks", self.text(path))
+            self.assertNotIn("Session: <role>", self.text(path))
+
+    def test_high_reviewer_checks_all_builders_before_review_and_on_a_tier_rise(self):
+        reviewer = self.text("docs/agents/reviewer.md")
+        steps = level_two_section(reviewer, "## Steps", "reviewer.md")
+        first = flat(steps.split("2. **Pin the head.**", 1)[0])
+        for phrase in ("1. **Check session marks.**", "state your own mark",
+                       "At high", "every Builder session that pushed", "missing",
+                       "stop before reviewing", "Waiting on habit:",
+                       "At medium, record your own mark without comparing vendors"):
+            self.assertIn(phrase, first)
+        classify = flat(steps.split("4. **Classify the tier**", 1)[1].split("5. **Review in full**", 1)[0])
+        self.assertIn("rises to high", classify)
+        self.assertIn("post the tier finding", classify)
+        self.assertIn("repeat step 1", classify)
+        start = flat(level_two_section(reviewer, "## Start", "reviewer.md"))
+        self.assertIn("Before reading the diff", start)
+        builder = self.text("docs/agents/builder.md")
+        handoff = flat(level_two_section(builder, "## The Reviewer handoff", "builder.md"))
+        self.assertIn("every Builder mark", handoff)
+        for path in ("docs/agents/builder.md", "docs/agents/reviewer.md", "docs/agents/review.md"):
+            self.assertNotIn("other than yours", self.text(path))
+        minimum = flat(level_two_section(self.text("docs/agents/review.md"), "## Minimum reviews", "review.md"))
+        self.assertIn("different from every Builder session", minimum)
+
+    def test_every_new_head_reenters_the_vendor_check_before_the_next_round(self):
+        reviewer = self.text("docs/agents/reviewer.md")
+        steps = level_two_section(reviewer, "## Steps", "reviewer.md")
+        pin = flat(steps.split("2. **Pin the head.**", 1)[1].split("3. **Worktree.**", 1)[0])
+        self.assertIn("restart at step 1", pin)
+        new_head = flat(level_two_section(reviewer, "## A new head", "reviewer.md"))
+        for phrase in ("restart at step 1", "before reviewing", "new Builder marks",
+                       "`review.md`'s Rounds", "new Comment review", "new `Reviewer` status"):
+            self.assertIn(phrase, new_head)
+
+    def test_same_vendor_waiver_stays_in_waivers_and_fixed_summary_lines_stay_unchanged(self):
+        review = self.text("docs/agents/review.md")
+        waivers = flat(level_two_section(review, "## Waivers", "review.md"))
+        for phrase in ("same-vendor review at high does not meet", "existing `reviewer` waiver",
+                       "for that head", "still binds", "`reviewer=waived`",
+                       "Builder writes the high-risk report", "on a Builder's vendor"):
+            self.assertIn(phrase, waivers)
+        self.assertEqual(review.count("same-vendor review at high"), 1)
+        # The machine-read summary protocol remains exactly the released version's.
+        old = support.read_text(os.path.join(support.REAL_STORE, "3", "templates", "docs/agents/review.md"))
+        self.assertEqual(level_three_section(review, "### On the PR"),
+                         level_three_section(old, "### On the PR"))
+        terminal = flat(level_three_section(review, "### In the terminal"))
+        self.assertIn("one plain sentence naming each Builder's and the Reviewer's vendor", terminal)
 
 
 class VersionThreeRerunPolicy(VersionThreeRendered):

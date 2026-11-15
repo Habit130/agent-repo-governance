@@ -31,8 +31,9 @@ worked.
 
 With version 3 released and its review-provider coverage (#140, #135, #148, #158), and
 unpublished v4 present (#168), compatibility checks 89 Python files and 9 shell entries.
-With v4's revert rule and event-policy line and their fixtures (#169), stored form checks
-646 paths, Linux runs 1075 tests and the full suite runs 1479.
+With v4's revert rule and event-policy line and their fixtures (#169), and the session-mark
+policy checks (#171), stored form checks 646 paths, Linux runs 1079 tests and the full
+suite runs 1483.
 The table's Initialize counts are historical.
 
 `tests/run.py suites <name>...` runs single suites while working. The copies check and
@@ -87,6 +88,15 @@ store/render/compare entries; explicit v1 to v3 comparisons pass, and ordinary c
 targets installed v3, reporting drift for v1 and v2. It checks no-write draft refusals and
 opt-in isolation. The machine-install suite proves copied draft bytes leave the installed
 version at v3 in a disposable home, and the live runner's cut passes over the draft.
+
+Version 4's session marks (#171) record each pushing Builder's harness, model, vendor and
+source in the evidence comment, preserved through Takeover and head updates. The Reviewer
+marks its Comment review at medium and high, and at high checks every Builder's vendor
+before reviewing. The mark comes from the session's system prompt or habit; it is read by
+sessions and habit, not the gate or Merge watch. The `materialized-version` suite checks
+the rendered policy's source, retention, stop conditions and existing-waiver boundary,
+and that the Merge summary's fixed lines stay unchanged. These are text checks, not model
+behavior evidence. This draft adds no rule to a repository until it adopts version 4.
 
 Version 3 (#148) adds two optional manifest keys, which `store.py` checks:
 `review_bots`, the review bots the version supports (`codex`, `copilot`), and `retired`,
