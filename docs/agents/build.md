@@ -88,6 +88,15 @@ targets installed v3, reporting drift for v1 and v2. It checks no-write draft re
 opt-in isolation. The machine-install suite proves copied draft bytes leave the installed
 version at v3 in a disposable home, and the live runner's cut passes over the draft.
 
+Version 4's session marks (#171) record each pushing Builder's harness, model, vendor and
+source in the evidence comment, preserved through Takeover and head updates. The Reviewer
+marks its Comment review at medium and high, and at high checks every Builder's vendor
+before reviewing. The mark comes from the session's system prompt or habit; it is read by
+sessions and habit, not the gate or Merge watch. The `materialized-version` suite checks
+the rendered policy's source, retention, stop conditions and existing-waiver boundary,
+and that the Merge summary's fixed lines stay unchanged. These are text checks, not model
+behavior evidence. This draft adds no rule to a repository until it adopts version 4.
+
 Version 3 (#148) adds two optional manifest keys, which `store.py` checks:
 `review_bots`, the review bots the version supports (`codex`, `copilot`), and `retired`,
 generated paths an earlier version wrote that this one removes (`.cursor/BUGBOT.md`). When a
