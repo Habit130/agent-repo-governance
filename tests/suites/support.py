@@ -120,22 +120,6 @@ def read_text(path):
         return handle.read().decode("utf-8")
 
 
-def plant_draft(store):
-    """A draft one past the store's highest version, a copy of that version without its change note; its number.
-
-    Once every real version is released, tests of the draft paths use it in a copy of the store."""
-    highest = max(int(name) for name in os.listdir(store) if name.isdigit())
-    draft = os.path.join(store, str(highest + 1))
-    shutil.copytree(os.path.join(store, str(highest)), draft)
-    os.remove(os.path.join(draft, "change-note.md"))
-    manifest = os.path.join(draft, "manifest.json")
-    with open(manifest, encoding="utf-8") as handle:
-        text = handle.read()
-    with open(manifest, "w", encoding="utf-8") as handle:
-        handle.write(text.replace('"version": %d,' % highest, '"version": %d,' % (highest + 1), 1))
-    return highest + 1
-
-
 class TempDirCase(unittest.TestCase):
     """A test case with a fresh temporary directory, removed afterwards."""
 
