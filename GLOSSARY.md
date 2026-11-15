@@ -23,6 +23,12 @@ habit or the agent account: an author whose PRs are reviewed in place rather tha
 **Session**:
 One agent context in a harness. It holds exactly one role, and its subagents act in that role.
 
+**Session mark**:
+A Builder or Reviewer session's statement on GitHub of its role, harness, model, model vendor and whether the source is the harness or habit. It is a statement of identity, not proof of it.
+
+**Model vendor**:
+The maker of the model actually running in a session, distinct from its harness or a service routing to the model.
+
 **Role**:
 What a session is authorized to do: Planner, Builder or Reviewer.
 
@@ -36,10 +42,13 @@ The role that takes one delivery, a ticket or a spec approved for whole-spec del
 The role that reviews a medium or high PR from a context that didn't write it, and writes the Merge summary once the review is clear.
 
 **Start instruction**:
-The text that starts a session, the same in every harness, naming its role, its target and its skills.
+The harness-neutral text naming a session's role, target and, in `Skills:`, only the skills the session calls. When habit must invoke a skill, the canonical form precedes it with a separate statement of that action.
 
 **Start request**:
-A session's two-part request that habit start another session: one part for habit, and one start instruction to paste. The Reviewer handoff is one.
+A session's request that habit start another session, with one part for habit and one block to paste for the named harness. When a needed skill invocation is unverified in one paste, a third part holds habit's invocation after the session starts.
+
+**User-invoked skill**:
+A skill whose invocation belongs to habit, distinct from the skills a session calls. Naming it in a start instruction is not its invocation.
 
 **Role file**:
 The committed file holding one role's detailed workflow, which that role reads at session start.
@@ -139,7 +148,7 @@ The Builder's head-bound PR comment recording the commands run, their results an
 _Avoid_: Self-verification evidence
 
 **Reviewer handoff**:
-The Builder's two-part request that habit start a Reviewer: one part for habit, one to paste to the Reviewer.
+The Builder's start request that habit open the Reviewer session for its PR.
 
 **Finding**:
 One issue that a review raises, rated Important, Nit or Pre-existing.
@@ -167,7 +176,7 @@ The final handoff that follows the Merge summary, holding the pinned merge comma
 habit's merge command, bound to the head the Merge summary describes, so a later push makes it fail.
 
 **Pure revert**:
-A PR that exactly undoes one merged squash commit and nothing else, as the governance gate confirms.
+A PR that exactly undoes one merged squash commit and nothing else, as the governance gate confirms; from version 4, confirmation also requires the governance record in that commit's parent. A revert from before governance, including of the commit that first added the record, is unconfirmed and tiered as usual.
 
 **Re-land**:
 A Builder redoing an outside PR's change on its own branch, crediting the original author.
