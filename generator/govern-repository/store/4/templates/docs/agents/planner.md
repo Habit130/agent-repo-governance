@@ -17,6 +17,9 @@ to habit; this file points there.
   (Misses, below).
 - **A Builder's start request** for work that outgrew one session: treat it as habit's idea.
 
+Reaching `to-spec`, `to-tickets`, `triage` or `wayfinder` mid-session follows `AGENTS.md`,
+Talking to habit and to other agents, User-invoked skills (`handoff.md`, Three kinds of message).
+
 ## Delivery shape
 
 Choose it; habit approves it with the spec and tickets.
@@ -33,9 +36,13 @@ Choose it; habit approves it with the spec and tickets.
   one-way door: a data migration, a destructive operation, a release or publishing. Then
   every ticket of that spec is high for that reason, since a high PR holds only its high
   part (`review.md`, Minimum reviews). A ticket with a one-way door always gets its own PR.
-  Record the choice in the spec's Delivery section; the Builder's start instruction is
-  `Role: Builder. Spec: #<n>. Skills: implement-spec, tdd.`, with the skills the tickets
-  name.
+  Record the choice in the spec's Delivery section; the canonical start form is below,
+  adding the session-called skills the tickets name (`AGENTS.md`, How to start):
+
+  ```text
+  habit invokes: implement-spec.
+  Role: Builder. Spec: #<n>. Skills: tdd.
+  ```
 
 ## Specs
 
@@ -52,7 +59,8 @@ A ticket holds `to-tickets`' body, or triage's agent brief, plus:
 
 - **Delivery**: for a results-comment ticket, the declaration in `builder.md`,
   Results-comment tickets.
-- **Skills**: which skill covers which part.
+- **Skills**: two lines, `habit invokes:` and `The session calls:`, each naming which skill
+  covers which part, or `none`.
 - **Verification**: the commands the Builder runs and the Reviewer reruns, from
   `docs/agents/build.md`. At high, identify actual default-branch product verification;
   when none exists, predetermine an executable local smoke on the exact merged commit
@@ -73,13 +81,14 @@ condition, such as "after #n merges" or "beside #n". A spec approved for whole-s
 is one entry, with the spec's start instruction. habit dispatches from it without opening a
 Planner after each merge.
 
-- It is a list, never a table, and each start instruction stands alone in its own block, so
-  habit copies it whole.
+- It is a list, never a table. Each terminal translation uses a start request for one
+  harness (`AGENTS.md`, How to start and Talking to habit and to other agents), with its
+  paste block standing alone so habit copies it whole.
 - Two entries run beside each other only when the tickets surely can run together: no shared
   files and no shared resource. When unsure, one after the other.
-- The Planner also writes the plan, in English with the start instructions, as a comment on
-  the effort's parent issue. Only a Planner updates it, such as when a Builder or a Reviewer
-  reports something the plan didn't foresee.
+- The Planner also writes the plan in English, using the canonical form from `AGENTS.md`,
+  How to start, as a comment on the effort's parent issue. Only a Planner updates it, such
+  as when a Builder or a Reviewer reports something the plan didn't foresee.
 
 ## The docs PR
 
@@ -91,8 +100,12 @@ spec or map and closes no issue.
 
 When triage traces a bug to a merged PR, open a miss record for that PR
 (`issue-tracker.md`), linking the bug's own triaged issue. Tell habit at once, with a start
-request for a Planner session in which habit invokes `retro` on the record (`AGENTS.md`, How
-to start).
+request for a Planner session using `AGENTS.md`'s harness translation of this canonical form:
+
+```text
+habit invokes: retro #<miss>.
+Role: Planner. Issue: #<miss>.
+```
 
 ## Running retro
 
@@ -126,4 +139,5 @@ message), and leave one "Waiting on habit: …" line on the issue.
 ## Skills this role relies on
 
 - habit invokes: `to-spec`, `to-tickets`, `triage`, `wayfinder`, `retro`.
+  Apply `AGENTS.md`, Talking to habit and to other agents, User-invoked skills.
 - The session calls: `grilling`, `domain-modeling`, `research`, `prototype`, `codebase-design`, `writing-for-agents`.

@@ -94,4 +94,5 @@ on the PR (`handoff.md`, Three kinds of message), when:
 ## Skills this role relies on
 
 - habit invokes: none.
+  Apply `AGENTS.md`, Talking to habit and to other agents, User-invoked skills.
 - The session calls: `code-review`, `research`.

@@ -8,7 +8,11 @@ Claude Code reads `AGENTS.md` through the import above. This part only translate
 Claude Code, and never adds, relaxes or contradicts a rule.
 
 - **A start instruction** (`AGENTS.md`, How to start): `claude "<start instruction>"`.
-- **A user-invoked skill**: `/name`.
+- **A user-invoked skill**: `/name`. Translate the canonical `habit invokes:` statement
+  (`AGENTS.md`, How to start) to `/name <arguments>`, followed by the start instruction in
+  the same block, as a fresh session's first message: one paste is verified there.
+  Starting with that invocation as a terminal argument is unverified; use `AGENTS.md`'s
+  two-step form.
 - **A subagent with no conversation context** (`review.md`, Subagents with no conversation
   context): an Agent call with a general-purpose type, never a fork.
 - **Waiting** on a PR: a background command, which wakes the session when it ends.
