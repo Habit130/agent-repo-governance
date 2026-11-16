@@ -403,6 +403,51 @@ class Program(unittest.TestCase):
 
 
 class OwnerCommand(support.TempDirCase):
+    def assert_checkout_removed(self, temporary):
+        # macOS's xcrun shims may leave this cache in TMPDIR (see machine_support.snapshot).
+        # Only the exact regular file is exempt; directories, links and unknown entries fail.
+        remaining = [name for name in os.listdir(temporary)
+                     if not (name == "xcrun_db" and os.path.isfile(os.path.join(temporary, name))
+                             and not os.path.islink(os.path.join(temporary, name)))]
+        self.assertEqual(remaining, [], "the temporary checkout was not removed")
+
+    def test_cleanup_accepts_an_empty_directory_or_only_the_os_cache(self):
+        temporary = self.path("tmp")
+        os.mkdir(temporary)
+        self.assert_checkout_removed(temporary)
+        with open(os.path.join(temporary, "xcrun_db"), "w") as handle:
+            handle.write("synthetic OS tool cache\n")
+        self.assert_checkout_removed(temporary)
+
+    def test_cleanup_rejects_a_retained_checkout_with_or_without_the_os_cache(self):
+        for cached in (False, True):
+            with self.subTest(cached=cached):
+                temporary = tempfile.mkdtemp(dir=self.tmp)
+                # Keep a real owned checkout instead of removing it, as the command must do.
+                checkout = support.init_repo(os.path.join(temporary, "tmp.retained"))
+                if cached:
+                    support.write_tree(temporary, {"xcrun_db": "synthetic OS tool cache\n"})
+                with self.assertRaisesRegex(AssertionError, "the temporary checkout was not removed"):
+                    self.assert_checkout_removed(temporary)
+                self.assertTrue(os.path.isdir(checkout))
+
+    def test_cleanup_rejects_unknown_entries_and_non_file_cache_names(self):
+        for kind in ("unknown-file", "directory", "link"):
+            with self.subTest(kind=kind):
+                temporary = tempfile.mkdtemp(dir=self.tmp)
+                cache = os.path.join(temporary, "xcrun_db")
+                if kind == "unknown-file":
+                    support.write_tree(temporary, {"xcrun_db.extra": "unknown\n"})
+                elif kind == "directory":
+                    os.mkdir(cache)
+                else:
+                    target = self.path("cache-target")
+                    with open(target, "w") as handle:
+                        handle.write("cache\n")
+                    os.symlink(target, cache)
+                with self.assertRaisesRegex(AssertionError, "the temporary checkout was not removed"):
+                    self.assert_checkout_removed(temporary)
+
     def command(self, repository=ow.REPOSITORY):
         code, facts = support.govern(["owner-command", "--repository", repository])
         self.assertEqual(code, 0, facts)
@@ -443,7 +488,7 @@ class OwnerCommand(support.TempDirCase):
         self.assertIn("[通过] 副本：%s 是 main 的最新提交" % head[:12], result.stdout)
         self.assertNotIn(NOT_A_TOKEN, result.stdout + result.stderr)
         self.assertEqual(ow.writes(environment.read_log(scratch)), [])
-        self.assertEqual(os.listdir(os.path.join(home, "tmp")), [], "the temporary checkout was not removed")
+        self.assert_checkout_removed(os.path.join(home, "tmp"))
         self.assertFalse(ms.ghm_called(scratch))
 
 
