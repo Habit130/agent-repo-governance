@@ -93,7 +93,8 @@ The Steps below apply to it as to a ticket, with these differences:
    `pr`'s shape, writing Summary and Merge Danger with `pr`, and the `Risk:` line
    (`review.md`, The tier). Post the evidence comment (`review.md`, Evidence comment), and
    update it on every new head before requesting its reviews, keeping every Builder's
-   session mark (`review.md`, Session marks).
+   session mark (`review.md`, Session marks). For pushes to an existing PR, follow Syncing
+   and waiting below.
 8. **Review**: from medium, get each bot slot's review on every head that needs one, through
    habit's requests (`review.md`, Review bots); answer findings and run rounds (`review.md`).
 9. **Hand over**: for each required check's rerun-only pass on the head (`review.md`,
@@ -130,6 +131,16 @@ the words habit uses on return.
 
 - **Sync** only on a conflict or habit's request, by merging the default branch in. A pushed
   branch is never rebased. The new head is reviewed again (`review.md`, Rounds).
+- **PR-body updates**: After pushing to an existing PR, wait for the current head's active
+  `governance-gate` workflow to complete before routine body edits. A passed gate-judgment
+  step alone is insufficient. Batch the routine PR-body edits for that head, then wait for
+  the gate run caused by the edit before handoff. Use that result in the required-check and
+  handoff process; a prior pass does not substitute.
+  Completion need not be success: correct a failed gate input without first obtaining a
+  successful old run. Failures, cancellations and unavailable checks follow the existing
+  repair and escalation rules and `review.md`, Rerun-only passes. This sequence applies to
+  PR-body edits, not ordinary issue or evidence comments; step 7's evidence and review
+  prerequisites still apply. Other actors' concurrent edits can still cause cancellations.
 - **Wait** on the PR, before and after the merge, in your harness when it can wait, for
   example through a background command or a poll. Otherwise stop and say what you wait for,
   and habit says "continue".
