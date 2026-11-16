@@ -182,6 +182,52 @@ class VersionFourSkillInvocations(VersionThreeRendered):
             self.assertIn(phrase, flat(handoff))
 
 
+class VersionFourBodyUpdateOrder(VersionThreeRendered):
+    """#175: rendered instruction checks, not model behavior or concurrency proof."""
+
+    VERSION = 4
+
+    def test_existing_pr_body_updates_wait_for_each_whole_gate_workflow(self):
+        builder = self.text("docs/agents/builder.md")
+        steps = flat(level_two_section(builder, "## Steps", "builder.md"))
+        self.assertIn("For pushes to an existing PR, follow Syncing and waiting", steps)
+        waiting = flat(level_two_section(builder, "## Syncing and waiting", "builder.md"))
+        sequence = (
+            "After pushing to an existing PR",
+            "wait for the current head's active `governance-gate` workflow to complete",
+            "A passed gate-judgment step alone is insufficient",
+            "Batch the routine PR-body edits for that head",
+            "wait for the gate run caused by the edit before handoff",
+            "Use that result in the required-check and handoff process",
+            "a prior pass does not substitute",
+        )
+        cursor = 0
+        for phrase in sequence:
+            position = waiting.find(phrase, cursor)
+            self.assertGreaterEqual(position, cursor, phrase)
+            cursor = position + len(phrase)
+
+    def test_body_update_wait_preserves_repairs_comments_and_rerun_cause_tracking(self):
+        builder = self.text("docs/agents/builder.md")
+        waiting = flat(level_two_section(builder, "## Syncing and waiting", "builder.md"))
+        for phrase in ("Completion need not be success", "correct a failed gate input",
+                       "without first obtaining a successful old run",
+                       "Failures, cancellations and unavailable checks",
+                       "existing repair and escalation rules", "`review.md`, Rerun-only passes",
+                       "ordinary issue or evidence comments", "Other actors' concurrent edits",
+                       "Otherwise stop and say what you wait for"):
+            self.assertIn(phrase, waiting)
+        steps = flat(level_two_section(builder, "## Steps", "builder.md"))
+        self.assertIn("update it on every new head before requesting its reviews", steps)
+        self.assertIn("keeping every Builder's session mark", steps)
+        self.assertIn("rerun-only pass on the head", steps)
+        self.assertIn("link an open issue for its cause", steps)
+        reruns = flat(level_two_section(self.text("docs/agents/review.md"),
+                                       "## Rerun-only passes", "review.md"))
+        self.assertIn("An unrelated PR edit is not a repair", reruns)
+        self.assertIn("no linked open issue is an Important finding", reruns)
+
+
 class VersionFourSessionMarks(VersionThreeRendered):
     """#171: the session policy at the existing rendered-text seam, not model behavior."""
 
