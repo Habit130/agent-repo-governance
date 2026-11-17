@@ -9,6 +9,54 @@ from materialized_version_support import (
 )
 
 
+class VersionFourCodexSecurityReview(VersionThreeRendered):
+    """#191: optional security review at the rendered-policy seam, not bot behavior."""
+
+    VERSION = 4
+
+    def test_optional_security_review_has_its_own_scope_and_finding_rules(self):
+        review = self.text("docs/agents/review.md")
+        codex = flat(level_three_section(review, "### The Codex review bot"))
+        for phrase in ("**Codex security review**", "optional extra", "high",
+                       "authentication, privacy or secret handling", "Medium and above",
+                       "Important", "the rest Nits", "no waiver",
+                       "never a kind in the fixed `Required reviews:` line",
+                       "Reviewer's security review stays required"):
+            self.assertIn(phrase, codex)
+        # The existing required review is independent of the optional bot review.
+        old = support.read_text(os.path.join(support.REAL_STORE, "3", "templates", "docs/agents/review.md"))
+        self.assertEqual(level_two_section(review, "## Security review", "review.md"),
+                         level_two_section(old, "## Security review", "review.md"))
+
+    def test_security_request_is_offered_in_the_handoff_through_the_codex_rules(self):
+        handoff = flat(level_two_section(self.text("docs/agents/builder.md"),
+                                        "## The Reviewer handoff", "builder.md"))
+        for phrase in ("high for authentication, privacy or secret handling",
+                       "offer habit the optional Codex security review request",
+                       "`review.md`, The Codex review bot"):
+            self.assertIn(phrase, handoff)
+
+    def test_silence_is_not_a_clean_review_and_evidence_records_request_and_output(self):
+        review = self.text("docs/agents/review.md")
+        codex = flat(level_three_section(review, "### The Codex review bot"))
+        for phrase in ("only findings at or above its threshold",
+                       "no posted finding is not a completed clean review"):
+            self.assertIn(phrase, codex)
+        evidence = flat(level_two_section(review, "## Evidence comment", "review.md"))
+        self.assertIn("whether habit requested the optional Codex security review and what it posted", evidence)
+
+    def test_code_review_keeps_the_observed_manual_request_path(self):
+        review = self.text("docs/agents/review.md")
+        old = support.read_text(os.path.join(support.REAL_STORE, "3", "templates", "docs/agents/review.md"))
+        codex = level_three_section(review, "### The Codex review bot")
+        old_codex = level_three_section(old, "### The Codex review bot")
+        self.assertEqual(codex.split("- **Codex security review**", 1)[0].rstrip(),
+                         old_codex.rstrip())
+        requests = flat(level_two_section(review, "## Review bots", "review.md"))
+        self.assertIn("**Requests.** A bot starts only on habit's request.", requests)
+        self.assertNotIn("automatic review", requests)
+
+
 class VersionFourSkillInvocations(VersionThreeRendered):
     """#172: rendered instructions only; no check of messages or model behavior."""
 

@@ -126,6 +126,13 @@ Everything specific to one provider sits in its subsection.
 - **Completed on the head**: its comment's `codex-review-state:v1` marker, whose
   `code_review.commit_sha` is the head and whose `code_review.status` is `completed`.
 - **Findings** are its inline comments: P0 and P1 are Important, the rest Nits.
+- **Codex security review** is an optional extra, offered in the Builder's Reviewer
+  handoff only on a PR that is high for authentication, privacy or secret handling.
+  habit may leave the request with no waiver. When it runs, its Medium and above findings
+  are Important, the rest Nits. It is never a kind in the fixed `Required reviews:` line.
+  It posts only findings at or above its threshold, so no posted finding is not a completed
+  clean review.
+  The Reviewer's security review stays required (Security review).
 
 ### Copilot code review
 
@@ -232,6 +239,7 @@ One PR comment by the Builder, bound to the head it names and updated on every n
   issue, or an explicit statement that there were none;
 - the self-verification subagent's finding count, and how each finding was handled;
 - each bot slot's state on this head, in the Merge summary's words, and each waiver's link;
+- whether habit requested the optional Codex security review and what it posted;
 - `pr`'s before-and-after evidence.
 
 ## Security review

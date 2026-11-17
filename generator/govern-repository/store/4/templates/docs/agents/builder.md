@@ -124,6 +124,8 @@ A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
   - The review bot request the tier's slot needs on this head, as `review.md`'s Review bots
     gives it: a command or a browser step. Give habit fresh ones after each repair push, and
     the next enabled bot's request when a slot's bot is unavailable.
+  - On a PR that is high for authentication, privacy or secret handling, offer habit the
+    optional Codex security review request (`review.md`, The Codex review bot).
 - **"粘贴给 agent"** is
   `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
   Reviewer status and, when clear, the Merge summary.`
