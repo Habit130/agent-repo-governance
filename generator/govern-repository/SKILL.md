@@ -210,7 +210,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    ticket and declare the run's tier as above. Exact comparison, `<entry> compare --worktree <worktree>`,
    is part of its Verification and passes with `differences` empty before the PR opens.
    An Upgrade that changes the owner script, the target state or the required checks says in
-   its high-risk report's "how to revert" that habit reruns the owner script after a revert.
+   its Merge summary's "how to revert" (at high, the high-risk report) that habit reruns the
+   owner script after a revert.
 
 ## 6. After merge
 

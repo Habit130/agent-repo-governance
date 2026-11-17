@@ -341,6 +341,18 @@ class VersionFourPureUpgrade(VersionThreeRendered):
             self.assertIn(phrase, skill)
         self.assertNotIn("as the ticket and `Risk: high`", skill)
 
+    def test_upgrade_recovery_is_in_the_merge_summary_at_every_tier(self):
+        skill = flat(support.read_text(os.path.join(
+            os.path.dirname(os.path.dirname(support.GOVERN)), "SKILL.md")))
+        recovery = skill.split("An Upgrade that changes the owner script,", 1)[1].split(
+            "## 6. After merge", 1)[0]
+        for phrase in ("the target state or the required checks",
+                       "Merge summary's", '"how to revert"',
+                       "at high, the high-risk report",
+                       "habit reruns the owner script after a revert"):
+            self.assertIn(phrase, recovery)
+        self.assertNotIn('its high-risk report\'s "how to revert"', recovery)
+
 
 class VersionFourDifficulty(VersionThreeRendered):
     """#189: difficulty and start requests at the rendered-policy seam only."""
