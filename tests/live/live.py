@@ -56,9 +56,10 @@ GOVERN = os.path.join(SCRIPTS, "govern.py")
 VERSION = 2
 # The probes that need version 3's draft, and its enabled review bots there, in order (#135, #148).
 VERSION_3_PROBES = ("merge-watch-cancelled", "merge-watch-v3-clean", "merge-watch-v3-waived", "merge-watch-v3-miss")
+VERSION_4_PROBES = ("merge-watch-v4-high", "merge-watch-v4-medium", "merge-watch-v4-miss")
 V3_REVIEW_BOTS = ["codex", "copilot"]
 # Probes whose legitimate merges move the default branch the gate probes require unchanged.
-MERGING_PROBES = ("merge-watch-clean", "merge-watch-v3-clean", "merge-watch-v3-waived", "merge-watch-v3-miss")
+MERGING_PROBES = ("merge-watch-clean", "merge-watch-v3-clean", "merge-watch-v3-waived", "merge-watch-v3-miss") + VERSION_4_PROBES
 # What the cut's review bots are called, and the request habit makes for each in the end-to-end run.
 REVIEW_BOT_NAMES = {"codex": "the Codex review bot", "copilot": "Copilot code review"}
 REVIEW_BOT_REQUESTS = {"codex": "a Codex review bot request it hands you",
@@ -204,7 +205,8 @@ def context(state, directory):
 
 def model_version(names, chosen=None):
     """The version a check renders: the probes' own, or a later one the check chose, such as an unpublished draft."""
-    needed = 3 if any(name in VERSION_3_PROBES for name in names) else VERSION
+    needed = (4 if any(name in VERSION_4_PROBES for name in names) else
+              3 if any(name in VERSION_3_PROBES for name in names) else VERSION)
     if chosen is None:
         return needed
     if chosen < needed:
