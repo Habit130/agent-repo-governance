@@ -141,7 +141,9 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   unverified. The Upgrade's own PR is reviewed under the policy on the default branch, the
   old version's; the new version's rules bind from the first PR after it merges. The new
   version's Merge watch may leave that PR's old review bots unjudged, so its Reviewer checks
-  them before the merge.
+  them before the merge. For the version 4 transition on a version 3 base only, an existing
+  owner/exact-head `reviewer` waiver leaves that check to the Builder. Versions 1 and 2 still
+  require the Reviewer status.
 - **Repair with drift** holds only the drift found, how it is restored, the selected product
   smoke, and anything unverified.
 
@@ -220,12 +222,16 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
 1. Wait on the PR as the role file says. Complete its product smoke on the exact merged
    commit: the actual default-branch product run, or the ticket's predetermined local smoke.
    Failure or unavailability leaves delivery incomplete and is escalated to habit.
-   Under an adopted policy below version 4:
-   Before any after-merge report, reread from GitHub, for the PR's exact head at merge:
-   each required review's result, at medium and high the Comment review and the `Reviewer`
-   status, and the Merge summary. The report states only what that reading shows.
-   That medium Reviewer requirement applies below version 4. Under version 4, reread the
-   Comment review and `Reviewer` status only when a Reviewer ran.
+   At every adopted policy version, reread each required review's result and the Merge
+   summary from GitHub for the PR's exact head at merge before reporting; report only what
+   that reading shows. Apply the adopted policy's Reviewer reread rule:
+
+   - **Adopted policy below version 4:**
+     Before any after-merge report, reread from GitHub, for the PR's exact head at merge:
+     each required review's result, at medium and high the Comment review and the `Reviewer`
+     status, and the Merge summary. The report states only what that reading shows.
+   - **Adopted policy version 4:** reread the Comment review and `Reviewer` status only when
+     a Reviewer ran.
 2. Run `<entry> handover --mode-facts <saved mode report>`, adding
    `--required-checks-changed` when habit's answer changed them. When `owner_command` is true,
    give habit `<entry> owner-command --repository <owner/name>`'s command, with each of the

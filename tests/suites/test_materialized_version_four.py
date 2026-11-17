@@ -270,6 +270,19 @@ class VersionFourReviewLadder(VersionThreeRendered):
         reviewer = flat(self.text('docs/agents/reviewer.md'))
         self.assertIn('at high, or at medium as a substitute', reviewer)
 
+    def test_transition_keeps_only_version_three_reviewer_waivers(self):
+        review = flat(self.text('docs/agents/review.md'))
+        for phrase in ('On a version 3 base only', 'owner/exact-head `reviewer` waiver',
+                       'Versions 1 and 2 still require the Reviewer status',
+                       'Builder checks the bots before merge'):
+            self.assertIn(phrase, review)
+        skill = flat(support.read_text(os.path.join(
+            os.path.dirname(os.path.dirname(support.GOVERN)), 'SKILL.md')))
+        for phrase in ('version 4 transition on a version 3 base only',
+                       'owner/exact-head `reviewer` waiver leaves that check to the Builder',
+                       'Versions 1 and 2 still require the Reviewer status'):
+            self.assertIn(phrase, skill)
+
     def test_summary_examples_read_with_the_version_four_parser(self):
         import test_merge_watch as watch_tests
         review = self.text('docs/agents/review.md')
@@ -378,6 +391,26 @@ class VersionFourDifficulty(VersionThreeRendered):
         from materialized_version_support import AGENTS_BUDGET
         fixed = agents.split("<!-- governance:end -->", 1)[0] + "<!-- governance:end -->\n"
         self.assertLessEqual(len(fixed.encode("utf-8")), AGENTS_BUDGET)
+
+    def test_high_reviewer_example_carries_difficulty_and_vendor_constraint(self):
+        handoff = self.text('docs/agents/handoff.md')
+        example = handoff.split("A Builder's final handoff to a Reviewer, at high.", 1)[1].split(
+            "A substituting Reviewer's final handoff", 1)[0]
+        for phrase in ('难度：high', '判断新规则的效果', '沿用派发计划',
+                       'vendor 必须不同于所有 Builder session', '所有 Builder session 的 vendor 均为 OpenAI',
+                       '在 Claude Code 中开一个新 session', 'Anthropic vendor',
+                       '不同于已记录的 OpenAI Builder vendor', 'Role: Reviewer. PR: #58.'):
+            self.assertIn(phrase, example)
+        self.assertNotIn('model', example)
+
+    def test_generator_reread_has_common_and_explicit_version_branches(self):
+        skill = support.read_text(os.path.join(os.path.dirname(os.path.dirname(support.GOVERN)), 'SKILL.md'))
+        after = flat(level_two_section(skill, '## 6. After merge', 'SKILL.md'))
+        for phrase in ('At every adopted policy version, reread',
+                       '**Adopted policy below version 4:**', '**Adopted policy version 4:**',
+                       'only when a Reviewer ran'):
+            self.assertIn(phrase, after)
+        self.assertNotIn('That medium Reviewer requirement', after)
 
     def test_planner_grades_judgment_in_the_dispatch_plan_only(self):
         planner = self.text("docs/agents/planner.md")

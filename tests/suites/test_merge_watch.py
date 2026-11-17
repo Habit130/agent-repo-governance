@@ -546,6 +546,19 @@ class VersionThree(unittest.TestCase):
 
 
 class VersionFour(unittest.TestCase):
+    def test_a_version_three_reviewer_waiver_needs_no_status_read(self):
+        for name in ('base-version-three-waived-reviewer-medium', 'transition-reviewer-waiver-high'):
+            with self.subTest(case=name):
+                case = load(os.path.join(FIXTURES, 'v4', name + '.json'))
+                calls = []
+                def read(path):
+                    calls.append(path)
+                    return case['github'][path]
+                notes = []
+                result = watch_v4.decide(case['event_name'], case['event'], agent_account(), read, notes)
+                self.assertEqual(result, [])
+                self.assertFalse(any(path.endswith('/statuses') for path in calls), calls)
+
     def test_recorded_events(self):
         cases = os.path.join(FIXTURES, "v4")
         for name in sorted(os.listdir(cases)):

@@ -48,7 +48,9 @@ On `push` to the default branch, for each pushed commit:
   version's review rules. This script judges what every version requires: the Reviewer's
   status from medium, and a Merge summary for the tier and head with a `Required reviews:`
   line of any kinds. Its review bots follow rules this script doesn't hold, so they aren't
-  judged, an accepted transition exception: that PR's Reviewer checks them before the merge.
+  judged, an accepted transition exception: that PR's Reviewer checks them before the merge,
+  or its Builder does when an owner/exact-head `reviewer` waiver applies on a version 3 base.
+  Versions 1 and 2 still require the Reviewer status; their transition rules are unchanged.
   The run says so in a `NOTE` line. A base record that can't be read or doesn't
   parse enables no provider, so its bot slot reads as missing, a false miss.
 
@@ -319,12 +321,14 @@ def waived(pull, owner):
     return kinds
 
 
-def earlier_version_missing(pull, agent_account, tier):
+def earlier_version_missing(pull, agent_account, owner, tier, version):
     """What every version requires of a merge onto a base below version 4: the Reviewer's
-    status from medium, and the agent account's Merge summary titled for the tier and head with
-    a `Required reviews:` line, whatever kinds that version's line names."""
+    status from medium (or an owner/exact-head `reviewer` waiver on a version 3 base), and
+    the agent account's Merge summary titled for the tier and head with a `Required reviews:`
+    line, whatever kinds that version's line names. Versions 1 and 2 keep requiring status."""
     missing = []
-    if tier != "low" and not _reviewer(pull, agent_account):
+    reviewer_waived = version == 3 and "reviewer" in waived(pull, owner)
+    if tier != "low" and not reviewer_waived and not _reviewer(pull, agent_account):
         missing.append("reviewer")
     for comment in reversed(pull.comments()):
         if not _same_login((comment.get("user") or {}).get("login"), agent_account):
@@ -433,7 +437,7 @@ def _judge_pull(read, repository, agent_account, pull, squash, base, notes):
     if version is not None and version < REVIEW_BOTS_VERSION:
         notes.append("#%d merged onto a base whose record is at version %d; its review bots follow that version's "
                      "rules, which this script doesn't judge." % (number, version))
-        missing = earlier_version_missing(facts, agent_account, tier)
+        missing = earlier_version_missing(facts, agent_account, repository.split("/")[0], tier, version)
     else:
         missing = missing_reviews(facts, agent_account, repository.split("/")[0], tier, bots)
     if missing:

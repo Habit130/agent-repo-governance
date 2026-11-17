@@ -330,8 +330,11 @@ Merge watch requires self-verification and the Merge summary at every tier, the 
 from medium, and the Reviewer at high. At medium a readable `reviewer=clear` plus the agent
 account's successful `Reviewer` status fills an unfilled bot slot. On a base below version 4,
 Merge watch instead checks the Reviewer status from medium and the tier/head summary with a
-`Required reviews:` line of any kinds; it prints a `NOTE`, and the PR's Reviewer judges the
-bots before merge. This is the Upgrade merge's transition exception.
+`Required reviews:` line of any kinds; it prints a `NOTE`. On a version 3 base only, an
+owner/exact-head `reviewer` waiver also satisfies the Reviewer requirement, and the Builder
+checks the bots before merge. Otherwise the PR's Reviewer judges the bots before merge.
+Versions 1 and 2 still require the Reviewer status. This is the Upgrade merge's transition
+exception.
 
 The rest of the comment is the terminal copy's first line and seven items, in English, with
 the high-risk report's additions at high.
