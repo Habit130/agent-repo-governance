@@ -210,6 +210,21 @@ skill copies under `skill-copies/`.
 - `GLOSSARY.md` holds terms and meanings only. Purpose and non-goals belong in `README.md`;
   hard boundaries and ownership in `AGENTS.md`.
 
+### Start-of-session refresh (until version 4 adoption)
+
+Every session's first step, before reading its role file, is to fetch `origin` and identify
+its default branch. When the checkout is clean and on that branch, fast-forward it.
+This includes a session with no role; subagents do not refresh. A checkout that is dirty,
+on another branch or cannot fast-forward stays as it is: tell habit it is stale and read
+the instruction files from `origin`'s default branch. If the refresh changed an instruction
+file, read it again. Remove this whole section once version 4's fixed content carries it.
+
+### Delivery and documentation
+
+- Same-round draft changes default to whole-spec delivery.
+- A build document describes the current state only, and changes only when a command or
+  procedure changes.
+
 ### Verification by change
 
 What a PR needs follows what it changes, not its tier (#44 §11). Commands and CI jobs:
@@ -241,7 +256,7 @@ standing arrangement below, verbatim:
 - This repository's Upgrade to the newly released version is Upgrade's behavioral check.
   A failure there is a miss, repaired in a later version.
 - Repair and OpenCode have no behavioral check before release. This gap is accepted;
-  a failure in use is a miss. Release run details are in `docs/agents/build.md`.
+  a failure in use is a miss. Release run details are in `docs/build/releasing.md`.
 
 The evidence and Merge summary state in one line that model scenarios were not run because
 of their quota cost and final-head model behavior is unverified. Prior candidate runs are
@@ -267,7 +282,8 @@ Historically, for delivery #122, habit [approved omitting the remaining model sc
   A miss that generator output or the install caused adds a fixture in its fix's PR.
 - Agents never run the install, the machine check against habit's home, the account wizard,
   `gh auth` commands, the owner script against real GitHub, or the gate attempts.
-  `docs/agents/build.md` gives each command habit runs. Live checks run as the agent
+  `docs/agents/build.md` gives each command habit runs; `docs/build/live-checks.md` gives
+  the live-check procedures. Live checks run as the agent
   account, in the two sandboxes only.
 
 ### Review expectations
