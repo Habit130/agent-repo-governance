@@ -19,6 +19,7 @@ from test_materialized_version_three import (
     VersionThreeHandoffs,
 )
 from test_materialized_version_four import (
+    VersionFourDifficulty,
     VersionFourSkillInvocations,
     VersionFourBodyUpdateOrder,
     VersionFourSessionMarks,

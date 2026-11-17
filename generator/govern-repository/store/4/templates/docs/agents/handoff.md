@@ -100,7 +100,7 @@ terminal form is:
 ```text
 Builder → habit：miss #51 已记录，需要 Planner 处理。
 
-给 habit：在本仓库的 Codex app Local mode 新开 chat，使用当前模型，由 Planner 处理该 miss；不占用共享资源。habit 将下面整块作为首条消息发送，同时调用 retro 并启动 Planner。
+给 habit：在本仓库的 Codex app Local mode 新开 chat，由 Planner 处理该 miss；不占用共享资源。habit 将下面整块作为首条消息发送，同时调用 retro 并启动 Planner。
 粘贴给 agent：
 ```
 
@@ -115,7 +115,7 @@ its own; the message's prose sits outside it:
 ```text
 Builder → habit：PR #57 已开，medium，self-verification 已 clear，所有启用的 review bot 均 unavailable，需要 Reviewer 替代。
 
-给 habit：在 Claude Code 中开一个新 session，同一模型即可，medium 允许同模型 review。
+给 habit：在 Claude Code 中开一个新 session；难度：medium，ticket 固定结果，在单一区域选择实现并以测试确认（沿用派发计划），无额外 vendor 约束，不占用共享资源。
 粘贴给 agent：
 ```
 
@@ -154,17 +154,26 @@ Planner → habit：spec #40 的三张 ticket 已批准，派发计划也已写�
 
 1. #41，现在即可派发。
 
+   给 habit：在本仓库的 Codex app Local mode 新开 chat；难度：low，ticket 已固定改动与方法，测试确认结果。不占用共享资源。
+   粘贴给 agent：
+
    ```text
    Role: Builder. Ticket: #41. Skills: tdd.
    ```
 
 2. #42，与 #41 并行：两者没有共享文件或资源。
 
+   给 habit：在本仓库的 Codex app Local mode 新开 chat；难度：medium，ticket 固定结果，在单一区域选择实现并以测试确认。不占用共享资源。
+   粘贴给 agent：
+
    ```text
    Role: Builder. Ticket: #42. Skills: tdd.
    ```
 
 3. #43，在 #41 merge 之后。
+
+   给 habit：在本仓库的 Codex app Local mode 新开 chat；难度：low，ticket 已固定改动与方法，测试确认结果。不占用共享资源。
+   粘贴给 agent：
 
    ```text
    Role: Builder. Ticket: #43. Skills: tdd, pr.

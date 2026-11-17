@@ -292,3 +292,59 @@ class VersionFourPureUpgrade(VersionThreeRendered):
                        "declare the run's tier", "not the rendered target version"):
             self.assertIn(phrase, skill)
         self.assertNotIn("as the ticket and `Risk: high`", skill)
+
+
+class VersionFourDifficulty(VersionThreeRendered):
+    """#189: difficulty and start requests at the rendered-policy seam only."""
+
+    VERSION = 4
+
+    def test_start_requests_state_difficulty_without_selecting_a_model(self):
+        agents = self.text("AGENTS.md")
+        talking = flat(level_two_section(agents, "## Talking to habit and to other agents", "AGENTS.md"))
+        for phrase in ("session location", "difficulty with one reason", "vendor constraint",
+                       "shared resources", "habit chooses model and effort", "names no model"):
+            self.assertIn(phrase, talking)
+        handoff = flat(self.text("docs/agents/handoff.md"))
+        self.assertIn("难度：low", handoff)
+        self.assertIn("难度：medium", handoff)
+        for phrase in ("使用当前模型", "同一模型即可", "which model", "same model may review"):
+            for path in ("AGENTS.md", "docs/agents/planner.md", "docs/agents/builder.md",
+                         "docs/agents/reviewer.md", "docs/agents/handoff.md"):
+                self.assertNotIn(phrase, flat(self.text(path)), path)
+        # Identity provenance remains required; it is not model-selection advice.
+        self.assertIn("Session: <role> — <harness>, <model>, <vendor> (<source>)",
+                      self.text("docs/agents/review.md"))
+        from materialized_version_support import AGENTS_BUDGET
+        fixed = agents.split("<!-- governance:end -->", 1)[0] + "<!-- governance:end -->\n"
+        self.assertLessEqual(len(fixed.encode("utf-8")), AGENTS_BUDGET)
+
+    def test_planner_grades_judgment_in_the_dispatch_plan_only(self):
+        planner = self.text("docs/agents/planner.md")
+        difficulty = flat(level_two_section(planner, "## Difficulty", "planner.md"))
+        for phrase in ("Difficulty: <level> — <reason>", "难度：<level>", "never a bare level",
+                       "fixes what changes and how", "command, test or byte comparison",
+                       "fixes the outcome", "within one area", "tests can confirm",
+                       "real design trade-off", "plausible approaches", "new rule or procedure",
+                       "no test of its effect", "rule already decided", "several components",
+                       "unknown cause", "main Builder of a whole-spec delivery",
+                       "When unsure, use the lower level", "names the test or condition",
+                       "area's importance", "risk tier", "Planner start request carries none"):
+            self.assertIn(phrase, difficulty)
+        tickets = flat(level_two_section(planner, "## Tickets", "planner.md"))
+        self.assertIn("A ticket carries no tier or difficulty", tickets)
+        self.assertIn("each with its difficulty line", tickets)
+        builder = flat(level_two_section(self.text("docs/agents/builder.md"), "## A direct request", "builder.md"))
+        self.assertIn("carries no difficulty", builder)
+
+    def test_reviewer_handoff_and_completion_use_the_planned_difficulty(self):
+        builder = self.text("docs/agents/builder.md")
+        handoff = flat(level_two_section(builder, "## The Reviewer handoff", "builder.md"))
+        for phrase in ("repeats the ticket's difficulty from the dispatch plan",
+                       "At high", "vendor different from every Builder mark"):
+            self.assertIn(phrase, handoff)
+        for heading in ("## Results-comment tickets", "## After merge"):
+            section = flat(level_two_section(builder, heading, "builder.md"))
+            self.assertIn("actual difficulty differed", section)
+            self.assertIn("one sentence", section)
+            self.assertIn("nothing otherwise", section)

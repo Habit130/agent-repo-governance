@@ -9,7 +9,8 @@ replace the published `implement` skill's.
 ## A direct request
 
 habit's explicit request for a change, with no ticket, makes the session a Builder
-(`AGENTS.md`, How to start).
+(`AGENTS.md`, How to start). The direct request carries no difficulty: its session is
+already running.
 
 - Clarify a vague request with `grilling`.
 - Open an issue quoting habit's request and every clarifying question and answer verbatim,
@@ -39,7 +40,8 @@ On completion, post one English results comment answering each acceptance criter
 verification run and its result, and stating what was not done. The Secrets rules and the
 ticket's limits on what may leave the machine bind that comment. Then close the ticket as
 completed; if it is its spec's last open sub-issue, also close the spec. Give habit a Chinese
-summary in the terminal, as a final handoff (`handoff.md`).
+summary in the terminal, as a final handoff (`handoff.md`). When actual difficulty differed
+from the dispatch plan, say so in one sentence in the completion summary; say nothing otherwise.
 
 This is Builder execution work, separate from the Planner's wayfinder tickets.
 
@@ -111,8 +113,9 @@ The Steps below apply to it as to a ticket, with these differences:
 
 A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
 
-- **"给 habit"** names the harness, the model and why.
-  - At medium the same model may review. At high choose a vendor different from every
+- **"给 habit"** names the harness and repeats the ticket's difficulty from the dispatch plan
+  with its reason. For whole-spec delivery, use the spec's dispatch entry.
+  - At high state the constraint: a vendor different from every
     Builder mark on the PR (`review.md`, Session marks). As a hint for where to open it:
     Claude Code runs Anthropic models, deepseekharness DeepSeek, the Codex harness OpenAI,
     and OpenCode whatever it is set to. The model's vendor decides, not the harness.
@@ -183,7 +186,8 @@ This section applies to PR delivery.
   in this terminal. Then remove your worktree. A Builder that can't wait leaves its
   worktree, and nobody nudges it.
 - The after-merge report is a final handoff (`handoff.md`). It reports this delivery only;
-  what is dispatched next is the Planner's dispatch plan.
+  what is dispatched next is the Planner's dispatch plan. When actual difficulty differed
+  from that plan, say so in one sentence; say nothing otherwise.
 - Before any after-merge report, reread from GitHub, for the PR's exact head at merge: each
   required review's result, the Comment review and `Reviewer` status when a Reviewer ran,
   and the Merge summary. The report states only what that reading shows.

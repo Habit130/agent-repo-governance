@@ -3,7 +3,7 @@
 
 # AGENTS.md
 
-Read this file first; with `docs/agents/` it binds every harness and role.
+Read this first; with `docs/agents/` it binds every harness and role.
 
 ## How to start
 
@@ -16,9 +16,9 @@ Read this file first; with `docs/agents/` it binds every harness and role.
   Then read `docs/agents/planner.md`, `docs/agents/builder.md` or `docs/agents/reviewer.md`.
 - habit starts sessions and invokes user-invoked skills. Start instructions name role, target
   and only session-called skills in `Skills:`, e.g. `Role: Builder. Ticket: #<n>. Skills: tdd.`
-  Role files and GitHub (dispatch plans included) use this harness-neutral canonical form:
+  Role files and GitHub (dispatch plans included) use this canonical form:
   precede the instruction with `habit invokes: <skill> <arguments>.` when needed, omitting
-  absent arguments. For an approved whole-spec delivery:
+  absent arguments. Approved whole-spec delivery:
 
   ```text
   habit invokes: implement-spec.
@@ -27,7 +27,7 @@ Read this file first; with `docs/agents/` it binds every harness and role.
 
   Use a start request (Talking to habit and to other agents).
 - One role per session; a subagent's task names its inherited parent role.
-- No role means read-only; habit's change request makes it a Builder (`builder.md`, A direct request).
+- No role: read-only; habit's change request makes it a Builder (`builder.md`, A direct request).
 - On GitHub use the agent account, the machine's own `gh` login.
 
 Translate `habit invokes:` with the harness prefix below, keeping arguments and dropping
@@ -52,8 +52,8 @@ the statement's final period.
 ## Flow at a glance
 
 Role files and `review.md`: Planner prepares approved tickets and dispatch; habit starts
-Builder; Builder implements, self-verifies and opens one tiered PR (except results-comment
-tickets); reviews run; habit reads Merge summary and uses the pinned merge command.
+Builder, who implements, self-verifies and opens one tiered PR (except results-comment
+tickets); reviews run; habit reads Merge summary and uses its pinned merge command.
 
 ## Hard limits
 
@@ -79,13 +79,14 @@ tickets); reviews run; habit reads Merge summary and uses the pinned merge comma
   that step, or started for work needing it without habit's invocation, stops for a mid-session
   request (`handoff.md`, Three kinds of message). It never reads the skill's text to follow it
   or replaces the invocation otherwise.
-- **A start request** uses the sending harness unless "给 habit" names another with a reason.
-  "给 habit" names session location, model, reason and shared resources. "粘贴给 agent" is
-  one whole block, translated by How to start. When one paste is unverified, use the
+- **A start request** uses the sending harness unless "给 habit" explains another.
+  "给 habit" names session location, difficulty with one reason (`planner.md`), any vendor constraint
+  and shared resources. It names no model; habit chooses model and effort. "粘贴给 agent" is
+  one block; translate by How to start. If one paste is unverified, use the
   **two-step form**: only the start instruction in "粘贴给 agent"; a third part, "habit 调用",
-  holds the invocation for that session after starting. Without a habit-invoked skill, use
-  only the first two parts. Offer no alternative harness forms.
-- **habit's decisions**: write terminal decisions needed by later sessions back to GitHub.
+  holds its invocation after start. Without such a skill,
+  use only two parts. No harness alternatives.
+- **habit's decisions**: record needed terminal decisions on GitHub.
 - **Summaries**: keep an English Merge summary or high-risk report on the PR.
 - **Voices**: Builder never speaks for Reviewer; Reviewer never commits Builder to changes.
 
@@ -125,16 +126,16 @@ tickets); reviews run; habit reads Merge summary and uses the pinned merge comma
 
 ## Code Review Rules
 
-These bind every review, bots included; process: `docs/agents/review.md`.
+Every review, bots included, follows these; process: `docs/agents/review.md`.
 
 ### Risk tiers
 
-Highest tier wins.
+Highest tier in the change wins.
 
 | Tier | The change |
 | --- | --- |
 | low | Verified two-way doors, small blast radius, no sensitive paths: docs, copy, comments, tests, internal refactors preserving behavior, small tested fixes, default-off additions |
-| medium | Ordinary product changes (behavior, interface, CLI/API); dependencies; build/CI configuration; shared modules; medium-floor sensitive paths; re-landed outside changes; pure Upgrade (`review.md`) |
+| medium | Ordinary product changes (visible behavior, interface, CLI/API); dependencies; build/CI configuration; shared modules; medium-floor sensitive paths; re-landed outside changes; pure Upgrade (`review.md`) |
 | high | One-way doors (data migrations, destructive operations, releases, publishing); authentication, privacy, secret handling, added/changed Actions-secret use; production resources; broad blast radius; loosened governance/enforcement; high-floor sensitive paths; generator output at Initialize, Repair, or Upgrade changing a confirmed value, required checks or owner script's target state |
 
 - **Trusted authors**: habit and the agent account; others' PRs are outside PRs
