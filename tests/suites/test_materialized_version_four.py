@@ -5,7 +5,7 @@ import re
 
 import support
 from materialized_version_support import (
-    VersionThreeRendered, flat, level_three_section, level_two_section,
+    VersionThreeRendered, budget_failures, flat, level_three_section, level_two_section,
 )
 
 
@@ -229,3 +229,28 @@ class VersionFourReviewLadder(VersionThreeRendered):
         self.assertEqual(len(examples), 3)
         for tier, line in examples:
             self.assertIsNotNone(watch_tests.watch_v4.parse_reviews(line, tier), line)
+
+
+class VersionFourRefresh(VersionThreeRendered):
+    """#190: rendered startup rules, not execution or model-behavior evidence."""
+
+    VERSION = 4
+
+    def test_refresh_is_first_for_every_parent_session_and_preserves_stale_work(self):
+        start = level_two_section(self.text("AGENTS.md"), "## How to start", "AGENTS.md")
+        first = flat(start.split("\n- ", 2)[1])
+        for phrase in ("**Refresh first**", "before reading your role's file", "fetch `origin`",
+                       "identify its default branch", "clean and on that branch", "fast-forward",
+                       "Every session", "no role", "read-only session", "subagent",
+                       "parent's tree", "dirty", "another branch", "can't fast-forward",
+                       "reach the remote", "leave it untouched", "tell habit",
+                       "instruction files from the remote default branch when reachable",
+                       "changed an instruction file", "read it again"):
+            self.assertIn(phrase, first)
+        self.assertIn("docs/agents/planner.md", first)
+        self.assertIn("docs/agents/builder.md", first)
+        self.assertIn("docs/agents/reviewer.md", first)
+
+    def test_refreshed_policy_stays_within_the_fixed_part_byte_budget(self):
+        agents = self.text("AGENTS.md").split("<!-- governance:end -->", 1)[0]
+        self.assertEqual(budget_failures((agents + "<!-- governance:end -->\n").encode("utf-8")), [])
