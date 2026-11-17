@@ -361,7 +361,7 @@ PLUGIN = "cut"
 SKILL_COMMAND = "/%s:govern-repository" % PLUGIN
 SKILL_PATH = "generator/govern-repository"
 SANDBOX_URL = "https://github.com/%s.git"
-# The settings only the scenario runner sets (docs/agents/build.md); the end-to-end run sets none.
+# The settings only the scenario runner sets (docs/build/generator.md); the end-to-end run sets none.
 SCENARIO_SETTINGS = ("GOVERN_SCENARIO_STORE", "GOVERN_SCENARIO_HOME", "GOVERN_SCENARIO_REPOSITORY")
 # Conservative union of automatic ancestor instruction locations, checked 2026-11-06:
 # https://code.claude.com/docs/en/memory#when-claude-code-reads-agents-md

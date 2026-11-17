@@ -30,7 +30,7 @@ Run the four together. A check takes three steps after habit's merge and owner-s
 
 Every assertion reads GitHub's own answers. A same-name status sits only on the source
 commit, so it never confounds a probe PR's head. GitHub's rejections, recorded from the
-public sandbox on 2026-10-30 (`docs/agents/build.md`, The gate's live check), name each
+public sandbox on 2026-10-30 (`docs/build/live-checks.md`, The gate's live check), name each
 violated rule; a merge rejection that names no required check shows the gate's result
 satisfied it.
 """
