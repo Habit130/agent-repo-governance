@@ -18,6 +18,8 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 - **Lowering.** Only habit lowers a tier, in a PR comment. The Builder records it by
   updating the line, its reason linking habit's comment. Not even habit goes below the
   highest floor among the sensitive paths the PR touches; the governance gate enforces that.
+- **Pure Upgrade.** An Upgrade is pure when exact comparison reports no differences and
+  the record's confirmed part is unchanged from the default branch.
 - A pure revert the governance gate confirms takes the low path (`builder.md`, Pure reverts).
 
 ## Minimum reviews
@@ -223,6 +225,7 @@ One PR comment by the Builder, bound to the head it names and updated on every n
 - the session mark of every Builder session that pushed a commit to the PR, at every tier,
   kept on every head's update (Session marks);
 - each verification command and its result;
+- for a pure Upgrade, both facts in The tier's definition;
 - for a required check that passed after a repair on this head, the failed run, the
   repair and why it fixes that check's failure;
 - each required check's rerun-only pass on this head, with the failed run and the cause's open

@@ -24,6 +24,7 @@ from test_materialized_version_four import (
     VersionFourSessionMarks,
     VersionFourReviewLadder,
     VersionFourRefresh,
+    VersionFourPureUpgrade,
 )
 
 

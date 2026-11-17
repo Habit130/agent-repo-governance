@@ -254,3 +254,41 @@ class VersionFourRefresh(VersionThreeRendered):
     def test_refreshed_policy_stays_within_the_fixed_part_byte_budget(self):
         agents = self.text("AGENTS.md").split("<!-- governance:end -->", 1)[0]
         self.assertEqual(budget_failures((agents + "<!-- governance:end -->\n").encode("utf-8")), [])
+
+
+class VersionFourPureUpgrade(VersionThreeRendered):
+    """#188: released-byte tiering at the approved rendered-policy seam."""
+
+    VERSION = 4
+
+    def test_upgrade_tiers_keep_confirmation_changes_and_other_modes_high(self):
+        agents = flat(level_three_section(self.text("AGENTS.md"), "### Risk tiers"))
+        medium = agents.split("| medium |", 1)[1].split("| high |", 1)[0]
+        high = agents.split("| high |", 1)[1].split("|", 1)[0]
+        self.assertIn("pure Upgrade", medium)
+        for phrase in ("Initialize", "Repair", "Upgrade", "confirmed value",
+                       "required checks", "owner script's target state"):
+            self.assertIn(phrase, high)
+        self.assertNotIn("; generator output |", agents)
+
+    def test_purity_has_one_definition_and_evidence_states_both_facts(self):
+        review = self.text("docs/agents/review.md")
+        tier = flat(level_two_section(review, "## The tier", "review.md"))
+        definition = ("An Upgrade is pure when exact comparison reports no differences and "
+                      "the record's confirmed part is unchanged from the default branch.")
+        self.assertIn(definition, tier)
+        all_policy = " ".join(self.text(path) for path in (
+            "AGENTS.md", "docs/agents/review.md", "docs/agents/builder.md"))
+        self.assertEqual(flat(all_policy).count(definition), 1)
+        evidence = flat(level_two_section(review, "## Evidence comment", "review.md"))
+        self.assertIn("for a pure Upgrade, both facts in The tier's definition", evidence)
+
+    def test_generator_run_tier_follows_the_adopted_default_policy(self):
+        skill = flat(support.read_text(os.path.join(
+            os.path.dirname(os.path.dirname(support.GOVERN)), "SKILL.md")))
+        self.assertNotIn("This run is a high Builder delivery.", skill)
+        for phrase in ("Initialize and Repair are high", "An Upgrade takes the tier",
+                       "default branch's adopted policy", "Upgrade to version 4 is still high",
+                       "declare the run's tier", "not the rendered target version"):
+            self.assertIn(phrase, skill)
+        self.assertNotIn("as the ticket and `Risk: high`", skill)

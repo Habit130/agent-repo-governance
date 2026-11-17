@@ -8,8 +8,10 @@ metadata:
 
 # Govern a repository
 
-This run is a high Builder delivery. It takes no arguments and starts from the repository's
-directory. `<entry>` below is `/usr/bin/python3 <this skill's directory>/scripts/govern.py`.
+This run is a Builder delivery. Initialize and Repair are high. An Upgrade takes the tier
+the default branch's adopted policy gives it, not the rendered target version; the Upgrade to
+version 4 is still high. It takes no arguments and starts from the repository's directory.
+`<entry>` below is `/usr/bin/python3 <this skill's directory>/scripts/govern.py`.
 Each subcommand prints JSON; save each report in the run's report directory below.
 
 **Temporary paths.** Allocate a fresh, unique directory with `mktemp -d` outside the checkout
@@ -203,8 +205,9 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    or failing with the cause, the CI and the Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
 5. Make the removals habit's answer leaves standing. Move the repository's own skills to
    `.agents/skills/`, with a `.claude/skills/` link.
-6. From here follow the version's `docs/agents/builder.md`, Steps, from step 5, with the issue
-   as the ticket and `Risk: high`. Exact comparison, `<entry> compare --worktree <worktree>`,
+6. From here follow `docs/agents/builder.md`, Steps, from step 5: Initialize uses the rendered
+   policy; Upgrade and Repair use the default branch's adopted policy. Use the issue as the
+   ticket and declare the run's tier as above. Exact comparison, `<entry> compare --worktree <worktree>`,
    is part of its Verification and passes with `differences` empty before the PR opens.
    An Upgrade that changes the owner script, the target state or the required checks says in
    its high-risk report's "how to revert" that habit reruns the owner script after a revert.
@@ -216,6 +219,7 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
 1. Wait on the PR as the role file says. Complete its product smoke on the exact merged
    commit: the actual default-branch product run, or the ticket's predetermined local smoke.
    Failure or unavailability leaves delivery incomplete and is escalated to habit.
+   Under an adopted policy below version 4:
    Before any after-merge report, reread from GitHub, for the PR's exact head at merge:
    each required review's result, at medium and high the Comment review and the `Reviewer`
    status, and the Merge summary. The report states only what that reading shows.

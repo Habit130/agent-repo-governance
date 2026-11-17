@@ -129,19 +129,18 @@ These bind every review, bots included; process: `docs/agents/review.md`.
 
 ### Risk tiers
 
-A change takes the highest tier any part of it reaches.
+Highest tier wins.
 
 | Tier | The change |
 | --- | --- |
-| low | A verified two-way door with small blast radius and no sensitive path: docs, copy, comments, tests, behavior-preserving internal refactors, small tested fixes, additions behind a default-off flag |
-| medium | Ordinary product changes (visible behavior, interface, CLI, API); dependencies; build or CI configuration; shared modules; medium-floor sensitive paths; re-landed outside changes |
-| high | One-way doors (data migrations, destructive operations, releases, publishing); authentication, privacy or secret handling, including added or changed Actions-secret use; production resources; broad blast radius; loosened governance or enforcement; high-floor sensitive paths; generator output |
+| low | Verified two-way doors, small blast radius, no sensitive paths: docs, copy, comments, tests, internal refactors preserving behavior, small tested fixes, default-off additions |
+| medium | Ordinary product changes (behavior, interface, CLI/API); dependencies; build/CI configuration; shared modules; medium-floor sensitive paths; re-landed outside changes; pure Upgrade (`review.md`) |
+| high | One-way doors (data migrations, destructive operations, releases, publishing); authentication, privacy, secret handling, added/changed Actions-secret use; production resources; broad blast radius; loosened governance/enforcement; high-floor sensitive paths; generator output at Initialize, Repair, or Upgrade changing a confirmed value, required checks or owner script's target state |
 
 - **Trusted authors**: habit and the agent account; others' PRs are outside PRs
   (`builder.md`, Outside PRs).
-- **Sensitive paths** and floors live in `.github/governance/record.yml`: defaults are medium;
-  confirmed ones medium or high. Touching one, including deletion or either rename side,
-  takes at least its floor.
+- **Sensitive paths**: `.github/governance/record.yml`; defaults medium, confirmed medium/high.
+  Changes, deletions and either rename side take at least the path's floor.
 
 ### Findings
 
