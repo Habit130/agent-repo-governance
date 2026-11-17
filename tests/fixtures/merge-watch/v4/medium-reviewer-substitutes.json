@@ -1,5 +1,5 @@
 {
-  "description": "Version 4: medium reviewer substitutes.",
+  "description": "Version 4: Reviewer cannot replace the first unavailable bot while a later enabled bot remains.",
   "event_name": "push",
   "event": {
     "ref": "refs/heads/main",
@@ -59,5 +59,10 @@
     ],
     "repos/Habit130/tally/issues?labels=miss&state=open": []
   },
-  "expected": []
+  "expected": [
+    {
+      "title": "Miss: process miss, missing-review in #42",
+      "body": "Merged PR: #42\nKind: process miss\nCategory: missing-review\nObserved: Merged head 1a954628a960aaef81d7b2d4521929579f3541e6, declared medium, lacks: bot-1.\nFound by: Merge watch\nBug issue: none\n"
+    }
+  ]
 }

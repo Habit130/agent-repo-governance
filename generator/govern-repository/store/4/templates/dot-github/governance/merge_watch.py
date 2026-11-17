@@ -28,8 +28,14 @@ On `push` to the default branch, for each pushed commit:
     all, as at an Initialize, the record the merge adds names the providers instead: there is
     no earlier list to lower, and the run says so in a `NOTE` line. With a readable summary,
     the slot needs the provider it names; without one, the first enabled provider with a
-    completed review fills the slot. At medium a readable `reviewer=clear` plus a successful
-    agent-account `Reviewer` status fills an unfilled bot slot. `PROVIDERS` holds one
+    completed review fills the slot. At medium a readable summary with `reviewer=clear`
+    and the agent account's successful `Reviewer` status on the head fills an unfilled slot
+    only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`,
+    the last enabled bot in the base record's ordered list. An earlier unavailable provider
+    or any other unfilled slot state stays missing. `no-provider(none)` declares exhaustion
+    of an initially empty list or of all enabled bots; it does not prove requests occurred.
+    Sessions verify actual requests and unavailability evidence. An owner/exact-head bot-slot
+    waiver is a separate exception; high has no Reviewer substitution. `PROVIDERS` holds one
     reader per provider, and a provider not on the list is never read or reported;
   - **`reviewer`**: the agent account's newest `Reviewer` status on the head is `success`;
   - **`self-verification`**, and **`security`** when the summary lists it, are present when a
@@ -391,7 +397,10 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
         if summary is not None and kind in summary and summary[kind][0] == "waived" and kind not in waivers:
             missing.add(kind)
     if (tier == "medium" and summary is not None
-            and summary.get("reviewer") == ("clear", None) and _reviewer(pull, agent_account)):
+            and summary.get("reviewer") == ("clear", None)
+            and (summary.get("bot-1") == ("no-provider", "none")
+                 or (bots and summary.get("bot-1") == ("unavailable", bots[-1])))
+            and _reviewer(pull, agent_account)):
         missing.discard("bot-1")
     ordered = [kind for kind in KINDS if kind in missing]
     if summary is None:

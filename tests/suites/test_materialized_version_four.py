@@ -270,6 +270,25 @@ class VersionFourReviewLadder(VersionThreeRendered):
         reviewer = flat(self.text('docs/agents/reviewer.md'))
         self.assertIn('at high, or at medium as a substitute', reviewer)
 
+    def test_medium_substitute_requires_exhaustion_at_each_policy_statement(self):
+        review = self.text('docs/agents/review.md')
+        decision = flat(review.split('**No bot left at medium.**', 1)[1].split('**No bot left at high.**', 1)[0])
+        for phrase in ('every enabled bot is unavailable', 'successful `Reviewer` status on the head',
+                       '`reviewer=clear`', 'last enabled bot', "base record's ordered list"):
+            self.assertIn(phrase, decision)
+        grammar = flat(review.split('At medium a substituting Reviewer', 1)[1].split('- For example', 1)[0])
+        for phrase in ('`no-provider(none)`', '`unavailable(<last enabled bot>)`',
+                       "base record's ordered list", 'earlier unavailable provider does not qualify',
+                       'initially empty', 'all enabled bots became unavailable',
+                       'actual requests and unavailability evidence'):
+            self.assertIn(phrase, grammar)
+        contract = flat(review.split('Merge watch requires self-verification', 1)[1].split('The rest of the comment', 1)[0])
+        for phrase in ('`reviewer=clear`', 'successful `Reviewer` status on the head',
+                       '`no-provider(none)`', '`unavailable(<last enabled bot>)`',
+                       "base record's ordered list", 'Other unfilled slot states remain missing',
+                       'owner/exact-head bot-slot waiver', 'high has no Reviewer substitution'):
+            self.assertIn(phrase, contract)
+
     def test_transition_keeps_only_version_three_reviewer_waivers(self):
         review = flat(self.text('docs/agents/review.md'))
         for phrase in ('On a version 3 base only', 'owner/exact-head `reviewer` waiver',

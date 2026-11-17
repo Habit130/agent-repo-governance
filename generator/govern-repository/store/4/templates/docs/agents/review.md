@@ -105,10 +105,13 @@ counted, and never reported as unavailable.
   as its subsection below gives it, and again after each repair push.
 - **Unavailable**: no completed review on the head within the bot's wait after one more
   request; an error or no quota is the same. A completed review with findings is completed.
-- **No bot left at medium.** A same-vendor Reviewer session substitutes: habit starts it
-  from the Builder's Reviewer handoff; it posts the Comment review and the `Reviewer` status,
-  then writes the Merge summary. habit may waive the slot instead. No session skips the
-  review on its own authority.
+- **No bot left at medium.** A same-vendor Reviewer session substitutes only when
+  every enabled bot is unavailable, or the list started empty. habit starts it from the
+  Builder's Reviewer handoff; it posts the Comment review and a successful `Reviewer` status
+  on the head, then writes a readable Merge summary with `reviewer=clear` and the slot as
+  `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
+  base record's ordered list. habit may waive the slot instead (Waivers). No session skips
+  the review on its own authority.
 - **No bot left at high.** Escalate to habit, who waits or waives the slot (Waivers).
   The Reviewer's review proceeds either way.
 - **Triggers.** Only a request comment writes a bot's trigger, since any comment holding one
@@ -303,8 +306,12 @@ Required reviews: <kind>=<state>, <kind>=<state>
   `waived(<bot>)` for the bot habit waived, or `waived(none)` and `no-provider(none)` when
   no enabled bot was left.
 - A line that leaves out a kind the tier requires, or a bot slot's provider, doesn't read.
-- At medium a substituting Reviewer appears as `reviewer=clear` beside `bot-1` in its true
-  state, such as `unavailable(<bot>)` or `no-provider(none)`.
+- At medium a substituting Reviewer appears as `reviewer=clear`; `bot-1` must be
+  `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
+  base record's ordered list. An earlier unavailable provider does not qualify.
+  `no-provider(none)` declares that no enabled bot remains: the list was initially empty
+  or all enabled bots became unavailable. These declarations check consistency, not proof
+  of requests; sessions still verify the actual requests and unavailability evidence.
 - For example, at high:
 
   ```text
@@ -319,7 +326,8 @@ Required reviews: <kind>=<state>, <kind>=<state>
   Required reviews: self-verification=clear, bot-1=fallback(copilot)
   ```
 
-  and at medium, with a substituting Reviewer:
+  and at medium, after all enabled bots became unavailable (an initially empty list also
+  qualifies), with a substituting Reviewer:
 
   ```text
   ## Merge summary: medium at 1a2b3c4
@@ -327,8 +335,13 @@ Required reviews: <kind>=<state>, <kind>=<state>
   ```
 
 Merge watch requires self-verification and the Merge summary at every tier, the bot slot
-from medium, and the Reviewer at high. At medium a readable `reviewer=clear` plus the agent
-account's successful `Reviewer` status fills an unfilled bot slot. On a base below version 4,
+from medium, and the Reviewer at high. At medium a readable summary with `reviewer=clear`
+plus the agent account's successful `Reviewer` status on the head fills an unfilled bot slot
+only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`, the last
+enabled bot in the base record's ordered list. Other unfilled slot states remain missing.
+A valid owner/exact-head bot-slot waiver is a separate exception; high has no Reviewer
+substitution. These declarations do not prove requests occurred; sessions verify the actual
+requests and unavailability evidence. On a base below version 4,
 Merge watch instead checks the Reviewer status from medium and the tier/head summary with a
 `Required reviews:` line of any kinds; it prints a `NOTE`. On a version 3 base only, an
 owner/exact-head `reviewer` waiver also satisfies the Reviewer requirement, and the Builder

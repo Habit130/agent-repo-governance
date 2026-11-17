@@ -49,8 +49,11 @@ rests on what GitHub holds.
 7. **Rerun the ticket's Verification** in your worktree; for a whole-spec PR, every
    ticket's.
 8. **Check the bot slot.** At high, wait for its review on the head or habit's waiver
-   (`review.md`, Review bots and Waivers). At medium, record the unavailable bots you
-   substitute for, or review alongside the completed bot when its subsection requires it.
+   (`review.md`, Review bots and Waivers). At medium, verify that every enabled bot is
+   unavailable or the list started empty before substituting; check the actual requests and
+   unavailability evidence, then declare the exhausted slot as Review bots and the Merge
+   summary grammar require. Otherwise review alongside the completed bot when its subsection
+   requires it.
    Judge the Builder's answers to any bot findings. At high, when
    the tier's reason involves authentication, privacy or secret handling, run the security
    review (`review.md`, Security review).

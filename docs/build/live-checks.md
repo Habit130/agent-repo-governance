@@ -47,7 +47,13 @@ in short:
 `generator/govern-repository/store/4/templates/`. For a base at version 4 or later, every
 tier requires `self-verification` and `merge-summary`; medium and high require `bot-1`,
 and only high requires `reviewer`. At medium, a readable summary with `reviewer=clear`
-and a successful agent-account `Reviewer` status fills an otherwise unfilled bot slot.
+and the agent account's successful `Reviewer` status on the head fills an unfilled bot slot
+only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`, the last
+enabled bot in the base record's ordered list. An earlier unavailable provider or any other
+unfilled slot state remains missing. `no-provider(none)` declares exhaustion of an initially
+empty list or of all enabled bots; it does not prove actual requests occurred. Sessions still
+verify the requests and unavailability evidence. A valid owner/exact-head bot-slot waiver
+remains a separate exception; high has no Reviewer substitution.
 The bot order remains the confirmed list; when a bot is unavailable, the next enabled bot
 fills the slot at medium and high. The
 summary grammar and waiver kinds contain the one bot slot only. A merge onto a base below
