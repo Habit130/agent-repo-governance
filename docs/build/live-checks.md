@@ -52,8 +52,11 @@ The bot order remains the confirmed list; when a bot is unavailable, the next en
 fills the slot at medium and high. The
 summary grammar and waiver kinds contain the one bot slot only. A merge onto a base below
 version 4 takes the transition exception: a `Reviewer` status from medium and a summary
-for the tier and head with any `Required reviews:` kinds; bots are not judged and a
-`NOTE` line records the transition. Version 4's recorded cases live under
+for the tier and head with any `Required reviews:` kinds. On a version 3 base only, a valid
+owner/exact-head `reviewer` waiver also satisfies the Reviewer requirement; the Builder
+checks the bots before merge when the Reviewer is waived. Otherwise the Reviewer checks
+them. Versions 1 and 2 still require the Reviewer status. Bots are not judged by Merge
+watch, and a `NOTE` line records the transition. Version 4's recorded cases live under
 `tests/fixtures/merge-watch/v4/`; earlier cases and expectations remain unchanged.
 
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
