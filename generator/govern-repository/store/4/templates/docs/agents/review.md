@@ -13,8 +13,8 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 - **Raising.** The self-verification subagent, a review bot's tier challenge or the Reviewer
   may raise it, and the Builder updates the line. Reviews run under the lower tier don't
   count toward the new one.
-- **Rejecting at low.** A Builder that wants to reject a review bot's Important finding at
-  low first raises the PR to medium.
+- **Rejecting below high.** A Builder that wants to reject a review bot's Important finding
+  at low or medium first raises the PR to high.
 - **Lowering.** Only habit lowers a tier, in a PR comment. The Builder records it by
   updating the line, its reason linking habit's comment. Not even habit goes below the
   highest floor among the sensitive paths the PR touches; the governance gate enforces that.
@@ -25,13 +25,13 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 | | low | medium | high |
 | --- | --- | --- | --- |
 | Self-verification | yes | yes | yes |
-| Reviewer session | — | yes | yes, a vendor different from every Builder session that pushed to the PR, judged by the session marks |
-| Review bots | — | one: `bot-1` | two, from two providers: `bot-1` and `bot-2` |
+| Review bot | — | one: `bot-1` | one: `bot-1` |
+| Reviewer session | — | only as a substitute (Review bots) | yes, a vendor different from every Builder session that pushed to the PR, judged by the session marks |
 | Security review | — | — | when the tier's reason involves authentication, privacy or secret handling |
-| Merge summary by | Builder | Reviewer, or the Builder when it is waived | Reviewer, or the Builder when it is waived, as the high-risk report |
+| Merge summary by | Builder | Builder; the Reviewer when one ran | Reviewer, or the Builder when it is waived, as the high-risk report |
 
-- Kinds don't substitute for each other. Minimums are floors: every review that runs on a
-  head binds. Two results from one provider on one head fill one bot slot.
+- Minimums are floors: every review that runs on a head binds. A Reviewer substitutes for
+  the bot only at medium, as Review bots below gives it.
 - habit's waiver is the only way a required review goes unmet; a waived Reviewer session
   leaves the Merge summary to the Builder (Waivers).
 - **Before any merge:** required checks green; the evidence comment on the head; the
@@ -96,16 +96,19 @@ Initialize, the list the PR adds is the one, since there is no earlier list to l
 supported bot missing from the list is disabled: never requested, retried, awaited or
 counted, and never reported as unavailable.
 
-- **Filling the slots.** At medium the Builder asks for the first enabled bot. When it is
-  unavailable, the next enabled bot takes the slot, a **fallback**. At high the Builder asks
-  for the first two enabled bots at once, one per slot, with nothing to fall back to.
+- **Filling the slot.** At medium and high the Builder asks for the first enabled bot. When
+  it is unavailable, the next enabled bot takes the slot, a **fallback**. One bot completes
+  the list's purpose: it is an order to try for one slot, not a count of required bots.
 - **Requests.** A bot starts only on habit's request. The Builder hands habit each request,
-  as its subsection below gives it, in the Reviewer handoff and again after each repair push.
+  as its subsection below gives it, and again after each repair push.
 - **Unavailable**: no completed review on the head within the bot's wait after one more
   request; an error or no quota is the same. A completed review with findings is completed.
-- **Exhausted.** A slot with no enabled bot left, or a list too short for the tier, goes to
-  habit as an escalation: habit waits, or waives the slot (Waivers). No session skips a
+- **No bot left at medium.** A same-vendor Reviewer session substitutes: habit starts it
+  from the Builder's Reviewer handoff; it posts the Comment review and the `Reviewer` status,
+  then writes the Merge summary. habit may waive the slot instead. No session skips the
   review on its own authority.
+- **No bot left at high.** Escalate to habit, who waits or waives the slot (Waivers).
+  The Reviewer's review proceeds either way.
 - **Triggers.** Only a request comment writes a bot's trigger, since any comment holding one
   starts the bot. Every other text, from PR bodies and evidence to answers, summaries and
   issues, names the bot without writing its trigger.
@@ -138,8 +141,9 @@ Everything specific to one provider sits in its subsection.
   count toward required approvals stays off, and Copilot's monthly AI credits are shared
   with habit's other use.
 - **Never the only judge** of fixed content or an instruction file: such a change is at
-  least medium, so a Reviewer session judges it too, and that session isn't waived while
-  Copilot's is the head's only completed bot review (Waivers). A PR touching a sensitive path
+  least medium. At medium, when Copilot's is the head's only completed bot review, a
+  same-vendor Reviewer session is required as well, and that session isn't waived. At high
+  the required Reviewer judges it, and its waiver keeps this condition (Waivers). A PR touching a sensitive path
   whose only completed bot review is Copilot's says so in its Merge summary.
 
 ## Review state
@@ -151,7 +155,7 @@ written as clear.
 
 ## Waivers
 
-habit may waive one named required review, `self-verification`, `bot-1`, `bot-2`,
+habit may waive one named required review, `self-verification`, `bot-1`,
 `reviewer` or `security`, or one named required verification, a row of the repository's
 verification table, for one PR at one head.
 
@@ -191,8 +195,9 @@ narrowest one is an Important finding.
 ## Answering findings
 
 - **Important.** Fix it and reply "Fixed in `<sha>`", or reject it with evidence: "Not
-  fixing:" plus a command and its output, or a concrete fact. Then resolve the thread. At
-  medium and high the Reviewer judges each rejection and reopens one it disagrees with.
+  fixing:" plus a command and its output, or a concrete fact. Then resolve the thread. A
+  rejection of a bot's Important finding first raises the PR to high (The tier); the
+  Reviewer judges each rejection and reopens one it disagrees with.
 - **Nit.** Optional at low and medium; at high, answer each.
 - **Pre-existing.** Never blocks. The Important-severity ones go into one `needs-triage`
   issue per PR, linked from the Merge summary.
@@ -203,8 +208,8 @@ narrowest one is an Important finding.
   Self-verification is never a round: it runs before the PR opens and again on each new
   head.
 - From round 2 a review narrows as the Code Review Rules' round-2 rules say.
-- Any new head, a sync included, gets its bot slots' reviews again, through habit's requests,
-  and, at medium and high, a Reviewer pass over the change. First the
+- Any new head, a sync included, gets its bot slot's review again, through habit's requests,
+  and, at high or when a Reviewer ran at medium, a Reviewer pass over the change. First the
   Builder reruns self-verification (`builder.md`, step 6) on that head, deals with its
   findings, then updates the evidence comment.
 - After three rounds with an Important finding still open, the Builder escalates with the
@@ -242,9 +247,9 @@ The Code Review Rules map these ratings onto finding categories.
 
 ## Merge summary
 
-Written by the Builder at low, and by the Reviewer at medium and high, after the last clear
-review; by the Builder when habit waived the Reviewer session (Waivers). At high it is the
-high-risk report.
+Written by the Builder at low and medium, after the last clear review; when a Reviewer ran
+at medium, that Reviewer writes it. At high the Reviewer writes the high-risk report, or
+the Builder does when habit waived the Reviewer session (Waivers).
 
 ### Checks first
 
@@ -252,8 +257,8 @@ On the head the summary names, perform the history and issue checks in Rerun-onl
 and link each cause's open issue in the summary. Then check:
 
 1. Each review the tier requires ran on that head and is clear, or habit waived it for that
-   head (Waivers). Each bot slot holds an enabled bot's completed review, each provider in
-   one slot only.
+   head (Waivers), or a Reviewer substituted at medium (Review bots). The bot slot holds
+   an enabled bot's completed review unless substituted or waived.
 2. The Gate and Merge rules are in effect on the default branch. Read, as the agent
    account, `gh repo view --json visibility,defaultBranchRef`, then:
    - **public**: `gh api repos/{owner}/{repo}/rulesets` lists the Gate and Merge rulesets,
@@ -280,26 +285,42 @@ Required reviews: <kind>=<state>, <kind>=<state>
 
 - `<tier>` is `low`, `medium` or `high`; `<short sha>` is the head's first seven hex digits.
 - Kinds, in this order, each one the tier requires (Minimum reviews) and any other that ran:
-  `self-verification`, `bot-1`, `bot-2`, `reviewer`, `security`.
+  `self-verification`, `bot-1`, `reviewer`, `security`.
 - `self-verification`, `reviewer` and `security` take `clear` or `waived`.
 - A bot slot writes its provider's name in parentheses: `clear(<bot>)` when the first bot
-  asked completed it, `fallback(<bot>)` at medium when a later one did, `unavailable(<bot>)`,
+  asked completed it, `fallback(<bot>)` at medium and high when a later one did, `unavailable(<bot>)`,
   `waived(<bot>)` for the bot habit waived, or `waived(none)` and `no-provider(none)` when
   no enabled bot was left.
 - A line that leaves out a kind the tier requires, or a bot slot's provider, doesn't read.
-- For example, at high, with the body linking habit's waiver:
+- At medium a substituting Reviewer appears as `reviewer=clear` beside `bot-1` in its true
+  state, such as `unavailable(<bot>)` or `no-provider(none)`.
+- For example, at high:
 
   ```text
   ## Merge summary: high at 1a2b3c4
-  Required reviews: self-verification=clear, bot-1=clear(codex), bot-2=waived(copilot), reviewer=clear
+  Required reviews: self-verification=clear, bot-1=clear(codex), reviewer=clear
   ```
 
   and at medium, after the first enabled bot was unavailable:
 
   ```text
   ## Merge summary: medium at 1a2b3c4
-  Required reviews: self-verification=clear, bot-1=fallback(copilot), reviewer=clear
+  Required reviews: self-verification=clear, bot-1=fallback(copilot)
   ```
+
+  and at medium, with a substituting Reviewer:
+
+  ```text
+  ## Merge summary: medium at 1a2b3c4
+  Required reviews: self-verification=clear, bot-1=no-provider(none), reviewer=clear
+  ```
+
+Merge watch requires self-verification and the Merge summary at every tier, the bot slot
+from medium, and the Reviewer at high. At medium a readable `reviewer=clear` plus the agent
+account's successful `Reviewer` status fills an unfilled bot slot. On a base below version 4,
+Merge watch instead checks the Reviewer status from medium and the tier/head summary with a
+`Required reviews:` line of any kinds; it prints a `NOTE`, and the PR's Reviewer judges the
+bots before merge. This is the Upgrade merge's transition exception.
 
 The rest of the comment is the terminal copy's first line and seven items, in English, with
 the high-risk report's additions at high.
@@ -323,8 +344,9 @@ In Chinese (`AGENTS.md`, Talking to habit and to other agents):
   awaiting habit's go-ahead, with what it does and whether it can be undone.
   Its evidence item adds one plain sentence naming each Builder's and the Reviewer's vendor,
   in both the terminal copy and the English copy; when the Reviewer is waived, follow Waivers.
-- **At low**, items 4 and 5 state only checkable facts, and the summary says that no
-  reviewer independent of the Builder looked at the change.
+- **At low and at medium when the Builder writes it**, items 4 and 5 state only checkable
+  facts, and the summary says that no session independent of the Builder looked at the change.
+  At medium it also names the bot whose review ran, or states its exact-head waiver.
 
 Neither copy points at code: no paths, line numbers, diffs or snippets.
 
@@ -341,7 +363,7 @@ conclusion the summary's first line gives:
 3. **Misses**, only when any is open: the count of open miss records,
    `gh issue list --label miss --state open`, and a start request for a Planner session in
    which habit invokes `retro` on the oldest.
-4. **This session**: the Reviewer's can be closed; a Builder at low says whether it stays
+4. **This session**: the Reviewer's can be closed; a Builder says whether it stays
    open, what it waits for and the words habit says on return.
 
 What is dispatched next comes from the Planner's dispatch plan, never from this handoff.

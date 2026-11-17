@@ -55,6 +55,17 @@ try:
     watch_v3 = _load_v3("merge_watch")
 finally:
     sys.modules["gate"] = _gate_v1
+GOVERNANCE_V4 = os.path.join(support.REAL_STORE, "4", "templates", "dot-github", "governance")
+_spec_v4 = importlib.util.spec_from_file_location("merge_watch_v4", os.path.join(GOVERNANCE_V4, "merge_watch.py"))
+watch_v4 = importlib.util.module_from_spec(_spec_v4)
+_gate_spec_v4 = importlib.util.spec_from_file_location("gate_v4", os.path.join(GOVERNANCE_V4, "gate.py"))
+gate_v4 = importlib.util.module_from_spec(_gate_spec_v4)
+_gate_spec_v4.loader.exec_module(gate_v4)
+sys.modules["gate"] = gate_v4
+try:
+    _spec_v4.loader.exec_module(watch_v4)
+finally:
+    sys.modules["gate"] = _gate_v1
 WORKFLOW = ".github/workflows/merge-watch.yml"
 SCRIPT = ".github/governance/merge_watch.py"
 ISSUE_TRACKER = os.path.join(support.REAL_STORE, "1", "templates", "docs", "agents", "issue-tracker.md")
@@ -533,6 +544,23 @@ class VersionThree(unittest.TestCase):
         for retired in ("bugbot", "Bugbot", "cursor", "reduced", "substituted"):
             self.assertNotIn(retired, source)
 
+
+class VersionFour(unittest.TestCase):
+    def test_recorded_events(self):
+        cases = os.path.join(FIXTURES, "v4")
+        for name in sorted(os.listdir(cases)):
+            with self.subTest(case=name):
+                case = load(os.path.join(cases, name))
+                def read(path):
+                    if path in case.get("not_found", ()):
+                        raise watch_v4.NotFound(path)
+                    if path not in case["github"]:
+                        raise watch_v4.ReadError(path)
+                    return case["github"][path]
+                notes = []
+                result = watch_v4.decide(case["event_name"], case["event"], agent_account(), read, notes)
+                self.assertEqual(result, [dict(item, labels=["miss"]) for item in case["expected"]])
+                self.assertEqual(notes, case.get("notes", []))
 
 if __name__ == "__main__":
     unittest.main()

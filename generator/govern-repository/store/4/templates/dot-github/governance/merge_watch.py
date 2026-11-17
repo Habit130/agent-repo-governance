@@ -16,8 +16,8 @@ On `push` to the default branch, for each pushed commit:
 - every review missing from the merged PR's head by its declared tier records one process
   miss, `missing-review`, listing each missing review by its Merge summary kind
   (`docs/agents/review.md`, Merge summary), then `merge-summary`. The tier requires
-  `self-verification` and `merge-summary` at every tier, `bot-1` and `reviewer` from medium,
-  and `bot-2` at high:
+  `self-verification` and `merge-summary` at every tier, `bot-1` from medium,
+  and `reviewer` at high:
   - **the Merge summary**: the agent account's newest comment titled
     `## Merge summary: <tier> at <short sha>` for the declared tier and the head, whose second
     line reads by `parse_reviews`, listing every kind the tier requires and each bot slot's
@@ -27,8 +27,9 @@ On `push` to the default branch, for each pushed commit:
     requirements by changing that list. When GitHub answers that the base holds no record at
     all, as at an Initialize, the record the merge adds names the providers instead: there is
     no earlier list to lower, and the run says so in a `NOTE` line. With a readable summary,
-    each slot needs the provider it names, and no provider fills two slots; without one, each
-    enabled provider with a completed review fills one slot, in order. `PROVIDERS` holds one
+    the slot needs the provider it names; without one, the first enabled provider with a
+    completed review fills the slot. At medium a readable `reviewer=clear` plus a successful
+    agent-account `Reviewer` status fills an unfilled bot slot. `PROVIDERS` holds one
     reader per provider, and a provider not on the list is never read or reported;
   - **`reviewer`**: the agent account's newest `Reviewer` status on the head is `success`;
   - **`self-verification`**, and **`security`** when the summary lists it, are present when a
@@ -43,13 +44,13 @@ On `push` to the default branch, for each pushed commit:
   puts on a Reviewer waiver, such as Copilot never judging fixed content alone; the Merge
   summary's writer does. A body with no readable `Risk:` line is judged at high.
 
-  A merge whose base record is below version 3, such as an Upgrade's own PR, follows that
+  A merge whose base record is below version 4, such as an Upgrade's own PR, follows that
   version's review rules. This script judges what every version requires: the Reviewer's
   status from medium, and a Merge summary for the tier and head with a `Required reviews:`
   line of any kinds. Its review bots follow rules this script doesn't hold, so they aren't
   judged, an accepted transition exception: that PR's Reviewer checks them before the merge.
   The run says so in a `NOTE` line. A base record that can't be read or doesn't
-  parse enables no provider, so its bot slots read as missing, a false miss.
+  parse enables no provider, so its bot slot reads as missing, a false miss.
 
   "No record" is GitHub's own answer for the path: HTTP 404 with the message `Not Found`
   (`NotFound`). Any other answer, a missing ref's 404 among them, is a read that failed. The
@@ -95,13 +96,13 @@ REVIEWER_CONTEXT = "Reviewer"
 # The Merge summary's fixed first two lines (docs/agents/review.md, Merge summary, On the PR).
 SUMMARY_TITLE = re.compile(r"## Merge summary: (low|medium|high) at ([0-9a-f]{7})")
 SUMMARY_REVIEWS = "Required reviews: "
-KINDS = ("self-verification", "bot-1", "bot-2", "reviewer", "security")
-BOT_SLOTS = ("bot-1", "bot-2")
+KINDS = ("self-verification", "bot-1", "reviewer", "security")
+BOT_SLOTS = ("bot-1",)
 MERGE_SUMMARY = "merge-summary"
 REQUIRED = {
     "low": ("self-verification",),
-    "medium": ("self-verification", "bot-1", "reviewer"),
-    "high": ("self-verification", "bot-1", "bot-2", "reviewer"),
+    "medium": ("self-verification", "bot-1"),
+    "high": ("self-verification", "bot-1", "reviewer"),
 }
 # A bot slot's state names its provider; `none` only when no enabled provider is left.
 SLOT_STATES = {"clear": "provider", "fallback": "provider", "unavailable": "provider",
@@ -114,8 +115,8 @@ NO_PROVIDER = "none"
 # review kind, or a row of the repository's verification table, which Merge watch doesn't judge.
 WAIVER = re.compile("Waiver: (%s|verification \"[^\"\n]+\") at ([0-9a-f]{40}) \u2014 (\\S.*)" % "|".join(KINDS))
 
-# The record at the merge's base names the enabled review bots, from version 3.
-REVIEW_BOTS_VERSION = 3
+# Version 4's ladder applies only when the merge's base has adopted it.
+REVIEW_BOTS_VERSION = 4
 
 
 class ReadError(Exception):
@@ -264,7 +265,7 @@ def parse_reviews(line, tier):
     It reads when every item is `<kind>=<state>`, a bot slot's state with its provider in
     parentheses, the kinds in their order and none twice, and it lists every kind the tier
     requires. A provider is one `PROVIDERS` holds, or `none` where the state allows it, and
-    `fallback` stands only in `bot-1` at medium.
+    `fallback` stands in `bot-1` at medium and high.
     """
     if not line.startswith(SUMMARY_REVIEWS):
         return None
@@ -282,8 +283,7 @@ def parse_reviews(line, tier):
                 return None
             if provider != NO_PROVIDER and (provider not in PROVIDERS or "provider" not in allowed):
                 return None
-            # Only medium falls back: at high both bots are asked at once (review.md, Review bots).
-            if state == "fallback" and (tier, kind) != ("medium", "bot-1"):
+            if state == "fallback" and tier not in ("medium", "high"):
                 return None
         elif state not in OTHER_STATES or provider is not None:
             return None
@@ -320,7 +320,7 @@ def waived(pull, owner):
 
 
 def earlier_version_missing(pull, agent_account, tier):
-    """What every version requires of a merge onto a base below version 3: the Reviewer's
+    """What every version requires of a merge onto a base below version 4: the Reviewer's
     status from medium, and the agent account's Merge summary titled for the tier and head with
     a `Required reviews:` line, whatever kinds that version's line names."""
     missing = []
@@ -386,6 +386,9 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
     for kind in ("self-verification", "security"):
         if summary is not None and kind in summary and summary[kind][0] == "waived" and kind not in waivers:
             missing.add(kind)
+    if (tier == "medium" and summary is not None
+            and summary.get("reviewer") == ("clear", None) and _reviewer(pull, agent_account)):
+        missing.discard("bot-1")
     ordered = [kind for kind in KINDS if kind in missing]
     if summary is None:
         ordered.append(MERGE_SUMMARY)

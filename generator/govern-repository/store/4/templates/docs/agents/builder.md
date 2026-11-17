@@ -95,16 +95,17 @@ The Steps below apply to it as to a ticket, with these differences:
    update it on every new head before requesting its reviews, keeping every Builder's
    session mark (`review.md`, Session marks). For pushes to an existing PR, follow Syncing
    and waiting below.
-8. **Review**: from medium, get each bot slot's review on every head that needs one, through
+8. **Review**: from medium, get the bot slot's review on every head that needs one, through
    habit's requests (`review.md`, Review bots); answer findings and run rounds (`review.md`).
 9. **Hand over**: for each required check's rerun-only pass on the head (`review.md`,
    Rerun-only passes), link an open issue for its cause. Open it yourself as `needs-triage`,
    naming the check, the failed run and how it ended, or link an open issue that already
    covers it. An outside cause, such as a GitHub outage, still needs the issue. Record each
-   in the evidence comment; the Merge summary links each issue. Then, at low, or when habit
-   waived the Reviewer session for this head (`review.md`, Waivers), write the Merge
-   summary; otherwise, at medium and high, hand habit the Reviewer handoff below and wait on
-   the PR.
+   in the evidence comment; the Merge summary links each issue. Then, at high or at medium when a Reviewer is required (`review.md`, Review bots),
+   hand habit the Reviewer handoff below and wait on the PR. At low and medium, when no
+   Reviewer is required and none ran, write the Merge summary; at medium when one ran,
+   that Reviewer writes it. When habit waived the Reviewer session at high, write the
+   high-risk report (`review.md`, Waivers).
 
 ## The Reviewer handoff
 
@@ -117,7 +118,7 @@ A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
     and OpenCode whatever it is set to. The model's vendor decides, not the harness.
   - For a Codex harness session, a Local-mode chat in this repository's directory, not
     Worktree mode.
-  - Each review bot request the tier's slots need on this head, as `review.md`'s Review bots
+  - The review bot request the tier's slot needs on this head, as `review.md`'s Review bots
     gives it: a command or a browser step. Give habit fresh ones after each repair push, and
     the next enabled bot's request when a slot's bot is unavailable.
 - **"粘贴给 agent"** is
@@ -155,8 +156,8 @@ message).
   habit's agreement is recorded there.
 - **An unforeseen high**: the change turns out high, and the ticket's Risk notes didn't
   foresee it.
-- **The round cap**, or a bot slot with no enabled bot left (`review.md`, Review bots).
-  habit waits, or waives the slot; you may draft the waiver line (`review.md`, Waivers).
+- **The round cap**, or no enabled bot left: follow the tier's substitute or escalation
+  in `review.md`, Review bots. Only habit waives the slot (`review.md`, Waivers).
 - **An Actions secret** the ticket names is missing, or the work needs one the ticket
   doesn't name.
 - **Reverting a one-way door.**
@@ -184,7 +185,7 @@ This section applies to PR delivery.
 - The after-merge report is a final handoff (`handoff.md`). It reports this delivery only;
   what is dispatched next is the Planner's dispatch plan.
 - Before any after-merge report, reread from GitHub, for the PR's exact head at merge: each
-  required review's result, at medium and high the Comment review and the `Reviewer` status,
+  required review's result, the Comment review and `Reviewer` status when a Reviewer ran,
   and the Merge summary. The report states only what that reading shows.
 - **Product smoke** verifies the exact merged commit. When default-branch product build or
   test CI exists, confirm its run for that commit passes. Otherwise state its absence; a

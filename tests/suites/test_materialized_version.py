@@ -22,6 +22,7 @@ from test_materialized_version_four import (
     VersionFourSkillInvocations,
     VersionFourBodyUpdateOrder,
     VersionFourSessionMarks,
+    VersionFourReviewLadder,
 )
 
 

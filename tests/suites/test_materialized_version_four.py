@@ -189,9 +189,43 @@ class VersionFourSessionMarks(VersionThreeRendered):
                        "Builder writes the high-risk report", "on a Builder's vendor"):
             self.assertIn(phrase, waivers)
         self.assertEqual(review.count("same-vendor review at high"), 1)
-        # The machine-read summary protocol remains exactly the released version's.
-        old = support.read_text(os.path.join(support.REAL_STORE, "3", "templates", "docs/agents/review.md"))
-        self.assertEqual(level_three_section(review, "### On the PR"),
-                         level_three_section(old, "### On the PR"))
+        # Version 4 intentionally retires the second bot slot from the protocol.
+        self.assertNotIn("bot-2", level_three_section(review, "### On the PR"))
         terminal = flat(level_three_section(review, "### In the terminal"))
         self.assertIn("one plain sentence naming each Builder's and the Reviewer's vendor", terminal)
+
+class VersionFourReviewLadder(VersionThreeRendered):
+    """#187: rendered policy seam; these assertions do not verify model behavior."""
+
+    VERSION = 4
+
+    def test_one_bot_ladder_and_medium_summary(self):
+        review = flat(self.text("docs/agents/review.md"))
+        self.assertIn('| Review bot | — | one: `bot-1` | one: `bot-1` |', review)
+        self.assertIn('| Merge summary by | Builder | Builder; the Reviewer when one ran |', review)
+        self.assertIn('At medium a substituting Reviewer', review)
+        self.assertIn('`fallback(<bot>)` at medium and high', review)
+        for path in ('AGENTS.md', 'docs/agents/review.md', 'docs/agents/builder.md',
+                     'docs/agents/reviewer.md', 'docs/agents/handoff.md', 'docs/agents/issue-tracker.md',
+                     '.github/governance/merge_watch.py'):
+            self.assertNotIn('bot-2', self.text(path), path)
+
+    def test_substitute_and_copilot_exception_are_explicit(self):
+        review = flat(self.text('docs/agents/review.md'))
+        for phrase in ('**No bot left at medium.**', 'same-vendor Reviewer session substitutes',
+                       '**No bot left at high.**', '**Rejecting below high.**',
+                       'first raises the PR to high', 'Reviewer session is required as well',
+                       'no session independent of the Builder looked at the change'):
+            self.assertIn(phrase, review)
+        builder = flat(self.text('docs/agents/builder.md'))
+        self.assertIn('At low and medium, when no Reviewer is required and none ran', builder)
+        reviewer = flat(self.text('docs/agents/reviewer.md'))
+        self.assertIn('at high, or at medium as a substitute', reviewer)
+
+    def test_summary_examples_read_with_the_version_four_parser(self):
+        import test_merge_watch as watch_tests
+        review = self.text('docs/agents/review.md')
+        examples = re.findall(r'## Merge summary: (low|medium|high) at [0-9a-f]{7}\n[ \t]*(Required reviews: [^\n]+)', review)
+        self.assertEqual(len(examples), 3)
+        for tier, line in examples:
+            self.assertIsNotNone(watch_tests.watch_v4.parse_reviews(line, tier), line)

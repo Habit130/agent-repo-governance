@@ -27,7 +27,7 @@ session. Typing it is habit's reply; no other words are needed.
 It comes only at these moments:
 
 - **Planner**: tickets are approved and can be dispatched, or the planning round is over.
-- **Builder**: handing to the Reviewer; at low, after its Merge summary; the after-merge
+- **Builder**: handing to the Reviewer; at low and medium, after its Merge summary; the after-merge
   report; for a results-comment ticket, its completion summary, the counterpart of the
   after-merge report.
 - **Reviewer**: after the Merge summary, with the merge command.
@@ -109,11 +109,11 @@ $retro #51
 Role: Planner. Issue: #51.
 ```
 
-A Builder's final handoff to the Reviewer, at medium. The start instruction is a block of
+A Builder's final handoff to a substituting Reviewer, at medium. The start instruction is a block of
 its own; the message's prose sits outside it:
 
 ```text
-Builder → habit：PR #57 已开，medium，self-verification 和 review bot 均已 clear。
+Builder → habit：PR #57 已开，medium，self-verification 已 clear，所有启用的 review bot 均 unavailable，需要 Reviewer 替代。
 
 给 habit：在 Claude Code 中开一个新 session，同一模型即可，medium 允许同模型 review。
 粘贴给 agent：
@@ -127,7 +127,7 @@ Role: Reviewer. PR: #57. Skills: code-review. Post on the PR: the Comment review
 本 session 保持打开，自行等待 PR merge，merge 后报告结果；无需回复。
 ```
 
-A Reviewer's final handoff, at medium:
+A substituting Reviewer's final handoff, at medium:
 
 ```text
 Reviewer → habit：PR #57 clear，Merge summary 已发在 PR 上。

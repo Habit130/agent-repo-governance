@@ -2,13 +2,14 @@
 
 # Reviewer
 
-The Reviewer's workflow and escalations, at medium and high, in a context that didn't write
+The Reviewer's workflow and escalations, at high, or at medium as a substitute
+under `review.md`, Review bots, in a context that didn't write
 the change. `AGENTS.md` holds the hard limits and how to talk to habit, and `review.md` how
 the review rules apply; this file points there.
 
 ## Start
 
-habit starts the Reviewer once the PR is open and its self-verification findings are dealt
+habit starts the Reviewer when the tier requires one (`review.md`, Review bots), once the PR is open and its self-verification findings are dealt
 with, with
 `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
 Reviewer status and, when clear, the Merge summary.`
@@ -47,8 +48,10 @@ rests on what GitHub holds.
    with, saying why.
 7. **Rerun the ticket's Verification** in your worktree; for a whole-spec PR, every
    ticket's.
-8. **Wait for each bot slot's review** on the head, or habit's waiver of it (`review.md`,
-   Review bots and Waivers), and judge the Builder's answers to its findings. At high, when
+8. **Check the bot slot.** At high, wait for its review on the head or habit's waiver
+   (`review.md`, Review bots and Waivers). At medium, record the unavailable bots you
+   substitute for, or review alongside the completed bot when its subsection requires it.
+   Judge the Builder's answers to any bot findings. At high, when
    the tier's reason involves authentication, privacy or secret handling, run the security
    review (`review.md`, Security review).
 9. **Remove your worktree** once the outputs are posted.
@@ -88,7 +91,7 @@ Put the question and the options in the terminal, and leave one "Waiting on habi
 on the PR (`handoff.md`, Three kinds of message), when:
 
 - a finding turns on a product or scope decision the ticket doesn't settle;
-- a bot slot has no enabled bot left (`review.md`, Review bots);
+- at high the bot slot has no enabled bot left (`review.md`, Review bots);
 - a permission is denied.
 
 ## Skills this role relies on

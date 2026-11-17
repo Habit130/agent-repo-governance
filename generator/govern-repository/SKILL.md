@@ -99,7 +99,9 @@ conflict habit confirms. At Repair, make none of them.
 - **Review bots**, when the version's manifest lists `review_bots`: propose those bots,
   enabled in the manifest's order, and name what each needs from habit (the `preconditions`
   checklist). habit's answer sets the record's enabled list and its order; a shorter list is
-  allowed, its missing slots covered only by habit's waivers.
+  allowed. Under version 4 the list is the order to try for one slot; when exhausted,
+  medium takes a substituting Reviewer or habit's slot waiver, and high takes habit's wait
+  or slot waiver. Older adopted policies still set the run's review requirements.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
   worktree allocated as **Temporary paths** above, so the checkout stays untouched. A manifest
   whose `extraction` is `unsupported` has its commands read from the file by you. Record each command you ran and
@@ -217,6 +219,8 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
    Before any after-merge report, reread from GitHub, for the PR's exact head at merge:
    each required review's result, at medium and high the Comment review and the `Reviewer`
    status, and the Merge summary. The report states only what that reading shows.
+   That medium Reviewer requirement applies below version 4. Under version 4, reread the
+   Comment review and `Reviewer` status only when a Reviewer ran.
 2. Run `<entry> handover --mode-facts <saved mode report>`, adding
    `--required-checks-changed` when habit's answer changed them. When `owner_command` is true,
    give habit `<entry> owner-command --repository <owner/name>`'s command, with each of the

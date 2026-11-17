@@ -77,7 +77,7 @@ Orientation only; the role files and `review.md` hold the rules.
   in a fresh session; one branch and one PR unless `builder.md`, Results-comment tickets,
   applies. It edits its ticket only after habit's agreement is
   recorded there.
-- **Reviewer**: only at medium and high, in a context that didn't write the change. It never
+- **Reviewer**: at high, or at medium as a substitute (`review.md`, Review bots), in a context that didn't write the change. It never
   pushes, and never edits the PR, tickets or labels.
 
 ## Talking to habit and to other agents
