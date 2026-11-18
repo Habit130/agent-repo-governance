@@ -1,5 +1,7 @@
 # Review requirements name bot slots, and the record lists the enabled review bots
 
+Superseded from version 4 by [ADR 0033](0033-one-review-bot-and-a-reviewer-at-high.md): one slot, `bot-1`, at medium and high, the enabled list giving the order bots are tried for it. A repository on version 3 still requires `bot-2` at high.
+
 From version 3, a tier requires review bots by slot: none at low, `bot-1` at medium, and `bot-1` and `bot-2`, filled by two different bots, at high. Which bots fill the slots is a confirmed value in the governance record: the enabled review bots, in habit's order of preference. Everything specific to one bot sits in one subsection of `review.md` and one reader in Merge watch.
 
 Versions 1 and 2 named Bugbot and the Codex review bot in the requirements themselves, so one bot's retirement needed a new version in every repository. Now choosing among the supported bots changes one confirmed value. Supporting a new bot still takes a version.
