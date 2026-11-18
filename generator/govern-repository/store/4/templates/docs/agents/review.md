@@ -28,7 +28,7 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 | --- | --- | --- | --- |
 | Self-verification | yes | yes | yes |
 | Review bot | — | one: `bot-1` | one: `bot-1` |
-| Reviewer session | — | only as a substitute (Review bots) | yes, a vendor different from every Builder session that pushed to the PR, judged by the session marks |
+| Reviewer session | — | when substituting for the bot or required alongside it, same vendor allowed (Review bots) | yes, a vendor different from every Builder session that pushed to the PR, judged by the session marks |
 | Security review | — | — | when the tier's reason involves authentication, privacy or secret handling |
 | Merge summary by | Builder | Builder; the Reviewer when one ran | Reviewer, or the Builder when it is waived, as the high-risk report |
 

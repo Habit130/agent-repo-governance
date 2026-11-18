@@ -47,8 +47,8 @@ Install 带来已发布的 version 4 后，一个 repository 的第一次 Initia
 
 1. 在这个 repository 的 checkout 目录里启动 Claude Code 或 OpenCode，不带参数调用 generator：Claude Code 里是 `/govern-repository`，OpenCode 里是 `@govern-repository`。Codex harness 和 deepseekharness 不能运行它。
 2. Generator 给出 checklist。habit 按指引邀请 agent account 成为 collaborator，agent 随后接受邀请。
-3. Generator 发来一次中文确认，列出 sensitive paths、required checks、owner script 要替换的 rulesets 和要创建的 labels。habit 一次确认，包括启用哪些 review bot 以及顺序。启用 Codex 时，把该 repository 加入 Codex review bot 的连接范围。启用 Copilot 时，确认 habit 的套餐可在此 repository 的 PR 上请求 Copilot code review。Private repository 还要 habit 确认已了解两项限制。GitHub 在那里不检测或阻止 credential，Actions 分钟数有限。
-4. 按 Builder 的指引走完 high 的 review。按确认的顺序请求一个 review bot，当前 bot 不可用时才换下一个。Codex 用 Builder 给的命令请求。需要 Copilot 时，在浏览器里把它加为 PR reviewer，强度选 Lite。按原样粘贴 Builder 的启动指令，启动一位 model vendor 与所有推送过提交的 Builder session 都不同的 Reviewer。读 high-risk report，运行 pinned merge 命令，再在 Builder 的终端里说 merged。
+3. Generator 发来一次中文确认，列出 sensitive paths、required checks、owner script 要替换的 rulesets 和要创建的 labels。habit 一次确认，包括启用哪些 review bot 以及顺序，并按 checklist 连接已选的 bot。Private repository 还要 habit 确认已了解两项限制。GitHub 在那里不检测或阻止 credential，Actions 分钟数有限。
+4. 按 Builder 的指引走完 high 的 review。按确认的顺序请求一个 review bot，当前 bot 不可用时按 Builder 的指引处理。按原样粘贴 Builder 的启动指令，启动一位 model vendor 与所有推送过提交的 Builder session 都不同的 Reviewer。读 high-risk report，运行 pinned merge 命令，再在 Builder 的终端里说 merged。
 5. Merge 之后，用 `!` 前缀运行它交给 habit 的 owner script 命令。从这时起只有 habit 能 merge。
 
 GitHub:https://github.com/habit130/agent-repo-governance

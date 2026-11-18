@@ -54,9 +54,9 @@ none.
    resolves the installed copy. habit answers the confirmation, which lists the three rulesets
    for the owner script to replace and, from version 3, the review bots to enable in preference
    order. Then habit follows that run's Builder through the high path. Version 3 takes two bot
-   slots. From version 4, request the first confirmed bot for one slot and try the next enabled
-   bot only when the current one is unavailable. Use the Builder's command for Codex and the
-   browser at Lite effort for Copilot when requested. Start the Reviewer with exactly the start
+   slots, each covered by a review or the owner's waiver for the head. From version 4, request
+   the first confirmed bot for one slot and try the next enabled bot only when the current one
+   is unavailable. Use the Builder's request instructions. Start the Reviewer with exactly the start
    instruction the Builder gives (#149). At version 3 its model vendor differs from the
    Builder's. From version 4 it differs from every Builder session that pushed to the PR.
    Read the high-risk report, run the pinned merge, say merged in the Builder's terminal and

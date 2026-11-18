@@ -18,10 +18,11 @@ must-act: yes
   gate 结果。（#174、#176、#179）
 - 每个等级都有 self-verification。Medium 和 high 各有一个 review bot 位置，按
   habit 确认的顺序请求，当前 bot 不可用才换下一个。Medium 的 bot 都不可用或清单为空
-  时，可以由同 vendor 的 Reviewer session 补位。固定内容或指令文件的唯一已完成 bot
-  审核来自 Copilot 时，还须有不可豁免的 Reviewer session。High 的 Reviewer 必须来自
-  不同 vendor，bot 用尽时由 habit 决定等候或豁免该位置。Builder 在 low 或 medium 要
-  驳回 bot 的 Important finding，先升到 high。（#194）
+  时，可以由同 vendor 的 Reviewer session 补位。固定内容或指令文件仅获一项 bot 审核，
+  且适用 Review bots 的额外审查规则时，仍需不可豁免的 Reviewer session。两种 medium
+  情形均允许同 vendor，角色说明和最低审查表已统一。High 的 Reviewer 必须来自不同
+  vendor，bot 用尽时由 habit 决定等候或豁免该位置。Builder 在 low 或 medium 要驳回 bot
+  的 Important finding，先升到 high。（#194、#197）
 - 豁免由 habit 用 owner 账号在该 PR 评论，写明豁免项与完整 head SHA。换 head 要重新
   批准。涉及认证、隐私或凭据的 high 变更仍需 Reviewer 的 security review，habit
   可额外请求 Codex security review。#192 首个 head 在观察窗口内没有自动完成的 bot
@@ -32,6 +33,8 @@ must-act: yes
   head 写的 Reviewer 豁免。合并前仍按 base 版本验证 bot。（#194）
   已声明的 Reviewer 豁免需要独立核对 owner 评论中的豁免项和完整 head SHA。
   即使 Reviewer 状态成功，缺少有效授权时也会留下 missing-review 记录。（#197）
+  只有成功读取并解析 bot 清单后，Merge watch 才认可 medium Reviewer 补位。
+  清单读取或解析失败时，仍报告 bot-1 缺失。（#197）
 - 仓库采用 v4 后，exact comparison 无差异且 record 的 confirmed 值与默认分支
   一致的 pure Upgrade 走 medium，仍受敏感路径 floor 约束。Initialize 以及改变
   confirmed 值、required checks 或 owner script 目标状态的 Upgrade 走 high。
@@ -53,8 +56,9 @@ must-act 为 yes。
 预期结果随发布调整。Store、render、compare 和隔离安装默认取 v4，仍可显式选择旧版；
 v5 的 render 和 compare 需要单次显式 opt-in，拒绝时目标保持原样。Machine list 的
 最新发布版本变为 v4。Live runner 的 v4 Initialize 指引改为一个 bot 位置和不同 vendor
-的 Reviewer，离线保留 v3 的两个 bot 位置。新增一个 fixture 检查缺少有效授权的
-Reviewer 豁免报告为 missing-review。已有 fixture 路径和输入均保留。
+的 Reviewer，离线保留 v3 的两个 bot 位置。新增的 fixture 分别覆盖缺少授权的 Reviewer
+豁免及无法解析的 bot 清单。空清单 fixture 的输入改用 generator 实际渲染的格式，原有
+fixture 的路径和预期结果均保留。渲染断言现在核对 medium Reviewer 的两种情形。
 
 Model scenarios 因额度成本未运行，最终 head 的模型行为未经验证。公开 sandbox 的
 端到端 Initialize 是本次发布的 Initialize 行为检查，本仓库随后单独 Upgrade 是

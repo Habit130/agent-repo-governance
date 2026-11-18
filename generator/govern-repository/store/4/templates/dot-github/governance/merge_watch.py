@@ -349,7 +349,7 @@ def earlier_version_missing(pull, agent_account, owner, tier, version):
 
 
 def enabled_bots(read, repository, ref):
-    """(the record's version at ref, its enabled review bots); (None, []) when it can't be read.
+    """Return the record's version and enabled bots, or (None, None) on a read or parse failure.
 
     NotFound when GitHub answers that ref holds no record."""
     try:
@@ -358,12 +358,14 @@ def enabled_bots(read, repository, ref):
     except NotFound:
         raise
     except (ReadError, gate.RecordError, AttributeError):
-        return None, []
+        return None, None
     return parsed["version"], [bot for bot in parsed["confirmed"].get("review_bots", []) if bot in PROVIDERS]
 
 
 def missing_reviews(pull, agent_account, owner, tier, bots):
     """Each review missing from the head at the tier: Merge summary kinds in their order, then `merge-summary`."""
+    policy_known = bots is not None
+    bots = bots or ()
     summary = _summary(pull, agent_account, tier)
     waivers = waived(pull, owner)
     missing = set()
@@ -396,7 +398,7 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
     for kind in ("self-verification", "reviewer", "security"):
         if summary is not None and kind in summary and summary[kind][0] == "waived" and kind not in waivers:
             missing.add(kind)
-    if (tier == "medium" and summary is not None
+    if (tier == "medium" and policy_known and summary is not None
             and summary.get("reviewer") == ("clear", None)
             and (summary.get("bot-1") == ("no-provider", "none")
                  or (bots and summary.get("bot-1") == ("unavailable", bots[-1])))
@@ -441,7 +443,7 @@ def _judge_pull(read, repository, agent_account, pull, squash, base, notes):
         try:
             version, bots = enabled_bots(read, repository, squash)
         except NotFound:
-            version, bots = None, []
+            version, bots = None, None
     facts = Pull(read, repository, number, head)
     if version is not None and version < REVIEW_BOTS_VERSION:
         notes.append("#%d merged onto a base whose record is at version %d; its review bots follow that version's "

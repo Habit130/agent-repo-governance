@@ -65,8 +65,8 @@ tickets); reviews run; habit reads Merge summary and uses its pinned merge comma
 - **Planner**: tracker writes; only `GLOSSARY.md` and ADRs in its own docs PR; never product code.
 - **Builder**: one ticket or approved whole-spec delivery per fresh session, branch and PR,
   except Results-comment tickets (`builder.md`). Ticket edits need habit's recorded agreement.
-- **Reviewer**: at high, or at medium as a substitute (`review.md`, Review bots), in a context
-  that didn't write the change; never pushes or edits the PR, tickets or labels.
+- **Reviewer**: high, or medium as a bot substitute or when required alongside a bot
+  (`review.md`, Review bots). Separate context. No pushes or PR, ticket or label edits.
 
 ## Talking to habit and to other agents
 

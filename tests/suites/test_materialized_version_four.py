@@ -267,8 +267,13 @@ class VersionFourReviewLadder(VersionThreeRendered):
             self.assertIn(phrase, review)
         builder = flat(self.text('docs/agents/builder.md'))
         self.assertIn('At low and medium, when no Reviewer is required and none ran', builder)
+        hard_limits = flat(level_two_section(self.text('AGENTS.md'), '## Hard limits', 'AGENTS.md'))
         reviewer = flat(self.text('docs/agents/reviewer.md'))
-        self.assertIn('at high, or at medium as a substitute', reviewer)
+        medium_condition = 'when substituting for the bot or required alongside it'
+        self.assertIn('medium as a bot substitute or when required alongside a bot', hard_limits)
+        self.assertIn('at medium ' + medium_condition, reviewer)
+        self.assertIn('same vendor allowed', reviewer)
+        self.assertIn(f'| Reviewer session | — | {medium_condition}, same vendor allowed (Review bots) |', review)
 
     def test_medium_substitute_requires_exhaustion_at_each_policy_statement(self):
         review = self.text('docs/agents/review.md')
