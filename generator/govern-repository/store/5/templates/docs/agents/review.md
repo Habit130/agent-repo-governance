@@ -105,9 +105,10 @@ counted, and never reported as unavailable.
   as its subsection below gives it, and again after each repair push.
 - **Unavailable**: no completed review on the head within the bot's wait after one more
   request; an error or no quota is the same. A completed review with findings is completed.
-- **No bot left at medium.** A same-vendor Reviewer session substitutes only when
-  every enabled bot is unavailable, or the list started empty. habit starts it from the
-  Builder's Reviewer handoff; it posts the Comment review and a successful `Reviewer` status
+- **No bot left at medium.** After reading the bot policy, check whether every enabled bot is
+  unavailable or the list started empty. A Reviewer session substitutes only when one of
+  these conditions holds. It may use the Builder's vendor. habit starts it from the
+  Builder's Reviewer handoff. It posts the Comment review and a successful `Reviewer` status
   on the head, then writes a readable Merge summary with `reviewer=clear` and the slot as
   `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
   base record's ordered list. habit may waive the slot instead (Waivers). No session skips
@@ -153,9 +154,10 @@ Everything specific to one provider sits in its subsection.
   count toward required approvals stays off, and Copilot's monthly AI credits are shared
   with habit's other use.
 - **Never the only judge** of fixed content or an instruction file: such a change is at
-  least medium. At medium, when Copilot's is the head's only completed bot review, a
-  same-vendor Reviewer session is required as well, and that session isn't waived. At high
-  the required Reviewer judges it, and its waiver keeps this condition (Waivers). A PR touching a sensitive path
+  least medium. At medium, when Copilot's is the head's only completed bot review, an
+  additional Reviewer is required and may use the Builder's vendor. That review cannot
+  be waived. At high the required Reviewer judges it, and its waiver keeps this condition
+  (Waivers). A PR touching a sensitive path
   whose only completed bot review is Copilot's says so in its Merge summary.
 
 ## Review state
@@ -309,9 +311,9 @@ Required reviews: <kind>=<state>, <kind>=<state>
 - At medium a substituting Reviewer appears as `reviewer=clear`; `bot-1` must be
   `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
   base record's ordered list. An earlier unavailable provider does not qualify.
-  `no-provider(none)` declares that no enabled bot remains: the list was initially empty
-  or all enabled bots became unavailable. These declarations check consistency, not proof
-  of requests; sessions still verify the actual requests and unavailability evidence.
+  When the bot policy is known, `no-provider(none)` declares that the list was initially empty
+  or all enabled bots became unavailable. Sessions still verify the actual requests and
+  unavailability evidence.
 - For example, at high:
 
   ```text
@@ -335,8 +337,9 @@ Required reviews: <kind>=<state>, <kind>=<state>
   ```
 
 Merge watch requires self-verification and the Merge summary at every tier, the bot slot
-from medium, and the Reviewer at high. At medium a readable summary with `reviewer=clear`
-plus the agent account's successful `Reviewer` status on the head fills an unfilled bot slot
+from medium, and the Reviewer at high. At medium it accepts substitution only after it
+successfully reads and parses the bot policy. A readable summary with `reviewer=clear` plus
+the agent account's successful `Reviewer` status on the head fills an unfilled bot slot
 only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`, the last
 enabled bot in the base record's ordered list. Other unfilled slot states remain missing.
 A valid owner/exact-head bot-slot waiver is a separate exception; high has no Reviewer

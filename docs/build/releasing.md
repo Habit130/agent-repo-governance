@@ -25,9 +25,9 @@ The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbo
 and the [core Commands](../agents/build.md#commands) pass on the head. Every result names the head, so a later push
 reruns them, the live checks and this run, with a fresh reset. The version cut is the
 highest released one in the store: `reset` reads this checkout's, and `end-to-end` the
-store in the plugin it builds from the head's commit. Both print that version and its
-review bots, from its manifest's `review_bots`, and refuse a version whose manifest names
-none.
+store in the plugin it builds from the head's commit. Both read the version's manifest and
+refuse a version whose manifest names no supported review bots. From version 4, the reset
+describes one review bot slot and habit confirms the enabled list during Initialize.
 
 1. **The reset.** `live.py reset --sandbox public` opens a sandbox PR whose commit holds exactly
    the materialized seed, `tests/fixtures/repositories/sandbox/repo/`, checked against the

@@ -506,7 +506,10 @@ def cmd_reset(args):
                "--title", "Reset the sandbox to its seed", "--body-file", "-"], stdin=body).stdout.strip()
     number = int(url.rstrip("/").split("/")[-1])
     print("Opened %s from %s at %s, whose tree is the seed's %s." % (url, branch, head[:12], seed[:12]))
-    print("Version %d's cut, whose review bots are %s." % (version, review_bot_names(bots)))
+    if version >= 4:
+        print("Version %d's cut uses one review bot slot. habit confirms the enabled list during Initialize." % version)
+    else:
+        print("Version %d's cut, whose review bots are %s." % (version, review_bot_names(bots)))
     print("")
     print("habit's steps, in order:")
     print("1. Once the reset PR's checks pass, merge it with the ! prefix in Claude Code:")

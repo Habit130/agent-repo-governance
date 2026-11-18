@@ -28,8 +28,9 @@ On `push` to the default branch, for each pushed commit:
     all, as at an Initialize, the record the merge adds names the providers instead: there is
     no earlier list to lower, and the run says so in a `NOTE` line. With a readable summary,
     the slot needs the provider it names; without one, the first enabled provider with a
-    completed review fills the slot. At medium a readable summary with `reviewer=clear`
-    and the agent account's successful `Reviewer` status on the head fills an unfilled slot
+    completed review fills the slot. At medium, after a successful bot policy read and parse,
+    a readable summary with `reviewer=clear` and the agent account's successful
+    `Reviewer` status on the head fills an unfilled slot
     only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`,
     the last enabled bot in the base record's ordered list. An earlier unavailable provider
     or any other unfilled slot state stays missing. `no-provider(none)` declares exhaustion

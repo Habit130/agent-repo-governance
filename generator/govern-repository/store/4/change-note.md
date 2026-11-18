@@ -23,8 +23,9 @@ must-act: yes
   情形均允许同 vendor，角色说明和最低审查表已统一。High 的 Reviewer 必须来自不同
   vendor，bot 用尽时由 habit 决定等候或豁免该位置。Builder 在 low 或 medium 要驳回 bot
   的 Important finding，先升到 high。（#194、#197）
-- 豁免由 habit 用 owner 账号在该 PR 评论，写明豁免项与完整 head SHA。换 head 要重新
-  批准。涉及认证、隐私或凭据的 high 变更仍需 Reviewer 的 security review，habit
+- 豁免由 habit 用 owner 账号在该 PR 评论，首行按 `review.md` 中的 Waivers 格式写明
+  豁免项、完整 head SHA 和理由。换 head 要重新批准。涉及认证、隐私或凭据的 high 变更
+  仍需 Reviewer 的 security review，habit
   可额外请求 Codex security review。#192 首个 head 在观察窗口内没有自动完成的 bot
   review，发布流程继续沿用 habit 手动请求。（#192、#194）
 - Merge watch 从 medium 起按一个 bot 位置核对 v4 的合并。Initialize 前没有 record 时，
@@ -34,7 +35,7 @@ must-act: yes
   已声明的 Reviewer 豁免需要独立核对 owner 评论中的豁免项和完整 head SHA。
   即使 Reviewer 状态成功，缺少有效授权时也会留下 missing-review 记录。（#197）
   只有成功读取并解析 bot 清单后，Merge watch 才认可 medium Reviewer 补位。
-  清单读取或解析失败时，仍报告 bot-1 缺失。（#197）
+  清单读取或解析失败时，按缺少 bot-1 处理。有效的 owner 逐提交豁免可覆盖该位置。（#197）
 - 仓库采用 v4 后，exact comparison 无差异且 record 的 confirmed 值与默认分支
   一致的 pure Upgrade 走 medium，仍受敏感路径 floor 约束。Initialize 以及改变
   confirmed 值、required checks 或 owner script 目标状态的 Upgrade 走 high。

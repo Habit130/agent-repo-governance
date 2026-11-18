@@ -46,7 +46,8 @@ in short:
 **Version 4** keeps the same event and record boundary, with its script under
 `generator/govern-repository/store/4/templates/`. For a base at version 4 or later, every
 tier requires `self-verification` and `merge-summary`; medium and high require `bot-1`,
-and only high requires `reviewer`. At medium, a readable summary with `reviewer=clear`
+and only high requires `reviewer`. At medium, Merge watch accepts substitution after it
+successfully reads and parses the bot policy. A readable summary with `reviewer=clear`
 and the agent account's successful `Reviewer` status on the head fills an unfilled bot slot
 only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`, the last
 enabled bot in the base record's ordered list. An earlier unavailable provider or any other
@@ -266,9 +267,9 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
 - **Version 4's review probes (#183, #187)**, public sandbox only: from the committed,
   pushed delivery head, run
   `python3 tests/live/live.py prepare --pr <n> --sandbox public --probe merge-watch-v4-high --probe merge-watch-v4-medium --probe merge-watch-v4-miss --directory <dir>`.
-  These render version 4 from the delivery checkout. The confirmed bot order is
-  `codex`, `copilot`, and each probe uses only
-  Codex in the one required slot. Gate probes cannot share their check.
+  These render version 4 from the delivery checkout using the runner's fixed test
+  configuration. Each probe uses Codex in the single `bot-1` slot. Run the gate probes
+  in a separate check.
 
   habit merges the render PR using its printed pinned command and runs its printed owner
   command. Then run
