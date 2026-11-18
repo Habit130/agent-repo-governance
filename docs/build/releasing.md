@@ -52,27 +52,33 @@ none.
    with `!`. The line sets no `GOVERN_SCENARIO_` setting, so the run reads real GitHub as the
    agent account on the real machine. habit types `/cut:govern-repository`: the bare name
    resolves the installed copy. habit answers the confirmation, which lists the three rulesets
-   for the owner script to replace and, from version 3, the review bots to enable. Then habit
-   follows that run's Builder through the high path, as the launch prints it: for version 3, the
-   Codex review bot request it hands over and a Copilot request in the browser at the Lite
-   effort; a Reviewer in another vendor's harness started with exactly the start instruction
-   the run prints, nothing added (#149); the high-risk report, the pinned merge, saying merged,
-   and the owner-script command, which makes Gate active again.
+   for the owner script to replace and, from version 3, the review bots to enable in preference
+   order. Then habit follows that run's Builder through the high path. Version 3 takes two bot
+   slots. From version 4, request the first confirmed bot for one slot and try the next enabled
+   bot only when the current one is unavailable. Use the Builder's command for Codex and the
+   browser at Lite effort for Copilot when requested. Start the Reviewer with exactly the start
+   instruction the Builder gives (#149). At version 3 its model vendor differs from the
+   Builder's. From version 4 it differs from every Builder session that pushed to the PR.
+   Read the high-risk report, run the pinned merge, say merged in the Builder's terminal and
+   run the owner-script command to restore Gate.
 4. **The outcomes.** The cutting PR's Builder posts each step's outcome on the cutting PR,
    naming the head. The issue's `generator_identity` equals `end-to-end.json`'s identity; the
-   rendered record is at the version cut, with habit's review-bot list; the Initialize PR's
-   head carries each enabled bot's completed review (for version 3, the Codex review bot's
-   completed marker, and Copilot's review with its check run), the Reviewer's Comment review
-   and `Reviewer` status, the version's Merge summary, and the high-risk report; habit's
-   squash merge, Merge watch's push run on it, which from version 3 reads the bots from the
-   record the merge adds and says `No miss in this push event.` with no `UNREADABLE` line;
-   the run's after-merge report; and the rulesets after the owner-script run. The version's
-   live checks then run on the same head through `prepare` and `probe`.
+   evidence includes habit's confirmation, the record at the version cut with the confirmed
+   bot order, and the exact comparison. On the Initialize PR's head, verify self-verification,
+   the completed bot reviews filling the version's slots, the Reviewer's Comment review and
+   successful `Reviewer` status, and the Merge summary and high-risk report. For a v4
+   Initialize, record which bot filled the one slot, any fallback, and which Builder and Reviewer
+   session marks establish the vendor check. Record habit's squash merge and Merge watch's push
+   run on it. From version 3 the run must report that it read the bots from the record the merge
+   adds, say `No miss in this push event.` and have no `UNREADABLE` line. Record the run's
+   after-merge report and the rulesets after the owner-script run. The version's live checks
+   then run on the same cutting head through `prepare` and `probe`.
 
+The cutting PR follows this repository's adopted version. While it is at v3, that means two
+bot slots and a different-vendor Reviewer, including when the sandbox Initialize is at v4.
 After the merge habit runs the install (README.md), which brings the released version to the
-machine; a repository adopts it by its own Upgrade. The
-cut's Merge summary says that the version was cut, its urgency, and that habit runs the
-install (#44 §8, Trigger).
+machine. Each repository adopts it by its own Upgrade. The cut's Merge summary names the
+version, its urgency, the install and the remaining verification gaps (#44 §8, Trigger).
 
 ## Scenarios
 

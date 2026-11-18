@@ -47,9 +47,9 @@ The lifecycle and combined cut run through depth-two PR-merge and squash-push hi
 with CI's base/head contract.
 The render suite checks released-only defaults, no-write draft refusals and explicit opt-in
 against the real store. Machine-install verifies that copying draft bytes leaves the
-installed version unchanged; the live runner selects the released version for a cut.
-The policy-text checks cover the draft's session marks and skill-invocation wording as
-text, without claiming model behavior or making draft rules bind an installed repository.
+installed version unchanged. The live runner selects the released version for a cut and
+tests the two-slot v3 and one-slot v4 Initialize instructions offline. The policy-text checks
+cover version 4's session marks and skill-invocation wording.
 
 ### Suite index
 

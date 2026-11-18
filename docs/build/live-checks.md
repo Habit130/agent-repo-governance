@@ -43,7 +43,7 @@ in short:
 - `decide` takes an optional `notes` list for those lines, and `read` answers a
   `contents` path with the file's text.
 
-**Version 4's draft** keeps the same event and record boundary, with its script under
+**Version 4** keeps the same event and record boundary, with its script under
 `generator/govern-repository/store/4/templates/`. For a base at version 4 or later, every
 tier requires `self-verification` and `merge-summary`; medium and high require `bot-1`,
 and only high requires `reviewer`. At medium, a readable summary with `reviewer=clear`
@@ -161,7 +161,7 @@ item failed or missing, 2 stopped before any write).
      check directory. It renders the probes' own version: 2, 3 for version 3's probes, or 4 for version 4's;
      `--version <n>` renders a later one instead, the unpublished draft included, with the
      per-call opt-in, and refuses one below the probes' own. `prepared.json` keeps the
-     version, so the probes judge with its confirmed values. Version 4's draft (#169) runs the
+     version, so the probes judge with its confirmed values. Version 4 (#169) runs the
      gate's four probes with `owner-state` and `owner-rerun` as `--version 4`.
   3. After habit's steps, `live.py probe --state <dir>/prepared.json --probe <name>... --post`
      posts the result comment, naming the commit. The owner probes need one run without
@@ -266,8 +266,8 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
 - **Version 4's review probes (#183, #187)**, public sandbox only: from the committed,
   pushed delivery head, run
   `python3 tests/live/live.py prepare --pr <n> --sandbox public --probe merge-watch-v4-high --probe merge-watch-v4-medium --probe merge-watch-v4-miss --directory <dir>`.
-  These select version 4's draft with the render's per-call opt-in; no release or install is
-  needed. The confirmed bot order remains `codex`, `copilot`, while each probe uses only
+  These render version 4 from the delivery checkout. The confirmed bot order is
+  `codex`, `copilot`, and each probe uses only
   Codex in the one required slot. Gate probes cannot share their check.
 
   habit merges the render PR using its printed pinned command and runs its printed owner

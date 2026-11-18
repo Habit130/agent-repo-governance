@@ -557,9 +557,15 @@ def cmd_end_to_end(args):
     print("   %s" % start_command(state["checkout"], state["plugin"]))
     print("2. Type %s, never the bare /govern-repository, and answer its confirmation." % SKILL_COMMAND)
     print("3. Then follow that run's Builder to the end:")
-    for bot in state["review_bots"]:
-        print("   - %s;" % REVIEW_BOT_REQUESTS[bot])
-    print("   - a Reviewer in another vendor's harness started with exactly the start instruction the run prints, nothing added;")
+    if state["version"] >= 4:
+        print("   - one completed review bot slot on the head. When the Builder asks, request the first bot in the order you "
+              "confirmed. Then try the next enabled bot only if the Builder says the current bot is unavailable.")
+        print("   - a Reviewer whose model vendor differs from every Builder session that pushed to the PR. "
+              "Use exactly the start instruction the run prints.")
+    else:
+        for bot in state["review_bots"]:
+            print("   - %s;" % REVIEW_BOT_REQUESTS[bot])
+        print("   - a Reviewer in another vendor's harness started with exactly the start instruction the run prints, nothing added;")
     print("   - the high-risk report, the pinned merge, saying merged in its terminal, and the owner-script command it hands over.")
     return 0
 

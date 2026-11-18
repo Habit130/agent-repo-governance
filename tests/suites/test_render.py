@@ -117,15 +117,15 @@ class RenderCase(support.TempDirCase):
 
 class Rendering(RenderCase):
     def test_real_store_draft_opt_in_is_per_call_and_released_repositories_still_compare(self):
-        # The real store's draft, version 4, in a copy so the test can check nothing was written.
+        # Copy the real store to verify that neither release nor draft selection writes to it.
         root = self.path("draft-store")
         shutil.copytree(support.REAL_STORE, root)
         code, facts = support.govern(["store", "--store", root])
         self.assertEqual((code, facts["versions"], facts["released"], facts["installed_version"]),
-                         (0, [1, 2, 3, 4], [1, 2, 3], 3))
+                         (0, [1, 2, 3, 4, 5], [1, 2, 3, 4], 4))
         before_store = snapshot_tree(root)
         with_bots = dict(TALLY_CONFIRMED, review_bots=["codex", "copilot"])
-        for version in (1, 2, 3):
+        for version in (1, 2, 3, 4):
             dest = self.path("released-%d" % version)
             code, facts = self.render(root, dest, confirmed=with_bots if version >= 3 else TALLY_CONFIRMED,
                                       extra=["--version", str(version)])
@@ -134,29 +134,29 @@ class Rendering(RenderCase):
                                          "--version", str(version)] + VALUES)
             self.assertEqual((code, facts["version"], facts["differences"]), (0, version, []), facts)
             code, facts = support.govern(["compare", "--store", root, "--worktree", dest] + VALUES)
-            self.assertEqual((code, facts["version"]), (0 if version == 3 else 1, 3), facts)
-            self.assertEqual(bool(facts["differences"]), version != 3)
+            self.assertEqual((code, facts["version"]), (0 if version == 4 else 1, 4), facts)
+            self.assertEqual(bool(facts["differences"]), version != 4)
 
         dest = self.path("draft")
         support.write_tree(dest, {"keep.txt": "repository-owned\n"})
         before = snapshot_tree(dest)
         for command, option in (("render", "--dest"), ("compare", "--worktree")):
-            code, facts = support.govern([command, "--store", root, option, dest, "--version", "4"] + VALUES)
+            code, facts = support.govern([command, "--store", root, option, dest, "--version", "5"] + VALUES)
             self.assertEqual(code, 2, facts)
             self.assertIn("unreleased", facts["error"])
             self.assertEqual(snapshot_tree(dest), before)
-        code, facts = self.render(root, dest, confirmed=with_bots, extra=["--version", "4", "--allow-unreleased"])
-        self.assertEqual((code, facts["version"]), (0, 4), facts)
+        code, facts = self.render(root, dest, confirmed=with_bots, extra=["--version", "5", "--allow-unreleased"])
+        self.assertEqual((code, facts["version"]), (0, 5), facts)
         code, facts = support.govern(["compare", "--store", root, "--worktree", dest,
-                                     "--version", "4", "--allow-unreleased"] + VALUES)
-        self.assertEqual((code, facts["differences"]), (0, []), facts)
+                                     "--version", "5", "--allow-unreleased"] + VALUES)
+        self.assertEqual((code, facts["version"], facts["differences"]), (0, 5, []), facts)
         before = snapshot_tree(dest)
         for command, option in (("render", "--dest"), ("compare", "--worktree")):
-            code, facts = support.govern([command, "--store", root, option, dest, "--version", "4"] + VALUES)
+            code, facts = support.govern([command, "--store", root, option, dest, "--version", "5"] + VALUES)
             self.assertEqual(code, 2, facts)
             self.assertEqual(snapshot_tree(dest), before)
         code, facts = self.render(root, self.path("ordinary"), confirmed=with_bots)
-        self.assertEqual((code, facts["version"]), (0, 3), facts)
+        self.assertEqual((code, facts["version"]), (0, 4), facts)
         self.assertEqual(snapshot_tree(root), before_store)
 
     def test_invalid_names_and_token_values_refuse_both_clis_without_writes(self):
