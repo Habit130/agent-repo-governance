@@ -7,6 +7,6 @@ A change whose content a check proves identical to content that already passed r
 
 In the planning round, 2 of the 15 high PRs since 2026-11-10 only created a draft as a byte-identical copy, and 1 was this repository's Upgrade: each took a high review of content a machine had already shown to be equal. The proof is narrower than review: it shows equality, never that the reviewed content was right, so it applies only where equality is the whole question.
 
-The pure Upgrade is in version 4's draft, an unpublished version; until a repository adopts version 4, version 3 tiers its Upgrade high. The release rule is [ticket #186](https://github.com/Habit130/agent-repo-governance/issues/186), not yet delivered; until it merges, a new draft is still created in its own PR.
+The pure Upgrade is in version 4's draft, an unpublished version; until a repository adopts version 4, version 3 tiers its Upgrade high. [Releasing](../build/releasing.md#cut-a-version) gives the procedure for the release rule from [ticket #186](https://github.com/Habit130/agent-repo-governance/issues/186).
 
 Decided in [the version 4 planning round](https://github.com/Habit130/agent-repo-governance/issues/182), round 2, questions 3 and 4.

@@ -15,7 +15,8 @@
     "fixtures": "PASS",
     "frozen": "PASS",
     "note-fields": "PASS",
-    "notes": "FAIL"
+    "notes": "FAIL",
+    "version-copy": "FAIL"
   },
   "head": {
     "generator/govern-repository/store/1/manifest.json": "{\"version\": 1}\n",
