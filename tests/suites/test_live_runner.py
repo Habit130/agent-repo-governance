@@ -34,6 +34,7 @@ import live  # noqa: E402
 import probes  # noqa: E402
 from probes import merge_watch as watch_probes  # noqa: E402
 from probes import merge_watch_v3 as v3_probes  # noqa: E402
+from probes import merge_watch_v4 as v4_probes  # noqa: E402
 from probes import owner as owner_probes  # noqa: E402
 from probes import gate as gate_probes  # noqa: E402
 
@@ -110,7 +111,7 @@ class Registry(unittest.TestCase):
         known = probes.registered()
         self.assertEqual(list(known), ["merge-watch-cancelled", "gate-trigger", "gate-reruns", "gate-source", "gate-rulesets",
                                         "merge-watch-clean", "merge-watch-miss", "merge-watch-v3-clean", "merge-watch-v3-waived",
-                                        "merge-watch-v3-miss", "owner-report", "owner-state", "owner-rerun", "owner-recovery", "owner-private-secret"])
+                                        "merge-watch-v3-miss", "merge-watch-v4-high", "merge-watch-v4-medium", "merge-watch-v4-miss", "owner-report", "owner-state", "owner-rerun", "owner-recovery", "owner-private-secret"])
         for name in ("gate-trigger", "gate-reruns", "gate-source", "gate-rulesets"):
             self.assertEqual(known[name].sandboxes, ("public", "private"))
         for probe in known.values():
@@ -1333,6 +1334,170 @@ class MergeWatchV3Probes(support.TempDirCase):
         self.assertEqual(sum("ghm pr merge" in line for line in lines), 3)
         for line in lines:
             self.assertIn("--repo %s " % PUBLIC if "ghm" in line else "echo", line)
+
+
+class MergeWatchV4Registration(unittest.TestCase):
+    def test_version_four_probes_select_the_draft_and_refuse_gate_mixing(self):
+        names = ["merge-watch-v4-high", "merge-watch-v4-medium", "merge-watch-v4-miss"]
+        known = probes.registered()
+        for name in names:
+            self.assertIn(name, known)
+            self.assertEqual(known[name].sandboxes, ("public",))
+        self.assertEqual(live.model_version(names), 4)
+        with self.assertRaises(live.RunnerError):
+            live.model_version(names, 3)
+        with self.assertRaises(live.RunnerError):
+            live.chosen_probes(["gate-trigger", names[0]], "public")
+
+
+class MergeWatchV4Probes(support.TempDirCase):
+    def setUp(self):
+        support.TempDirCase.setUp(self)
+        self.sandbox = MergeWatchV3Sandbox(tempfile.mkdtemp(prefix="check-", dir=self.tmp))
+        self.statuses_by_head = {}
+        original_gh, original_read = self.sandbox.gh, self.sandbox.read
+
+        def gh(args, stdin=None):
+            if list(args[:3]) == ["api", "--method", "POST"]:
+                head = args[3].rsplit("/", 1)[-1]
+                result = original_gh(args, stdin)
+                self.statuses_by_head[head] = list(self.sandbox.statuses[:1])
+                return result
+            return original_gh(args, stdin)
+
+        def read(path):
+            if "/statuses" in path:
+                head = path.split("/commits/", 1)[1].split("/", 1)[0]
+                return 0, json.dumps(self.statuses_by_head.get(head, [])), ""
+            return original_read(path)
+
+        self.sandbox.gh, self.sandbox.read = gh, read
+        def opened(context, spec):
+            number = 10 + list(v4_probes.NAMES).index(spec.name)
+            head = str(number - 6) * 40
+            context.pulls[number] = {"number": number, "merged": False, "head": {"sha": head}}
+            return {"pull": number, "head": head, "url": "https://github.com/%s/pull/%d" % (PUBLIC, number)}
+        patcher = mock.patch.object(v4_probes, "_open_pull", opened)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        for module, names in ((v4_probes, ("CODEX_WAIT_SECONDS", "POLL_SECONDS")),
+                              (watch_probes, ("RUN_WAIT_SECONDS", "POLL_SECONDS"))):
+            for name in names:
+                patcher = mock.patch.object(module, name, -1 if "WAIT" in name else 0)
+                patcher.start()
+                self.addCleanup(patcher.stop)
+
+    def run_probe(self, name):
+        return probes.run(probes.registered()[name], self.sandbox)
+
+    def failed(self, results):
+        return [r.assertion for r in results if not r.passed]
+
+    def test_each_probe_posts_only_its_required_status_and_accepts_automatic_review(self):
+        for spec in v4_probes.SPECS:
+            self.run_probe(spec.name)
+            pull = 10 + list(v4_probes.NAMES).index(spec.name)
+            self.sandbox.answer.add((pull, "codex"))
+            results = self.run_probe(spec.name)
+            self.assertEqual(self.failed(results), ["habit merged the PR at the ready head"])
+            self.assertTrue(os.path.isfile(os.path.join(self.sandbox.directory, v4_probes.target(spec, "merge"))))
+            summary = [w[2] for w in self.sandbox.writes if w[0] == "comment" and w[1] == pull][0]
+            self.assertEqual(summary.splitlines()[:2], ["## Merge summary: %s at %s" % (spec.tier, self.sandbox.head_of(pull)[:7]),
+                                                      "Required reviews: " + spec.summary])
+            self.assertNotIn("@codex", summary)
+            if spec.tier == "medium":
+                self.assertIn("No session independent of the Builder", summary)
+        self.assertEqual([w[0] for w in self.sandbox.writes].count("status"), 1)
+
+
+    def test_a_medium_probe_rejects_any_reviewer_status_even_an_unsuccessful_one(self):
+        name = "merge-watch-v4-medium"
+        self.run_probe(name)
+        self.sandbox.answer.add((11, "codex"))
+        self.statuses_by_head[self.sandbox.head_of(11)] = [{"context": "Reviewer", "state": "failure", "creator": {"login": "Habit098"}}]
+        self.assertIn("no Reviewer status is on the probe head", self.failed(self.run_probe(name)))
+
+    def test_the_merged_probes_require_the_exact_push_result_and_planted_record(self):
+        for spec in v4_probes.SPECS:
+            self.run_probe(spec.name)
+            pull = 10 + list(v4_probes.NAMES).index(spec.name)
+            head = self.sandbox.head_of(pull)
+            self.sandbox.answer.add((pull, "codex"))
+            self.run_probe(spec.name)
+            self.sandbox.merge_pull(pull)
+            if spec.lacks:
+                observed = "Merged head %s, declared high, lacks: reviewer, merge-summary." % head
+                self.sandbox.watch_run(V3_SQUASH, 61, "MISS Miss: process miss, missing-review in #%d. %s" % (pull, observed))
+                self.assertIn("GitHub holds that record, opened by Merge watch's token with the six field lines",
+                              self.failed(self.run_probe(spec.name)))
+                record = miss_issue(number=pull, observed=observed)
+                record["created_at"] = "2026-11-11T03:01:00Z"
+                self.sandbox.issues.append(record)
+            else:
+                self.sandbox.watch_run(V3_SQUASH, 61, "No miss in this push event.")
+            self.assertEqual(self.failed(self.run_probe(spec.name)), [])
+            self.sandbox.watch_run(V3_SQUASH, 61, "NOTE transition was used.\nNo miss in this push event.")
+            self.assertTrue(self.failed(self.run_probe(spec.name)))
+
+    def test_a_manual_request_timeout_is_a_blocker_and_never_writes_a_merge_target(self):
+        name = "merge-watch-v4-high"
+        self.run_probe(name)
+        self.sandbox.habit_comment(10, v4_probes.CODEX_REQUEST)
+        results = self.run_probe(name)
+        self.assertIn("environment blocker", results[0].detail)
+        self.assertFalse(os.path.exists(os.path.join(self.sandbox.directory, "merge_watch_v4_high_merge.txt")))
+
+    def test_habit_alone_requests_and_merges_each_probe(self):
+        lines = [line for spec in v4_probes.SPECS for _, _, line in probes.registered()[spec.name].commands(self.sandbox)]
+        self.assertEqual(sum("ghm pr comment" in line for line in lines), 3)
+        self.assertEqual(sum("ghm pr merge" in line for line in lines), 3)
+        self.assertFalse(any("Copilot" in line or "Waiver:" in line for line in lines))
+        for line in lines:
+            self.assertIn("--repo %s " % PUBLIC, line)
+
+
+    def test_the_real_version_four_event_handler_judges_the_probe_facts(self):
+        import importlib.util
+        folder = os.path.join(support.REAL_STORE, "4", "templates", "dot-github", "governance")
+        def load(name):
+            spec = importlib.util.spec_from_file_location("live_v4_" + name, os.path.join(folder, name + ".py"))
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+        with mock.patch.dict(sys.modules, {"gate": load("gate")}):
+            script = load("merge_watch")
+        record = support.read_text(os.path.join(support.FIXTURES, "merge-watch", "record.yml")).replace("version: 1", "version: 4")
+        record += '  review_bots:\n    - "codex"\n    - "copilot"\n'
+        for spec in v4_probes.SPECS:
+            self.run_probe(spec.name)
+            number = 10 + list(v4_probes.NAMES).index(spec.name)
+            self.sandbox.answer.add((number, "codex"))
+            self.run_probe(spec.name)
+            self.sandbox.merge_pull(number)
+            pull = dict(self.sandbox.pulls[number], base={"ref": "main"}, body="Risk: %s — probe data" % spec.tier)
+            prefix = "repos/%s/" % PUBLIC
+            answers = {prefix + "commits/%s/pulls" % V3_SQUASH: [pull],
+                       prefix + "contents/.github/governance/record.yml?ref=" + COMMIT: record,
+                       prefix + "issues?labels=miss&state=open": []}
+            def read(path):
+                if path in answers:
+                    return answers[path]
+                code, out, err = self.sandbox.read(path + ("&" if "?" in path else "?") + "per_page=100")
+                if code:
+                    raise script.ReadError(err)
+                return json.loads(out)
+            event = {"ref": "refs/heads/main", "before": COMMIT, "after": V3_SQUASH,
+                     "commits": [{"id": V3_SQUASH}], "repository": {"full_name": PUBLIC, "default_branch": "main"}}
+            notes = []
+            records = script.decide("push", event, "Habit098", read, notes)
+            self.assertEqual(notes, [])
+            if spec.lacks:
+                self.assertEqual(records, [{"title": "Miss: process miss, missing-review in #12", "labels": ["miss"],
+                    "body": "Merged PR: #12\nKind: process miss\nCategory: missing-review\n"
+                            "Observed: Merged head %s, declared high, lacks: reviewer, merge-summary.\n"
+                            "Found by: Merge watch\nBug issue: none\n" % self.sandbox.head_of(number)}])
+            else:
+                self.assertEqual(records, [])
 
 
 class MergeWatchCommands(support.TempDirCase):

@@ -43,6 +43,28 @@ in short:
 - `decide` takes an optional `notes` list for those lines, and `read` answers a
   `contents` path with the file's text.
 
+**Version 4's draft** keeps the same event and record boundary, with its script under
+`generator/govern-repository/store/4/templates/`. For a base at version 4 or later, every
+tier requires `self-verification` and `merge-summary`; medium and high require `bot-1`,
+and only high requires `reviewer`. At medium, a readable summary with `reviewer=clear`
+and the agent account's successful `Reviewer` status on the head fills an unfilled bot slot
+only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`, the last
+enabled bot in the base record's ordered list. An earlier unavailable provider or any other
+unfilled slot state remains missing. `no-provider(none)` declares exhaustion of an initially
+empty list or of all enabled bots; it does not prove actual requests occurred. Sessions still
+verify the requests and unavailability evidence. A valid owner/exact-head bot-slot waiver
+remains a separate exception; high has no Reviewer substitution.
+The bot order remains the confirmed list; when a bot is unavailable, the next enabled bot
+fills the slot at medium and high. The
+summary grammar and waiver kinds contain the one bot slot only. A merge onto a base below
+version 4 takes the transition exception: a `Reviewer` status from medium and a summary
+for the tier and head with any `Required reviews:` kinds. On a version 3 base only, a valid
+owner/exact-head `reviewer` waiver also satisfies the Reviewer requirement; the Builder
+checks the bots before merge when the Reviewer is waived. Otherwise the Reviewer checks
+them. Versions 1 and 2 still require the Reviewer status. Bots are not judged by Merge
+watch, and a `NOTE` line records the transition. Version 4's recorded cases live under
+`tests/fixtures/merge-watch/v4/`; earlier cases and expectations remain unchanged.
+
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
   answers a REST path with GitHub's list, every page joined, or raises `ReadError`
   (version 3: `NotFound`, its subclass, for a file GitHub says isn't there). Its
@@ -136,7 +158,7 @@ item failed or missing, 2 stopped before any write).
      PR head, opens the sandbox PR, with a record under `live-checks/` so one exists even
      when the render is unchanged, and prints habit's commands: the pinned merge command,
      the owner-script command, then each probe's commands, each saving its output in the
-     check directory. It renders the probes' own version, 2, or 3 for version 3's probes;
+     check directory. It renders the probes' own version: 2, 3 for version 3's probes, or 4 for version 4's;
      `--version <n>` renders a later one instead, the unpublished draft included, with the
      per-call opt-in, and refuses one below the probes' own. `prepared.json` keeps the
      version, so the probes judge with its confirmed values. Version 4's draft (#169) runs the
@@ -241,6 +263,35 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   each printed pinned merge; a last run judges Merge watch's own push runs and posts with
   `--post`. A bot that doesn't answer stops its probe as an environment blocker, never a
   pass. A run whose log holds a `NOTE` line fails the clean and waived probes.
+- **Version 4's review probes (#183, #187)**, public sandbox only: from the committed,
+  pushed delivery head, run
+  `python3 tests/live/live.py prepare --pr <n> --sandbox public --probe merge-watch-v4-high --probe merge-watch-v4-medium --probe merge-watch-v4-miss --directory <dir>`.
+  These select version 4's draft with the render's per-call opt-in; no release or install is
+  needed. The confirmed bot order remains `codex`, `copilot`, while each probe uses only
+  Codex in the one required slot. Gate probes cannot share their check.
+
+  habit merges the render PR using its printed pinned command and runs its printed owner
+  command. Then run
+  `python3 tests/live/live.py probe --state <dir>/prepared.json --probe merge-watch-v4-high --probe merge-watch-v4-medium --probe merge-watch-v4-miss`
+  once to open the three probe PRs and write habit's command targets. The initial results
+  say that habit's steps and merges are pending. All probe writes use the agent account:
+  - `merge-watch-v4-high`: a successful `Reviewer` status and a summary listing
+    `self-verification`, `bot-1=clear(codex)` and `reviewer=clear`; no miss.
+  - `merge-watch-v4-medium`: no `Reviewer` status and a Builder summary listing only
+    `self-verification` and `bot-1=clear(codex)`, stating that no independent session looked
+    at the change; no miss.
+  - `merge-watch-v4-miss`: high, no `Reviewer` status, and a summary omitting `reviewer`;
+    exactly one `missing-review` record lacking `reviewer, merge-summary`.
+
+  If automatic Codex review completed on a probe head, it counts without a request
+  comment. Otherwise habit makes that probe's printed Codex request; agents never send a
+  bot trigger. Rerun the same probe command to collect reviews, post the summaries and
+  report `READY`. A requested bot has its 30-minute wait; no answer is an environment
+  blocker. habit alone runs each printed pinned merge after `READY`. After all three
+  merges, run the same probe command with `--post`: every assertion must pass, and its
+  PR comment names the delivery commit and sandbox heads. Clean probes reject transition
+  `NOTE` lines; the miss probe checks the exact run result and record's six field lines.
+  These statuses and summaries are sandbox probe data, not a real Reviewer session.
 - **`merge-watch-miss` under version 3** reads `bot-2` as the missing second bot where
   earlier versions write `codex`; the cancelled-run and planted-miss probes can therefore
   share version 3's render.

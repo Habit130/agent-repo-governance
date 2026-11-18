@@ -71,13 +71,13 @@ A ticket holds `to-tickets`' body, or triage's agent brief, plus:
   value. Give habit the repository's Actions secrets settings link and the exact name, so
   habit sets it in the browser while approving the ticket (`AGENTS.md`, Secrets).
 
-A ticket carries no tier. Once published it is frozen: a Builder proposes a change, habit
-agrees, and the ticket records both.
+A ticket carries no tier or difficulty. Once published it is frozen: a Builder proposes a
+change, habit agrees, and the ticket records both.
 
 **The dispatch plan.** When habit approves, the Planner's final handoff (`handoff.md`)
 carries the dispatch plan: every approved ticket of the effort, whether a spec, a map, a
-parent issue or a release, in dispatch order, each with its start instruction and its
-condition, such as "after #n merges" or "beside #n". A spec approved for whole-spec delivery
+parent issue or a release, in dispatch order, each with its difficulty line, start instruction
+and its condition, such as "after #n merges" or "beside #n". A spec approved for whole-spec delivery
 is one entry, with the spec's start instruction. habit dispatches from it without opening a
 Planner after each merge.
 
@@ -89,6 +89,27 @@ Planner after each merge.
 - The Planner also writes the plan in English, using the canonical form from `AGENTS.md`,
   How to start, as a comment on the effort's parent issue. Only a Planner updates it, such
   as when a Builder or a Reviewer reports something the plan didn't foresee.
+
+## Difficulty
+
+The Planner grades the judgment left to the session in the dispatch plan, one line per
+entry: `Difficulty: <level> — <reason>` in English, "难度：<level>" with its reason in
+Chinese, never a bare level. A Planner start request carries none.
+
+| Difficulty | The test |
+| --- | --- |
+| low | The ticket fixes what changes and how; a command, test or byte comparison confirms the result |
+| medium | The ticket fixes the outcome; the session chooses the implementation within one area, and tests can confirm it |
+| high | At least one condition below holds |
+
+`Difficulty: high` requires a real design trade-off between plausible approaches; designing a
+new rule or procedure agents follow, with no test of its effect (writing down a rule already
+decided does not count); several components that must stay consistent; a bug of unknown
+cause; or being the main Builder of a whole-spec delivery.
+
+When unsure, use the lower level. `Difficulty: medium` or `Difficulty: high` names the test or condition
+that makes it so. Difficulty never follows from the area's importance or the risk tier.
+Only the Planner updates the dispatch grade; the ticket body carries none.
 
 ## The docs PR
 

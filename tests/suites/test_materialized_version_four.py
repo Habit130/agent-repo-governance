@@ -5,8 +5,56 @@ import re
 
 import support
 from materialized_version_support import (
-    VersionThreeRendered, flat, level_three_section, level_two_section,
+    VersionThreeRendered, budget_failures, flat, level_three_section, level_two_section,
 )
+
+
+class VersionFourCodexSecurityReview(VersionThreeRendered):
+    """#191: optional security review at the rendered-policy seam, not bot behavior."""
+
+    VERSION = 4
+
+    def test_optional_security_review_has_its_own_scope_and_finding_rules(self):
+        review = self.text("docs/agents/review.md")
+        codex = flat(level_three_section(review, "### The Codex review bot"))
+        for phrase in ("**Codex security review**", "optional extra", "high",
+                       "authentication, privacy or secret handling", "Medium and above",
+                       "Important", "the rest Nits", "no waiver",
+                       "never a kind in the fixed `Required reviews:` line",
+                       "Reviewer's security review stays required"):
+            self.assertIn(phrase, codex)
+        # The existing required review is independent of the optional bot review.
+        old = support.read_text(os.path.join(support.REAL_STORE, "3", "templates", "docs/agents/review.md"))
+        self.assertEqual(level_two_section(review, "## Security review", "review.md"),
+                         level_two_section(old, "## Security review", "review.md"))
+
+    def test_security_request_is_offered_in_the_handoff_through_the_codex_rules(self):
+        handoff = flat(level_two_section(self.text("docs/agents/builder.md"),
+                                        "## The Reviewer handoff", "builder.md"))
+        for phrase in ("high for authentication, privacy or secret handling",
+                       "offer habit the optional Codex security review request",
+                       "`review.md`, The Codex review bot"):
+            self.assertIn(phrase, handoff)
+
+    def test_silence_is_not_a_clean_review_and_evidence_records_request_and_output(self):
+        review = self.text("docs/agents/review.md")
+        codex = flat(level_three_section(review, "### The Codex review bot"))
+        for phrase in ("only findings at or above its threshold",
+                       "no posted finding is not a completed clean review"):
+            self.assertIn(phrase, codex)
+        evidence = flat(level_two_section(review, "## Evidence comment", "review.md"))
+        self.assertIn("whether habit requested the optional Codex security review and what it posted", evidence)
+
+    def test_code_review_keeps_the_observed_manual_request_path(self):
+        review = self.text("docs/agents/review.md")
+        old = support.read_text(os.path.join(support.REAL_STORE, "3", "templates", "docs/agents/review.md"))
+        codex = level_three_section(review, "### The Codex review bot")
+        old_codex = level_three_section(old, "### The Codex review bot")
+        self.assertEqual(codex.split("- **Codex security review**", 1)[0].rstrip(),
+                         old_codex.rstrip())
+        requests = flat(level_two_section(review, "## Review bots", "review.md"))
+        self.assertIn("**Requests.** A bot starts only on habit's request.", requests)
+        self.assertNotIn("automatic review", requests)
 
 
 class VersionFourSkillInvocations(VersionThreeRendered):
@@ -189,9 +237,226 @@ class VersionFourSessionMarks(VersionThreeRendered):
                        "Builder writes the high-risk report", "on a Builder's vendor"):
             self.assertIn(phrase, waivers)
         self.assertEqual(review.count("same-vendor review at high"), 1)
-        # The machine-read summary protocol remains exactly the released version's.
-        old = support.read_text(os.path.join(support.REAL_STORE, "3", "templates", "docs/agents/review.md"))
-        self.assertEqual(level_three_section(review, "### On the PR"),
-                         level_three_section(old, "### On the PR"))
+        # Version 4 intentionally retires the second bot slot from the protocol.
+        self.assertNotIn("bot-2", level_three_section(review, "### On the PR"))
         terminal = flat(level_three_section(review, "### In the terminal"))
         self.assertIn("one plain sentence naming each Builder's and the Reviewer's vendor", terminal)
+
+class VersionFourReviewLadder(VersionThreeRendered):
+    """#187: rendered policy seam; these assertions do not verify model behavior."""
+
+    VERSION = 4
+
+    def test_one_bot_ladder_and_medium_summary(self):
+        review = flat(self.text("docs/agents/review.md"))
+        self.assertIn('| Review bot | — | one: `bot-1` | one: `bot-1` |', review)
+        self.assertIn('| Merge summary by | Builder | Builder; the Reviewer when one ran |', review)
+        self.assertIn('At medium a substituting Reviewer', review)
+        self.assertIn('`fallback(<bot>)` at medium and high', review)
+        for path in ('AGENTS.md', 'docs/agents/review.md', 'docs/agents/builder.md',
+                     'docs/agents/reviewer.md', 'docs/agents/handoff.md', 'docs/agents/issue-tracker.md',
+                     '.github/governance/merge_watch.py'):
+            self.assertNotIn('bot-2', self.text(path), path)
+
+    def test_substitute_and_copilot_exception_are_explicit(self):
+        review = flat(self.text('docs/agents/review.md'))
+        for phrase in ('**No bot left at medium.**', 'same-vendor Reviewer session substitutes',
+                       '**No bot left at high.**', '**Rejecting below high.**',
+                       'first raises the PR to high', 'Reviewer session is required as well',
+                       'no session independent of the Builder looked at the change'):
+            self.assertIn(phrase, review)
+        builder = flat(self.text('docs/agents/builder.md'))
+        self.assertIn('At low and medium, when no Reviewer is required and none ran', builder)
+        reviewer = flat(self.text('docs/agents/reviewer.md'))
+        self.assertIn('at high, or at medium as a substitute', reviewer)
+
+    def test_medium_substitute_requires_exhaustion_at_each_policy_statement(self):
+        review = self.text('docs/agents/review.md')
+        decision = flat(review.split('**No bot left at medium.**', 1)[1].split('**No bot left at high.**', 1)[0])
+        for phrase in ('every enabled bot is unavailable', 'successful `Reviewer` status on the head',
+                       '`reviewer=clear`', 'last enabled bot', "base record's ordered list"):
+            self.assertIn(phrase, decision)
+        grammar = flat(review.split('At medium a substituting Reviewer', 1)[1].split('- For example', 1)[0])
+        for phrase in ('`no-provider(none)`', '`unavailable(<last enabled bot>)`',
+                       "base record's ordered list", 'earlier unavailable provider does not qualify',
+                       'initially empty', 'all enabled bots became unavailable',
+                       'actual requests and unavailability evidence'):
+            self.assertIn(phrase, grammar)
+        contract = flat(review.split('Merge watch requires self-verification', 1)[1].split('The rest of the comment', 1)[0])
+        for phrase in ('`reviewer=clear`', 'successful `Reviewer` status on the head',
+                       '`no-provider(none)`', '`unavailable(<last enabled bot>)`',
+                       "base record's ordered list", 'Other unfilled slot states remain missing',
+                       'owner/exact-head bot-slot waiver', 'high has no Reviewer substitution'):
+            self.assertIn(phrase, contract)
+
+    def test_transition_keeps_only_version_three_reviewer_waivers(self):
+        review = flat(self.text('docs/agents/review.md'))
+        for phrase in ('On a version 3 base only', 'owner/exact-head `reviewer` waiver',
+                       'Versions 1 and 2 still require the Reviewer status',
+                       'Builder checks the bots before merge'):
+            self.assertIn(phrase, review)
+        skill = flat(support.read_text(os.path.join(
+            os.path.dirname(os.path.dirname(support.GOVERN)), 'SKILL.md')))
+        for phrase in ('version 4 transition on a version 3 base only',
+                       'owner/exact-head `reviewer` waiver leaves that check to the Builder',
+                       'Versions 1 and 2 still require the Reviewer status'):
+            self.assertIn(phrase, skill)
+
+    def test_summary_examples_read_with_the_version_four_parser(self):
+        import test_merge_watch as watch_tests
+        review = self.text('docs/agents/review.md')
+        examples = re.findall(r'## Merge summary: (low|medium|high) at [0-9a-f]{7}\n[ \t]*(Required reviews: [^\n]+)', review)
+        self.assertEqual(len(examples), 3)
+        for tier, line in examples:
+            self.assertIsNotNone(watch_tests.watch_v4.parse_reviews(line, tier), line)
+
+
+class VersionFourRefresh(VersionThreeRendered):
+    """#190: rendered startup rules, not execution or model-behavior evidence."""
+
+    VERSION = 4
+
+    def test_refresh_is_first_for_every_parent_session_and_preserves_stale_work(self):
+        start = level_two_section(self.text("AGENTS.md"), "## How to start", "AGENTS.md")
+        first = flat(start.split("\n- ", 2)[1])
+        for phrase in ("**Refresh first**", "before reading your role's file", "fetch `origin`",
+                       "identify its default branch", "clean and on that branch", "fast-forward",
+                       "Every session", "no role", "read-only session", "subagent",
+                       "parent's tree", "dirty", "another branch", "can't fast-forward",
+                       "reach the remote", "leave it untouched", "tell habit",
+                       "instruction files from the remote default branch when reachable",
+                       "changed an instruction file", "read it again"):
+            self.assertIn(phrase, first)
+        self.assertIn("docs/agents/planner.md", first)
+        self.assertIn("docs/agents/builder.md", first)
+        self.assertIn("docs/agents/reviewer.md", first)
+
+    def test_refreshed_policy_stays_within_the_fixed_part_byte_budget(self):
+        agents = self.text("AGENTS.md").split("<!-- governance:end -->", 1)[0]
+        self.assertEqual(budget_failures((agents + "<!-- governance:end -->\n").encode("utf-8")), [])
+
+
+class VersionFourPureUpgrade(VersionThreeRendered):
+    """#188: released-byte tiering at the approved rendered-policy seam."""
+
+    VERSION = 4
+
+    def test_upgrade_tiers_keep_confirmation_changes_and_other_modes_high(self):
+        agents = flat(level_three_section(self.text("AGENTS.md"), "### Risk tiers"))
+        medium = agents.split("| medium |", 1)[1].split("| high |", 1)[0]
+        high = agents.split("| high |", 1)[1].split("|", 1)[0]
+        self.assertIn("pure Upgrade", medium)
+        for phrase in ("Initialize", "Repair", "Upgrade", "confirmed value",
+                       "required checks", "owner script's target state"):
+            self.assertIn(phrase, high)
+        self.assertNotIn("; generator output |", agents)
+
+    def test_purity_has_one_definition_and_evidence_states_both_facts(self):
+        review = self.text("docs/agents/review.md")
+        tier = flat(level_two_section(review, "## The tier", "review.md"))
+        definition = ("An Upgrade is pure when exact comparison reports no differences and "
+                      "the record's confirmed part is unchanged from the default branch.")
+        self.assertIn(definition, tier)
+        all_policy = " ".join(self.text(path) for path in (
+            "AGENTS.md", "docs/agents/review.md", "docs/agents/builder.md"))
+        self.assertEqual(flat(all_policy).count(definition), 1)
+        evidence = flat(level_two_section(review, "## Evidence comment", "review.md"))
+        self.assertIn("for a pure Upgrade, both facts in The tier's definition", evidence)
+
+    def test_generator_run_tier_follows_the_adopted_default_policy(self):
+        skill = flat(support.read_text(os.path.join(
+            os.path.dirname(os.path.dirname(support.GOVERN)), "SKILL.md")))
+        self.assertNotIn("This run is a high Builder delivery.", skill)
+        for phrase in ("Initialize and Repair are high", "An Upgrade takes the tier",
+                       "default branch's adopted policy", "Upgrade to version 4 is still high",
+                       "declare the run's tier", "not the rendered target version"):
+            self.assertIn(phrase, skill)
+        self.assertNotIn("as the ticket and `Risk: high`", skill)
+
+    def test_upgrade_recovery_is_in_the_merge_summary_at_every_tier(self):
+        skill = flat(support.read_text(os.path.join(
+            os.path.dirname(os.path.dirname(support.GOVERN)), "SKILL.md")))
+        recovery = skill.split("An Upgrade that changes the owner script,", 1)[1].split(
+            "## 6. After merge", 1)[0]
+        for phrase in ("the target state or the required checks",
+                       "Merge summary's", '"how to revert"',
+                       "at high, the high-risk report",
+                       "habit reruns the owner script after a revert"):
+            self.assertIn(phrase, recovery)
+        self.assertNotIn('its high-risk report\'s "how to revert"', recovery)
+
+
+class VersionFourDifficulty(VersionThreeRendered):
+    """#189: difficulty and start requests at the rendered-policy seam only."""
+
+    VERSION = 4
+
+    def test_start_requests_state_difficulty_without_selecting_a_model(self):
+        agents = self.text("AGENTS.md")
+        talking = flat(level_two_section(agents, "## Talking to habit and to other agents", "AGENTS.md"))
+        for phrase in ("session location", "difficulty with one reason", "vendor constraint",
+                       "shared resources", "habit chooses model and effort", "names no model"):
+            self.assertIn(phrase, talking)
+        handoff = flat(self.text("docs/agents/handoff.md"))
+        self.assertIn("难度：low", handoff)
+        self.assertIn("难度：medium", handoff)
+        for phrase in ("使用当前模型", "同一模型即可", "which model", "same model may review"):
+            for path in ("AGENTS.md", "docs/agents/planner.md", "docs/agents/builder.md",
+                         "docs/agents/reviewer.md", "docs/agents/handoff.md"):
+                self.assertNotIn(phrase, flat(self.text(path)), path)
+        # Identity provenance remains required; it is not model-selection advice.
+        self.assertIn("Session: <role> — <harness>, <model>, <vendor> (<source>)",
+                      self.text("docs/agents/review.md"))
+        from materialized_version_support import AGENTS_BUDGET
+        fixed = agents.split("<!-- governance:end -->", 1)[0] + "<!-- governance:end -->\n"
+        self.assertLessEqual(len(fixed.encode("utf-8")), AGENTS_BUDGET)
+
+    def test_high_reviewer_example_carries_difficulty_and_vendor_constraint(self):
+        handoff = self.text('docs/agents/handoff.md')
+        example = handoff.split("A Builder's final handoff to a Reviewer, at high.", 1)[1].split(
+            "A substituting Reviewer's final handoff", 1)[0]
+        for phrase in ('难度：high', '判断新规则的效果', '沿用派发计划',
+                       'vendor 必须不同于所有 Builder session', '所有 Builder session 的 vendor 均为 OpenAI',
+                       '在 Claude Code 中开一个新 session', 'Anthropic vendor',
+                       '不同于已记录的 OpenAI Builder vendor', 'Role: Reviewer. PR: #58.'):
+            self.assertIn(phrase, example)
+        self.assertNotIn('model', example)
+
+    def test_generator_reread_has_common_and_explicit_version_branches(self):
+        skill = support.read_text(os.path.join(os.path.dirname(os.path.dirname(support.GOVERN)), 'SKILL.md'))
+        after = flat(level_two_section(skill, '## 6. After merge', 'SKILL.md'))
+        for phrase in ('At every adopted policy version, reread',
+                       '**Adopted policy below version 4:**', '**Adopted policy version 4:**',
+                       'only when a Reviewer ran'):
+            self.assertIn(phrase, after)
+        self.assertNotIn('That medium Reviewer requirement', after)
+
+    def test_planner_grades_judgment_in_the_dispatch_plan_only(self):
+        planner = self.text("docs/agents/planner.md")
+        difficulty = flat(level_two_section(planner, "## Difficulty", "planner.md"))
+        for phrase in ("Difficulty: <level> — <reason>", "难度：<level>", "never a bare level",
+                       "fixes what changes and how", "command, test or byte comparison",
+                       "fixes the outcome", "within one area", "tests can confirm",
+                       "real design trade-off", "plausible approaches", "new rule or procedure",
+                       "no test of its effect", "rule already decided", "several components",
+                       "unknown cause", "main Builder of a whole-spec delivery",
+                       "When unsure, use the lower level", "names the test or condition",
+                       "area's importance", "risk tier", "Planner start request carries none"):
+            self.assertIn(phrase, difficulty)
+        tickets = flat(level_two_section(planner, "## Tickets", "planner.md"))
+        self.assertIn("A ticket carries no tier or difficulty", tickets)
+        self.assertIn("each with its difficulty line", tickets)
+        builder = flat(level_two_section(self.text("docs/agents/builder.md"), "## A direct request", "builder.md"))
+        self.assertIn("carries no difficulty", builder)
+
+    def test_reviewer_handoff_and_completion_use_the_planned_difficulty(self):
+        builder = self.text("docs/agents/builder.md")
+        handoff = flat(level_two_section(builder, "## The Reviewer handoff", "builder.md"))
+        for phrase in ("repeats the ticket's difficulty from the dispatch plan",
+                       "At high", "vendor different from every Builder mark"):
+            self.assertIn(phrase, handoff)
+        for heading in ("## Results-comment tickets", "## After merge"):
+            section = flat(level_two_section(builder, heading, "builder.md"))
+            self.assertIn("actual difficulty differed", section)
+            self.assertIn("one sentence", section)
+            self.assertIn("nothing otherwise", section)

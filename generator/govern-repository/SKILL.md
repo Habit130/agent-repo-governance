@@ -8,8 +8,10 @@ metadata:
 
 # Govern a repository
 
-This run is a high Builder delivery. It takes no arguments and starts from the repository's
-directory. `<entry>` below is `/usr/bin/python3 <this skill's directory>/scripts/govern.py`.
+This run is a Builder delivery. Initialize and Repair are high. An Upgrade takes the tier
+the default branch's adopted policy gives it, not the rendered target version; the Upgrade to
+version 4 is still high. It takes no arguments and starts from the repository's directory.
+`<entry>` below is `/usr/bin/python3 <this skill's directory>/scripts/govern.py`.
 Each subcommand prints JSON; save each report in the run's report directory below.
 
 **Temporary paths.** Allocate a fresh, unique directory with `mktemp -d` outside the checkout
@@ -99,7 +101,9 @@ conflict habit confirms. At Repair, make none of them.
 - **Review bots**, when the version's manifest lists `review_bots`: propose those bots,
   enabled in the manifest's order, and name what each needs from habit (the `preconditions`
   checklist). habit's answer sets the record's enabled list and its order; a shorter list is
-  allowed, its missing slots covered only by habit's waivers.
+  allowed. Under version 4 the list is the order to try for one slot; when exhausted,
+  medium takes a substituting Reviewer or habit's slot waiver, and high takes habit's wait
+  or slot waiver. Older adopted policies still set the run's review requirements.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
   worktree allocated as **Temporary paths** above, so the checkout stays untouched. A manifest
   whose `extraction` is `unsupported` has its commands read from the file by you. Record each command you ran and
@@ -137,7 +141,9 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   unverified. The Upgrade's own PR is reviewed under the policy on the default branch, the
   old version's; the new version's rules bind from the first PR after it merges. The new
   version's Merge watch may leave that PR's old review bots unjudged, so its Reviewer checks
-  them before the merge.
+  them before the merge. For the version 4 transition on a version 3 base only, an existing
+  owner/exact-head `reviewer` waiver leaves that check to the Builder. Versions 1 and 2 still
+  require the Reviewer status.
 - **Repair with drift** holds only the drift found, how it is restored, the selected product
   smoke, and anything unverified.
 
@@ -201,11 +207,13 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    or failing with the cause, the CI and the Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
 5. Make the removals habit's answer leaves standing. Move the repository's own skills to
    `.agents/skills/`, with a `.claude/skills/` link.
-6. From here follow the version's `docs/agents/builder.md`, Steps, from step 5, with the issue
-   as the ticket and `Risk: high`. Exact comparison, `<entry> compare --worktree <worktree>`,
+6. From here follow `docs/agents/builder.md`, Steps, from step 5: Initialize uses the rendered
+   policy; Upgrade and Repair use the default branch's adopted policy. Use the issue as the
+   ticket and declare the run's tier as above. Exact comparison, `<entry> compare --worktree <worktree>`,
    is part of its Verification and passes with `differences` empty before the PR opens.
    An Upgrade that changes the owner script, the target state or the required checks says in
-   its high-risk report's "how to revert" that habit reruns the owner script after a revert.
+   its Merge summary's "how to revert" (at high, the high-risk report) that habit reruns the
+   owner script after a revert.
 
 ## 6. After merge
 
@@ -214,9 +222,16 @@ A run with no issue and no PR starts at step 2 and reports only to habit.
 1. Wait on the PR as the role file says. Complete its product smoke on the exact merged
    commit: the actual default-branch product run, or the ticket's predetermined local smoke.
    Failure or unavailability leaves delivery incomplete and is escalated to habit.
-   Before any after-merge report, reread from GitHub, for the PR's exact head at merge:
-   each required review's result, at medium and high the Comment review and the `Reviewer`
-   status, and the Merge summary. The report states only what that reading shows.
+   At every adopted policy version, reread each required review's result and the Merge
+   summary from GitHub for the PR's exact head at merge before reporting; report only what
+   that reading shows. Apply the adopted policy's Reviewer reread rule:
+
+   - **Adopted policy below version 4:**
+     Before any after-merge report, reread from GitHub, for the PR's exact head at merge:
+     each required review's result, at medium and high the Comment review and the `Reviewer`
+     status, and the Merge summary. The report states only what that reading shows.
+   - **Adopted policy version 4:** reread the Comment review and `Reviewer` status only when
+     a Reviewer ran.
 2. Run `<entry> handover --mode-facts <saved mode report>`, adding
    `--required-checks-changed` when habit's answer changed them. When `owner_command` is true,
    give habit `<entry> owner-command --repository <owner/name>`'s command, with each of the

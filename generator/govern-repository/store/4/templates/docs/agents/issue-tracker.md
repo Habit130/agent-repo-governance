@@ -141,7 +141,7 @@ A process miss Merge watch records, titled `Miss: process miss, missing-review i
 Merged PR: #42
 Kind: process miss
 Category: missing-review
-Observed: Merged head 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b, declared medium, lacks: reviewer, merge-summary.
+Observed: Merged head 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b, declared medium, lacks: bot-1, merge-summary.
 Found by: Merge watch
 Bug issue: none
 ```
