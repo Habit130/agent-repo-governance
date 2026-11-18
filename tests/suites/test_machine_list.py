@@ -1,8 +1,8 @@
 """Seam C, the governed-repository list (#44 §9): version and urgency, a newer record, an unparseable
 record, the private mark, the miss count and the skipped sandboxes, read-only and as the agent account.
 
-Each case sets the urgencies of versions 1 to 3 in the installed store and keeps version
-4's real change note.
+Each case sets the urgencies of versions 1 to 4 in its isolated installed store to cover
+both highest-urgency outcomes.
 """
 
 import os
@@ -13,7 +13,7 @@ import support
 from standins import environment
 
 TALLY = os.path.join(support.FIXTURES, "parsers", "record", "tally.yml")
-NOTES = {1: "when convenient", 2: "urgent", 3: "when convenient"}
+NOTES = {1: "when convenient", 2: "urgent", 3: "when convenient", 4: "when convenient"}
 
 
 def record(version):
@@ -71,8 +71,8 @@ class GovernedRepositories(ListCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(found["header"], "installed commit %s；installed version 4" % self.commit)
         self.assertEqual(found["Habit130/at-one"], "版本 1；缺少版本 2、3、4，最高紧急度 urgent；未关闭 miss record 2 条")
-        self.assertEqual(found["Habit130/at-two"], "版本 2；缺少版本 3、4，最高紧急度 urgent；未关闭 miss record 0 条；私有")
-        self.assertEqual(found["Habit130/at-three"], "版本 3；缺少版本 4，最高紧急度 urgent；未关闭 miss record 0 条")
+        self.assertEqual(found["Habit130/at-two"], "版本 2；缺少版本 3、4，最高紧急度 when convenient；未关闭 miss record 0 条；私有")
+        self.assertEqual(found["Habit130/at-three"], "版本 3；缺少版本 4，最高紧急度 when convenient；未关闭 miss record 0 条")
         self.assertEqual(found["Habit130/ahead"], "版本 5；record 比本机新，先更新本机；未关闭 miss record 0 条")
         self.assertEqual(found["Habit130/broken"], "record 无法解析，运行 generator 修复；未关闭 miss record 1 条")
         self.assertEqual(found["Habit130/on-trunk"], "版本 4；已是最新版本；未关闭 miss record 0 条")
@@ -103,7 +103,7 @@ class GovernedRepositories(ListCase):
 class NoReleasedVersion(ListCase):
     def test_every_record_is_newer_than_a_machine_without_a_released_version(self):
         store = os.path.join(self.home, ".agents", "skills", "govern-repository", "store")
-        for version in (1, 2, 3, 4):
+        for version in NOTES:
             os.remove(os.path.join(store, str(version), "change-note.md"))
         for version in (2, 3):
             directory = os.path.join(store, str(version))

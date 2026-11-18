@@ -43,8 +43,10 @@ must-act: yes
 
 Install 带来 generator、已发布的 v4、未发布的 v5 文件，以及 #166 刷新的托管 skill
 副本。普通选择取 v4。habit 在发布合并后运行 install，各治理仓库再分别 Upgrade。
-采用 v4 时确认 bot 顺序，按需提出 bot 请求并为 high 启动合格的 Reviewer。Upgrade
-合并后按交接运行新版 owner script。此次 owner script 模板有变更，因此 must-act 为 yes。
+Upgrade 沿用已有的 bot 清单和顺序。首次 Initialize 或原 record 缺少 bot 清单的
+Upgrade，由 habit 确认清单和顺序。按需提出 bot 请求并为 high 启动合格的 Reviewer。
+Upgrade 合并后按交接运行新版 owner script。此次 owner script 模板有变更，因此
+must-act 为 yes。
 
 预期结果随发布调整。Store、render、compare 和隔离安装默认取 v4，仍可显式选择旧版；
 v5 的 render 和 compare 需要单次显式 opt-in，拒绝时目标保持原样。Machine list 的
