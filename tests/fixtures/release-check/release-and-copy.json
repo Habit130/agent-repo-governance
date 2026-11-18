@@ -29,6 +29,7 @@
     {"name": "extra-and-changed", "write": {"2/templates/run.sh": "changed script\n", "2/templates/extra.md": "extra\n"}, "first_difference": "templates/extra.md"},
     {"name": "manifest-bytes", "write": {"2/manifest.json": "{\"templates\":[],\"version\":2}\n"}, "first_difference": "manifest.json"},
     {"name": "manifest-number", "write": {"2/manifest.json": "{\"templates\": [], \"version\": 1}\n"}, "first_difference": "manifest.json"},
-    {"name": "manifest-mode", "write": {"2/manifest.json": {"content": "{\"templates\": [], \"version\": 2}\n", "mode": "100755"}}, "first_difference": "manifest.json"}
+    {"name": "manifest-mode", "write": {"2/manifest.json": {"content": "{\"templates\": [], \"version\": 2}\n", "mode": "100755"}}, "first_difference": "manifest.json"},
+    {"name": "both-manifests-missing", "remove": ["1/manifest.json", "2/manifest.json"], "first_difference": "manifest.json"}
   ]
 }

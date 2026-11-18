@@ -10,7 +10,7 @@
     "tests/fixtures/change-notes/valid/a.md": "urgency: urgent\nmust-act: no\n\n正文。\n",
     "tests/fixtures/repositories/x/repo/README.md": "x\n"
   },
-  "description": "Version 1 is released, and the head adds version 2's templates, manifest and note in one PR.",
+  "description": "Version 1 is released. The copy rule rejects the head's newly added version 2 because its template and note differ.",
   "expect": {
     "consecutive": "PASS",
     "fixtures": "PASS",

@@ -142,7 +142,7 @@ def rule_version_copy(repo, base, head):
         if predecessor is None:
             continue  # Bootstrap has no predecessor. The consecutive rule reports gaps.
         copy = head[version]
-        paths = predecessor.keys() | copy.keys()
+        paths = predecessor.keys() | copy.keys() | {store.MANIFEST}
         if store.CHANGE_NOTE not in copy:
             paths.discard(store.CHANGE_NOTE)
         for path in sorted(paths):
