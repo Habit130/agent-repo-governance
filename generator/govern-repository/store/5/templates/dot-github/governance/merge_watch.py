@@ -58,8 +58,8 @@ On `push` to the default branch, for each pushed commit:
   judged, an accepted transition exception: that PR's Reviewer checks them before the merge,
   or its Builder does when an owner/exact-head `reviewer` waiver applies on a version 3 base.
   Versions 1 and 2 still require the Reviewer status; their transition rules are unchanged.
-  The run says so in a `NOTE` line. A base record that can't be read or doesn't
-  parse enables no provider, so its bot slot reads as missing, a false miss.
+  The run says so in a `NOTE` line. If the applicable record can't be read, doesn't parse
+  or omits the bot list, it enables no provider and an unfilled bot slot reads as missing.
 
   "No record" is GitHub's own answer for the path: HTTP 404 with the message `Not Found`
   (`NotFound`). Any other answer, a missing ref's 404 among them, is a read that failed. The
@@ -350,7 +350,7 @@ def earlier_version_missing(pull, agent_account, owner, tier, version):
 
 
 def enabled_bots(read, repository, ref):
-    """Return the record's version and enabled bots, or (None, None) on a read or parse failure.
+    """Return the record's version and enabled bots, with None for either unknown value.
 
     NotFound when GitHub answers that ref holds no record."""
     try:
@@ -360,7 +360,10 @@ def enabled_bots(read, repository, ref):
         raise
     except (ReadError, gate.RecordError, AttributeError):
         return None, None
-    return parsed["version"], [bot for bot in parsed["confirmed"].get("review_bots", []) if bot in PROVIDERS]
+    bots = parsed["confirmed"].get("review_bots")
+    if bots is None:
+        return parsed["version"], None
+    return parsed["version"], [bot for bot in bots if bot in PROVIDERS]
 
 
 def missing_reviews(pull, agent_account, owner, tier, bots):

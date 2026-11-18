@@ -45,9 +45,9 @@ describes one review bot slot and habit confirms the enabled list during Initial
    clone it builds the session-only plugin `cut` from the head's committed generator
    (`git archive`), so an ignored file in this checkout stays out. The seed holds no record, so
    the run is an Initialize at the version cut. It writes `end-to-end.json`: the before state,
-   with the rulesets' enforcement, the version and its review bots, and the plugin's identity
-   hash, which the run's issue must name. Then it prints habit's line. It runs from any harness
-   or a plain terminal.
+   with the rulesets' enforcement, the version, the manifest's supported review bots and the
+   plugin's identity hash, which the run's issue must name. Then it prints habit's line.
+   It runs from any harness or a plain terminal.
 3. **habit's run.** habit starts Claude Code with that line in a terminal of their own, never
    with `!`. The line sets no `GOVERN_SCENARIO_` setting, so the run reads real GitHub as the
    agent account on the real machine. habit types `/cut:govern-repository`: the bare name
@@ -65,12 +65,13 @@ describes one review bot slot and habit confirms the enabled list during Initial
    naming the head. The issue's `generator_identity` equals `end-to-end.json`'s identity; the
    evidence includes habit's confirmation, the record at the version cut with the confirmed
    bot order, and the exact comparison. On the Initialize PR's head, verify self-verification,
-   the completed bot reviews filling the version's slots, the Reviewer's Comment review and
-   successful `Reviewer` status, and the Merge summary and high-risk report. For a v4
-   Initialize, record which bot filled the one slot, any fallback, and which Builder and Reviewer
-   session marks establish the vendor check. Record habit's squash merge and Merge watch's push
-   run on it. From version 3 the run must report that it read the bots from the record the merge
-   adds, say `No miss in this push event.` and have no `UNREADABLE` line. Record the run's
+   the Reviewer's Comment review and successful `Reviewer` status, and the Merge summary and
+   high-risk report. For v3, record the completed review or valid owner waiver on that head
+   for each bot slot. For a v4 Initialize, record the completed review filling the one slot,
+   any fallback, and which Builder and Reviewer session marks establish the vendor check.
+   Record habit's squash merge and Merge watch's push run on it. From version 3 the run must
+   report that it read the bots from the record the merge adds, say `No miss in this push event.`
+   and have no `UNREADABLE` line. Record the run's
    after-merge report and the rulesets after the owner-script run. The version's live checks
    then run on the same cutting head through `prepare` and `probe`.
 

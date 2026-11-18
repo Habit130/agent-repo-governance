@@ -35,7 +35,7 @@ must-act: yes
   已声明的 Reviewer 豁免需要独立核对 owner 评论中的豁免项和完整 head SHA。
   即使 Reviewer 状态成功，缺少有效授权时也会留下 missing-review 记录。（#197）
   只有成功读取并解析 bot 清单后，Merge watch 才认可 medium Reviewer 补位。
-  清单读取或解析失败时，按缺少 bot-1 处理。有效的 owner 逐提交豁免可覆盖该位置。（#197）
+  清单缺失或读取、解析失败时，按缺少 bot-1 处理。有效的 owner 逐提交豁免可覆盖该位置。（#197）
 - 仓库采用 v4 后，exact comparison 无差异且 record 的 confirmed 值与默认分支
   一致的 pure Upgrade 走 medium，仍受敏感路径 floor 约束。Initialize 以及改变
   confirmed 值、required checks 或 owner script 目标状态的 Upgrade 走 high。

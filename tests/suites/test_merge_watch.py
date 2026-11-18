@@ -546,6 +546,20 @@ class VersionThree(unittest.TestCase):
 
 
 class VersionFour(unittest.TestCase):
+    def test_a_record_without_a_bot_list_leaves_the_slot_missing(self):
+        case = load(os.path.join(FIXTURES, "v4", "medium-unknown-bot-policy.json"))
+        event = case["event"]
+        record_path = "repos/%s/contents/%s?ref=%s" % (
+            event["repository"]["full_name"], watch_v4.RECORD, event["before"]
+        )
+        record = case["github"][record_path]
+        invalid_list = "  review_bots: invalid\n"
+        self.assertTrue(record.endswith(invalid_list))
+        case["github"][record_path] = record.removesuffix(invalid_list)
+
+        result = watch_v4.decide(case["event_name"], event, agent_account(), case["github"].__getitem__)
+        self.assertEqual(result, [dict(item, labels=["miss"]) for item in case["expected"]])
+
     def test_a_version_three_reviewer_waiver_needs_no_status_read(self):
         for name in ('base-version-three-waived-reviewer-medium', 'transition-reviewer-waiver-high'):
             with self.subTest(case=name):
