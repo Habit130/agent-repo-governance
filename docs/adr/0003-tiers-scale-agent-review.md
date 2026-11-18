@@ -1,5 +1,7 @@
 # Risk tiers scale independent agent review, not human approvals
 
+Superseded from version 4 by [ADR 0033](0033-one-review-bot-and-a-reviewer-at-high.md), which keeps this principle with a new ladder. A repository on version 3 or earlier still follows its version's ladder.
+
 habit reads no code at any tier, so the human part is the same everywhere: habit reads a plain-language Merge summary and merges. In a governed repository the tier sets how much independent agent review a change must pass instead:
 
 - low: self-verification and one review bot;

@@ -23,6 +23,9 @@ habit or the agent account: an author whose PRs are reviewed in place rather tha
 **Session**:
 One agent context in a harness. It holds exactly one role, and its subagents act in that role.
 
+**Start-of-session refresh**:
+A session's first step, before it reads its role file: fetching the remote and fast-forwarding a clean checkout on the default branch, and leaving any other checkout as it is.
+
 **Session mark**:
 A Builder or Reviewer session's statement on GitHub of its role, harness, model, model vendor and whether the source is the harness or habit. It is a statement of identity, not proof of it.
 
@@ -39,13 +42,13 @@ The role that turns ideas, incoming issues and maps into specs and tickets with 
 The role that takes one delivery, a ticket or a spec approved for whole-spec delivery, implements and self-verifies it, and carries its PR to the point where habit can merge.
 
 **Reviewer**:
-The role that reviews a medium or high PR from a context that didn't write it, and writes the Merge summary once the review is clear.
+The role that reviews a high PR, or a medium PR as the Reviewer substitute, from a context that didn't write it, and writes the Merge summary once the review is clear.
 
 **Start instruction**:
 The harness-neutral text naming a session's role, target and, in `Skills:`, only the skills the session calls. When habit must invoke a skill, the canonical form precedes it with a separate statement of that action.
 
 **Start request**:
-A session's request that habit start another session, with one part for habit and one block to paste for the named harness. When a needed skill invocation is unverified in one paste, a third part holds habit's invocation after the session starts.
+A session's request that habit start another session, with one part for habit, stating the work's difficulty unless it starts a Planner, and one block to paste for the named harness. When a needed skill invocation is unverified in one paste, a third part holds habit's invocation after the session starts.
 
 **User-invoked skill**:
 A skill whose invocation belongs to habit, distinct from the skills a session calls. Naming it in a start instruction is not its invocation.
@@ -54,7 +57,7 @@ A skill whose invocation belongs to habit, distinct from the skills a session ca
 The committed file holding one role's detailed workflow, which that role reads at session start.
 
 **Dispatch**:
-habit naming a ticket, or a spec approved for whole-spec delivery, in a start instruction and starting its Builder. At medium and high it also covers starting the Reviewer and requesting each review bot the Builder names on a head.
+habit naming a ticket, or a spec approved for whole-spec delivery, in a start instruction and starting its Builder. From medium it also covers requesting each review bot the Builder names on a head, and starting the Reviewer when one is required.
 
 **Escalation**:
 A session stopping for habit's decision. Examples: a blocked Builder, a scope change, an unforeseen high, the round cap, an unavailable review bot, a broken governance gate or a denied permission.
@@ -68,6 +71,10 @@ By default, one ticket built by one fresh Builder session on one branch into one
 **Delivery shape**:
 Ticket by ticket or whole spec, chosen by the Planner and approved by habit.
 
+**Difficulty**:
+How much judgment a delivery leaves its session: low, medium or high, always written with the word. The Planner grades it in the dispatch plan, independent of the risk tier.
+_Avoid_: a bare level, complexity
+
 **Mid-session request**:
 A session's short request for one thing from habit, after which the session carries on. An escalation is one.
 
@@ -75,7 +82,7 @@ A session's short request for one thing from habit, after which the session carr
 A session's closing message to habit once it has no next step of its own: the conclusion, what habit does next, and whether the session can be closed.
 
 **Dispatch plan**:
-The Planner's ordered list of an effort's approved tickets, each with its start instruction and the condition for dispatching it. habit dispatches from it, and only a Planner changes it.
+The Planner's ordered list of an effort's approved tickets, each with its difficulty, its start instruction and the condition for dispatching it. habit dispatches from it, and only a Planner changes it.
 
 ## Work items
 
@@ -125,13 +132,19 @@ The PR reviewer that answers only habit's request comment and posts as `chatgpt-
 GitHub Copilot's PR reviewer, which starts only on habit's own request in the browser and posts as `copilot-pull-request-reviewer[bot]`.
 
 **Bot slot**:
-One review bot that a tier requires, named by its position, `bot-1` or `bot-2`, never by a bot. Two slots are filled by two different review bots.
+The review bot that medium and high require, named by its position, `bot-1`, never by a bot.
 
 **Enabled review bots**:
-The ordered list of review bots that habit confirmed for a repository. Its order is the order of preference, and a supported bot left off it is disabled.
+The ordered list of review bots that habit confirmed for a repository. Its order is the order in which bots are tried for the bot slot, and a supported bot left off it is disabled.
 
 **Fallback**:
-At medium, the next enabled review bot filling the bot slot when the first was unavailable. High has no fallback.
+The next enabled review bot filling the bot slot when the one before it was unavailable, at medium or high.
+
+**Reviewer substitute**:
+A same-vendor Reviewer session filling the bot slot at medium when every enabled review bot is unavailable or none is enabled. High has none.
+
+**Codex security review**:
+OpenAI's optional security review of a PR, offered on a PR that is high for authentication, privacy or secret handling. Its findings bind when it runs, but it is never a required review.
 
 **Waiver**:
 habit's approval, in habit's own PR comment, that one named required review or verification goes unmet for one PR at one head.
@@ -177,6 +190,9 @@ habit's merge command, bound to the head the Merge summary describes, so a later
 
 **Pure revert**:
 A PR that exactly undoes one merged squash commit and nothing else, as the governance gate confirms; from version 4, confirmation also requires the governance record in that commit's parent. A revert from before governance, including of the commit that first added the record, is unconfirmed and tiered as usual.
+
+**Pure Upgrade**:
+An Upgrade whose exact comparison reports no differences and whose governance record's confirmed part is unchanged from the default branch. It is medium.
 
 **Re-land**:
 A Builder redoing an outside PR's change on its own branch, crediting the original author.
