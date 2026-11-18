@@ -48,7 +48,7 @@ The role that reviews a high PR, or a medium PR as the Reviewer substitute, from
 The harness-neutral text naming a session's role, target and, in `Skills:`, only the skills the session calls. When habit must invoke a skill, the canonical form precedes it with a separate statement of that action.
 
 **Start request**:
-A session's request that habit start another session, with one part for habit, stating the work's difficulty, and one block to paste for the named harness. When a needed skill invocation is unverified in one paste, a third part holds habit's invocation after the session starts.
+A session's request that habit start another session, with one part for habit, stating the work's difficulty unless it starts a Planner, and one block to paste for the named harness. When a needed skill invocation is unverified in one paste, a third part holds habit's invocation after the session starts.
 
 **User-invoked skill**:
 A skill whose invocation belongs to habit, distinct from the skills a session calls. Naming it in a start instruction is not its invocation.
@@ -132,7 +132,7 @@ The PR reviewer that answers only habit's request comment and posts as `chatgpt-
 GitHub Copilot's PR reviewer, which starts only on habit's own request in the browser and posts as `copilot-pull-request-reviewer[bot]`.
 
 **Bot slot**:
-The review bot that medium and high require, named by its position, `bot-1`, never by a bot. Version 3 has a second slot, `bot-2`, at high.
+The review bot that medium and high require, named by its position, `bot-1`, never by a bot.
 
 **Enabled review bots**:
 The ordered list of review bots that habit confirmed for a repository. Its order is the order in which bots are tried for the bot slot, and a supported bot left off it is disabled.
