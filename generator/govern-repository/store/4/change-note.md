@@ -13,14 +13,15 @@ must-act: yes
   required check。（#173）
 - Builder 和 Reviewer 记录 harness、model、vendor 与信息来源。High 的 Reviewer
   核对自己的 vendor 与每个推送过提交的 Builder session 的 vendor 都不同。需要
-  habit 亲自调用的 skill，交接会明确给出调用步骤。Builder 等 gate 对当前 head
-  跑完再更新 PR 正文。（#174、#176、#179）
+  habit 亲自调用的 skill，交接会明确给出调用步骤。向已有 PR 推送后，Builder 等当前
+  head 正在运行的 gate workflow 结束，再集中更新 PR 正文，交接前确认这次编辑触发的
+  gate 结果。（#174、#176、#179）
 - 每个等级都有 self-verification。Medium 和 high 各有一个 review bot 位置，按
   habit 确认的顺序请求，当前 bot 不可用才换下一个。Medium 的 bot 都不可用或清单为空
-  时，可以由同 vendor 的 Reviewer session 补位。固定内容或指令文件在 medium 下
-  只有 Copilot 完成时，仍须有 Reviewer session，且这项审核不可豁免。High 另需
-  不同 vendor 的 Reviewer，bot 用尽时由 habit 决定等候或豁免该位置。Builder 在 low
-  或 medium 要驳回 bot 的 Important finding，先升到 high。（#194）
+  时，可以由同 vendor 的 Reviewer session 补位。固定内容或指令文件的唯一已完成 bot
+  审核来自 Copilot 时，还须有不可豁免的 Reviewer session。High 的 Reviewer 必须来自
+  不同 vendor，bot 用尽时由 habit 决定等候或豁免该位置。Builder 在 low 或 medium 要
+  驳回 bot 的 Important finding，先升到 high。（#194）
 - 豁免由 habit 用 owner 账号在该 PR 评论，写明豁免项与完整 head SHA。换 head 要重新
   批准。涉及认证、隐私或凭据的 high 变更仍需 Reviewer 的 security review，habit
   可额外请求 Codex security review。#192 首个 head 在观察窗口内没有自动完成的 bot
