@@ -1,0 +1,35 @@
+{
+  "description": "The head cuts version 1 with a change note and adds draft version 2 in the same commit.",
+  "base": {
+    "generator/govern-repository/store/1/manifest.json": "{\"templates\": [], \"version\": 1}\n",
+    "generator/govern-repository/store/1/templates/policy.md": "reviewed policy\n",
+    "generator/govern-repository/store/1/templates/run.sh": {"content": "#!/bin/bash\necho owner\n", "mode": "100755"}
+  },
+  "head": {
+    "generator/govern-repository/store/1/change-note.md": "urgency: when convenient\nmust-act: no\n\n发布累积的修改。\n",
+    "generator/govern-repository/store/1/manifest.json": "{\"templates\": [], \"version\": 1}\n",
+    "generator/govern-repository/store/1/templates/policy.md": "reviewed policy\n",
+    "generator/govern-repository/store/1/templates/run.sh": {"content": "#!/bin/bash\necho owner\n", "mode": "100755"},
+    "generator/govern-repository/store/2/manifest.json": "{\"templates\": [], \"version\": 2}\n",
+    "generator/govern-repository/store/2/templates/policy.md": "reviewed policy\n",
+    "generator/govern-repository/store/2/templates/run.sh": {"content": "#!/bin/bash\necho owner\n", "mode": "100755"}
+  },
+  "expect": {
+    "consecutive": "PASS",
+    "fixtures": "PASS",
+    "frozen": "PASS",
+    "note-fields": "PASS",
+    "notes": "PASS",
+    "version-copy": "PASS"
+  },
+  "mismatches": [
+    {"name": "content", "write": {"2/templates/policy.md": "changed policy\n"}, "first_difference": "templates/policy.md"},
+    {"name": "mode", "write": {"2/templates/run.sh": "#!/bin/bash\necho owner\n"}, "first_difference": "templates/run.sh"},
+    {"name": "missing", "remove": ["2/templates/run.sh"], "first_difference": "templates/run.sh"},
+    {"name": "extra-and-changed", "write": {"2/templates/run.sh": "changed script\n", "2/templates/extra.md": "extra\n"}, "first_difference": "templates/extra.md"},
+    {"name": "manifest-bytes", "write": {"2/manifest.json": "{\"templates\":[],\"version\":2}\n"}, "first_difference": "manifest.json"},
+    {"name": "manifest-number", "write": {"2/manifest.json": "{\"templates\": [], \"version\": 1}\n"}, "first_difference": "manifest.json"},
+    {"name": "manifest-mode", "write": {"2/manifest.json": {"content": "{\"templates\": [], \"version\": 2}\n", "mode": "100755"}}, "first_difference": "manifest.json"},
+    {"name": "both-manifests-missing", "remove": ["1/manifest.json", "2/manifest.json"], "first_difference": "manifest.json"}
+  ]
+}

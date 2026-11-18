@@ -30,10 +30,9 @@ a repository are separate decisions. habit chooses a coherent accumulated update
 a fixed issue-count threshold; urgent bugs or severe usability problems may justify an
 earlier installation. Installation does not automatically Upgrade repositories.
 
-A separately approved release delivery adds the valid final change note to the default
-branch. Once a version's note exists on the comparison base, its complete tree is frozen:
-adding, deleting or editing a file, changing a mode, removing the version or removing its
-note all fail. Keep released versions unchanged and develop fixes in the next draft.
+Follow [Releasing](releasing.md#cut-a-version) to cut the version and prepare the next draft.
+Once a version's note exists on the comparison base, its complete tree is frozen. Adding,
+deleting or editing a file, changing a mode, removing the version or removing its note all fail.
 
 Ordinary store/render/compare selection stays released-only. Explicit draft rendering
 and comparison require the existing per-call `--allow-unreleased` in isolated tests or
@@ -41,9 +40,11 @@ sandboxes. Installation may copy draft bytes without advancing the installed gov
 version; this needs no filtering mechanism. Apply `AGENTS.md`'s verification-by-change
 requirements to each draft delivery, including the [standing model-scenario decision](releasing.md#scenarios).
 
-Offline coverage uses Seam E's additive `release-check/drafts/lifecycle.json`: draft
-creation, two updates, release, frozen-tree mutations and invalid layouts. Each transition
-also runs through depth-two PR-merge and squash-push histories with CI's base/head contract.
+Seam E's `release-check/drafts/lifecycle.json` covers draft creation, updates, release,
+frozen-tree mutations and invalid layouts. `release-check/release-and-copy.json` covers
+cutting a version and copying its next draft in one change, plus divergent copies.
+The lifecycle and combined cut run through depth-two PR-merge and squash-push histories
+with CI's base/head contract.
 The render suite checks released-only defaults, no-write draft refusals and explicit opt-in
 against the real store. Machine-install verifies that copying draft bytes leaves the
 installed version unchanged; the live runner selects the released version for a cut.
@@ -66,7 +67,7 @@ Register a new suite there under the job appropriate to its dependencies.
 | `parser-fixtures` | The machine parser and each stored version of the governed-side parser against every shared parser fixture, one test per registration and fixture; versioned registrations retain v1 coverage while checking v2 against the same expectations | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged by version 1's gate and by version 4's, and every case under `cases/v4/` by version 4's alone, a case's `record_in` naming the commit that adds the record; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in | linux |
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the entry reading and posting through the stand-in; version 3's cases under `v3/`, its review cases and its no-record base cases among them, judged by version 3's script beside version 3's gate; GitHub's own `Not Found` told apart from a failed read | linux |
-| `release-check` | Seam E: every fixture in `tests/fixtures/release-check/`; CI's PR/main-push event contract and unchanged jobs, commands and permissions; real depth-two fetches of synthetic PR merge and squash-push histories, checking the configured base/head and accepting ordinary edits while refusing frozen-template edits, plus `drafts/lifecycle.json`'s draft creation, updates, release, frozen mutations and invalid layouts in both shapes | linux |
+| `release-check` | Seam E covers [version transitions and copy equality](#unpublished-model-development), fixture preservation, and CI's PR/main-push event contract, jobs, commands and permissions | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
 | `suite-runner` | Real suites CLI with isolated synthetic modules: concurrent rendezvous, serial scheduling and longest-first order, interpreter identity, complete output blocks, selection and worker limits, counts and summaries, failures/errors/load failures/crashes with a passing sibling | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |

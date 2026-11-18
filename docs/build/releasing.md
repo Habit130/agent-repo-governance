@@ -4,10 +4,22 @@ Start with [Build and verification](../agents/build.md) for the ordered checks a
 habit-only commands. This reference describes the current state.
 
 A version is released once its `generator/govern-repository/store/<n>/change-note.md` is on
-the default branch (#44 §4). From then on the release check freezes `store/<n>/` byte for byte, and a defect becomes
-a later version, developed as an unpublished draft that a separate release delivery freezes
-by adding its note ([Unpublished model development](testing.md#unpublished-model-development)). `govern.py change-note <path>`
-reads a note's two fields.
+the default branch (#44 §4). From then on the release check freezes the whole version
+directory. Develop subsequent fixes in the
+[unpublished draft](testing.md#unpublished-model-development).
+
+## Cut a version
+
+Prepare both changes in the cutting PR.
+
+1. Add the final `change-note.md` to draft version N. `govern.py change-note <path>` reads
+   the note's two fields.
+2. Copy the resulting version directory to N+1, preserving the tracked files and their Git
+   modes. Leave the root `change-note.md` out of the copy and change the top-level
+   `version` integer in the copied `manifest.json` to N+1. Preserve every other byte.
+
+The release check compares a newly added draft with its predecessor in the PR head and
+reports the first differing path. Its proof of equality stands in for reviewing the copy.
 
 The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI
 and the [core Commands](../agents/build.md#commands) pass on the head. Every result names the head, so a later push

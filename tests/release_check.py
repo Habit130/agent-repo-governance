@@ -1,18 +1,23 @@
 """The release check (#44 §11): compare a PR's base and head trees and print one line per rule.
 
-It is keyed on the change note. A version whose note is on the base is released and frozen;
-version directories are consecutive integers from 1; only the highest version may lack
-its note and accumulate draft changes; every note's fields parse; and no fixture is removed or renamed.
+It is keyed on the change note. A version whose note is on the base is released and frozen.
+Version directories are consecutive integers from 1. Only the highest version may lack
+its note and accumulate draft changes. Every note's fields parse. Each added version matches
+its predecessor at the head apart from the manifest's version number and a draft's absent
+change note. No fixture is removed or renamed.
 Two INFO lines list the fixtures added and changed, which a PR's body or change note
 mentions.
 """
 
+import json
+import re
 import subprocess
 
 from govlib import store
 
 STORE = "generator/govern-repository/store"
 FIXTURES = "tests/fixtures"
+JSON_STRING_OR_DIGITS = re.compile(rb'"(?:[^"\\]|\\.)*"|[0-9]+')
 
 
 def tree(repo, rev, prefix):
@@ -113,6 +118,45 @@ def rule_note_fields(repo, head):
     return True, "%d change notes have valid urgency and must-act fields" % checked
 
 
+def renumbered_manifest(before, after, version):
+    for data, expected in ((before, version - 1), (after, version)):
+        try:
+            number = json.loads(data.decode("utf-8"))["version"]
+        except (KeyError, TypeError, ValueError, RecursionError):
+            return False
+        if type(number) is not int or number != expected:
+            return False
+
+    # The top-level version must change, with exactly one numeric token edited in the bytes.
+    old_number = str(version - 1).encode("ascii")
+    new_number = str(version).encode("ascii")
+    return any(
+        token[0] == old_number and before[:token.start()] + new_number + before[token.end():] == after
+        for token in JSON_STRING_OR_DIGITS.finditer(before)
+    )
+
+
+def rule_version_copy(repo, base, head):
+    for version in sorted(head.keys() - base.keys()):
+        predecessor = head.get(version - 1)
+        if predecessor is None:
+            continue  # Bootstrap has no predecessor. The consecutive rule reports gaps.
+        copy = head[version]
+        paths = predecessor.keys() | copy.keys() | {store.MANIFEST}
+        if store.CHANGE_NOTE not in copy:
+            paths.discard(store.CHANGE_NOTE)
+        for path in sorted(paths):
+            before, after = predecessor.get(path), copy.get(path)
+            if path == store.MANIFEST:
+                if (before and after and before[0] == after[0] and before[0] in store.MODES
+                        and renumbered_manifest(blob(repo, before[1]), blob(repo, after[1]), version)):
+                    continue
+            elif before == after:
+                continue
+            return False, "version %d differs from version %d at %r" % (version, version - 1, path)
+    return True, "each added version with a predecessor matches it"
+
+
 def rule_fixtures(base, head):
     gone = sorted(p for p in base if p not in head)
     if gone:
@@ -133,6 +177,7 @@ def check(repo, base_rev, head_rev):
         ("consecutive", rule_consecutive(head_versions, strays)),
         ("notes", rule_notes(head_versions)),
         ("note-fields", rule_note_fields(repo, head_versions)),
+        ("version-copy", rule_version_copy(repo, base_versions, head_versions)),
         ("fixtures", rule_fixtures(base_fixtures, head_fixtures)),
     ]
     lines = ["%s %s: %s" % ("PASS" if ok else "FAIL", rule, detail) for rule, (ok, detail) in results]

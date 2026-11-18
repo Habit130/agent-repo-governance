@@ -10,8 +10,19 @@ import unittest
 import support
 
 CASES = sorted(glob.glob(os.path.join(support.FIXTURES, "release-check", "*.json")))
-RULES = ["frozen", "consecutive", "notes", "note-fields", "fixtures"]
+RULES = ["frozen", "consecutive", "notes", "note-fields", "version-copy", "fixtures"]
 LINE = re.compile(r"^(PASS|FAIL) ([a-z-]+): .+$")
+RELEASE_AND_COPY = os.path.join(support.FIXTURES, "release-check", "release-and-copy.json")
+
+
+def edited(base, step):
+    head = dict(base)
+    prefix = "generator/govern-repository/store/"
+    for path in step.get("remove", []):
+        del head[prefix + path]
+    for path, value in step.get("write", {}).items():
+        head[prefix + path] = value
+    return head
 
 
 def draft_transitions():
@@ -20,15 +31,6 @@ def draft_transitions():
         initial = json.load(handle)["base"]
     with open(os.path.join(support.FIXTURES, "release-check", "drafts", "lifecycle.json")) as handle:
         fixture = json.load(handle)
-
-    def edited(base, step):
-        head = dict(base)
-        prefix = "generator/govern-repository/store/"
-        for path in step.get("remove", []):
-            del head[prefix + path]
-        for path, value in step.get("write", {}).items():
-            head[prefix + path] = value
-        return head
 
     base = initial
     for step in fixture["steps"]:
@@ -86,8 +88,11 @@ class ReleaseCheck(support.TempDirCase):
         command = re.search(r"run: python3 tests/run.py (release-check .+)", linux).group(1).split()
         with open(os.path.join(support.FIXTURES, "release-check", "released-template-edited.json")) as handle:
             case = json.load(handle)
+        with open(RELEASE_AND_COPY) as handle:
+            release = json.load(handle)
         cases = [("ordinary", case["base"], case["base"], []),
-                 ("frozen-edit", case["base"], case["head"], ["frozen"])]
+                 ("frozen-edit", case["base"], case["head"], ["frozen"]),
+                 ("release-and-copy", release["base"], release["head"], [])]
         cases += list(draft_transitions())
         for name, before, after, failures in cases:
             with self.subTest(shape=shape, transition=name):
@@ -126,7 +131,7 @@ class ReleaseCheck(support.TempDirCase):
                 self.assertEqual([line.split()[1][:-1] for line in out.splitlines()
                                   if line.startswith("FAIL ")], failures, out)
                 self.assertEqual(len([line for line in out.splitlines() if line.startswith("PASS ")]),
-                                 5 - len(failures))
+                                 len(RULES) - len(failures))
                 if name == "frozen-edit":
                     frozen = next(line for line in out.splitlines() if line.startswith("FAIL frozen:"))
                     self.assertIn("templates/docs/agents/review.md", frozen)
@@ -163,8 +168,9 @@ class ReleaseCheck(support.TempDirCase):
                         info[key] = [] if value == "none" else value.split(", ")
                     else:
                         self.fail("unexpected line %r in %s" % (line, name))
-                self.assertEqual(verdicts, case["expect"], out + err)
-                failed = "FAIL" in case["expect"].values()
+                expected = {"version-copy": "PASS", **case["expect"]}
+                self.assertEqual(verdicts, expected, out + err)
+                failed = "FAIL" in expected.values()
                 self.assertEqual(code, 1 if failed else 0, out + err)
                 if "expect_info" in case:
                     self.assertEqual(info, case["expect_info"], out)
@@ -176,6 +182,19 @@ class ReleaseCheck(support.TempDirCase):
         code, out, _ = self.run_case(case)
         self.assertEqual(code, 1)
         self.assertIn("templates/docs/agents/review.md", out)
+
+    def test_names_first_difference_in_an_added_version(self):
+        with open(RELEASE_AND_COPY) as handle:
+            case = json.load(handle)
+        for step in case["mismatches"]:
+            with self.subTest(difference=step["name"]):
+                code, out, err = self.run_case(dict(case, head=edited(case["head"], step)))
+                self.assertEqual((code, err), (1, ""), out)
+                self.assertEqual(
+                    [line for line in out.splitlines() if line.startswith("FAIL ")],
+                    ["FAIL version-copy: version 2 differs from version 1 at %r" % step["first_difference"]],
+                    out,
+                )
 
 
 if __name__ == "__main__":
