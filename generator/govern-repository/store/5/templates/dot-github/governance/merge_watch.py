@@ -393,7 +393,7 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
         missing.update(slots[len(filled):])
     if "reviewer" in REQUIRED[tier] and "reviewer" not in waivers and not _reviewer(pull, agent_account):
         missing.add("reviewer")
-    for kind in ("self-verification", "security"):
+    for kind in ("self-verification", "reviewer", "security"):
         if summary is not None and kind in summary and summary[kind][0] == "waived" and kind not in waivers:
             missing.add(kind)
     if (tier == "medium" and summary is not None

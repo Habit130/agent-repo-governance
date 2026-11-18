@@ -30,6 +30,8 @@ must-act: yes
   读取合并加入的 record。合并到 v4 以前的 record 上时，记录过渡说明，检查该 head 的
   Merge summary，从 medium 起还检查 Reviewer 状态。v3 base 上仍识别 habit 为该
   head 写的 Reviewer 豁免。合并前仍按 base 版本验证 bot。（#194）
+  已声明的 Reviewer 豁免需要独立核对 owner 评论中的豁免项和完整 head SHA。
+  即使 Reviewer 状态成功，缺少有效授权时也会留下 missing-review 记录。（#197）
 - 仓库采用 v4 后，exact comparison 无差异且 record 的 confirmed 值与默认分支
   一致的 pure Upgrade 走 medium，仍受敏感路径 floor 约束。Initialize 以及改变
   confirmed 值、required checks 或 owner script 目标状态的 Upgrade 走 high。
@@ -51,7 +53,8 @@ must-act 为 yes。
 预期结果随发布调整。Store、render、compare 和隔离安装默认取 v4，仍可显式选择旧版；
 v5 的 render 和 compare 需要单次显式 opt-in，拒绝时目标保持原样。Machine list 的
 最新发布版本变为 v4。Live runner 的 v4 Initialize 指引改为一个 bot 位置和不同 vendor
-的 Reviewer，离线保留 v3 的两个 bot 位置。已有 fixture 路径和输入均保留。
+的 Reviewer，离线保留 v3 的两个 bot 位置。新增一个 fixture 检查缺少有效授权的
+Reviewer 豁免报告为 missing-review。已有 fixture 路径和输入均保留。
 
 Model scenarios 因额度成本未运行，最终 head 的模型行为未经验证。公开 sandbox 的
 端到端 Initialize 是本次发布的 Initialize 行为检查，本仓库随后单独 Upgrade 是
