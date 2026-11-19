@@ -27,9 +27,13 @@ On `push` to the default branch, for each pushed commit:
     requirements by changing that list. When GitHub answers that the base holds no record at
     all, as at an Initialize, the record the merge adds names the providers instead: there is
     no earlier list to lower, and the run says so in a `NOTE` line. With a readable summary,
-    the slot needs the provider it names; without one, the first enabled provider with a
-    completed review fills the slot. At medium a readable summary with `reviewer=clear`
-    and the agent account's successful `Reviewer` status on the head fills an unfilled slot
+    the slot needs the provider it names, in that provider's place in the enabled list:
+    `clear(<bot>)` only the first enabled provider, `fallback(<bot>)` only a later one, as the
+    Merge summary's grammar gives them. Whether the earlier providers were unavailable stays
+    for sessions to verify. Without a summary, the first enabled provider with a completed
+    review fills the slot. At medium, after a successful bot policy read and parse,
+    a readable summary with `reviewer=clear` and the agent account's successful
+    `Reviewer` status on the head fills an unfilled slot
     only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`,
     the last enabled bot in the base record's ordered list. An earlier unavailable provider
     or any other unfilled slot state stays missing. `no-provider(none)` declares exhaustion
@@ -57,8 +61,8 @@ On `push` to the default branch, for each pushed commit:
   judged, an accepted transition exception: that PR's Reviewer checks them before the merge,
   or its Builder does when an owner/exact-head `reviewer` waiver applies on a version 3 base.
   Versions 1 and 2 still require the Reviewer status; their transition rules are unchanged.
-  The run says so in a `NOTE` line. A base record that can't be read or doesn't
-  parse enables no provider, so its bot slot reads as missing, a false miss.
+  The run says so in a `NOTE` line. If the applicable record can't be read, doesn't parse
+  or omits the bot list, it enables no provider and an unfilled bot slot reads as missing.
 
   "No record" is GitHub's own answer for the path: HTTP 404 with the message `Not Found`
   (`NotFound`). Any other answer, a missing ref's 404 among them, is a read that failed. The
@@ -349,7 +353,7 @@ def earlier_version_missing(pull, agent_account, owner, tier, version):
 
 
 def enabled_bots(read, repository, ref):
-    """(the record's version at ref, its enabled review bots); (None, []) when it can't be read.
+    """Return the record's version and enabled bots, with None for either unknown value.
 
     NotFound when GitHub answers that ref holds no record."""
     try:
@@ -358,12 +362,17 @@ def enabled_bots(read, repository, ref):
     except NotFound:
         raise
     except (ReadError, gate.RecordError, AttributeError):
-        return None, []
-    return parsed["version"], [bot for bot in parsed["confirmed"].get("review_bots", []) if bot in PROVIDERS]
+        return None, None
+    bots = parsed["confirmed"].get("review_bots")
+    if bots is None:
+        return parsed["version"], None
+    return parsed["version"], [bot for bot in bots if bot in PROVIDERS]
 
 
 def missing_reviews(pull, agent_account, owner, tier, bots):
     """Each review missing from the head at the tier: Merge summary kinds in their order, then `merge-summary`."""
+    policy_known = bots is not None
+    bots = bots or ()
     summary = _summary(pull, agent_account, tier)
     waivers = waived(pull, owner)
     missing = set()
@@ -375,11 +384,19 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
             completed[provider] = provider in bots and PROVIDERS[provider](pull)
         return completed[provider]
 
+    def in_place(state, provider):
+        # `clear` names the first enabled provider and `fallback` a later one. An unknown
+        # policy enables no provider, so `done` already leaves the slot missing.
+        if not policy_known:
+            return True
+        return provider in (bots[:1] if state == "clear" else bots[1:])
+
     if summary is not None:
         used = set()
         for slot in slots:
             state, provider = summary[slot]
-            if state in ("clear", "fallback") and provider not in used and done(provider):
+            if (state in ("clear", "fallback") and provider not in used
+                    and in_place(state, provider) and done(provider)):
                 used.add(provider)
             else:
                 missing.add(slot)
@@ -393,10 +410,10 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
         missing.update(slots[len(filled):])
     if "reviewer" in REQUIRED[tier] and "reviewer" not in waivers and not _reviewer(pull, agent_account):
         missing.add("reviewer")
-    for kind in ("self-verification", "security"):
+    for kind in ("self-verification", "reviewer", "security"):
         if summary is not None and kind in summary and summary[kind][0] == "waived" and kind not in waivers:
             missing.add(kind)
-    if (tier == "medium" and summary is not None
+    if (tier == "medium" and policy_known and summary is not None
             and summary.get("reviewer") == ("clear", None)
             and (summary.get("bot-1") == ("no-provider", "none")
                  or (bots and summary.get("bot-1") == ("unavailable", bots[-1])))
@@ -441,7 +458,7 @@ def _judge_pull(read, repository, agent_account, pull, squash, base, notes):
         try:
             version, bots = enabled_bots(read, repository, squash)
         except NotFound:
-            version, bots = None, []
+            version, bots = None, None
     facts = Pull(read, repository, number, head)
     if version is not None and version < REVIEW_BOTS_VERSION:
         notes.append("#%d merged onto a base whose record is at version %d; its review bots follow that version's "

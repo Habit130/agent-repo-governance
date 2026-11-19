@@ -1,9 +1,8 @@
 """Seam C, the governed-repository list (#44 §9): version and urgency, a newer record, an unparseable
 record, the private mark, the miss count and the skipped sandboxes, read-only and as the agent account.
 
-The installed store comes from the test-built source tree, where version 1 has no change
-note. Each case adds change notes for versions 1 to 3 to the installed store, the way a
-released machine would hold them, so the list has urgencies to read.
+Each case sets the urgencies of versions 1 to 4 in its isolated installed store to cover
+both highest-urgency outcomes.
 """
 
 import os
@@ -14,7 +13,7 @@ import support
 from standins import environment
 
 TALLY = os.path.join(support.FIXTURES, "parsers", "record", "tally.yml")
-NOTES = {1: "when convenient", 2: "urgent", 3: "when convenient"}
+NOTES = {1: "when convenient", 2: "urgent", 3: "when convenient", 4: "when convenient"}
 
 
 def record(version):
@@ -66,17 +65,17 @@ class GovernedRepositories(ListCase):
         ]
         records = {
             "Habit130/at-one": record(1), "Habit130/at-two": record(2), "Habit130/at-three": record(3),
-            "Habit130/ahead": record(4), "Habit130/broken": "version: one\n", "Habit130/on-trunk": record(3),
+            "Habit130/ahead": record(5), "Habit130/broken": "version: one\n", "Habit130/on-trunk": record(4),
         }
         code, found, out = self.list(repositories=repositories, records=records, misses={"Habit130/at-one": 2, "Habit130/broken": 1})
         self.assertEqual(code, 0, out)
-        self.assertEqual(found["header"], "installed commit %s；installed version 3" % self.commit)
-        self.assertEqual(found["Habit130/at-one"], "版本 1；缺少版本 2、3，最高紧急度 urgent；未关闭 miss record 2 条")
-        self.assertEqual(found["Habit130/at-two"], "版本 2；缺少版本 3，最高紧急度 when convenient；未关闭 miss record 0 条；私有")
-        self.assertEqual(found["Habit130/at-three"], "版本 3；已是最新版本；未关闭 miss record 0 条")
-        self.assertEqual(found["Habit130/ahead"], "版本 4；record 比本机新，先更新本机；未关闭 miss record 0 条")
+        self.assertEqual(found["header"], "installed commit %s；installed version 4" % self.commit)
+        self.assertEqual(found["Habit130/at-one"], "版本 1；缺少版本 2、3、4，最高紧急度 urgent；未关闭 miss record 2 条")
+        self.assertEqual(found["Habit130/at-two"], "版本 2；缺少版本 3、4，最高紧急度 when convenient；未关闭 miss record 0 条；私有")
+        self.assertEqual(found["Habit130/at-three"], "版本 3；缺少版本 4，最高紧急度 when convenient；未关闭 miss record 0 条")
+        self.assertEqual(found["Habit130/ahead"], "版本 5；record 比本机新，先更新本机；未关闭 miss record 0 条")
         self.assertEqual(found["Habit130/broken"], "record 无法解析，运行 generator 修复；未关闭 miss record 1 条")
-        self.assertEqual(found["Habit130/on-trunk"], "版本 3；已是最新版本；未关闭 miss record 0 条")
+        self.assertEqual(found["Habit130/on-trunk"], "版本 4；已是最新版本；未关闭 miss record 0 条")
         for absent in ("Habit130/plain", "Habit130/empty", "Habit130/governance-sandbox", "Habit130/governance-sandbox-private"):
             self.assertNotIn(absent, found)
         touched = " ".join(" ".join(c["args"]) for c in self.calls)

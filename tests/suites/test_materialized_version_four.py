@@ -260,30 +260,37 @@ class VersionFourReviewLadder(VersionThreeRendered):
 
     def test_substitute_and_copilot_exception_are_explicit(self):
         review = flat(self.text('docs/agents/review.md'))
-        for phrase in ('**No bot left at medium.**', 'same-vendor Reviewer session substitutes',
+        for phrase in ('**No bot left at medium.**', 'A Reviewer session substitutes only when',
                        '**No bot left at high.**', '**Rejecting below high.**',
-                       'first raises the PR to high', 'Reviewer session is required as well',
+                       'first raises the PR to high', "additional Reviewer is required and may use the Builder's vendor",
                        'no session independent of the Builder looked at the change'):
             self.assertIn(phrase, review)
         builder = flat(self.text('docs/agents/builder.md'))
         self.assertIn('At low and medium, when no Reviewer is required and none ran', builder)
+        hard_limits = flat(level_two_section(self.text('AGENTS.md'), '## Hard limits', 'AGENTS.md'))
         reviewer = flat(self.text('docs/agents/reviewer.md'))
-        self.assertIn('at high, or at medium as a substitute', reviewer)
+        medium_condition = 'when substituting for the bot or required alongside it'
+        self.assertIn('medium as a bot substitute or when required alongside a bot', hard_limits)
+        self.assertIn('at medium ' + medium_condition, reviewer)
+        self.assertIn('same vendor allowed', reviewer)
+        self.assertIn(f'| Reviewer session | — | {medium_condition}, same vendor allowed (Review bots) |', review)
 
     def test_medium_substitute_requires_exhaustion_at_each_policy_statement(self):
         review = self.text('docs/agents/review.md')
         decision = flat(review.split('**No bot left at medium.**', 1)[1].split('**No bot left at high.**', 1)[0])
-        for phrase in ('every enabled bot is unavailable', 'successful `Reviewer` status on the head',
+        for phrase in ('After reading the bot policy', "It may use the Builder's vendor",
+                       'every enabled bot is unavailable', 'successful `Reviewer` status on the head',
                        '`reviewer=clear`', 'last enabled bot', "base record's ordered list"):
             self.assertIn(phrase, decision)
         grammar = flat(review.split('At medium a substituting Reviewer', 1)[1].split('- For example', 1)[0])
         for phrase in ('`no-provider(none)`', '`unavailable(<last enabled bot>)`',
                        "base record's ordered list", 'earlier unavailable provider does not qualify',
-                       'initially empty', 'all enabled bots became unavailable',
+                       'When the bot policy is known', 'initially empty', 'all enabled bots became unavailable',
                        'actual requests and unavailability evidence'):
             self.assertIn(phrase, grammar)
         contract = flat(review.split('Merge watch requires self-verification', 1)[1].split('The rest of the comment', 1)[0])
-        for phrase in ('`reviewer=clear`', 'successful `Reviewer` status on the head',
+        for phrase in ('successfully reads and parses the bot policy', '`reviewer=clear`',
+                       'successful `Reviewer` status on the head',
                        '`no-provider(none)`', '`unavailable(<last enabled bot>)`',
                        "base record's ordered list", 'Other unfilled slot states remain missing',
                        'owner/exact-head bot-slot waiver', 'high has no Reviewer substitution'):

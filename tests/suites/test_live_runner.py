@@ -1337,7 +1337,7 @@ class MergeWatchV3Probes(support.TempDirCase):
 
 
 class MergeWatchV4Registration(unittest.TestCase):
-    def test_version_four_probes_select_the_draft_and_refuse_gate_mixing(self):
+    def test_version_four_probes_select_version_four_and_refuse_gate_mixing(self):
         names = ["merge-watch-v4-high", "merge-watch-v4-medium", "merge-watch-v4-miss"]
         known = probes.registered()
         for name in names:
@@ -1843,15 +1843,20 @@ class EndToEndCommands(support.TempDirCase):
             code = live.main(args)
         return code, out.getvalue()
 
-    def head_repository(self, drop_note=None):
+    def head_repository(self, draft=None):
         """This repository's stand-in: the generator committed, then an ignored .DS_Store beside it; returns the commit.
 
-        drop_note leaves that version's change note out, so it is unreleased at the head."""
+        With draft set, recreate the store from before that version's release."""
         head = support.init_repo(self.path("head"))
-        shutil.copytree(os.path.join(support.REPO, live.SKILL_PATH), os.path.join(head, live.SKILL_PATH),
+        skill = os.path.join(head, live.SKILL_PATH)
+        shutil.copytree(os.path.join(support.REPO, live.SKILL_PATH), skill,
                         ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"))
-        if drop_note:
-            os.remove(os.path.join(head, live.SKILL_PATH, "store", str(drop_note), "change-note.md"))
+        if draft is not None:
+            store_root = os.path.join(skill, "store")
+            for version in os.listdir(store_root):
+                if int(version) > draft:
+                    shutil.rmtree(os.path.join(store_root, version))
+            os.remove(os.path.join(store_root, str(draft), "change-note.md"))
         support.write_tree(head, {".gitignore": ".DS_Store\n"})
         support.git(head, "add", "-A")
         support.git(head, "commit", "-q", "-m", "head")
@@ -1881,8 +1886,9 @@ class EndToEndCommands(support.TempDirCase):
         self.assertIn("--head", created[0]["args"])
         self.assertEqual(created[0]["args"][created[0]["args"].index("--head") + 1], name)
         self.assertIn("\nRisk: high — ", created[0]["body"])
-        self.assertIn("so that version 3's end-to-end run starts an Initialize", created[0]["body"])
-        self.assertIn("Version 3's cut, whose review bots are the Codex review bot and Copilot code review.", out)
+        self.assertIn("so that version 4's end-to-end run starts an Initialize", created[0]["body"])
+        self.assertIn("Version 4's cut uses one review bot slot. habit confirms the enabled list during Initialize.", out)
+        self.assertNotIn("whose review bots are", out)
         self.assertNotIn("Bugbot", out + created[0]["body"])
         self.assertIn("ghm pr merge 31 --repo %s --admin --squash --match-head-commit %s" % (PUBLIC, head), out)
         self.assertIn("https://github.com/%s/settings/rules/%d" % (PUBLIC, self.gs.RULESET_IDS["Gate"]), out)
@@ -1942,7 +1948,22 @@ class EndToEndCommands(support.TempDirCase):
         self.assertEqual(support.git(state["checkout"], "remote", "get-url", "origin").strip(), self.remote)
         self.assertIn(live.start_command(state["checkout"], state["plugin"]), out)
         self.assertIn("Type /cut:govern-repository, never the bare /govern-repository", out)
-        self.assertEqual((state["version"], state["review_bots"]), (3, ["codex", "copilot"]))
+        self.assertEqual((state["version"], state["review_bots"]), (4, ["codex", "copilot"]))
+        self.assertIn("the run is version 4's Initialize", out)
+        self.assertIn("one completed review bot slot on the head", out)
+        self.assertIn("request the first bot in the order you confirmed", out)
+        self.assertIn("try the next enabled bot only if the Builder says the current bot is unavailable", out)
+        self.assertIn("a Reviewer whose model vendor differs from every Builder session that pushed to the PR", out)
+        self.assertNotIn("a Codex review bot request", out)
+        self.assertNotIn("a Copilot request", out)
+        self.assertNotIn("Bugbot", out)
+
+    def test_end_to_end_prints_both_review_bot_slots_for_v3(self):
+        commit = self.head_repository(draft=4)
+        self.sandbox(self.seed_files())
+        self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
+        code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
+        self.assertEqual(code, 0, out)
         self.assertIn("the run is version 3's Initialize", out)
         self.assertIn("\n   - a Codex review bot request it hands you;\n   - a Copilot request you make in the browser at "
                       "the Lite effort;\n", out)
@@ -1951,7 +1972,7 @@ class EndToEndCommands(support.TempDirCase):
         self.assertNotIn("Bugbot", out)
 
     def test_end_to_end_refuses_a_head_whose_highest_released_version_names_no_review_bots(self):
-        commit = self.head_repository(drop_note=3)
+        commit = self.head_repository(draft=3)
         self.sandbox(self.seed_files())
         self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
         code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
@@ -1962,11 +1983,11 @@ class EndToEndCommands(support.TempDirCase):
     def test_the_cut_reads_the_highest_released_version_and_its_review_bots(self):
         store = self.path("store")
         shutil.copytree(support.REAL_STORE, store)
-        # The real store's draft, version 4, is passed over.
-        self.assertEqual(live.cut_of(store), (3, ["codex", "copilot"]))
+        self.assertEqual(live.cut_of(store), (4, ["codex", "copilot"]))
         self.assertEqual(live.review_bot_names(["copilot"]), "Copilot code review")
         os.remove(os.path.join(store, "3", "change-note.md"))
         shutil.rmtree(os.path.join(store, "4"))
+        shutil.rmtree(os.path.join(store, "5"))
         with self.assertRaises(live.RunnerError):
             live.cut_of(store)
 

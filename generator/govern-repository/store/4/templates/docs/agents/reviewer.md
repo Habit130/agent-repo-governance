@@ -2,10 +2,10 @@
 
 # Reviewer
 
-The Reviewer's workflow and escalations, at high, or at medium as a substitute
-under `review.md`, Review bots, in a context that didn't write
-the change. `AGENTS.md` holds the hard limits and how to talk to habit, and `review.md` how
-the review rules apply; this file points there.
+The Reviewer works in a context that didn't write the change. The role applies at high, or
+at medium when substituting for the bot or required alongside it (same vendor allowed,
+`review.md`, Review bots). `AGENTS.md` holds the hard limits and how to talk to habit.
+`review.md` explains how the review rules apply.
 
 ## Start
 
