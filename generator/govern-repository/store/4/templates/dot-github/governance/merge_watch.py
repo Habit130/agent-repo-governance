@@ -27,8 +27,11 @@ On `push` to the default branch, for each pushed commit:
     requirements by changing that list. When GitHub answers that the base holds no record at
     all, as at an Initialize, the record the merge adds names the providers instead: there is
     no earlier list to lower, and the run says so in a `NOTE` line. With a readable summary,
-    the slot needs the provider it names; without one, the first enabled provider with a
-    completed review fills the slot. At medium, after a successful bot policy read and parse,
+    the slot needs the provider it names, in that provider's place in the enabled list:
+    `clear(<bot>)` only the first enabled provider, `fallback(<bot>)` only a later one, as the
+    Merge summary's grammar gives them. Whether the earlier providers were unavailable stays
+    for sessions to verify. Without a summary, the first enabled provider with a completed
+    review fills the slot. At medium, after a successful bot policy read and parse,
     a readable summary with `reviewer=clear` and the agent account's successful
     `Reviewer` status on the head fills an unfilled slot
     only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`,
@@ -381,11 +384,19 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
             completed[provider] = provider in bots and PROVIDERS[provider](pull)
         return completed[provider]
 
+    def in_place(state, provider):
+        # `clear` names the first enabled provider and `fallback` a later one. An unknown
+        # policy enables no provider, so `done` already leaves the slot missing.
+        if not policy_known:
+            return True
+        return provider in (bots[:1] if state == "clear" else bots[1:])
+
     if summary is not None:
         used = set()
         for slot in slots:
             state, provider = summary[slot]
-            if state in ("clear", "fallback") and provider not in used and done(provider):
+            if (state in ("clear", "fallback") and provider not in used
+                    and in_place(state, provider) and done(provider)):
                 used.add(provider)
             else:
                 missing.add(slot)

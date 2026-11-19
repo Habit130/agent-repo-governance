@@ -36,6 +36,8 @@ must-act: yes
   即使 Reviewer 状态成功，缺少有效授权时也会留下 missing-review 记录。（#197）
   只有成功读取并解析 bot 清单后，Merge watch 才认可 medium Reviewer 补位。
   清单缺失或读取、解析失败时，按缺少 bot-1 处理。有效的 owner 逐提交豁免可覆盖该位置。（#197）
+  Merge summary 中的 `clear` 只认清单第一个 bot，`fallback` 只认排在后面的 bot，
+  位置不符时按缺少 bot-1 处理。前面的 bot 是否确实不可用，仍由 session 核实。（#197）
 - 仓库采用 v4 后，exact comparison 无差异且 record 的 confirmed 值与默认分支
   一致的 pure Upgrade 走 medium，仍受敏感路径 floor 约束。Initialize 以及改变
   confirmed 值、required checks 或 owner script 目标状态的 Upgrade 走 high。
@@ -58,7 +60,8 @@ must-act 为 yes。
 v5 的 render 和 compare 需要单次显式 opt-in，拒绝时目标保持原样。Machine list 的
 最新发布版本变为 v4。Live runner 的 v4 Initialize 指引改为一个 bot 位置和不同 vendor
 的 Reviewer，离线保留 v3 的两个 bot 位置。新增的 fixture 分别覆盖缺少授权的 Reviewer
-豁免及无法解析的 bot 清单。空清单 fixture 的输入改用 generator 实际渲染的格式，原有
+豁免、无法解析的 bot 清单，以及 medium 和 high 下单 bot、双 bot 清单中 `clear` 与
+`fallback` 写错位置的情形。空清单 fixture 的输入改用 generator 实际渲染的格式，原有
 fixture 的路径和预期结果均保留。渲染断言现在核对 medium Reviewer 的两种情形。
 
 Model scenarios 因额度成本未运行，最终 head 的模型行为未经验证。公开 sandbox 的
