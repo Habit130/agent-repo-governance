@@ -6,7 +6,7 @@ habit-only commands. This reference describes the current state.
 ## Merge watch
 
 The rendered `.github/workflows/merge-watch.yml` and `.github/governance/merge_watch.py`
-come from version 3's fixed templates under `generator/govern-repository/store/3/templates/`
+come from version 4's fixed templates under `generator/govern-repository/store/4/templates/`
 (#41 §9). The script's docstring gives what it
 records, from which facts, and how an unreadable fact yields a false miss record; it never
 blocks anything and is never a required check.
@@ -108,8 +108,8 @@ watch, and a `NOTE` line records the transition. Version 4's recorded cases live
 
 ## The owner script and live checks
 
-The rendered `.github/governance/owner.sh` comes from version 3's fixed template
-`generator/govern-repository/store/3/templates/dot-github/governance/owner.sh` (#44 §7). Its
+The rendered `.github/governance/owner.sh` comes from version 4's fixed template
+`generator/govern-repository/store/4/templates/dot-github/governance/owner.sh` (#44 §7). Its
 docstring gives the preconditions, the order of writes and the exit codes (0 in place, 1 an
 item failed or missing, 2 stopped before any write).
 
