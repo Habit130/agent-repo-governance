@@ -75,8 +75,8 @@ describes one review bot slot and habit confirms the enabled list during Initial
    after-merge report and the rulesets after the owner-script run. The version's live checks
    then run on the same cutting head through `prepare` and `probe`.
 
-The cutting PR follows this repository's adopted version. While it is at v3, that means two
-bot slots and a different-vendor Reviewer, including when the sandbox Initialize is at v4.
+The cutting PR follows this repository's adopted version, version 4: one bot slot and a
+Reviewer whose vendor differs from every Builder session that pushed to the PR.
 After the merge habit runs the install (README.md), which brings the released version to the
 machine. Each repository adopts it by its own Upgrade. The cut's Merge summary names the
 version, its urgency, the install and the remaining verification gaps (#44 §8, Trigger).
