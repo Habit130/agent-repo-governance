@@ -283,6 +283,9 @@ like:
   session to take the wrong action.
 - **Routing or configuration** that misroutes context or permissions, causing contradictory
   rules, unauthorized writes or a broken delivery path.
+- **An audit** (Merge watch, the gate) that accepts a declared state without the evidence
+  that state requires, for any kind or state its grammar allows, so a skipped review or an
+  unauthorized exception merges with no miss record.
 
 Report an Important finding (P1 for the Codex review bot) when:
 
