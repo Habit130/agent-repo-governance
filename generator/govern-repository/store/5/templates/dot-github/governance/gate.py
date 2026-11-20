@@ -2,8 +2,9 @@
 """The governance gate: the required check `governance-gate` on every PR into the default branch.
 
 The workflow `.github/workflows/governance-gate.yml` runs this script from the default
-branch's checkout. It reads the PR's metadata from the event and the PR head's git objects,
-and never checks out or runs the PR's tree. The default branch's record judges, so a PR
+branch's checkout. It reads the PR from GitHub when it runs, not from the event, which
+names only the PR: the head, the body and the author login are GitHub's current ones. It
+reads the PR head's git objects, and never checks out or runs the PR's tree. The default branch's record judges, so a PR
 can't change how it is judged.
 
 The checks, in order; each failure is one plain English line naming the fix:
@@ -607,20 +608,33 @@ def _fetch(repo, sha):
     return result.returncode == 0
 
 
-def _post(repository, head, result):
+def _title(result, body):
+    """The check run's title: the tier the gate judged, or that no valid `Risk:` line was found."""
+    count = len(result["failures"])
+    declared = parse_body(body)["risk"] if body is not None else None
+    if result["passed"]:
+        tier = declared["tier"]
+        return ("Passed: a pure revert, declared %s" if result["pure_revert"] else "Passed: declared %s") % tier
+    rules = "%d rule%s" % (count, "" if count == 1 else "s")
+    if body is None:
+        return "Failed: %s, the PR couldn't be read" % rules
+    if isinstance(declared, dict):
+        return "Failed: %s, declared %s" % (rules, declared["tier"])
+    return "Failed: %s, no valid Risk: line" % rules
+
+
+def _post(repository, head, result, body):
     """Post the verdict as the check run `governance-gate` on the head; True when GitHub took it."""
     if result["passed"]:
-        title = "Passed: a pure revert" if result["pure_revert"] else "Passed"
         summary = "Every gate rule passed."
     else:
-        title = "Failed: %d rule%s" % (len(result["failures"]), "" if len(result["failures"]) == 1 else "s")
         summary = "\n".join("- " + line for line in result["failures"])
     payload = {
         "name": CHECK,
         "head_sha": head,
         "status": "completed",
         "conclusion": "success" if result["passed"] else "failure",
-        "output": {"title": title, "summary": summary},
+        "output": {"title": _title(result, body), "summary": summary},
     }
     posted = subprocess.run(
         ["gh", "api", "--method", "POST", "repos/%s/check-runs" % repository, "--input", "-"],
@@ -631,37 +645,72 @@ def _post(repository, head, result):
     return posted.returncode == 0
 
 
+def _read_pull(repository, number):
+    """GitHub's current PR as {"head", "body", "author", "base"}, or None when it can't be read."""
+    try:
+        read = subprocess.run(
+            ["gh", "api", "repos/%s/pulls/%s" % (repository, number)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if read.returncode != 0:
+            return None
+        pull = json.loads(read.stdout.decode("utf-8"))
+        body = pull["body"]
+        found = {"head": pull["head"]["sha"], "body": "" if body is None else body,
+                 "author": pull["user"]["login"], "base": pull["base"]["ref"]}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if not all(isinstance(found[key], str) for key in found) or not found["head"]:
+        return None
+    return found
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="The governance gate's verdict on the PR in GITHUB_EVENT_PATH.")
     parser.add_argument("--post-check", action="store_true", help="post the verdict as a check run on the head")
     args = parser.parse_args(argv)
     repo = os.getcwd()
+    repository = os.environ["GITHUB_REPOSITORY"]
     with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as handle:
         event = json.load(handle)
-    pull = event["pull_request"]
-    head = pull["head"]["sha"]
+    number = event["pull_request"]["number"]
+    head = event["pull_request"]["head"]["sha"]
+    owner = event["repository"]["owner"]["login"]
+    pull = _read_pull(repository, number)
     try:
         default_head = _line(repo, ["rev-parse", "HEAD"])
-        judged = _is_commit(repo, head) or _fetch(repo, head)
     except GitError as error:
-        default_head, judged = "an unreadable checkout", False
+        default_head = "an unreadable checkout"
         print("FAIL Git: %s" % error)
-    if judged:
-        result = verdict(
-            repo, pull["user"]["login"], event["repository"]["owner"]["login"], pull["body"], default_head, head
-        )
-    else:
+    body = None
+    if pull is None:
         result = {
             "passed": False,
-            "failures": ["Git: the head %s couldn't be fetched. Fix: rerun the gate." % head],
+            "failures": ["GitHub: the PR #%s couldn't be read from GitHub. Fix: rerun the gate." % number],
             "pure_revert": False,
         }
+    else:
+        head, body = pull["head"], pull["body"]
+        try:
+            judged = default_head != "an unreadable checkout" and (_is_commit(repo, head) or _fetch(repo, head))
+        except GitError as error:
+            judged = False
+            print("FAIL Git: %s" % error)
+        if judged:
+            result = verdict(repo, pull["author"], owner, body, default_head, head)
+        else:
+            result = {
+                "passed": False,
+                "failures": ["Git: the head %s couldn't be fetched. Fix: rerun the gate." % head],
+                "pure_revert": False,
+            }
     print("governance-gate on %s, judged by the default branch at %s" % (head, default_head))
     for line in result["failures"]:
         print("FAIL " + line)
     if result["passed"]:
         print("PASS " + ("a pure revert" if result["pure_revert"] else "every rule"))
-    if args.post_check and not _post(os.environ["GITHUB_REPOSITORY"], head, result):
+    if args.post_check and not _post(repository, head, result, body):
         print("FAIL posting the check run %s on %s" % (CHECK, head))
         return 1
     return 0 if result["passed"] else 1

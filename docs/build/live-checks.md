@@ -214,6 +214,13 @@ proves the retained owner repair, not reproduction of an optional-field API fail
 `gate-source` and `gate-rulesets`, run together, with the input `owner_report` that every check
 takes. Its docstring gives the setup, the probe PRs and what each assertion reads.
 
+- **Version 5's inputs and title.** Its gate reads the PR from GitHub when it runs
+  (`gh api repos/<repository>/pulls/<number>`), not from the event: a re-run after a body
+  edit judges the current body, and a run that started before a push judges and posts on
+  the newest head. When the PR can't be read, the check fails with one line advising a
+  rerun, on the event's head. The check's title names the declared tier (`Passed: declared
+  <tier>`, `Passed: a pure revert, declared <tier>`, `Failed: <n> rule(s), declared <tier>`
+  or `Failed: <n> rule(s), no valid Risk: line`).
 - **Three steps after habit's merge and owner-script run:** `live.py probe` without `--post`
   sets the check up as the agent account; habit runs `gate-rulesets`' one command; then
   `live.py probe --post` judges. The setup writes the targets of habit's command to
