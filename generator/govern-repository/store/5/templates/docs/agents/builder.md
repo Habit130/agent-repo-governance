@@ -229,9 +229,9 @@ asks habit and records the answer with `(as habit said)`.
   the body's `Reverts:` line, where the PR template's comment says.
 - The gate confirms a pure revert only when the commit landed under governance, its parent
   holding the governance record, the revert's recomputed tree equals yours, and GitHub shows
-  a PR merged into the default branch whose squash commit it is; once confirmed, it takes
-  the low path, even on sensitive paths, and any doubt leaves it tiered as usual rather than
-  failing the gate.
+  a PR merged into the default branch whose squash commit it is. Once confirmed, it takes the
+  low path, even on sensitive paths. When GitHub shows no such PR or can't be read, the revert
+  is unconfirmed and tiered as usual; that alone never fails the gate.
 - A revert follows the same issue rules as any other change.
 - A revert without a `Reverts:` line: open a miss record for the reverted PR when you open
   yours.

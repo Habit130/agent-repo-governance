@@ -60,9 +60,11 @@ class VersionFivePureRevert(VersionThreeRendered):
         self.assertIn(
             "The gate confirms a pure revert only when the commit landed under governance, its "
             "parent holding the governance record, the revert's recomputed tree equals yours, and "
-            "GitHub shows a PR merged into the default branch whose squash commit it is; once "
-            "confirmed, it takes the low path, even on sensitive paths, and any doubt leaves it "
-            "tiered as usual rather than failing the gate.", self.pure_reverts())
+            "GitHub shows a PR merged into the default branch whose squash commit it is. Once "
+            "confirmed, it takes the low path, even on sensitive paths. When GitHub shows no such "
+            "PR or can't be read, the revert is unconfirmed and tiered as usual; that alone never "
+            "fails the gate.", self.pure_reverts())
+        self.assertNotIn("any doubt", self.pure_reverts())
 
     def test_the_definition_names_a_merged_prs_squash_commit_on_the_default_branch(self):
         self.assertIn(
