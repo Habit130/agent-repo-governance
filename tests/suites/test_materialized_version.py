@@ -28,6 +28,10 @@ from test_materialized_version_four import (
     VersionFourRefresh,
     VersionFourPureUpgrade,
 )
+from test_materialized_version_five import (
+    VersionFiveInitializeChecks,
+    VersionFivePureRevert,
+)
 
 
 if __name__ == "__main__":
