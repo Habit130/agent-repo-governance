@@ -36,8 +36,9 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
   the bot only at medium, as Review bots below gives it.
 - habit's waiver is the only way a required review goes unmet; a waived Reviewer session
   leaves the Merge summary to the Builder (Waivers).
-- **Before any merge:** required checks green; the evidence comment on the head; the
-  `Risk:` line present; a Merge summary naming the head; no open Important finding from any
+- **Before any merge:** required checks green (the governance gate from the first PR after
+  Initialize; an Initialize PR's evidence states it as not yet applicable); the evidence comment
+  on the head; the `Risk:` line present; a Merge summary naming the head; no open Important finding from any
   review on the head; rerun-only passes checked as below.
 - **High adds:** before-and-after evidence in plain words; each one-way door rehearsed on a
   copy, the result attached and its recovery performed once; every finding answered, Nits
@@ -68,7 +69,9 @@ when habit supplies a missing earlier Builder's mark.
 ## Rerun-only passes
 
 Required checks here are the fixed governance gate plus the checks named in the governance
-record. A required check that failed, timed out or was cancelled on a head, then passed on
+record. The gate is required from the first PR after Initialize. An Initialize PR, whose base
+has no gate workflow, is judged by the record's confirmed checks that report on it; its
+evidence and verification prose state the gate as not yet applicable. A required check that failed, timed out or was cancelled on a head, then passed on
 that same head, is a **rerun-only pass** unless a change to an input or configuration used
 by that check repairs the failure. A rerun-only pass counts as unrepaired. An unrelated PR
 edit is not a repair. A governance gate run after a PR body edit qualifies as repaired only

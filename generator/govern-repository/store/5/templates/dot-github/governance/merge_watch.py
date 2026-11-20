@@ -306,16 +306,22 @@ def parse_reviews(line, tier):
     return states
 
 
-def _summary(pull, agent_account, tier):
-    """The newest Merge summary for the tier and head, parsed; None when absent or its line doesn't read."""
+def _summary_lines(pull, agent_account, tier):
+    """The lines of the agent account's newest Merge summary titled for the tier and the head, or None."""
     for comment in reversed(pull.comments()):
         if not _same_login((comment.get("user") or {}).get("login"), agent_account):
             continue
         lines = (comment.get("body") or "").replace("\r\n", "\n").split("\n")
         title = SUMMARY_TITLE.fullmatch(lines[0].rstrip(" \t"))
         if title and title.group(1) == tier and title.group(2) == pull.head[:7]:
-            return parse_reviews(lines[1], tier) if len(lines) > 1 else None
+            return lines
     return None
+
+
+def _summary(pull, agent_account, tier):
+    """The newest Merge summary for the tier and head, parsed; None when absent or its line doesn't read."""
+    lines = _summary_lines(pull, agent_account, tier)
+    return parse_reviews(lines[1], tier) if lines and len(lines) > 1 else None
 
 
 def waived(pull, owner):
@@ -340,15 +346,9 @@ def earlier_version_missing(pull, agent_account, owner, tier, version):
     reviewer_waived = version == 3 and "reviewer" in waived(pull, owner)
     if tier != "low" and not reviewer_waived and not _reviewer(pull, agent_account):
         missing.append("reviewer")
-    for comment in reversed(pull.comments()):
-        if not _same_login((comment.get("user") or {}).get("login"), agent_account):
-            continue
-        lines = (comment.get("body") or "").replace("\r\n", "\n").split("\n")
-        title = SUMMARY_TITLE.fullmatch(lines[0].rstrip(" \t"))
-        if title and title.group(1) == tier and title.group(2) == pull.head[:7]:
-            if len(lines) > 1 and lines[1].startswith(SUMMARY_REVIEWS):
-                return missing
-            break
+    lines = _summary_lines(pull, agent_account, tier)
+    if lines and len(lines) > 1 and lines[1].startswith(SUMMARY_REVIEWS):
+        return missing
     return missing + [MERGE_SUMMARY]
 
 

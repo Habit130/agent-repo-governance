@@ -214,6 +214,10 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    An Upgrade that changes the owner script, the target state or the required checks says in
    its Merge summary's "how to revert" (at high, the high-risk report) that habit reruns the
    owner script after a revert.
+   At Initialize, the PR's Revert field and the high-risk report's revert note name each
+   ruleset and setting the owner script will change, and whether it existed before. They say
+   how habit returns each one in the browser after a revert without the owner script:
+   disabling the Gate ruleset first, since it would otherwise require a gate the revert removes.
 
 ## 6. After merge
 

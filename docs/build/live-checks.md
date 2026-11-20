@@ -66,6 +66,9 @@ them. Versions 1 and 2 still require the Reviewer status. Bots are not judged by
 watch, and a `NOTE` line records the transition. Version 4's recorded cases live under
 `tests/fixtures/merge-watch/v4/`; earlier cases and expectations remain unchanged.
 
+Version 5's Merge watch judges the same cases with one Merge summary lookup, and its workflow
+grants five permissions, without `actions: read`.
+
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
   answers a REST path with GitHub's list, every page joined, or raises `ReadError`
   (version 3: `NotFound`, its subclass, for a file GitHub says isn't there). Its
