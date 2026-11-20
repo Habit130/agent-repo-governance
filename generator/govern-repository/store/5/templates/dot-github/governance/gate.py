@@ -2,18 +2,22 @@
 """The governance gate: the required check `governance-gate` on every PR into the default branch.
 
 The workflow `.github/workflows/governance-gate.yml` runs this script from the default
-branch's checkout. It reads the PR's metadata from the event and the PR head's git objects,
-and never checks out or runs the PR's tree. The default branch's record judges, so a PR
-can't change how it is judged.
+branch's checkout. It reads the PR from GitHub when it runs, not from the event, which
+names only the PR: the head, the body and the author login are GitHub's current ones. It
+reads the PR head's git objects, and never checks out or runs the PR's tree. The default
+branch's record judges, so a PR can't change how it is judged.
 
 The checks, in order; each failure is one plain English line naming the fix:
 
 1. Author: the repository owner or the record's agent account.
 2. Risk line: exactly one `Risk: <low|medium|high> — <reason>` line.
-3. Pure revert: a `Reverts:` line names a full commit SHA on the default branch. That
-   commit's revert, recomputed on the PR's merge-base, equal to the head's tree is a pure
-   revert: any tier passes, and step 4 is skipped. Only a commit whose parent holds the
-   record, one that landed under governance, is confirmed this way.
+3. Pure revert: a `Reverts:` line names a full commit SHA on the default branch. The PR is
+   a pure revert, passing at any tier with step 4 skipped, only when that commit's parent
+   holds the record, its revert recomputed on the PR's merge-base equals the head's tree,
+   and GitHub shows a PR merged into the default branch whose squash commit it is. A
+   `Reverts:` line that is malformed, doubled or names no commit on the default branch fails
+   this rule; a revert unconfirmed otherwise, GitHub unreadable included, adds no failure
+   line of its own, and the floors judge it.
 4. Floors: the declared tier reaches the highest floor among the sensitive paths that the
    PR's changed paths match, deletions and both sides of a rename included.
 
@@ -485,7 +489,7 @@ def _risk_rule(risk):
     )
 
 
-def _revert_rule(repo, reverts, default_head, base, head):
+def _revert_rule(repo, reverts, default_head, base, head, merged):
     """(failure line or None, whether the PR is a pure revert, a note for the floors' line or None)."""
     if reverts is None:
         return None, False, None
@@ -510,7 +514,20 @@ def _revert_rule(repo, reverts, default_head, base, head):
     if code != 0:
         return None, False, None
     recomputed = out.decode("utf-8").split("\n")[0].strip()
-    return None, recomputed == _line(repo, ["rev-parse", head + "^{tree}"]), None
+    if recomputed != _line(repo, ["rev-parse", head + "^{tree}"]):
+        return None, False, None
+    try:
+        found = merged(sha)
+    except Exception:
+        found = None
+    if found is True:
+        return None, True, None
+    why = (
+        "GitHub shows no PR merged into the default branch whose squash commit it is."
+        if found is False
+        else "GitHub couldn't be read to confirm it is a merged PR's squash commit."
+    )
+    return None, False, "`Reverts: %s` isn't confirmed as a pure revert: %s" % (sha, why)
 
 
 def changed_paths(repo, base, head):
@@ -542,12 +559,14 @@ def _floor_rule(record, tier, paths, note=None):
     )
 
 
-def verdict(repo, author, owner, body, default_head, head):
+def verdict(repo, author, owner, body, default_head, head, merged):
     """The gate's verdict on a PR: {"passed": bool, "failures": [line], "pure_revert": bool}.
 
     repo is a git repository holding the default branch's history and the head's objects;
     default_head is the default branch's commit whose record judges; author and owner are
-    GitHub logins; body is the PR body's text.
+    GitHub logins; body is the PR body's text; merged takes a full commit SHA and returns
+    True when GitHub shows a PR merged into the default branch whose squash commit it is,
+    False when it shows none, None when GitHub can't be read.
     """
     def failed(line):
         return {"passed": False, "failures": [line], "pure_revert": False}
@@ -569,7 +588,7 @@ def verdict(repo, author, owner, body, default_head, head):
         base = out.decode("utf-8").strip()
         parsed = parse_body(body or "")
         failures = [_author_rule(record, author, owner), _risk_rule(parsed["risk"])]
-        reverts_failure, pure, note = _revert_rule(repo, parsed["reverts"], default_head, base, head)
+        reverts_failure, pure, note = _revert_rule(repo, parsed["reverts"], default_head, base, head, merged)
         failures.append(reverts_failure)
         if isinstance(parsed["risk"], dict) and not pure:
             failures.append(_floor_rule(record, parsed["risk"]["tier"], changed_paths(repo, base, head), note))
@@ -607,20 +626,33 @@ def _fetch(repo, sha):
     return result.returncode == 0
 
 
-def _post(repository, head, result):
+def _title(result, body):
+    """The check run's title: the tier the gate judged, or that no valid `Risk:` line was found."""
+    count = len(result["failures"])
+    declared = parse_body(body)["risk"] if body is not None else None
+    if result["passed"]:
+        tier = declared["tier"]
+        return ("Passed: a pure revert, declared %s" if result["pure_revert"] else "Passed: declared %s") % tier
+    rules = "%d rule%s" % (count, "" if count == 1 else "s")
+    if body is None:
+        return "Failed: %s, the PR couldn't be read" % rules
+    if isinstance(declared, dict):
+        return "Failed: %s, declared %s" % (rules, declared["tier"])
+    return "Failed: %s, no valid Risk: line" % rules
+
+
+def _post(repository, head, result, body):
     """Post the verdict as the check run `governance-gate` on the head; True when GitHub took it."""
     if result["passed"]:
-        title = "Passed: a pure revert" if result["pure_revert"] else "Passed"
         summary = "Every gate rule passed."
     else:
-        title = "Failed: %d rule%s" % (len(result["failures"]), "" if len(result["failures"]) == 1 else "s")
         summary = "\n".join("- " + line for line in result["failures"])
     payload = {
         "name": CHECK,
         "head_sha": head,
         "status": "completed",
         "conclusion": "success" if result["passed"] else "failure",
-        "output": {"title": title, "summary": summary},
+        "output": {"title": _title(result, body), "summary": summary},
     }
     posted = subprocess.run(
         ["gh", "api", "--method", "POST", "repos/%s/check-runs" % repository, "--input", "-"],
@@ -631,37 +663,102 @@ def _post(repository, head, result):
     return posted.returncode == 0
 
 
+def _read_pull(repository, number):
+    """GitHub's current PR as {"head", "body", "author"}, or None when it can't be read."""
+    try:
+        read = subprocess.run(
+            ["gh", "api", "repos/%s/pulls/%s" % (repository, number)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if read.returncode != 0:
+            return None
+        pull = json.loads(read.stdout.decode("utf-8"))
+        body = pull["body"]
+        found = {"head": pull["head"]["sha"], "body": "" if body is None else body,
+                 "author": pull["user"]["login"]}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if not all(isinstance(found[key], str) for key in found) or not found["head"]:
+        return None
+    return found
+
+
+def _merged_lookup(repository, branch):
+    """The `merged` callable for verdict: GitHub's PRs for a commit, tested as Merge watch tests them.
+
+    branch is the repository's default branch, the one whose checkout judges, never the PR's
+    current target, which a retargeted PR changes; without it nothing is confirmed.
+    """
+    def merged(sha):
+        if not isinstance(branch, str) or not branch:
+            return None
+        try:
+            read = subprocess.run(
+                ["gh", "api", "repos/%s/commits/%s/pulls?per_page=100" % (repository, sha)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if read.returncode != 0:
+                return None
+            pulls = json.loads(read.stdout.decode("utf-8"))
+            if not isinstance(pulls, list):
+                return None
+            return any(
+                pull.get("merged_at") and pull["base"]["ref"] == branch and pull.get("merge_commit_sha") == sha
+                for pull in pulls
+            )
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return None
+    return merged
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="The governance gate's verdict on the PR in GITHUB_EVENT_PATH.")
     parser.add_argument("--post-check", action="store_true", help="post the verdict as a check run on the head")
     args = parser.parse_args(argv)
     repo = os.getcwd()
+    repository = os.environ["GITHUB_REPOSITORY"]
     with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as handle:
         event = json.load(handle)
-    pull = event["pull_request"]
-    head = pull["head"]["sha"]
+    number = event["pull_request"]["number"]
+    head = event["pull_request"]["head"]["sha"]
+    owner = event["repository"]["owner"]["login"]
+    default_branch = event["repository"].get("default_branch")
+    pull = _read_pull(repository, number)
     try:
         default_head = _line(repo, ["rev-parse", "HEAD"])
-        judged = _is_commit(repo, head) or _fetch(repo, head)
     except GitError as error:
-        default_head, judged = "an unreadable checkout", False
+        default_head = "an unreadable checkout"
         print("FAIL Git: %s" % error)
-    if judged:
-        result = verdict(
-            repo, pull["user"]["login"], event["repository"]["owner"]["login"], pull["body"], default_head, head
-        )
-    else:
+    body = None
+    if pull is None:
         result = {
             "passed": False,
-            "failures": ["Git: the head %s couldn't be fetched. Fix: rerun the gate." % head],
+            "failures": ["GitHub: the PR #%s couldn't be read from GitHub. Fix: rerun the gate." % number],
             "pure_revert": False,
         }
+    else:
+        head, body = pull["head"], pull["body"]
+        try:
+            judged = default_head != "an unreadable checkout" and (_is_commit(repo, head) or _fetch(repo, head))
+        except GitError as error:
+            judged = False
+            print("FAIL Git: %s" % error)
+        if judged:
+            result = verdict(repo, pull["author"], owner, body, default_head, head, _merged_lookup(repository, default_branch))
+        else:
+            result = {
+                "passed": False,
+                "failures": ["Git: the head %s couldn't be fetched. Fix: rerun the gate." % head],
+                "pure_revert": False,
+            }
     print("governance-gate on %s, judged by the default branch at %s" % (head, default_head))
     for line in result["failures"]:
         print("FAIL " + line)
     if result["passed"]:
         print("PASS " + ("a pure revert" if result["pure_revert"] else "every rule"))
-    if args.post_check and not _post(os.environ["GITHUB_REPOSITORY"], head, result):
+    if args.post_check and not _post(repository, head, result, body):
         print("FAIL posting the check run %s on %s" % (CHECK, head))
         return 1
     return 0 if result["passed"] else 1

@@ -66,6 +66,17 @@ try:
     _spec_v4.loader.exec_module(watch_v4)
 finally:
     sys.modules["gate"] = _gate_v1
+GOVERNANCE_V5 = os.path.join(support.REAL_STORE, "5", "templates", "dot-github", "governance")
+_spec_v5 = importlib.util.spec_from_file_location("merge_watch_v5", os.path.join(GOVERNANCE_V5, "merge_watch.py"))
+watch_v5 = importlib.util.module_from_spec(_spec_v5)
+_gate_spec_v5 = importlib.util.spec_from_file_location("gate_v5", os.path.join(GOVERNANCE_V5, "gate.py"))
+gate_v5 = importlib.util.module_from_spec(_gate_spec_v5)
+_gate_spec_v5.loader.exec_module(gate_v5)
+sys.modules["gate"] = gate_v5
+try:
+    _spec_v5.loader.exec_module(watch_v5)
+finally:
+    sys.modules["gate"] = _gate_v1
 WORKFLOW = ".github/workflows/merge-watch.yml"
 SCRIPT = ".github/governance/merge_watch.py"
 ISSUE_TRACKER = os.path.join(support.REAL_STORE, "1", "templates", "docs", "agents", "issue-tracker.md")
@@ -588,6 +599,110 @@ class VersionFour(unittest.TestCase):
                 result = watch_v4.decide(case["event_name"], case["event"], agent_account(), read, notes)
                 self.assertEqual(result, [dict(item, labels=["miss"]) for item in case["expected"]])
                 self.assertEqual(notes, case.get("notes", []))
+
+
+class VersionFive(unittest.TestCase):
+    """Version 5's script, after its one Merge summary lookup, judges every version 4 case alike."""
+
+    def test_a_record_without_a_bot_list_leaves_the_slot_missing(self):
+        case = load(os.path.join(FIXTURES, "v4", "medium-unknown-bot-policy.json"))
+        event = case["event"]
+        record_path = "repos/%s/contents/%s?ref=%s" % (
+            event["repository"]["full_name"], watch_v5.RECORD, event["before"]
+        )
+        record = case["github"][record_path]
+        invalid_list = "  review_bots: invalid\n"
+        self.assertTrue(record.endswith(invalid_list))
+        case["github"][record_path] = record.removesuffix(invalid_list)
+
+        result = watch_v5.decide(case["event_name"], event, agent_account(), case["github"].__getitem__)
+        self.assertEqual(result, [dict(item, labels=["miss"]) for item in case["expected"]])
+
+    def test_a_version_three_reviewer_waiver_needs_no_status_read(self):
+        for name in ("base-version-three-waived-reviewer-medium", "transition-reviewer-waiver-high"):
+            with self.subTest(case=name):
+                case = load(os.path.join(FIXTURES, "v4", name + ".json"))
+                calls = []
+
+                def read(path):
+                    calls.append(path)
+                    return case["github"][path]
+
+                result = watch_v5.decide(case["event_name"], case["event"], agent_account(), read, [])
+                self.assertEqual(result, [])
+                self.assertFalse(any(path.endswith("/statuses") for path in calls), calls)
+
+    def test_recorded_events(self):
+        cases = os.path.join(FIXTURES, "v4")
+        for name in sorted(os.listdir(cases)):
+            with self.subTest(case=name):
+                case = load(os.path.join(cases, name))
+
+                def read(path):
+                    if path in case.get("not_found", ()):
+                        raise watch_v5.NotFound(path)
+                    if path not in case["github"]:
+                        raise watch_v5.ReadError(path)
+                    return case["github"][path]
+
+                notes = []
+                result = watch_v5.decide(case["event_name"], case["event"], agent_account(), read, notes)
+                self.assertEqual(result, [dict(item, labels=["miss"]) for item in case["expected"]])
+                self.assertEqual(notes, case.get("notes", []))
+
+    def test_the_newest_titled_summary_wins_for_both_rules_as_in_version_four(self):
+        """Both rules take the agent account's newest summary titled for the tier and head, then check its own line."""
+        head, agent = "1a2b3c4" + "d" * 33, agent_account()
+
+        def comment(login, body):
+            return {"user": {"login": login}, "body": body}
+
+        older = comment(agent, "## Merge summary: low at 1a2b3c4\nRequired reviews: self-verification=clear\n")
+        later = [comment("someone-else", "## Merge summary: low at 1a2b3c4\nRequired reviews: self-verification=clear\n"),
+                 comment(agent, "## Merge summary: low at 9999999\nRequired reviews: self-verification=clear\n"),
+                 comment(agent, "## Merge summary: medium at 1a2b3c4\nRequired reviews: self-verification=clear\n")]
+        cases = {
+            # the newest titled summary's line reads: both rules find it
+            "readable": ([comment(agent, "## Merge summary: low at 1a2b3c4\nnot a reviews line\n"), older], True, []),
+            # the newest titled summary has an earlier version's line: only the earlier-version rule reads it
+            "earlier grammar": ([older, comment(agent, "## Merge summary: low at 1a2b3c4\nRequired reviews: bot-1=clear\n")],
+                                False, []),
+            # the newest titled summary's line doesn't read: an older readable one never counts
+            "unreadable newest": ([older, comment(agent, "## Merge summary: low at 1a2b3c4\nnot a reviews line\n")],
+                                  False, ["merge-summary"]),
+        }
+        for name, (comments, reads, earlier) in cases.items():
+            with self.subTest(case=name):
+                for watch in (watch_v4, watch_v5):
+                    pull = watch.Pull(lambda path, c=comments + later: c if path.endswith("/comments") else [],
+                                      "Habit130/tally", 7, head)
+                    self.assertEqual(watch._summary(pull, agent, "low") is not None, reads, watch.__name__)
+                    self.assertEqual(watch.earlier_version_missing(pull, agent, "Habit130", "low", 3), earlier, watch.__name__)
+
+
+class WorkflowPermissions(unittest.TestCase):
+    """Version 4's template grants six permissions; version 5's grants five, without `actions: read`."""
+
+    five = (
+        "\npermissions:\n  contents: read\n  pull-requests: read\n  issues: write\n"
+        "  checks: read\n  statuses: read\n\n"
+    )
+
+    def template(self, version):
+        return support.read_text(os.path.join(
+            support.REAL_STORE, version, "templates", "dot-github", "workflows", "merge-watch.yml"))
+
+    def test_version_four_grants_exactly_six(self):
+        workflow = self.template("4")
+        self.assertIn("# Exactly these six;", workflow)
+        self.assertIn(self.five.rstrip("\n") + "\n  actions: read\n\n", workflow)
+
+    def test_version_five_grants_exactly_five(self):
+        workflow = self.template("5")
+        self.assertIn("# Exactly these five;", workflow)
+        self.assertIn(self.five, workflow)
+        self.assertNotIn("actions:", workflow)
+        self.assertEqual(workflow.count("permissions:"), 1)
 
 if __name__ == "__main__":
     unittest.main()

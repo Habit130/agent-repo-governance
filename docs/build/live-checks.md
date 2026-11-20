@@ -66,6 +66,9 @@ them. Versions 1 and 2 still require the Reviewer status. Bots are not judged by
 watch, and a `NOTE` line records the transition. Version 4's recorded cases live under
 `tests/fixtures/merge-watch/v4/`; earlier cases and expectations remain unchanged.
 
+Version 5's Merge watch judges the same cases with one Merge summary lookup, and its workflow
+grants five permissions, without `actions: read`.
+
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
   answers a REST path with GitHub's list, every page joined, or raises `ReadError`
   (version 3: `NotFound`, its subclass, for a file GitHub says isn't there). Its
@@ -211,6 +214,13 @@ proves the retained owner repair, not reproduction of an optional-field API fail
 `gate-source` and `gate-rulesets`, run together, with the input `owner_report` that every check
 takes. Its docstring gives the setup, the probe PRs and what each assertion reads.
 
+- **Version 5's inputs and title.** Its gate reads the PR from GitHub when it runs
+  (`gh api repos/<repository>/pulls/<number>`), not from the event: a re-run after a body
+  edit judges the current body, and a run that started before a push judges and posts on
+  the newest head. When the PR can't be read, the check fails with one line advising a
+  rerun, on the event's head. The check's title names the declared tier (`Passed: declared
+  <tier>`, `Passed: a pure revert, declared <tier>`, `Failed: <n> rule(s), declared <tier>`
+  or `Failed: <n> rule(s), no valid Risk: line`).
 - **Three steps after habit's merge and owner-script run:** `live.py probe` without `--post`
   sets the check up as the agent account; habit runs `gate-rulesets`' one command; then
   `live.py probe --post` judges. The setup writes the targets of habit's command to
