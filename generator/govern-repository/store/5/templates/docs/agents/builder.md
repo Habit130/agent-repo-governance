@@ -224,9 +224,9 @@ asks habit and records the answer with `(as habit said)`.
 
 ## Pure reverts
 
-- A pure revert exactly undoes one merged PR's squash commit on the default branch. Build it with `git revert` of that
-  commit on a fresh branch, and name the commit's full SHA in the body's `Reverts:` line,
-  where the PR template's comment says.
+- A pure revert exactly undoes one merged PR's squash commit on the default branch. Build
+  it with `git revert` of that commit on a fresh branch, and name the commit's full SHA in
+  the body's `Reverts:` line, where the PR template's comment says.
 - The gate confirms a pure revert only when the commit landed under governance, its parent
   holding the governance record, the revert's recomputed tree equals yours, and GitHub shows
   a PR merged into the default branch whose squash commit it is; once confirmed, it takes

@@ -14,8 +14,9 @@ The checks, in order; each failure is one plain English line naming the fix:
 3. Pure revert: a `Reverts:` line names a full commit SHA on the default branch. The PR is
    a pure revert, passing at any tier with step 4 skipped, only when that commit's parent
    holds the record, its revert recomputed on the PR's merge-base equals the head's tree,
-   and GitHub shows a PR merged into the default branch whose squash commit it is. Without
-   all three the floors judge it, GitHub unreadable included, and add no failure line.
+   and GitHub shows a PR merged into the default branch whose squash commit it is.
+   Otherwise, GitHub unreadable included, the floors judge it, and the revert adds no
+   failure line of its own.
 4. Floors: the declared tier reaches the highest floor among the sensitive paths that the
    PR's changed paths match, deletions and both sides of a rename included.
 
