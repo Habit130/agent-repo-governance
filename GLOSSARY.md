@@ -189,7 +189,7 @@ The final handoff that follows the Merge summary, holding the pinned merge comma
 habit's merge command, bound to the head the Merge summary describes, so a later push makes it fail.
 
 **Pure revert**:
-A PR that exactly undoes one merged squash commit and nothing else, as the governance gate confirms; from version 4, confirmation also requires the governance record in that commit's parent. A revert from before governance, including of the commit that first added the record, is unconfirmed and tiered as usual.
+A PR that exactly undoes one merged PR's squash commit on the default branch and nothing else, as the governance gate confirms: the commit's parent holds the governance record, and GitHub shows the PR merged into the default branch. A revert of a commit from before governance, the commit that first added the record included, or of one GitHub can't confirm, is unconfirmed and tiered as usual.
 
 **Pure Upgrade**:
 An Upgrade whose exact comparison reports no differences and whose governance record's confirmed part is unchanged from the default branch. It is medium.

@@ -7,6 +7,8 @@ A governed repository's one required governance check reads only what the PR sho
 - the author;
 - pure-revert confirmation.
 
+From version 5, the gate reads the PR as GitHub shows it when it runs ([ADR 0037](0037-gate-judges-the-pr-as-github-shows-it.md)).
+
 Whether each tier's minimum reviews ran is checked by whoever writes the Merge summary, not by the gate, for two reasons:
 
 - A required check can't vary by tier.
