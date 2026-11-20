@@ -1,6 +1,6 @@
 """Governance model version five, the unpublished draft: rendered policy-text checks."""
 
-from materialized_version_support import VersionThreeRendered, flat, level_three_section  # noqa: F401
+from materialized_version_support import VersionThreeRendered, flat, level_three_section, level_two_section  # noqa: F401
 
 
 class VersionFiveInitializeChecks(VersionThreeRendered):
@@ -52,3 +52,22 @@ class VersionFivePureRevert(VersionThreeRendered):
     """#206: the pure-revert rule in version 5's builder.md."""
 
     VERSION = 5
+
+    def pure_reverts(self):
+        return flat(level_two_section(self.text("docs/agents/builder.md"), "## Pure reverts", "builder.md"))
+
+    def test_a_pure_revert_is_confirmed_by_git_and_by_a_merged_prs_squash_commit(self):
+        self.assertIn(
+            "The gate confirms a pure revert only when the commit landed under governance, its "
+            "parent holding the governance record, the revert's recomputed tree equals yours, and "
+            "GitHub shows a PR merged into the default branch whose squash commit it is; once "
+            "confirmed, it takes the low path, even on sensitive paths, and any doubt leaves it "
+            "tiered as usual rather than failing the gate.", self.pure_reverts())
+
+    def test_the_definition_names_a_merged_prs_squash_commit_on_the_default_branch(self):
+        self.assertIn(
+            "A pure revert exactly undoes one merged PR's squash commit on the default branch.",
+            self.pure_reverts())
+
+    def test_version_fours_sentence_on_the_parent_holding_the_record_is_gone(self):
+        self.assertNotIn("The gate confirms only a commit that landed under governance", self.pure_reverts())

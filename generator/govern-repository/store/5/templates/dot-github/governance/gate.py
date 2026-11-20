@@ -11,10 +11,11 @@ The checks, in order; each failure is one plain English line naming the fix:
 
 1. Author: the repository owner or the record's agent account.
 2. Risk line: exactly one `Risk: <low|medium|high> — <reason>` line.
-3. Pure revert: a `Reverts:` line names a full commit SHA on the default branch. That
-   commit's revert, recomputed on the PR's merge-base, equal to the head's tree is a pure
-   revert: any tier passes, and step 4 is skipped. Only a commit whose parent holds the
-   record, one that landed under governance, is confirmed this way.
+3. Pure revert: a `Reverts:` line names a full commit SHA on the default branch. The PR is
+   a pure revert, passing at any tier with step 4 skipped, only when that commit's parent
+   holds the record, its revert recomputed on the PR's merge-base equals the head's tree,
+   and GitHub shows a PR merged into the default branch whose squash commit it is. Without
+   all three the floors judge it, GitHub unreadable included, and add no failure line.
 4. Floors: the declared tier reaches the highest floor among the sensitive paths that the
    PR's changed paths match, deletions and both sides of a rename included.
 
@@ -486,7 +487,7 @@ def _risk_rule(risk):
     )
 
 
-def _revert_rule(repo, reverts, default_head, base, head):
+def _revert_rule(repo, reverts, default_head, base, head, merged):
     """(failure line or None, whether the PR is a pure revert, a note for the floors' line or None)."""
     if reverts is None:
         return None, False, None
@@ -511,7 +512,20 @@ def _revert_rule(repo, reverts, default_head, base, head):
     if code != 0:
         return None, False, None
     recomputed = out.decode("utf-8").split("\n")[0].strip()
-    return None, recomputed == _line(repo, ["rev-parse", head + "^{tree}"]), None
+    if recomputed != _line(repo, ["rev-parse", head + "^{tree}"]):
+        return None, False, None
+    try:
+        found = merged(sha)
+    except Exception:
+        found = None
+    if found is True:
+        return None, True, None
+    why = (
+        "GitHub shows no PR merged into the default branch whose squash commit it is."
+        if found is False
+        else "GitHub couldn't be read to confirm it is a merged PR's squash commit."
+    )
+    return None, False, "`Reverts: %s` isn't confirmed as a pure revert: %s" % (sha, why)
 
 
 def changed_paths(repo, base, head):
@@ -543,12 +557,14 @@ def _floor_rule(record, tier, paths, note=None):
     )
 
 
-def verdict(repo, author, owner, body, default_head, head):
+def verdict(repo, author, owner, body, default_head, head, merged):
     """The gate's verdict on a PR: {"passed": bool, "failures": [line], "pure_revert": bool}.
 
     repo is a git repository holding the default branch's history and the head's objects;
     default_head is the default branch's commit whose record judges; author and owner are
-    GitHub logins; body is the PR body's text.
+    GitHub logins; body is the PR body's text; merged takes a full commit SHA and returns
+    True when GitHub shows a PR merged into the default branch whose squash commit it is,
+    False when it shows none, None when GitHub can't be read.
     """
     def failed(line):
         return {"passed": False, "failures": [line], "pure_revert": False}
@@ -570,7 +586,7 @@ def verdict(repo, author, owner, body, default_head, head):
         base = out.decode("utf-8").strip()
         parsed = parse_body(body or "")
         failures = [_author_rule(record, author, owner), _risk_rule(parsed["risk"])]
-        reverts_failure, pure, note = _revert_rule(repo, parsed["reverts"], default_head, base, head)
+        reverts_failure, pure, note = _revert_rule(repo, parsed["reverts"], default_head, base, head, merged)
         failures.append(reverts_failure)
         if isinstance(parsed["risk"], dict) and not pure:
             failures.append(_floor_rule(record, parsed["risk"]["tier"], changed_paths(repo, base, head), note))
@@ -666,6 +682,29 @@ def _read_pull(repository, number):
     return found
 
 
+def _merged_lookup(repository, branch):
+    """The `merged` callable for verdict: GitHub's PRs for a commit, tested as Merge watch tests them."""
+    def merged(sha):
+        try:
+            read = subprocess.run(
+                ["gh", "api", "repos/%s/commits/%s/pulls?per_page=100" % (repository, sha)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            if read.returncode != 0:
+                return None
+            pulls = json.loads(read.stdout.decode("utf-8"))
+            if not isinstance(pulls, list):
+                return None
+            return any(
+                pull.get("merged_at") and pull["base"]["ref"] == branch and pull.get("merge_commit_sha") == sha
+                for pull in pulls
+            )
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return None
+    return merged
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="The governance gate's verdict on the PR in GITHUB_EVENT_PATH.")
     parser.add_argument("--post-check", action="store_true", help="post the verdict as a check run on the head")
@@ -698,7 +737,7 @@ def main(argv=None):
             judged = False
             print("FAIL Git: %s" % error)
         if judged:
-            result = verdict(repo, pull["author"], owner, body, default_head, head)
+            result = verdict(repo, pull["author"], owner, body, default_head, head, _merged_lookup(repository, pull["base"]))
         else:
             result = {
                 "passed": False,

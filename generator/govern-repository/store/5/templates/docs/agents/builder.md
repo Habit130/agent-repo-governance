@@ -224,12 +224,14 @@ asks habit and records the answer with `(as habit said)`.
 
 ## Pure reverts
 
-- A pure revert exactly undoes one merged squash commit. Build it with `git revert` of that
+- A pure revert exactly undoes one merged PR's squash commit on the default branch. Build it with `git revert` of that
   commit on a fresh branch, and name the commit's full SHA in the body's `Reverts:` line,
   where the PR template's comment says.
-- Once the governance gate confirms it, it takes the low path, even on sensitive paths.
-  Unconfirmed, it is tiered as usual. The gate confirms only a commit that landed under
-  governance, one whose parent already holds the governance record.
+- The gate confirms a pure revert only when the commit landed under governance, its parent
+  holding the governance record, the revert's recomputed tree equals yours, and GitHub shows
+  a PR merged into the default branch whose squash commit it is; once confirmed, it takes
+  the low path, even on sensitive paths, and any doubt leaves it tiered as usual rather than
+  failing the gate.
 - A revert follows the same issue rules as any other change.
 - A revert without a `Reverts:` line: open a miss record for the reverted PR when you open
   yours.

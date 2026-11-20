@@ -41,6 +41,7 @@ gate_v5 = parsers.load_gate(5)
 FIXTURES = os.path.join(support.FIXTURES, "gate")
 CASES = os.path.join(FIXTURES, "cases")
 V4_CASES = os.path.join(CASES, "v4")
+V5_CASES = os.path.join(CASES, "v5")
 RECORD = ".github/governance/record.yml"
 WORKFLOW = ".github/workflows/governance-gate.yml"
 SCRIPT = ".github/governance/gate.py"
@@ -63,6 +64,11 @@ def apply(repo, files, message):
     support.git(repo, "add", "-A")
     support.git(repo, "commit", "-q", "--allow-empty", "-m", message)
     return support.git(repo, "rev-parse", "HEAD").strip()
+
+
+def lookup(answer):
+    """Version 5's `merged` seam: "found" is True for any commit, "none" False, "unreadable" None."""
+    return {"found": lambda sha: True, "none": lambda sha: False, "unreadable": lambda sha: None}[answer]
 
 
 def build(root, case):
@@ -101,8 +107,11 @@ class GateCase(support.TempDirCase):
     def judge(self, name, script=gate, cases=CASES):
         case = load(os.path.join(cases, name + ".json"))
         repo, default_head, head, shas = build(self.tmp, case)
-        result = script.verdict(repo, case["author"], case["owner"], body_of(case, shas), default_head, head)
-        return case, result
+        args = (repo, case["author"], case["owner"], body_of(case, shas), default_head, head)
+        if script is gate_v5:
+            # Version 5 also takes GitHub's word on whether a commit is a merged PR's squash commit.
+            args += (lookup(case.get("merged", "found")),)
+        return case, script.verdict(*args)
 
 
 class SeamOne(GateCase):
@@ -131,6 +140,8 @@ for _name in _case_names(CASES):
 for _name in _case_names(V4_CASES):
     _add_case(_name, "v4", gate_v4, V4_CASES)
     _add_case(_name, "v5", gate_v5, V4_CASES)
+for _name in _case_names(V5_CASES):
+    _add_case(_name, "v5", gate_v5, V5_CASES)
 
 
 class FailureLines(GateCase):
@@ -173,6 +184,37 @@ class FailureLines(GateCase):
             self.assertEqual(self.judge(name, gate_v4, V4_CASES)[1]["failures"], [], name)
         _, result = self.judge("revert-with-resolved-conflict", gate_v4)
         self.assertNotIn("predates governance", result["failures"][0])
+
+    def test_version_5s_floor_line_says_why_a_named_commit_wasnt_confirmed_as_a_merged_prs_squash_commit(self):
+        notes = {
+            "no-merged-pr-low": "GitHub shows no PR merged into the default branch whose squash commit it is.",
+            "lookup-unreadable-low": "GitHub couldn't be read to confirm it is a merged PR's squash commit.",
+        }
+        for name, note in notes.items():
+            _, result = self.judge(name, gate_v5, V5_CASES)
+            (line,) = result["failures"]
+            self.assertNotIn("\n", line)
+            self.assertTrue(line.startswith("Floors: "), line)
+            self.assertIn("isn't confirmed as a pure revert: %s Fix: " % note, line)
+            self.assertRegex(line, r"`Reverts: [0-9a-f]{40}` isn't confirmed")
+        for name in ("no-merged-pr-at-floor", "lookup-unreadable-at-floor", "merged-pr-squash-commit-low"):
+            self.assertEqual(self.judge(name, gate_v5, V5_CASES)[1]["failures"], [], name)
+
+    def test_a_lookup_that_raises_reads_as_unreadable_and_is_never_called_before_the_git_conditions_hold(self):
+        case = load(os.path.join(V5_CASES, "merged-pr-squash-commit-low.json"))
+        repo, default_head, head, shas = build(self.tmp, case)
+        args = (repo, case["author"], case["owner"], body_of(case, shas), default_head, head)
+
+        def raises(sha):
+            raise OSError("no network")
+        (line,) = gate_v5.verdict(*args, raises)["failures"]
+        self.assertIn("GitHub couldn't be read to confirm", line)
+        calls = []
+        for name, cases in (("revert-with-extra-change", CASES), ("revert-before-governance-low", V4_CASES), ("low-on-plain-path", CASES)):
+            other = load(os.path.join(cases, name + ".json"))
+            repo, default_head, head, shas = build(self.tmp, other)
+            gate_v5.verdict(repo, other["author"], other["owner"], body_of(other, shas), default_head, head, lambda sha: calls.append(sha))
+        self.assertEqual(calls, [])
 
     def test_each_risk_line_problem_has_its_own_line(self):
         self.assertIn("no `Risk:` line", self.failures("risk-missing")[0])
@@ -462,10 +504,6 @@ class EntryVersionFive(GateCase):
         result = self.passes("high-on-high-floor", "Passed: declared high")
         self.assertIn("PASS every rule", result.stdout)
 
-    def test_a_pure_revert_pass_names_the_declared_tier_in_its_title(self):
-        result = self.passes("pure-revert-low-on-sensitive-path", "Passed: a pure revert, declared low")
-        self.assertIn("PASS a pure revert", result.stdout)
-
     def test_a_failure_with_a_valid_risk_line_names_the_count_and_the_declared_tier(self):
         _, line = Entry.failure_line(self, None)
         self.passes("rename-out-of-sensitive-path", "Failed: 1 rule, declared low", "failure", "- " + line, 1)
@@ -521,6 +559,74 @@ class EntryVersionFive(GateCase):
             result.stdout.splitlines()[:2],
             ["governance-gate on %s, judged by the default branch at %s" % (head, support.git(checkout, "rev-parse", "HEAD").strip()), "FAIL " + line],
         )
+
+    def revert_entry(self, merged_calls, note, returncode):
+        """Run a pure revert's entry; merged_calls are the lookup's recorded gh calls (none for no lookup)."""
+        checkout, head, case = self.checkout("pure-revert-low-on-sensitive-path")
+        sha = re.search(r"Reverts: ([0-9a-f]{40})", case["body"]).group(1)
+        event = self.path("event.json")
+        with open(event, "w") as handle:
+            json.dump({"pull_request": {"number": 7, "head": {"sha": head}}, "repository": {"owner": {"login": "Habit130"}}}, handle)
+        pull = self.github(head, case)
+        if note is None:
+            title, conclusion, summary = "Passed: a pure revert, declared low", "success", "Every gate rule passed."
+        else:  # the floors' line, written out from the contract rather than from the gate
+            title, conclusion = "Failed: 1 rule, declared low", "failure"
+            summary = (
+                '- Floors: the PR declares low, and these changed paths have a high floor: "src/auth/login.ts". '
+                "`Reverts: %s` isn't confirmed as a pure revert: %s "
+                "Fix: declare `Risk: high \u2014 <reason>`; no tier goes below a floor." % (sha, note)
+            )
+        payload = {
+            "name": "governance-gate", "head_sha": head, "status": "completed", "conclusion": conclusion,
+            "output": {"title": title, "summary": summary},
+        }
+        calls = [{"args": ["api", "repos/Habit130/tally/pulls/7"], "stdout": json.dumps(pull) + "\n", "exit": 0}]
+        calls += [dict(call, args=["api", "repos/Habit130/tally/commits/%s/pulls?per_page=100" % sha]) for call in merged_calls(sha)]
+        calls.append({
+            "args": ["api", "--method", "POST", "repos/Habit130/tally/check-runs", "--input", "-"],
+            "stdin": json.dumps(payload, sort_keys=True), "stdout": "{}\n", "exit": 0,
+        })
+        recording = self.path("gh.json")
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": calls}, handle)
+        scratch = self.path("scratch")
+        os.makedirs(scratch)
+        env = environment.environment(scratch, gh_recording=recording, base=support.isolated_env())
+        env.update({"GITHUB_EVENT_PATH": event, "GITHUB_REPOSITORY": "Habit130/tally"})
+        result = subprocess.run(
+            [sys.executable, GATE_V5, "--post-check"], cwd=checkout, env=env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True,
+        )
+        self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
+        self.assertEqual([call["recorded"] for call in environment.read_log(scratch)], [True] * len(calls))
+        return result
+
+    def test_a_pr_without_a_reverts_line_makes_no_lookup_call(self):
+        # passes() records only the PR read and the POST, so a third gh call would fail the run.
+        self.passes("high-on-high-floor", "Passed: declared high")
+
+    def test_a_pure_revert_whose_lookup_finds_the_merged_pr_passes_as_one_and_titles_the_declared_tier(self):
+        def found(sha):
+            pulls = [{"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "main"}, "merge_commit_sha": sha}]
+            return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
+        result = self.revert_entry(found, None, 0)
+        self.assertIn("PASS a pure revert", result.stdout)
+
+    def test_a_lookup_read_failure_leaves_the_revert_unconfirmed(self):
+        def unread(sha):
+            return [{"stdout": "", "stderr": "HTTP 502", "exit": 1}]
+        note = "GitHub couldn't be read to confirm it is a merged PR's squash commit."
+        self.assertIn(note, self.revert_entry(unread, note, 1).stdout)
+
+    def test_a_lookup_listing_no_matching_merged_pr_leaves_the_revert_unconfirmed(self):
+        def other(sha):
+            pulls = [{"merged_at": None, "base": {"ref": "main"}, "merge_commit_sha": sha},
+                     {"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "other"}, "merge_commit_sha": sha},
+                     {"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "main"}, "merge_commit_sha": "0" * 40}]
+            return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
+        note = "GitHub shows no PR merged into the default branch whose squash commit it is."
+        self.assertIn(note, self.revert_entry(other, note, 1).stdout)
 
     def test_the_workflow_is_version_fours_byte_for_byte(self):
         path = ("templates", "dot-github", "workflows", "governance-gate.yml")
