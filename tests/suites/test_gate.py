@@ -560,7 +560,7 @@ class EntryVersionFive(GateCase):
             ["governance-gate on %s, judged by the default branch at %s" % (head, support.git(checkout, "rev-parse", "HEAD").strip()), "FAIL " + line],
         )
 
-    def revert_entry(self, merged_calls, note, returncode, base="main"):
+    def revert_entry(self, merged_calls, note, returncode, base="main", default_branch="main"):
         """Run a pure revert's entry; merged_calls are the lookup's recorded gh calls (none for no lookup).
 
         The event names `main` as the repository's default branch; base is the PR's target as GitHub shows it.
@@ -569,8 +569,10 @@ class EntryVersionFive(GateCase):
         sha = re.search(r"Reverts: ([0-9a-f]{40})", case["body"]).group(1)
         event = self.path("event.json")
         with open(event, "w") as handle:
-            json.dump({"pull_request": {"number": 7, "head": {"sha": head}},
-                       "repository": {"owner": {"login": "Habit130"}, "default_branch": "main"}}, handle)
+            repository = {"owner": {"login": "Habit130"}}
+            if default_branch is not None:
+                repository["default_branch"] = default_branch
+            json.dump({"pull_request": {"number": 7, "head": {"sha": head}}, "repository": repository}, handle)
         pull = self.github(head, case, base)
         if note is None:
             title, conclusion, summary = "Passed: a pure revert, declared low", "success", "Every gate rule passed."
@@ -646,6 +648,10 @@ class EntryVersionFive(GateCase):
             return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
         note = "GitHub shows no PR merged into the default branch whose squash commit it is."
         self.assertIn(note, self.revert_entry(other, note, 1, base="release").stdout)
+
+    def test_an_event_without_the_default_branch_confirms_nothing_and_makes_no_lookup_call(self):
+        note = "GitHub couldn't be read to confirm it is a merged PR's squash commit."
+        self.assertIn(note, self.revert_entry(lambda sha: [], note, 1, default_branch=None).stdout)
 
     def test_the_workflow_is_version_fours_byte_for_byte(self):
         path = ("templates", "dot-github", "workflows", "governance-gate.yml")
