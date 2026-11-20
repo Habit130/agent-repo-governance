@@ -664,7 +664,7 @@ def _post(repository, head, result, body):
 
 
 def _read_pull(repository, number):
-    """GitHub's current PR as {"head", "body", "author", "base"}, or None when it can't be read."""
+    """GitHub's current PR as {"head", "body", "author"}, or None when it can't be read."""
     try:
         read = subprocess.run(
             ["gh", "api", "repos/%s/pulls/%s" % (repository, number)],
@@ -676,7 +676,7 @@ def _read_pull(repository, number):
         pull = json.loads(read.stdout.decode("utf-8"))
         body = pull["body"]
         found = {"head": pull["head"]["sha"], "body": "" if body is None else body,
-                 "author": pull["user"]["login"], "base": pull["base"]["ref"]}
+                 "author": pull["user"]["login"]}
     except (OSError, ValueError, KeyError, TypeError):
         return None
     if not all(isinstance(found[key], str) for key in found) or not found["head"]:
@@ -685,8 +685,14 @@ def _read_pull(repository, number):
 
 
 def _merged_lookup(repository, branch):
-    """The `merged` callable for verdict: GitHub's PRs for a commit, tested as Merge watch tests them."""
+    """The `merged` callable for verdict: GitHub's PRs for a commit, tested as Merge watch tests them.
+
+    branch is the repository's default branch, the one whose checkout judges, never the PR's
+    current target, which a retargeted PR changes; without it nothing is confirmed.
+    """
     def merged(sha):
+        if not isinstance(branch, str) or not branch:
+            return None
         try:
             read = subprocess.run(
                 ["gh", "api", "repos/%s/commits/%s/pulls?per_page=100" % (repository, sha)],
@@ -718,6 +724,7 @@ def main(argv=None):
     number = event["pull_request"]["number"]
     head = event["pull_request"]["head"]["sha"]
     owner = event["repository"]["owner"]["login"]
+    default_branch = event["repository"].get("default_branch")
     pull = _read_pull(repository, number)
     try:
         default_head = _line(repo, ["rev-parse", "HEAD"])
@@ -739,7 +746,7 @@ def main(argv=None):
             judged = False
             print("FAIL Git: %s" % error)
         if judged:
-            result = verdict(repo, pull["author"], owner, body, default_head, head, _merged_lookup(repository, pull["base"]))
+            result = verdict(repo, pull["author"], owner, body, default_head, head, _merged_lookup(repository, default_branch))
         else:
             result = {
                 "passed": False,

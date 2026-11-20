@@ -650,9 +650,34 @@ class VersionFive(unittest.TestCase):
                 self.assertEqual(result, [dict(item, labels=["miss"]) for item in case["expected"]])
                 self.assertEqual(notes, case.get("notes", []))
 
-    def test_one_lookup_serves_the_summary_and_the_earlier_version_check(self):
-        source = support.read_text(os.path.join(GOVERNANCE_V5, "merge_watch.py"))
-        self.assertEqual(source.count("SUMMARY_TITLE.fullmatch"), 1)
+    def test_the_newest_titled_summary_wins_for_both_rules_as_in_version_four(self):
+        """Both rules take the agent account's newest summary titled for the tier and head, then check its own line."""
+        head, agent = "1a2b3c4" + "d" * 33, agent_account()
+
+        def comment(login, body):
+            return {"user": {"login": login}, "body": body}
+
+        older = comment(agent, "## Merge summary: low at 1a2b3c4\nRequired reviews: self-verification=clear\n")
+        later = [comment("someone-else", "## Merge summary: low at 1a2b3c4\nRequired reviews: self-verification=clear\n"),
+                 comment(agent, "## Merge summary: low at 9999999\nRequired reviews: self-verification=clear\n"),
+                 comment(agent, "## Merge summary: medium at 1a2b3c4\nRequired reviews: self-verification=clear\n")]
+        cases = {
+            # the newest titled summary's line reads: both rules find it
+            "readable": ([comment(agent, "## Merge summary: low at 1a2b3c4\nnot a reviews line\n"), older], True, []),
+            # the newest titled summary has an earlier version's line: only the earlier-version rule reads it
+            "earlier grammar": ([older, comment(agent, "## Merge summary: low at 1a2b3c4\nRequired reviews: bot-1=clear\n")],
+                                False, []),
+            # the newest titled summary's line doesn't read: an older readable one never counts
+            "unreadable newest": ([older, comment(agent, "## Merge summary: low at 1a2b3c4\nnot a reviews line\n")],
+                                  False, ["merge-summary"]),
+        }
+        for name, (comments, reads, earlier) in cases.items():
+            with self.subTest(case=name):
+                for watch in (watch_v4, watch_v5):
+                    pull = watch.Pull(lambda path, c=comments + later: c if path.endswith("/comments") else [],
+                                      "Habit130/tally", 7, head)
+                    self.assertEqual(watch._summary(pull, agent, "low") is not None, reads, watch.__name__)
+                    self.assertEqual(watch.earlier_version_missing(pull, agent, "Habit130", "low", 3), earlier, watch.__name__)
 
 
 class WorkflowPermissions(unittest.TestCase):

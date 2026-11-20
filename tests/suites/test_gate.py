@@ -443,7 +443,7 @@ class EntryVersionFive(GateCase):
             json.dump(
                 {
                     "pull_request": {"number": 7, "head": {"sha": event_head}, "user": {"login": "stale"}, "body": event_body},
-                    "repository": {"owner": {"login": "Habit130"}},
+                    "repository": {"owner": {"login": "Habit130"}, "default_branch": "main"},
                 },
                 handle,
             )
@@ -560,14 +560,18 @@ class EntryVersionFive(GateCase):
             ["governance-gate on %s, judged by the default branch at %s" % (head, support.git(checkout, "rev-parse", "HEAD").strip()), "FAIL " + line],
         )
 
-    def revert_entry(self, merged_calls, note, returncode):
-        """Run a pure revert's entry; merged_calls are the lookup's recorded gh calls (none for no lookup)."""
+    def revert_entry(self, merged_calls, note, returncode, base="main"):
+        """Run a pure revert's entry; merged_calls are the lookup's recorded gh calls (none for no lookup).
+
+        The event names `main` as the repository's default branch; base is the PR's target as GitHub shows it.
+        """
         checkout, head, case = self.checkout("pure-revert-low-on-sensitive-path")
         sha = re.search(r"Reverts: ([0-9a-f]{40})", case["body"]).group(1)
         event = self.path("event.json")
         with open(event, "w") as handle:
-            json.dump({"pull_request": {"number": 7, "head": {"sha": head}}, "repository": {"owner": {"login": "Habit130"}}}, handle)
-        pull = self.github(head, case)
+            json.dump({"pull_request": {"number": 7, "head": {"sha": head}},
+                       "repository": {"owner": {"login": "Habit130"}, "default_branch": "main"}}, handle)
+        pull = self.github(head, case, base)
         if note is None:
             title, conclusion, summary = "Passed: a pure revert, declared low", "success", "Every gate rule passed."
         else:  # the floors' line, written out from the contract rather than from the gate
@@ -627,6 +631,21 @@ class EntryVersionFive(GateCase):
             return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
         note = "GitHub shows no PR merged into the default branch whose squash commit it is."
         self.assertIn(note, self.revert_entry(other, note, 1).stdout)
+
+    def test_a_retargeted_pr_is_still_confirmed_against_the_default_branch_that_judges_it(self):
+        # GitHub now shows the PR's target as `release`; the default branch whose checkout judges is `main`.
+        def found(sha):
+            pulls = [{"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "main"}, "merge_commit_sha": sha}]
+            return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
+        result = self.revert_entry(found, None, 0, base="release")
+        self.assertIn("PASS a pure revert", result.stdout)
+
+    def test_a_merged_pr_into_the_prs_new_target_doesnt_confirm_it(self):
+        def other(sha):
+            pulls = [{"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "release"}, "merge_commit_sha": sha}]
+            return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
+        note = "GitHub shows no PR merged into the default branch whose squash commit it is."
+        self.assertIn(note, self.revert_entry(other, note, 1, base="release").stdout)
 
     def test_the_workflow_is_version_fours_byte_for_byte(self):
         path = ("templates", "dot-github", "workflows", "governance-gate.yml")

@@ -150,9 +150,10 @@ expectations, retaining immutable v1 coverage while checking the candidate.
     condition holds: GitHub shows a PR merged into the default branch whose squash commit
     is the named one. `verdict` takes it as `merged(sha)`, returning `True`, `False` or
     `None` (unreadable, an exception included). The entry builds it from
-    `gh api "repos/<repository>/commits/<sha>/pulls?per_page=100"`, with the PR read's
-    `base.ref` as the branch, testing as Merge watch's `_merged_pr` does. `False` or `None`
-    adds no failure line; a failing `Floors:` line carries the matching note.
+    `gh api "repos/<repository>/commits/<sha>/pulls?per_page=100"`, with the event's
+    `repository.default_branch`, whose checkout judges, as the branch (never the PR's current
+    target, which a retargeted PR changes), testing as Merge watch's `_merged_pr` does.
+    `False` or `None` adds no failure line; a failing `Floors:` line carries the matching note.
 - **Its template loads as it is**, since its one token sits in its first line, a comment:
   `PARSERS` in `tests/suites/parsers.py` loads it by path.
 - **The record**: `govlib/record.py`, whose docstring defines the format in full. A list key
