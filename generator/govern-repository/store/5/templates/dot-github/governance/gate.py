@@ -4,8 +4,8 @@
 The workflow `.github/workflows/governance-gate.yml` runs this script from the default
 branch's checkout. It reads the PR from GitHub when it runs, not from the event, which
 names only the PR: the head, the body and the author login are GitHub's current ones. It
-reads the PR head's git objects, and never checks out or runs the PR's tree. The default branch's record judges, so a PR
-can't change how it is judged.
+reads the PR head's git objects, and never checks out or runs the PR's tree. The default
+branch's record judges, so a PR can't change how it is judged.
 
 The checks, in order; each failure is one plain English line naming the fix:
 
