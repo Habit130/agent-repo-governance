@@ -40,43 +40,24 @@ V3_CASES = os.path.join(FIXTURES, "v3")
 GOVERNANCE_V3 = os.path.join(support.REAL_STORE, "3", "templates", "dot-github", "governance")
 
 
-def _load_v3(name):
-    spec = importlib.util.spec_from_file_location("%s_v3" % name, os.path.join(GOVERNANCE_V3, name + ".py"))
+def _load_module(version, name):
+    path = os.path.join(support.REAL_STORE, str(version), "templates", "dot-github", "governance", name + ".py")
+    spec = importlib.util.spec_from_file_location(f"{name}_v{version}", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-# Version 3's script imports the gate beside it as `gate`: give it version 3's while it loads.
-gate_v3 = _load_v3("gate")
-_gate_v1 = sys.modules["gate"]
-sys.modules["gate"] = gate_v3
-try:
-    watch_v3 = _load_v3("merge_watch")
-finally:
-    sys.modules["gate"] = _gate_v1
-GOVERNANCE_V4 = os.path.join(support.REAL_STORE, "4", "templates", "dot-github", "governance")
-_spec_v4 = importlib.util.spec_from_file_location("merge_watch_v4", os.path.join(GOVERNANCE_V4, "merge_watch.py"))
-watch_v4 = importlib.util.module_from_spec(_spec_v4)
-_gate_spec_v4 = importlib.util.spec_from_file_location("gate_v4", os.path.join(GOVERNANCE_V4, "gate.py"))
-gate_v4 = importlib.util.module_from_spec(_gate_spec_v4)
-_gate_spec_v4.loader.exec_module(gate_v4)
-sys.modules["gate"] = gate_v4
-try:
-    _spec_v4.loader.exec_module(watch_v4)
-finally:
-    sys.modules["gate"] = _gate_v1
-GOVERNANCE_V5 = os.path.join(support.REAL_STORE, "5", "templates", "dot-github", "governance")
-_spec_v5 = importlib.util.spec_from_file_location("merge_watch_v5", os.path.join(GOVERNANCE_V5, "merge_watch.py"))
-watch_v5 = importlib.util.module_from_spec(_spec_v5)
-_gate_spec_v5 = importlib.util.spec_from_file_location("gate_v5", os.path.join(GOVERNANCE_V5, "gate.py"))
-gate_v5 = importlib.util.module_from_spec(_gate_spec_v5)
-_gate_spec_v5.loader.exec_module(gate_v5)
-sys.modules["gate"] = gate_v5
-try:
-    _spec_v5.loader.exec_module(watch_v5)
-finally:
-    sys.modules["gate"] = _gate_v1
+def _load_watch(version):
+    # Each Merge watch imports its own adjacent gate under the same name.
+    with mock.patch.dict(sys.modules, {"gate": _load_module(version, "gate")}):
+        return _load_module(version, "merge_watch")
+
+
+watch_v3 = _load_watch(3)
+WATCHES_FROM_V4 = {version: _load_watch(version) for version in (4, 5)}
+watch_v4 = WATCHES_FROM_V4[4]
+watch_v5 = WATCHES_FROM_V4[5]
 WORKFLOW = ".github/workflows/merge-watch.yml"
 SCRIPT = ".github/governance/merge_watch.py"
 ISSUE_TRACKER = os.path.join(support.REAL_STORE, "1", "templates", "docs", "agents", "issue-tracker.md")
@@ -554,6 +535,52 @@ class VersionThree(unittest.TestCase):
         source = support.read_text(os.path.join(GOVERNANCE_V3, "merge_watch.py"))
         for retired in ("bugbot", "Bugbot", "cursor", "reduced", "substituted"):
             self.assertNotIn(retired, source)
+
+
+class DeclaredWaivers(unittest.TestCase):
+    def test_each_declared_waiver_needs_its_owners_comment_on_the_head(self):
+        for version, watch in WATCHES_FROM_V4.items():
+            with self.subTest(version=version):
+                self.check_waivers(version, watch)
+
+    def check_waivers(self, version, watch):
+        # This high-tier PR already has both the completed Codex review and the Reviewer status.
+        case = load(os.path.join(FIXTURES, "v4", "high-one-bot-reviewer.json"))
+        github, event = case["github"], case["event"]
+        repository = event["repository"]["full_name"]
+        pull, = github[f"repos/{repository}/commits/{event['after']}/pulls"]
+        head = pull["head"]["sha"]
+        record_path = f"repos/{repository}/contents/{watch.RECORD}?ref={event['before']}"
+        github[record_path] = github[record_path].replace("version: 4\n", f"version: {version}\n")
+        comments_path = f"repos/{repository}/issues/{pull['number']}/comments"
+        comments = github[comments_path]
+        agent = agent_account()
+        summary, = (comment for comment in comments if comment["user"]["login"] == agent)
+        owner = repository.split("/")[0]
+
+        def decide(responses):
+            return watch.decide(case["event_name"], event, agent, responses.__getitem__)
+
+        # If the fixture ever loses either review, fail before testing waivers.
+        self.assertEqual(decide(github), [])
+        for kind in watch.KINDS:
+            with self.subTest(kind=kind):
+                items = []
+                for review in watch.KINDS:
+                    state = "waived" if review == kind else "clear"
+                    if review in watch.BOT_SLOTS:
+                        state += "(codex)"
+                    items.append(f"{review}={state}")
+                summary["body"] = f"## Merge summary: high at {head[:7]}\nRequired reviews: " + ", ".join(items)
+
+                records = decide(github)
+                self.assertEqual(len(records), 1)
+                lines = records[0]["body"].splitlines()
+                self.assertIn("Category: missing-review", lines)
+                self.assertIn(f"Observed: Merged head {head}, declared high, lacks: {kind}.", lines)
+
+                waiver = {"user": {"login": owner}, "body": f"Waiver: {kind} at {head} — approved for this head"}
+                self.assertEqual(decide({**github, comments_path: comments + [waiver]}), [])
 
 
 class VersionFour(unittest.TestCase):
