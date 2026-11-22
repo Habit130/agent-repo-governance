@@ -1,4 +1,4 @@
-"""The shared parser fixtures (#44 §5): every registered parser against every fixture.
+"""The shared parser fixtures (#44 §5): each parser against its applicable fixtures.
 
 `tests/fixtures/parsers/` holds the record fixtures under `record/`, the PR-body fixtures
 under `pr-body/`, and `expected.json`. That file maps each fixture file to its expected
@@ -6,17 +6,22 @@ result, and adds the cases `git diff --check` would flag as inline texts. There 
 per parser and fixture, named for both, so the verbose output lists each parser and each
 fixture's result.
 
-`record-v3/` and `expected-v3.json` hold the version 3 record fixtures (#148), run only
-against `parsers.V3_PARSERS`: a version 1 or 2 governed parser never reads a version 3 record.
+`record-v3/` and `expected-v3.json` hold the fixtures for confirmed review bots (#148),
+which the machine parser and governed parsers from version 3 read.
 """
 
 import json
 import os
+from pathlib import Path
 import re
+import shutil
+import subprocess
+import sys
 import unittest
 
 import parsers
 import support
+from govlib import store
 
 FIXTURES = os.path.join(support.FIXTURES, "parsers")
 DIRECTORIES = {"record": "record", "pr_body": "pr-body"}
@@ -90,7 +95,7 @@ def _add_test(parser, kind, name, data, expected):
 for _parser in parsers.PARSERS:
     for _kind, _name, _data, _expected in cases():
         _add_test(_parser, _kind, _name, _data, _expected)
-    if _parser.name in parsers.V3_PARSERS:
+    if _parser.supports_review_bots:
         for _name, _data, _expected in v3_cases():
             _add_test(_parser, "record_v3", _name, _data, _expected)
 
@@ -104,18 +109,85 @@ class FixtureSet(unittest.TestCase):
         on_disk = set(os.listdir(os.path.join(FIXTURES, V3_DIRECTORY)))
         self.assertEqual(on_disk, set(load_expected_v3()["record_v3"]), V3_DIRECTORY)
 
-    def test_the_version_3_fixtures_run_against_the_machine_and_version_3_parsers_only(self):
-        registered = [parser.name for parser in parsers.PARSERS]
-        self.assertEqual([name for name in parsers.V3_PARSERS if name in registered], list(parsers.V3_PARSERS))
-        names = [name for name in dir(SharedParserFixtures) if "_record_v3_" in name]
-        self.assertEqual(sorted(set(name.split("_record_v3_")[0] for name in names)),
-                         sorted("test_" + slug(name) for name in parsers.V3_PARSERS))
-
     def test_every_parser_is_registered_once_with_both_adapters(self):
         names = [parser.name for parser in parsers.PARSERS]
         self.assertEqual(len(names), len(set(names)))
         for parser in parsers.PARSERS:
             self.assertTrue(callable(parser.record) and callable(parser.pr_body), parser.name)
+
+
+class ParserCoverage(support.TempDirCase):
+    def add_draft(self):
+        root = Path(shutil.copytree(support.REAL_STORE, self.path("store")))
+        previous = max(int(entry.name) for entry in root.iterdir() if entry.name.isdecimal())
+        source = root / str(previous)
+        draft = root / str(previous + 1)
+        shutil.copytree(source, draft, ignore=shutil.ignore_patterns("change-note.md"))
+        if not (source / "change-note.md").exists():
+            (source / "change-note.md").write_text(
+                "urgency: when convenient\nmust-act: no\n\n测试版本。\n", encoding="utf-8"
+            )
+        manifest = draft / "manifest.json"
+        contents = json.loads(manifest.read_text(encoding="utf-8"))
+        contents["version"] = previous + 1
+        manifest.write_text(json.dumps(contents), encoding="utf-8")
+        return draft
+
+    def run_fixtures(self, root):
+        # Use the ordinary unittest collection and result reporting with a fresh store.
+        return subprocess.run(
+            [sys.executable, "-c",
+             "import sys, support, unittest\n"
+             "support.REAL_STORE = sys.argv.pop(1)\n"
+             "unittest.main(module='test_parser_fixtures')",
+             str(root), "-v", "SharedParserFixtures"],
+            cwd=os.path.dirname(__file__), env=support.isolated_env(),
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
+
+    def assert_store_coverage(self, root):
+        result = self.run_fixtures(root)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        passed = {}
+        for line in result.stdout.splitlines():
+            if line.endswith(" ... ok"):
+                parser, fixture = line.split(" parser, ", 1)
+                passed.setdefault(parser, []).append(fixture.rsplit(": ", 1)[0])
+
+        catalog = load_expected()
+        common = set()
+        for kind in ("record", "pr_body"):
+            names = list(catalog[kind]) + list(catalog[kind + "_texts"])
+            common.update(kind.replace("_", "-") + " " + name for name in names)
+        with_bots = common | {"record-v3 " + name for name in load_expected_v3()["record_v3"]}
+        expected = {"machine": with_bots}
+        for entry in root.iterdir():
+            if entry.is_dir() and entry.name.isdecimal():
+                expected["governed-v" + entry.name] = with_bots if int(entry.name) >= 3 else common
+        self.assertEqual(set(passed), set(expected))
+        for parser, fixtures in expected.items():
+            with self.subTest(parser=parser):
+                self.assertCountEqual(passed[parser], fixtures)
+
+    def test_every_stored_version_and_the_machine_run_their_applicable_fixtures(self):
+        self.assert_store_coverage(Path(support.REAL_STORE))
+
+    def test_a_new_draft_runs_each_applicable_fixture(self):
+        self.assert_store_coverage(self.add_draft().parent)
+
+    def test_an_unloadable_draft_fails_the_suite_and_names_the_version(self):
+        draft = self.add_draft()
+        gate = Path(store.Store(draft.parent).template_path(int(draft.name), parsers.GATE_PATH))
+        for source, cause in [
+            ("raise RuntimeError('broken draft parser')", "RuntimeError: broken draft parser"),
+            ("raise SystemExit(0)", "SystemExit: 0"),
+        ]:
+            with self.subTest(cause=cause):
+                gate.write_text(source + "\n", encoding="utf-8")
+                result = self.run_fixtures(draft.parent)
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertIn("governed-v" + draft.name, result.stdout)
+                self.assertIn(cause, result.stdout)
 
 
 if __name__ == "__main__":
