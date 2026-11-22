@@ -28,16 +28,20 @@ def repository(name, private=False, branch="main"):
 class ListCase(support.TempDirCase):
     def setUp(self):
         super(ListCase, self).setUp()
-        source = self.path("source")
-        self.commit = ms.build_source(source)
+        source = support.init_repo(self.path("source"))
+        self.commit = support.commit_tree(source, ms.list_source_files(), "list fixture")
         self.home = ms.ready_home(self.path("home"))
         env = ms.machine_env(self.home, self.path("install-scratch"), gh_recording=ms.write_gh_recording(self.path("gh-install.json")))
         code, out, err = ms.run_machine(["install", "--source", source, "--home", self.home], env)
         self.assertEqual((code, err), (0, ""), out)
-        store = os.path.join(self.home, ".agents", "skills", "govern-repository", "store")
-        for version, urgency in NOTES.items():
-            support.write_tree(store, {"%d/change-note.md" % version: "urgency: %s\nmust-act: no\n\n版本 %d 的说明。\n" % (urgency, version)})
+        self.store = os.path.join(self.home, ".agents", "skills", "govern-repository", "store")
+        for version in NOTES:
+            self.write_note(version, "no")
         self.runs = 0
+
+    def write_note(self, version, must_act):
+        note = "urgency: %s\nmust-act: %s\n\n版本 %d 的说明。\n" % (NOTES[version], must_act, version)
+        support.write_tree(self.store, {"%d/change-note.md" % version: note})
 
     def list(self, **gh):
         self.runs += 1
@@ -56,6 +60,19 @@ class ListCase(support.TempDirCase):
 
 
 class GovernedRepositories(ListCase):
+    def test_only_missing_notes_that_call_for_action_are_referenced(self):
+        for version in (1, 3, 4):
+            self.write_note(version, "yes")
+        code, found, out = self.list(repositories=[repository("at-one")], records={"Habit130/at-one": record(1)})
+        self.assertEqual(code, 0, out)
+        note3 = os.path.join(self.store, "3", "change-note.md")
+        note4 = os.path.join(self.store, "4", "change-note.md")
+        self.assertEqual(found["Habit130/at-one"],
+                         "版本 1；缺少版本 2、3、4，最高紧急度 urgent；版本说明要求 habit 操作："
+                         "版本 3（%s）、版本 4（%s）；未关闭 miss record 0 条" % (note3, note4))
+        self.assertIn("版本 3 的说明。", support.read_text(note3))
+        self.assertIn("版本 4 的说明。", support.read_text(note4))
+
     def test_each_line_and_the_header(self):
         repositories = [
             repository("at-one"), repository("at-two", private=True), repository("at-three"), repository("ahead"),
@@ -70,9 +87,9 @@ class GovernedRepositories(ListCase):
         code, found, out = self.list(repositories=repositories, records=records, misses={"Habit130/at-one": 2, "Habit130/broken": 1})
         self.assertEqual(code, 0, out)
         self.assertEqual(found["header"], "installed commit %s；installed version 4" % self.commit)
-        self.assertEqual(found["Habit130/at-one"], "版本 1；缺少版本 2、3、4，最高紧急度 urgent；未关闭 miss record 2 条")
-        self.assertEqual(found["Habit130/at-two"], "版本 2；缺少版本 3、4，最高紧急度 when convenient；未关闭 miss record 0 条；私有")
-        self.assertEqual(found["Habit130/at-three"], "版本 3；缺少版本 4，最高紧急度 when convenient；未关闭 miss record 0 条")
+        self.assertEqual(found["Habit130/at-one"], "版本 1；缺少版本 2、3、4，最高紧急度 urgent；版本说明要求 habit 操作：无；未关闭 miss record 2 条")
+        self.assertEqual(found["Habit130/at-two"], "版本 2；缺少版本 3、4，最高紧急度 when convenient；版本说明要求 habit 操作：无；未关闭 miss record 0 条；私有")
+        self.assertEqual(found["Habit130/at-three"], "版本 3；缺少版本 4，最高紧急度 when convenient；版本说明要求 habit 操作：无；未关闭 miss record 0 条")
         self.assertEqual(found["Habit130/ahead"], "版本 5；record 比本机新，先更新本机；未关闭 miss record 0 条")
         self.assertEqual(found["Habit130/broken"], "record 无法解析，运行 generator 修复；未关闭 miss record 1 条")
         self.assertEqual(found["Habit130/on-trunk"], "版本 4；已是最新版本；未关闭 miss record 0 条")
@@ -102,11 +119,10 @@ class GovernedRepositories(ListCase):
 
 class NoReleasedVersion(ListCase):
     def test_every_record_is_newer_than_a_machine_without_a_released_version(self):
-        store = os.path.join(self.home, ".agents", "skills", "govern-repository", "store")
         for version in NOTES:
-            os.remove(os.path.join(store, str(version), "change-note.md"))
+            os.remove(os.path.join(self.store, str(version), "change-note.md"))
         for version in (2, 3):
-            directory = os.path.join(store, str(version))
+            directory = os.path.join(self.store, str(version))
             # A real version may now occupy a formerly synthetic note-only directory.
             if not os.listdir(directory):
                 os.rmdir(directory)

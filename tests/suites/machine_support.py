@@ -92,6 +92,16 @@ def build_source(path, copies=None):
     return support.commit_tree(path, source_files(copies), "source tree")
 
 
+def list_source_files():
+    """The list examples have four released versions and a fifth draft, even after later releases."""
+    store = "generator/govern-repository/store/"
+    versions = tuple("%s%d/" % (store, version) for version in range(1, 6))
+    files = {path: spec for path, spec in source_files().items()
+             if not path.startswith(store) or path.startswith(versions)}
+    files.pop(store + "5/change-note.md", None)
+    return files
+
+
 def make_home(path, files=None):
     """A throwaway home, with the directories its variables name, and optional files."""
     for directory in (".config", ".local/state", ".local/share", ".cache", "tmp"):
