@@ -10,7 +10,7 @@ import unittest
 import support
 
 CASES = sorted(glob.glob(os.path.join(support.FIXTURES, "release-check", "*.json")))
-RULES = ["frozen", "consecutive", "notes", "note-fields", "version-copy", "fixtures"]
+RULES = ["frozen", "consecutive", "notes", "note-fields", "next-draft", "version-copy", "fixtures"]
 LINE = re.compile(r"^(PASS|FAIL) ([a-z-]+): .+$")
 RELEASE_AND_COPY = os.path.join(support.FIXTURES, "release-check", "release-and-copy.json")
 
@@ -35,8 +35,9 @@ def draft_transitions():
     base = initial
     for step in fixture["steps"]:
         head = edited(base, step)
-        yield step["name"], base, head, []
+        yield step["name"], base, head, step.get("failures", [])
         base = head
+    # An all-released historical base still freezes v2, even though a new release must add v3.
     for step in fixture["after_release"]:
         yield step["name"], base, edited(base, step), ["frozen"]
     # Layout validation is independent of immutability; fixtures may override the v1 base.
@@ -93,6 +94,8 @@ class ReleaseCheck(support.TempDirCase):
         cases = [("ordinary", case["base"], case["base"], []),
                  ("frozen-edit", case["base"], case["head"], ["frozen"]),
                  ("release-and-copy", release["base"], release["head"], [])]
+        for step in release["other_cuts"]:
+            cases.append((step["name"], release["base"], edited(release["head"], step), step["failures"]))
         cases += list(draft_transitions())
         for name, before, after, failures in cases:
             with self.subTest(shape=shape, transition=name):
@@ -135,6 +138,8 @@ class ReleaseCheck(support.TempDirCase):
                 if name == "frozen-edit":
                     frozen = next(line for line in out.splitlines() if line.startswith("FAIL frozen:"))
                     self.assertIn("templates/docs/agents/review.md", frozen)
+                if name == "release":
+                    self.assertRegex(out, r"(?m)^FAIL next-draft: .*\bdraft version 3\b")
 
     def test_depth_two_pr_merge_compares_first_parent_and_rejects_frozen_edit(self):
         self.check_ci_history("pr-merge")
@@ -168,7 +173,7 @@ class ReleaseCheck(support.TempDirCase):
                         info[key] = [] if value == "none" else value.split(", ")
                     else:
                         self.fail("unexpected line %r in %s" % (line, name))
-                expected = {"version-copy": "PASS", **case["expect"]}
+                expected = {"next-draft": "PASS", "version-copy": "PASS", **case["expect"]}
                 self.assertEqual(verdicts, expected, out + err)
                 failed = "FAIL" in expected.values()
                 self.assertEqual(code, 1 if failed else 0, out + err)

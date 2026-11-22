@@ -1,9 +1,9 @@
 {
-  "description": "The head cuts version 1 with a change note and adds draft version 2 in the same commit.",
+  "description": "The head edits a policy and an executable bit while cutting version 1, then copies that final tree into draft version 2.",
   "base": {
     "generator/govern-repository/store/1/manifest.json": "{\"templates\": [], \"version\": 1}\n",
-    "generator/govern-repository/store/1/templates/policy.md": "reviewed policy\n",
-    "generator/govern-repository/store/1/templates/run.sh": {"content": "#!/bin/bash\necho owner\n", "mode": "100755"}
+    "generator/govern-repository/store/1/templates/policy.md": "earlier policy\n",
+    "generator/govern-repository/store/1/templates/run.sh": "#!/bin/bash\necho owner\n"
   },
   "head": {
     "generator/govern-repository/store/1/change-note.md": "urgency: when convenient\nmust-act: no\n\n发布累积的修改。\n",
@@ -18,10 +18,15 @@
     "consecutive": "PASS",
     "fixtures": "PASS",
     "frozen": "PASS",
+    "next-draft": "PASS",
     "note-fields": "PASS",
     "notes": "PASS",
     "version-copy": "PASS"
   },
+  "other_cuts": [
+    {"name": "released-successor", "write": {"2/change-note.md": "urgency: when convenient\nmust-act: no\n\n发布累积的修改。\n"}, "failures": ["next-draft"]},
+    {"name": "stale-policy", "write": {"2/templates/policy.md": "earlier policy\n"}, "failures": ["version-copy"]}
+  ],
   "mismatches": [
     {"name": "content", "write": {"2/templates/policy.md": "changed policy\n"}, "first_difference": "templates/policy.md"},
     {"name": "mode", "write": {"2/templates/run.sh": "#!/bin/bash\necho owner\n"}, "first_difference": "templates/run.sh"},

@@ -18,8 +18,14 @@ Prepare both changes in the cutting PR.
    modes. Leave the root `change-note.md` out of the copy and change the top-level
    `version` integer in the copied `manifest.json` to N+1. Preserve every other byte.
 
-The release check compares a newly added draft with its predecessor in the PR head and
-reports the first differing path. Its proof of equality stands in for reviewing the copy.
+When version N is a draft on the comparison base and gains its change note at the head,
+the release check requires draft N+1 at that head. If N+1 is missing or already has a
+change note, the failure names the required draft. A base containing only released
+versions can still receive ordinary changes.
+
+The copy check compares the new draft with the final version N at the head, including
+edits made in the cutting PR. It reports the first differing path. Its proof of equality
+stands in for reviewing the copy.
 
 The cutting PR's end-to-end run (#44 §11) is an Initialize of the public sandbox, after CI
 and the [core Commands](../agents/build.md#commands) pass on the head. Every result names the head, so a later push
