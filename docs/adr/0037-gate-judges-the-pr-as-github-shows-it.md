@@ -6,6 +6,6 @@ When the PR can't be read from GitHub, the gate fails with one line telling the 
 
 The default branch's checkout still judges, so a verdict made under an older record stands until the PR's next gate run. A re-run executes its original run's checkout, so a run from before a repository's Upgrade to version 5 still runs the older gate; the practice of never re-running an older gate run stays until such runs no longer matter.
 
-Version 5 is an unpublished draft; its release and each repository's Upgrade remain separate decisions ([ADR 0029](0029-changes-accumulate-in-one-draft-version.md)).
+Version 5 was still a draft when habit approved this decision on 2026-11-19. New gate runs use the current PR once a repository adopts version 5. Releasing the version and upgrading each repository are separate decisions. [ADR 0029](0029-changes-accumulate-in-one-draft-version.md)
 
 Decided in [the version 5 planning round's triage](https://github.com/Habit130/agent-repo-governance/issues/201#issuecomment-7003030399), from [the re-run finding](https://github.com/Habit130/agent-repo-governance/issues/201#issuecomment-7002917737), and built by [its spec](https://github.com/Habit130/agent-repo-governance/issues/204).
