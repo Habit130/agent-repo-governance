@@ -734,15 +734,17 @@ class GitHub(object):
             raise ReadError(path)
 
     def __call__(self, path):
-        if "/contents/" in path:
+        # All requests have the form repos/{owner}/{repository}/{endpoint}.
+        endpoint = path.split("/", 3)[3]
+        if endpoint.startswith("contents/"):
             return self._file(path)
-        if "/git/commits/" in path or "/actions/" in path:
+        if endpoint.startswith(("git/commits/", "actions/jobs/", "actions/runs/")):
             return self._json(path)
         items, page = [], 1
         while True:
             paged = "%s%sper_page=%d&page=%d" % (path, "&" if "?" in path else "?", PER_PAGE, page)
             data = self._json(paged)
-            if "/check-runs?" in path:
+            if endpoint.partition("?")[0].endswith("/check-runs"):
                 data = data.get("check_runs") if isinstance(data, dict) else None
             if not isinstance(data, list):
                 self.unreadable.append(paged + ": the answer isn't a list")

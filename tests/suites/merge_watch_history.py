@@ -81,7 +81,7 @@ class HistoricalEvidence(VersionThreeRendered):
         self.errors = {}
         self.unassociated = None
 
-    def replay(self, missing=(), incomplete=None, notes=()):
+    def replay(self, missing=(), incomplete=None, notes=(), repository=None):
         """Serve the actual gh API shapes, then compare the posted records and workflow exit."""
         calls = []
         for path, value in self.api.items():
@@ -116,10 +116,11 @@ class HistoricalEvidence(VersionThreeRendered):
                           "stdin": json.dumps(item, sort_keys=True), "stdout": "{}", "exit": 0})
         with tempfile.TemporaryDirectory(dir=self.tmp) as tmp:
             event, recording = Path(tmp, "event.json"), Path(tmp, "gh.json")
-            event.write_text(json.dumps(self.event))
-            recording.write_text(json.dumps({"tool": "gh", "calls": calls}))
+            target = repository or self.repo
+            event.write_text(json.dumps(self.event).replace(self.repo, target))
+            recording.write_text(json.dumps({"tool": "gh", "calls": calls}).replace(self.repo, target))
             env = environment.environment(tmp, gh_recording=str(recording), base=support.isolated_env())
-            env.update(GITHUB_EVENT_NAME="push", GITHUB_EVENT_PATH=str(event), GITHUB_REPOSITORY=self.repo)
+            env.update(GITHUB_EVENT_NAME="push", GITHUB_EVENT_PATH=str(event), GITHUB_REPOSITORY=target)
             workflow = self.text(".github/workflows/merge-watch.yml")
             command, = re.findall(r"(?m)^        run: (.+)$", workflow)
             executable, *args = shlex.split(command)
@@ -148,6 +149,11 @@ class HistoricalEvidence(VersionThreeRendered):
         self.summary["user"]["login"] = "Habit098"
         self.statuses[0]["creator"]["login"] = "Habit098"
         self.replay(missing=("reviewer", "merge-summary"))
+
+    def test_repository_names_do_not_select_an_api_response_shape(self):
+        for name in ("actions", "contents"):
+            with self.subTest(name=name):
+                self.replay(repository="Habit130/" + name)
 
     def test_only_the_actual_squash_parent_selects_the_policy(self):
         self.event["before"] = "a" * 40
