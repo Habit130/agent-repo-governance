@@ -374,3 +374,44 @@ class HistoricalEvidence(VersionThreeRendered):
                 self.replay(incomplete="association")
         pulls[:] = [dict(self.pr, merge_commit_sha="1" * 40)]
         self.replay()
+
+    def test_known_merge_survives_malformed_associations_in_either_order(self):
+        self.add_unassociated_commit()
+        self.statuses.clear()
+        pulls = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
+        for rows in ([self.pr, {"merged_at": None}], [{"merged_at": None}, self.pr]):
+            with self.subTest(rows=rows):
+                pulls[:] = rows
+                self.replay(missing=("reviewer",), incomplete="association")
+
+    def test_only_valid_copilot_head_ids_establish_a_different_head(self):
+        self.statuses.clear()
+        for row, field, time in ((self.review, "commit_id", "submitted_at"),
+                                 (self.check, "head_sha", "completed_at")):
+            with self.subTest(field=field):
+                before = row[time]
+                row[field] = "malformed"
+                self.replay(missing=("reviewer",), incomplete=field)
+                row[time] = LATE
+                self.replay(missing=("bot-1", "reviewer"))
+                row[time] = before
+                row[field] = "a" * 40
+                self.replay(missing=("bot-1", "reviewer"))
+                row[field] = self.head
+
+    def test_copilot_witness_and_unreadable_row_are_both_reported_in_either_order(self):
+        self.statuses.clear()
+        for path, field in ((f"{self.prefix}/pulls/54/reviews", "commit_id"),
+                            (next(p for p in self.api if "/check-runs?" in p), "head_sha")):
+            original, = self.api[path]
+            invalid = dict(original, **{field: "malformed"})
+            for rows in ([original, invalid], [invalid, original]):
+                with self.subTest(path=path, rows=rows):
+                    self.api[path] = rows
+                    self.replay(missing=("reviewer",), incomplete=field)
+            self.api[path] = [original]
+
+    def test_conflicting_exact_squash_associations_are_indeterminate(self):
+        self.add_unassociated_commit()
+        self.api[f"{self.prefix}/commits/{self.squash}/pulls"].append(dict(self.pr, number=55))
+        self.replay(incomplete="conflicting")

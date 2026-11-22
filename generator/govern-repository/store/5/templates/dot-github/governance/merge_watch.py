@@ -235,6 +235,7 @@ def _merged_into(pull, default_branch, sha):
 def _merged_pr(read, repository, default_branch, sha, problems):
     """Return the matching merge; report direct push only if every association excludes a merge."""
     path = "repos/%s/commits/%s/pulls" % (repository, sha)
+    matches = []
     possible_history = False
     for pull in read_rows(read, path, problems):
         if pull is UNKNOWN:
@@ -247,9 +248,19 @@ def _merged_pr(read, repository, default_branch, sha, problems):
             possible_history = True
             continue
         if merged:
-            if pull["merge_commit_sha"] == sha:
-                return pull, False
             possible_history = True
+            if pull["merge_commit_sha"] == sha:
+                matches.append(pull)
+    if matches:
+        first = matches[0]
+        # A duplicated association may carry extra API metadata. Only the facts
+        # governing this merge must agree before the same PR can be audited once.
+        if any(row["number"] != first["number"] or row["head"]["sha"] != first["head"]["sha"]
+               or timestamp(row["merged_at"]) != timestamp(first["merged_at"]) or row.get("body") != first.get("body")
+               for row in matches[1:]):
+            unresolved(problems, path + ": conflicting exact PR associations")
+        else:
+            return first, False
     return None, possible_history
 
 
@@ -319,7 +330,8 @@ class Pull:
             value = row
             for part in path.split("."):
                 value = value.get(part) if isinstance(value, dict) else None
-            if type(value) is not type(expected) or value == "":
+            if (type(value) is not type(expected) or value == ""
+                    or (path in ("commit_id", "head_sha") and not is_sha(value))):
                 missing.append(path)
             elif (value.lower() != expected.lower() if path.endswith(".login") else value != expected):
                 return False
@@ -403,7 +415,7 @@ def _codex(pull):
                 return True
         return False
 
-    return any_evidence(completed(body) for body in pull.comment_bodies(CODEX_LOGIN))
+    return any_evidence([completed(body) for body in pull.comment_bodies(CODEX_LOGIN)])
 
 
 def _copilot_review(pull, review):
@@ -461,11 +473,12 @@ def _copilot_check(pull, check):
 
 
 def _copilot(pull):
-    reviewed = any_evidence(_copilot_review(pull, row) for row in pull.rows("/pulls/%d/reviews" % pull.number))
+    # Inspect every relevant row so a valid witness and an unresolved sibling both survive.
+    reviewed = any_evidence([_copilot_review(pull, row) for row in pull.rows("/pulls/%d/reviews" % pull.number)])
     if reviewed is False:
         return False
     endpoint = "/commits/%s/check-runs?check_name=%s&filter=all" % (pull.head, COPILOT_CHECK)
-    checked = any_evidence(_copilot_check(pull, row) for row in pull.rows(endpoint))
+    checked = any_evidence([_copilot_check(pull, row) for row in pull.rows(endpoint)])
     return reviewed if checked is True else checked
 
 
