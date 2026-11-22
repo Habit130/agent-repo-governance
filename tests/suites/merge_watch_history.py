@@ -81,7 +81,7 @@ class HistoricalEvidence(VersionThreeRendered):
         self.errors = {}
         self.unassociated = None
 
-    def replay(self, missing=(), incomplete=None, notes=(), repository=None):
+    def replay(self, missing=(), incomplete=None, notes=(), repository=None, observation=None):
         """Serve the actual gh API shapes, then compare the posted records and workflow exit."""
         calls = []
         for path, value in self.api.items():
@@ -101,9 +101,11 @@ class HistoricalEvidence(VersionThreeRendered):
         expected = []
         if missing:
             title = "Miss: process miss, missing-review in #54"
-            tier = self.pr["body"].split(" — ")[0].split()[-1]
+            if observation is None:
+                tier = self.pr["body"].split(" — ")[0].split()[-1]
+                observation = f"Merged head {self.head}, declared {tier}"
             body = (f"Merged PR: #54\nKind: process miss\nCategory: missing-review\n"
-                    f"Observed: Merged head {self.head}, declared {tier}, lacks: {', '.join(missing)}.\n"
+                    f"Observed: {observation}, lacks: {', '.join(missing)}.\n"
                     "Found by: Merge watch\nBug issue: none\n")
             expected.append(dict(title=title, body=body, labels=["miss"]))
         if self.unassociated:
@@ -440,3 +442,40 @@ class HistoricalEvidence(VersionThreeRendered):
         self.add_unassociated_commit()
         pulls[1]["body"] = "Risk: low — conflicting declaration"
         self.replay(incomplete="conflicting risk")
+
+    def test_unknown_tier_reports_only_misses_common_to_every_possible_tier(self):
+        pulls = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
+        self.statuses.clear()
+        self.comments.clear()
+        observation = f"Merged head {self.head}, risk tier indeterminate"
+        pulls[:] = [dict(self.pr, body={})]
+        self.replay(missing=("merge-summary",), incomplete="malformed PR body", observation=observation)
+        pulls[:] = [self.pr, dict(self.pr, body="Risk: low — conflicting declaration")]
+        self.replay(missing=("merge-summary",), incomplete="conflicting risk", observation=observation)
+        self.comments.append(dict(self.summary, body=f"## Merge summary: low at {self.head[:7]}\n"
+                                  "Required reviews: self-verification=clear"))
+        self.replay(incomplete="conflicting risk")
+        self.comments.clear()
+        self.api[f"{self.prefix}/pulls/54/reviews"].clear()
+        pulls[1]["body"] = "Risk: medium — conflicting declaration"
+        self.replay(missing=("bot-1", "merge-summary"), incomplete="conflicting risk", observation=observation)
+        pulls[1]["body"] = "no risk declaration"
+        observation = f"Merged head {self.head}, risk declaration indeterminate, judged at high"
+        self.replay(missing=("bot-1", "reviewer", "merge-summary"), incomplete="conflicting risk", observation=observation)
+
+    def test_conflicting_merge_times_still_establish_evidence_before_both(self):
+        self.statuses.clear()
+        pulls = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
+        pulls.append(dict(self.pr, merged_at=LATE))
+        self.replay(missing=("reviewer",), incomplete="conflicting merge times")
+
+    def test_missing_summary_for_every_possible_head_is_supported(self):
+        self.pr["body"] = "Risk: low — documentation"
+        other = "a" * 40
+        self.api[f"{self.prefix}/commits/{self.squash}/pulls"].append(dict(self.pr, head={"sha": other}))
+        self.comments.clear()
+        observation = f"Merged as {self.squash} (possible heads {self.head}, {other}), declared low"
+        self.replay(missing=("merge-summary",), incomplete="conflicting merged heads", observation=observation)
+        self.comments.append(dict(self.summary, body=f"## Merge summary: low at {self.head[:7]}\n"
+                                  "Required reviews: self-verification=clear"))
+        self.replay(incomplete="conflicting merged heads")

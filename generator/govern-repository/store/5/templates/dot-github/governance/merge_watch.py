@@ -267,20 +267,43 @@ def agreed(values, problems, source):
     return first
 
 
-def body_facts(matches, problems):
+def possible_tiers(risks):
+    if not risks:
+        return set(REQUIRED)
+    return {risk if risk in REQUIRED else "high" for risk in risks}
+
+
+def merge_facts(matches, problems):
+    """Preserve the risk observations for each reported (head, merge time) and the shared revert fact."""
     number = matches[0]["number"]
-    risks, reverts = [], []
+    revisions, reverts = {}, []
     for row in matches:
+        key = (row["head"]["sha"], timestamp(row["merged_at"]))
+        risks = revisions.setdefault(key, set())
         text = row.get("body")
         if "body" not in row or (text is not None and not isinstance(text, str)):
             unresolved(problems, "#%d: malformed PR body" % number)
             continue
         body = gate.parse_body(text or "")
         risk = body["risk"]
-        risks.append(risk["tier"] if isinstance(risk, dict) else risk)
+        risks.add(risk["tier"] if isinstance(risk, dict) else risk)
         reverts.append(body["reverts"])
-    return (agreed(risks, problems, "#%d: conflicting risk declarations" % number),
-            agreed(reverts, problems, "#%d: conflicting revert declarations" % number))
+    if len({head for head, _ in revisions}) > 1:
+        unresolved(problems, "#%d: conflicting merged heads" % number)
+    if len({when for _, when in revisions}) > 1:
+        unresolved(problems, "#%d: conflicting merge times" % number)
+    observed = set().union(*revisions.values())
+    if len(observed) > 1:
+        unresolved(problems, "#%d: conflicting risk declarations" % number)
+    if len(observed) == 1 and all(revisions.values()):
+        risk = next(iter(observed))
+        declared = ("declared %s" % risk if risk in REQUIRED else
+                    "declared no readable tier (its `Risk:` line is %s), judged at high" % risk)
+    elif all(revisions.values()) and len(possible_tiers(observed)) == 1:
+        declared = "risk declaration indeterminate, judged at high"
+    else:
+        declared = "risk tier indeterminate"
+    return revisions, declared, agreed(reverts, problems, "#%d: conflicting revert declarations" % number)
 
 
 def any_evidence(values):
@@ -310,12 +333,12 @@ def timestamp(value):
 class Pull:
     """The historical policy and evidence for one PR. Every lookup is scoped to its merge."""
 
-    def __init__(self, read, repository, number, head, cutoff, problems, notes):
+    def __init__(self, read, repository, number, head, cutoff, problems, notes, cache=None):
         self.read, self.repository, self.number, self.head = read, repository, number, head
         self.prefix = "repos/" + repository
         self.cutoff = cutoff
         self.problems, self.notes = problems, notes
-        self._cache = {}
+        self._cache = {} if cache is None else cache
 
     def unknown(self, source, reason):
         return unresolved(self.problems, "#%d %s: %s" % (self.number, source, reason))
@@ -326,11 +349,13 @@ class Pull:
         return self._cache[endpoint]
 
     def object_at(self, endpoint):
-        try:
-            value = self.read(self.prefix + endpoint)
-        except ReadError:
-            return {}
-        return value if isinstance(value, dict) else {}
+        if endpoint not in self._cache:
+            try:
+                value = self.read(self.prefix + endpoint)
+            except ReadError:
+                value = None
+            self._cache[endpoint] = value if isinstance(value, dict) else {}
+        return self._cache[endpoint]
 
     def matches(self, row, source, fields, *, by=None):
         """An identity mismatch or a known-late time excludes even a partially readable row."""
@@ -647,9 +672,7 @@ def _judge_pull(read, repository, matches, squash, notes, problems):
     records = []
     pull = matches[0]
     number = pull["number"]
-    head = agreed([row["head"]["sha"] for row in matches], problems, "#%d: conflicting merged heads" % number)
-    cutoff = agreed([timestamp(row["merged_at"]) for row in matches], problems, "#%d: conflicting merge times" % number)
-    risk, reverts = body_facts(matches, problems)
+    revisions, declared, reverts = merge_facts(matches, problems)
     if isinstance(reverts, dict):
         reverted, _ = _merged_pr(read, repository, pull["base"]["ref"], reverts["sha"], problems)
         records.append(record(
@@ -662,14 +685,13 @@ def _judge_pull(read, repository, matches, squash, notes, problems):
             "#%d, merged as %s, has a `Reverts:` line that doesn't read (%s), so the reverted PR is unknown."
             % (number, squash, reverts),
         ))
-    if risk is UNKNOWN or head is UNKNOWN:
-        return records
-    if risk in REQUIRED:
-        tier, declared = risk, "declared %s" % risk
-    else:
-        tier, declared = "high", "declared no readable tier (its `Risk:` line is %s), judged at high" % risk
-    facts = Pull(read, repository, number, head, cutoff, problems, notes)
-    policy = facts.policy(squash)
+    # A missing body leaves all tiers possible. A readable sibling for the same
+    # revision bounds them. Establish only absences common to every supported reading.
+    cache = {}
+    candidates = [(Pull(read, repository, number, head, cutoff, problems, notes, cache), risks)
+                  for (head, cutoff), risks in revisions.items()]
+    first_pull, _ = candidates[0]
+    policy = first_pull.policy(squash)  # All candidate revisions share this squash parent.
     if policy is UNKNOWN:
         return records
     version, agent = policy["version"], policy["agent_account"]
@@ -677,14 +699,24 @@ def _judge_pull(read, repository, matches, squash, notes, problems):
     if version < REVIEW_BOTS_VERSION:
         notes.append("#%d merged onto a base whose record is at version %d; its review bots follow that version's "
                      "rules, which this script doesn't judge." % (number, version))
-        missing = earlier_version_missing(facts, agent, owner, tier, version)
-    else:
-        missing = missing_reviews(facts, agent, owner, tier, policy["confirmed"].get("review_bots"))
-    if missing:
-        records.append(record(
-            number, "process miss", "missing-review",
-            "Merged head %s, %s, lacks: %s." % (head, declared, ", ".join(missing)),
-        ))
+    common = set(KINDS + (MERGE_SUMMARY,))
+    for facts, risks in candidates:
+        tiers = possible_tiers(risks)
+        for tier in REQUIRED:
+            if tier not in tiers:
+                continue
+            if version < REVIEW_BOTS_VERSION:
+                missing = earlier_version_missing(facts, agent, owner, tier, version)
+            else:
+                missing = missing_reviews(facts, agent, owner, tier, policy["confirmed"].get("review_bots"))
+            common.intersection_update(missing)
+    if common:
+        heads = sorted({head for head, _ in revisions})
+        subject = ("Merged head %s" % heads[0] if len(heads) == 1 else
+                   "Merged as %s (possible heads %s)" % (squash, ", ".join(heads)))
+        kinds = [kind for kind in KINDS + (MERGE_SUMMARY,) if kind in common]
+        records.append(record(number, "process miss", "missing-review",
+                              "%s, %s, lacks: %s." % (subject, declared, ", ".join(kinds))))
     return records
 
 
