@@ -201,37 +201,56 @@ def _open_records(read, repository, problems):
     return records
 
 
+def is_sha(value):
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) is not None
+
+
+def _merged_into(pull, default_branch, sha):
+    """Does this association establish a merge into the branch? Raise on an unresolved candidate."""
+    base = pull.get("base")
+    if not isinstance(base, dict) or not isinstance(base.get("ref"), str) or not base["ref"]:
+        raise ValueError("missing base ref")
+    if base["ref"] != default_branch:
+        return False
+    head = pull.get("head")
+    if (type(pull.get("number")) is not int or pull["number"] < 1
+            or not isinstance(head, dict) or not is_sha(head.get("sha"))):
+        raise ValueError("invalid PR identity")
+    squash = pull.get("merge_commit_sha")
+    if "merged_at" in pull and pull["merged_at"] is None:
+        if squash is not None and not is_sha(squash):
+            raise ValueError("invalid merge_commit_sha")
+        if pull.get("merged") is True or (squash == sha and pull.get("state") != "open" and pull.get("merged") is not False):
+            raise ValueError("matching merge has no merged_at")
+        return False
+    if timestamp(pull.get("merged_at")) is None:
+        raise ValueError("missing or invalid merged_at")
+    if not is_sha(squash):
+        raise ValueError("missing or invalid merge_commit_sha")
+    if pull.get("merged") is False or pull.get("state") == "open":
+        raise ValueError("merged_at conflicts with PR state")
+    return True
+
+
 def _merged_pr(read, repository, default_branch, sha, problems):
-    """Return the matching merge and whether another merge (or an unreadable row) precludes a direct-push miss."""
+    """Return the matching merge; report direct push only if every association excludes a merge."""
     path = "repos/%s/commits/%s/pulls" % (repository, sha)
-    in_history = False
+    possible_history = False
     for pull in read_rows(read, path, problems):
         if pull is UNKNOWN:
-            in_history = True
+            possible_history = True
             continue
-        if "merged_at" in pull and pull["merged_at"] is None:
-            if pull.get("merge_commit_sha") != sha or pull.get("state") == "open" or pull.get("merged") is False:
-                continue
-            unresolved(problems, path + ": matching squash has no merged_at")
-            in_history = True
+        try:
+            merged = _merged_into(pull, default_branch, sha)
+        except ValueError as error:
+            unresolved(problems, "%s: unresolved PR association: %s" % (path, error))
+            possible_history = True
             continue
-        base = pull.get("base")
-        if not isinstance(base, dict) or not isinstance(base.get("ref"), str) or "merged_at" not in pull:
-            unresolved(problems, path + ": missing base or merged_at")
-            in_history = True
-            continue
-        if base["ref"] != default_branch:
-            continue
-        in_history = True
-        if pull.get("merge_commit_sha") == sha:
-            head = pull.get("head")
-            if (type(pull.get("number")) is int and pull["number"] > 0 and isinstance(head, dict)
-                    and isinstance(head.get("sha"), str) and re.fullmatch(r"[0-9a-f]{40}", head["sha"])):
+        if merged:
+            if pull["merge_commit_sha"] == sha:
                 return pull, False
-            unresolved(problems, path + ": malformed merged PR identity")
-        elif not isinstance(pull.get("merge_commit_sha"), str):
-            unresolved(problems, path + ": missing squash commit")
-    return None, in_history
+            possible_history = True
+    return None, possible_history
 
 
 def any_evidence(values):
@@ -285,11 +304,17 @@ class Pull:
             return {}
         return value if isinstance(value, dict) else {}
 
-    def matches(self, row, source, fields):
-        """Missing identity fields matter only if no known field rules this candidate out."""
+    def matches(self, row, source, fields, *, by=None):
+        """An identity mismatch or a known-late time excludes even a partially readable row."""
         if row is UNKNOWN:
             return UNKNOWN
         missing = []
+        if by is not None:
+            when = timestamp(row.get(by))
+            if when is None or self.cutoff is None:
+                missing.append(by)
+            elif when > self.cutoff:
+                return False
         for path, expected in fields.items():
             value = row
             for part in path.split("."):
@@ -312,16 +337,10 @@ class Pull:
         rows = self.rows("/issues/%d/comments" % self.number)
         source = "comments by " + login
         for row in (reversed(rows) if newest_first else rows):
-            author = self.matches(row, source, {"user.login": login})
-            if author is False:
+            eligible = self.matches(row, source, {"user.login": login}, by="created_at")
+            if eligible is False:
                 continue
-            if row is UNKNOWN:
-                yield UNKNOWN
-                continue
-            created = self.by_merge(row, "created_at", source)
-            if created is False:
-                continue
-            if author is UNKNOWN or created is UNKNOWN:
+            if eligible is UNKNOWN:
                 yield UNKNOWN
             elif self.by_merge(row, "updated_at", source) is not True:
                 yield self.unknown(source, "pre-edit content cannot be established")
@@ -337,7 +356,7 @@ class Pull:
         if not isinstance(parents, list) or len(parents) != 1 or not isinstance(parents[0], dict):
             return self.unknown("policy", "could not establish the squash commit's parent")
         base = parents[0].get("sha")
-        if not isinstance(base, str) or not re.fullmatch(r"[0-9a-f]{40}", base):
+        if not is_sha(base):
             return self.unknown("policy", "invalid squash parent")
         path = self.prefix + "/contents/" + RECORD + "?ref="
         try:
@@ -389,35 +408,29 @@ def _codex(pull):
 
 def _copilot_review(pull, review):
     source = "Copilot review"
+    if review is not UNKNOWN and review.get("state") == "PENDING":
+        return False
     identity = pull.matches(review, source, {"user.login": COPILOT_LOGIN, "commit_id": pull.head,
-                                             "is_copilot_code_review": True})
+                                             "is_copilot_code_review": True}, by="submitted_at")
     if identity is not True:
         return identity
     state = review.get("state")
     if not isinstance(state, str):
         return pull.unknown(source, "missing review state")
-    if state == "PENDING":
-        return False
-    submitted = pull.by_merge(review, "submitted_at", source)
-    if submitted is False:
-        return False
     if state == "DISMISSED":
         return pull.unknown(source, "state at merge before dismissal cannot be established")
     if state not in ("COMMENTED", "APPROVED", "CHANGES_REQUESTED"):
         pull.notes.append("#%d Copilot has an unrecognized submitted review state." % pull.number)
         return False
-    return submitted
+    return True
 
 
 def _copilot_check(pull, check):
     source = "Copilot check"
     match = pull.matches(check, source, {"name": COPILOT_CHECK, "status": "completed", "conclusion": "success",
-                                         "head_sha": pull.head, "app.slug": "github-actions"})
+                                         "head_sha": pull.head, "app.slug": "github-actions"}, by="completed_at")
     if match is not True:
         return match
-    completed = pull.by_merge(check, "completed_at", source)
-    if completed is not True:
-        return completed
     # The check links to a job and the job links back to the check. Fetch only same-repo
     # API paths built from their numeric IDs; the shared Actions app identifies no workflow.
     url = check.get("details_url")
@@ -463,13 +476,10 @@ def _reviewer(pull, agent_account):
     """GitHub lists statuses newest first. Ignore later postings, including later failures."""
     source = "Reviewer status"
     for row in pull.rows("/commits/%s/statuses" % pull.head):
-        match = pull.matches(row, source, {"context": REVIEWER_CONTEXT, "creator.login": agent_account})
+        match = pull.matches(row, source, {"context": REVIEWER_CONTEXT, "creator.login": agent_account}, by="created_at")
         if match is False:
             continue
-        when = pull.by_merge(row, "created_at", source) if row is not UNKNOWN else UNKNOWN
-        if when is False:
-            continue
-        if match is UNKNOWN or when is UNKNOWN:
+        if match is UNKNOWN:
             return UNKNOWN
         if row.get("state") not in ("success", "failure", "error", "pending"):
             return pull.unknown(source, "missing or invalid status state")
@@ -653,7 +663,7 @@ def _on_push(event, read, repository, default_branch, notes, problems):
     records = []
     for commit in event.get("commits") or []:
         sha = commit.get("id") if isinstance(commit, dict) else None
-        if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
+        if not is_sha(sha):
             unresolved(problems, "push commits: malformed list member")
             continue
         pull, in_history = _merged_pr(read, repository, default_branch, sha, problems)

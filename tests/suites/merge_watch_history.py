@@ -346,3 +346,31 @@ class HistoricalEvidence(VersionThreeRendered):
         self.summary["updated_at"] = LATE
         self.api[f"{self.prefix}/pulls/54/reviews"].clear()
         self.replay(missing=("bot-1",), incomplete="pre-edit content")
+
+    def test_late_rows_with_missing_identity_cannot_affect_the_merge(self):
+        self.comments.append({"body": "after merge", "created_at": LATE})
+        self.statuses.insert(0, {"context": "Reviewer", "created_at": LATE, "state": "failure"})
+        self.replay()
+        self.review["submitted_at"] = LATE
+        del self.review["is_copilot_code_review"]
+        self.replay(missing=("bot-1",))
+        self.review.update(submitted_at=EARLY, is_copilot_code_review=True)
+        self.check["completed_at"] = LATE
+        del self.check["app"]
+        self.replay(missing=("bot-1",))
+
+    def test_malformed_associations_cannot_establish_direct_push_or_merged_history(self):
+        self.add_unassociated_commit()
+        pulls = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
+        candidates = [
+            {"merged_at": None},
+            dict(self.pr, merge_commit_sha=""),
+            dict(self.pr, merge_commit_sha="1" * 40, merged_at=""),
+            dict(self.pr, merge_commit_sha="1" * 40, merged_at="unknown"),
+        ]
+        for candidate in candidates:
+            with self.subTest(candidate=candidate):
+                pulls[:] = [candidate]
+                self.replay(incomplete="association")
+        pulls[:] = [dict(self.pr, merge_commit_sha="1" * 40)]
+        self.replay()
