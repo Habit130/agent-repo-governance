@@ -28,8 +28,8 @@ def repository(name, private=False, branch="main"):
 class ListCase(support.TempDirCase):
     def setUp(self):
         super(ListCase, self).setUp()
-        source = self.path("source")
-        self.commit = ms.build_source(source)
+        source = support.init_repo(self.path("source"))
+        self.commit = support.commit_tree(source, ms.list_source_files(), "list fixture")
         self.home = ms.ready_home(self.path("home"))
         env = ms.machine_env(self.home, self.path("install-scratch"), gh_recording=ms.write_gh_recording(self.path("gh-install.json")))
         code, out, err = ms.run_machine(["install", "--source", source, "--home", self.home], env)

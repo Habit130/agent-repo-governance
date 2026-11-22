@@ -56,7 +56,7 @@ class FreshMachine(InstallCase):
     """A fresh machine, with the Codex stand-in replaying real output (CRIT-1, CRIT-3, CRIT-4)."""
 
     def test_install_shows_the_same_action_notes_as_the_standalone_list(self):
-        files = ms.source_files()
+        files = ms.list_source_files()
         files["generator/govern-repository/store/4/change-note.md"] = "urgency: urgent\nmust-act: no\n\n此版本无需操作。\n"
         self.commit = support.commit_tree(self.source, files, "urgent version without a maintainer action")
         tally = support.read_text(os.path.join(support.FIXTURES, "parsers", "record", "tally.yml"))
