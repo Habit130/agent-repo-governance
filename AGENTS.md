@@ -211,6 +211,9 @@ skill copies under `skill-copies/`.
 - Same-round draft changes default to whole-spec delivery.
 - A build document describes the current state only, and changes only when a command or
   procedure changes.
+- An ADR names the version its rule binds from, and states a version's release or adoption
+  only as of a dated point, such as its planning round, never as current
+  ([ADR 0029](docs/adr/0029-changes-accumulate-in-one-draft-version.md)).
 
 ### Verification by change
 
@@ -226,17 +229,10 @@ What a PR needs follows what it changes, not its tier (#44 §11). Commands and C
 This repository's own rendered governance files change only through the generator, and on
 their own need neither of the last two rows.
 
-No PR runs a model scenario or a replacement for one, releases included. In
-[#139](https://github.com/Habit130/agent-repo-governance/issues/139), habit stopped model
-scenarios for their quota cost, verbatim:
-
-> 2. 不要跑这个scenario了，太消耗额度了，如果必须要某种方式来验证的话，后续单独想一个新的验证方式。
-> 其他同意推荐
-
-In [#138](https://github.com/Habit130/agent-repo-governance/issues/138), habit approved the
-standing arrangement below, verbatim:
-
-> 同意， 同意推荐。
+No PR runs a model scenario or a replacement for one, releases included. habit stopped them
+for their quota cost and approved the standing arrangement below
+([ADR 0030](docs/adr/0030-no-model-scenarios-releases-checked-by-real-runs.md), from #139
+and #138):
 
 - At a release, the cutting PR's end-to-end Initialize of the public sandbox remains
   required, unchanged: it is Initialize's behavioral check.
@@ -245,13 +241,11 @@ standing arrangement below, verbatim:
 - Repair and OpenCode have no behavioral check before release. This gap is accepted;
   a failure in use is a miss. Release run details are in `docs/build/releasing.md`.
 
-The evidence and Merge summary state in one line that model scenarios were not run because
-of their quota cost and final-head model behavior is unverified. Prior candidate runs are
+A PR that changes what the table's second row names states in one line of its evidence and
+Merge summary that model scenarios were not run because of their quota cost and final-head
+model behavior is unverified; other PRs leave the line out. Prior candidate runs are
 historical evidence, not final-head passes. All offline checks, CI, live checks, reviews and
 after-merge smoke remain required.
-
-Historically, for delivery #122, habit [approved omitting the remaining model scenarios and reruns](https://github.com/Habit130/agent-repo-governance/issues/122#issuecomment-6719531025)
-(“同意这个免除。”). The standing decision above now applies to every delivery.
 
 - The Builder runs the live checks, posts results naming the commit they ran on, and reruns
   them after a later push that touches the second or third row.
@@ -259,9 +253,10 @@ Historically, for delivery #122, habit [approved omitting the remaining model sc
   assertion, judges each Chinese confirmation, and reruns only when results look
   inconsistent.
 - The Merge summary's terminal copy, at high the high-risk report, carries a Chinese
-  verification block in its evidence: one line each for CI, scenarios, and the live check or
-  why none was needed; the scenarios line says “未运行：额度成本；最终 head 的模型行为未经验证”; new
-  fixtures with their miss records; anything not run, with the reason.
+  verification block in its evidence: one line for CI; when the second row applies, a
+  scenarios line saying “未运行：额度成本；最终 head 的模型行为未经验证”; one line for the live
+  check or why none was needed; new fixtures with their miss records; anything not run, with
+  the reason.
 - A failing check never reaches habit: the Builder repairs it before handing over, and a
   review that finds one raises an Important finding.
 - Fixtures are never removed or renamed; the release check enforces it. A PR that changes an
