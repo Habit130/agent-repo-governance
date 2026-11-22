@@ -2,7 +2,7 @@
 
 It lists every repository of the maintainer account that the agent account can see, reads
 the record on each default branch, and skips both sandbox repositories by name. It never
-calls `ghm`. Urgency and the installed version come from the installed template store.
+calls `ghm`. The installed template store supplies the released versions, urgency and action notes.
 """
 
 import json
@@ -121,6 +121,11 @@ def run(home):
                 if missing:
                     urgency = max((notes[v]["urgency"] for v in missing), key=URGENCY_ORDER.index)
                     parts.append("缺少版本 %s，最高紧急度 %s" % ("、".join(str(v) for v in missing), urgency))
+                    action_notes = [
+                        "版本 %d（%s）" % (v, os.path.join(source.version_dir(v), stores.CHANGE_NOTE))
+                        for v in missing if notes[v]["must_act"] == "yes"
+                    ]
+                    parts.append("版本说明要求 habit 操作：" + ("、".join(action_notes) or "无"))
                 else:
                     parts.append("已是最新版本")
         parts.append("未关闭 miss record %s 条" % ("?" if misses is None else misses))

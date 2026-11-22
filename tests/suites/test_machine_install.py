@@ -55,6 +55,28 @@ class InstallCase(support.TempDirCase):
 class FreshMachine(InstallCase):
     """A fresh machine, with the Codex stand-in replaying real output (CRIT-1, CRIT-3, CRIT-4)."""
 
+    def test_install_shows_the_same_action_notes_as_the_standalone_list(self):
+        files = ms.source_files()
+        files["generator/govern-repository/store/4/change-note.md"] = "urgency: urgent\nmust-act: no\n\n此版本无需操作。\n"
+        self.commit = support.commit_tree(self.source, files, "urgent version without a maintainer action")
+        tally = support.read_text(os.path.join(support.FIXTURES, "parsers", "record", "tally.yml"))
+        records = {"Habit130/tally": tally, "Habit130/at-three": tally.replace("version: 1\n", "version: 3\n", 1)}
+        repositories = [{"nameWithOwner": name, "isPrivate": False, "defaultBranchRef": {"name": "main"}} for name in records]
+        gh = ms.write_gh_recording(self.path("gh.json"), repositories=repositories, records=records)
+        env = self.env(gh=gh)
+
+        code, installed = self.install(env)
+        self.assertEqual(code, 0, installed)
+        entry = self.h(".agents", "governance", "machine", "scripts", "machine.py")
+        code, standalone, err = support.run_cli(entry, ["list"], env=env)
+        self.assertEqual((code, err), (0, ""), standalone)
+        section = ms.section(installed, "governed-repository list")
+        self.assertEqual(section, ms.section(standalone, "governed-repository list"))
+        found = {name: detail for _, name, detail in ms.lines("\n".join(section))}
+        note2 = self.h(".agents", "skills", "govern-repository", "store", "2", "change-note.md")
+        self.assertIn("版本说明要求 habit 操作：版本 2（%s）" % note2, found["Habit130/tally"])
+        self.assertIn("最高紧急度 urgent；版本说明要求 habit 操作：无", found["Habit130/at-three"])
+
     def test_copied_draft_does_not_advance_installed_governance_version(self):
         # The source carries the real store's draft, version 5.
         source_store = os.path.join(self.source, "generator", "govern-repository", "store")
@@ -423,7 +445,8 @@ class ReadyCommand(InstallCase):
     def origin(self):
         """A bare origin whose default branch is main, and a git config that sends the ready command there."""
         bare = self.path("origin.git")
-        subprocess.run(["git", "clone", "-q", "--bare", self.source, bare], check=True, env=support.isolated_env())
+        # Use the Git transport because the fixture commit can still be repacking loose objects.
+        subprocess.run(["git", "clone", "-q", "--bare", "--no-local", self.source, bare], check=True, env=support.isolated_env())
         config = self.path("gitconfig")
         with open(config, "w") as handle:
             handle.write("[user]\n\temail = %s\n[url \"%s\"]\n\tinsteadOf = https://github.com/Habit130/agent-repo-governance.git\n"
