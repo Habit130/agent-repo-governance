@@ -21,6 +21,7 @@ import unittest
 
 import parsers
 import support
+from govlib import store
 
 FIXTURES = os.path.join(support.FIXTURES, "parsers")
 DIRECTORIES = {"record": "record", "pr_body": "pr-body"}
@@ -176,12 +177,17 @@ class ParserCoverage(support.TempDirCase):
 
     def test_an_unloadable_draft_fails_the_suite_and_names_the_version(self):
         draft = self.add_draft()
-        gate = draft / "templates/dot-github/governance/gate.py"
-        gate.write_text("raise RuntimeError('broken draft parser')\n", encoding="utf-8")
-        result = self.run_fixtures(draft.parent)
-        self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn("governed-v" + draft.name, result.stdout)
-        self.assertIn("RuntimeError: broken draft parser", result.stdout)
+        gate = Path(store.Store(draft.parent).template_path(int(draft.name), parsers.GATE_PATH))
+        for source, cause in [
+            ("raise RuntimeError('broken draft parser')", "RuntimeError: broken draft parser"),
+            ("raise SystemExit(0)", "SystemExit: 0"),
+        ]:
+            with self.subTest(cause=cause):
+                gate.write_text(source + "\n", encoding="utf-8")
+                result = self.run_fixtures(draft.parent)
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertIn("governed-v" + draft.name, result.stdout)
+                self.assertIn(cause, result.stdout)
 
 
 if __name__ == "__main__":

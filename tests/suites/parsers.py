@@ -50,7 +50,7 @@ def load_gate(version=1):
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
-    except Exception as error:
+    except (Exception, SystemExit) as error:
         raise ImportError("cannot load governed-v%d parser from %s" % (version, path)) from error
     return module
 
