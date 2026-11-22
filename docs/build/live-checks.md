@@ -66,8 +66,14 @@ them. Versions 1 and 2 still require the Reviewer status. Bots are not judged by
 watch, and a `NOTE` line records the transition. Version 4's recorded cases live under
 `tests/fixtures/merge-watch/v4/`; earlier cases and expectations remain unchanged.
 
-Version 5's Merge watch judges the same cases with one Merge summary lookup, and its workflow
-grants five permissions, without `actions: read`.
+**Version 5** reads the policy version, agent account and ordered bots from the squash
+commit's parent. At Initialize it reads the introduced record after a confirmed path 404.
+It compares comments, Reviewer statuses, Copilot submissions and check completions with
+the PR's merge time. The `actions: read` permission lets it identify the linked Copilot
+workflow by its job, run, head and check suite. The public sandbox recording on #131
+supplies the positive producer control. The review ladder probes exercise Codex.
+On incomplete evidence the workflow prints `INCOMPLETE`, posts independently supported
+miss records and exits 1.
 
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
   answers a REST path with GitHub's list, every page joined, or raises `ReadError`

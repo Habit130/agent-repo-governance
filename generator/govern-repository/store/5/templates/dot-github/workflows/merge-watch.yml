@@ -18,13 +18,14 @@ on:
       - "**"
       - "!merge-watch"
 
-# Exactly these five; listing any sets every unlisted one to none.
+# Actions read identifies the workflow behind a Copilot check on the merged head.
 permissions:
   contents: read
   pull-requests: read
   issues: write
   checks: read
   statuses: read
+  actions: read
 
 jobs:
   merge-watch:
