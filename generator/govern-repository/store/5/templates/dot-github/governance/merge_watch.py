@@ -251,17 +251,36 @@ def _merged_pr(read, repository, default_branch, sha, problems):
             possible_history = True
             if pull["merge_commit_sha"] == sha:
                 matches.append(pull)
-    if matches:
-        first = matches[0]
-        # A duplicated association may carry extra API metadata. Only the facts
-        # governing this merge must agree before the same PR can be audited once.
-        if any(row["number"] != first["number"] or row["head"]["sha"] != first["head"]["sha"]
-               or timestamp(row["merged_at"]) != timestamp(first["merged_at"]) or row.get("body") != first.get("body")
-               for row in matches[1:]):
-            unresolved(problems, path + ": conflicting exact PR associations")
-        else:
-            return first, False
-    return None, possible_history
+    if matches and any(row["number"] != matches[0]["number"] for row in matches[1:]):
+        unresolved(problems, path + ": conflicting exact PR associations")
+        return [], True
+    return matches, possible_history
+
+
+def agreed(values, problems, source):
+    """Only a disagreement between readable observations can contradict a known value."""
+    if not values:
+        return UNKNOWN
+    first = values[0]
+    if any(value != first for value in values[1:]):
+        return unresolved(problems, source)
+    return first
+
+
+def body_facts(matches, problems):
+    number = matches[0]["number"]
+    risks, reverts = [], []
+    for row in matches:
+        text = row.get("body")
+        if "body" not in row or (text is not None and not isinstance(text, str)):
+            unresolved(problems, "#%d: malformed PR body" % number)
+            continue
+        body = gate.parse_body(text or "")
+        risk = body["risk"]
+        risks.append(risk["tier"] if isinstance(risk, dict) else risk)
+        reverts.append(body["reverts"])
+    return (agreed(risks, problems, "#%d: conflicting risk declarations" % number),
+            agreed(reverts, problems, "#%d: conflicting revert declarations" % number))
 
 
 def any_evidence(values):
@@ -291,14 +310,12 @@ def timestamp(value):
 class Pull:
     """The historical policy and evidence for one PR. Every lookup is scoped to its merge."""
 
-    def __init__(self, read, repository, number, head, merged_at, problems, notes):
+    def __init__(self, read, repository, number, head, cutoff, problems, notes):
         self.read, self.repository, self.number, self.head = read, repository, number, head
         self.prefix = "repos/" + repository
-        self.cutoff = timestamp(merged_at)
+        self.cutoff = cutoff
         self.problems, self.notes = problems, notes
         self._cache = {}
-        if self.cutoff is None:
-            self.unknown("merge time", "missing or invalid merged_at")
 
     def unknown(self, source, reason):
         return unresolved(self.problems, "#%d %s: %s" % (self.number, source, reason))
@@ -322,7 +339,7 @@ class Pull:
         missing = []
         if by is not None:
             when = timestamp(row.get(by))
-            if when is None or self.cutoff is None:
+            if when is None or self.cutoff is UNKNOWN:
                 missing.append(by)
             elif when > self.cutoff:
                 return False
@@ -341,7 +358,7 @@ class Pull:
 
     def by_merge(self, row, field, source):
         when = timestamp(row.get(field))
-        if when is None or self.cutoff is None:
+        if when is None or self.cutoff is UNKNOWN:
             return self.unknown(source, "cannot establish " + field + " at merge")
         return when <= self.cutoff
 
@@ -626,33 +643,32 @@ def missing_reviews(pull, agent_account, owner, tier, bots):
     return ordered
 
 
-def _judge_pull(read, repository, pull, squash, notes, problems):
+def _judge_pull(read, repository, matches, squash, notes, problems):
     records = []
-    number, head = pull["number"], pull["head"]["sha"]
-    text = pull.get("body")
-    if text is not None and not isinstance(text, str):
-        unresolved(problems, "#%d: malformed PR body" % number)
-        text = None
-    body = gate.parse_body(text or "")
-    reverts = body["reverts"]
+    pull = matches[0]
+    number = pull["number"]
+    head = agreed([row["head"]["sha"] for row in matches], problems, "#%d: conflicting merged heads" % number)
+    cutoff = agreed([timestamp(row["merged_at"]) for row in matches], problems, "#%d: conflicting merge times" % number)
+    risk, reverts = body_facts(matches, problems)
     if isinstance(reverts, dict):
         reverted, _ = _merged_pr(read, repository, pull["base"]["ref"], reverts["sha"], problems)
         records.append(record(
-            reverted["number"] if reverted else None, "escape", "revert",
+            reverted[0]["number"] if reverted else None, "escape", "revert",
             "#%d, merged as %s, reverted %s, and its body had a `Reverts:` line." % (number, squash, reverts["sha"]),
         ))
-    elif reverts is not None:
+    elif reverts is not None and reverts is not UNKNOWN:
         records.append(record(
             None, "escape", "revert",
             "#%d, merged as %s, has a `Reverts:` line that doesn't read (%s), so the reverted PR is unknown."
             % (number, squash, reverts),
         ))
-    risk = body["risk"]
-    if isinstance(risk, dict):
-        tier, declared = risk["tier"], "declared %s" % risk["tier"]
+    if risk is UNKNOWN or head is UNKNOWN:
+        return records
+    if risk in REQUIRED:
+        tier, declared = risk, "declared %s" % risk
     else:
         tier, declared = "high", "declared no readable tier (its `Risk:` line is %s), judged at high" % risk
-    facts = Pull(read, repository, number, head, pull.get("merged_at"), problems, notes)
+    facts = Pull(read, repository, number, head, cutoff, problems, notes)
     policy = facts.policy(squash)
     if policy is UNKNOWN:
         return records
@@ -679,9 +695,9 @@ def _on_push(event, read, repository, default_branch, notes, problems):
         if not is_sha(sha):
             unresolved(problems, "push commits: malformed list member")
             continue
-        pull, in_history = _merged_pr(read, repository, default_branch, sha, problems)
-        if pull is not None:
-            records.extend(_judge_pull(read, repository, pull, sha, notes, problems))
+        matches, in_history = _merged_pr(read, repository, default_branch, sha, problems)
+        if matches:
+            records.extend(_judge_pull(read, repository, matches, sha, notes, problems))
         elif not in_history:
             records.append(record(
                 None, "process miss", "push-without-pr",
@@ -702,9 +718,9 @@ def _on_workflow_run(event, read, repository, default_branch, open_records, prob
     if any(_field(issue.get("body"), "Category") == "red-default-branch" for issue in open_records):
         return []
     sha = run["head_sha"]
-    pull, _ = _merged_pr(read, repository, default_branch, sha, problems)
+    matches, _ = _merged_pr(read, repository, default_branch, sha, problems)
     return [record(
-        pull["number"] if pull else None, "escape", "red-default-branch",
+        matches[0]["number"] if matches else None, "escape", "red-default-branch",
         "Workflow %s concluded %s on its push-triggered run %s at commit %s."
         % (run.get("name"), run.get("conclusion"), run.get("html_url"), sha),
     )]

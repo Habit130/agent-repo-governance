@@ -415,3 +415,28 @@ class HistoricalEvidence(VersionThreeRendered):
         self.add_unassociated_commit()
         self.api[f"{self.prefix}/commits/{self.squash}/pulls"].append(dict(self.pr, number=55))
         self.replay(incomplete="conflicting")
+
+    def test_same_merge_with_an_unreadable_body_still_supplies_its_known_reviews(self):
+        self.statuses.clear()
+        pulls = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
+        for body in ({}, [], 42):
+            bad_copy = dict(self.pr, body=body)
+            for rows in ([bad_copy, self.pr], [self.pr, bad_copy]):
+                with self.subTest(body=body, rows=rows):
+                    pulls[:] = rows
+                    self.replay(missing=("reviewer",), incomplete="malformed PR body")
+        missing_body = dict(self.pr)
+        del missing_body["body"]
+        pulls[:] = [missing_body, self.pr]
+        self.replay(missing=("reviewer",), incomplete="malformed PR body")
+
+    def test_only_disagreeing_body_facts_become_indeterminate(self):
+        self.statuses.clear()
+        pulls = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
+        pulls.append(dict(self.pr, body="Different prose\nRisk: high — restated reason"))
+        self.replay(missing=("reviewer",))
+        pulls[1]["body"] += "\nReverts: " + "f" * 40
+        self.replay(missing=("reviewer",), incomplete="conflicting revert")
+        self.add_unassociated_commit()
+        pulls[1]["body"] = "Risk: low — conflicting declaration"
+        self.replay(incomplete="conflicting risk")

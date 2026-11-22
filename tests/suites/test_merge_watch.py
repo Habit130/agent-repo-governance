@@ -713,7 +713,7 @@ class VersionFive(unittest.TestCase):
         for name, (comments, reads, earlier) in cases.items():
             with self.subTest(case=name):
                 for watch in (watch_v4, watch_v5):
-                    times = (EARLY, [], []) if watch is watch_v5 else ()
+                    times = (watch.timestamp(EARLY), [], []) if watch is watch_v5 else ()
                     pull = watch.Pull(lambda path, c=comments + later: c if path.endswith("/comments") else [],
                                       "Habit130/tally", 7, head, *times)
                     self.assertEqual(watch._summary(pull, agent, "low") is not None, reads, watch.__name__)
