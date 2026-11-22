@@ -1,10 +1,12 @@
 """Governance model version five, the unpublished draft: rendered policy-text checks."""
 
+import re
+
 from materialized_version_support import VersionThreeRendered, flat, level_three_section, level_two_section  # noqa: F401
 
 
 class VersionFiveInitializeChecks(VersionThreeRendered):
-    """#207: the checks an Initialize PR is judged by, in version 5's review.md."""
+    """Initialize requirements and Merge summary policy in version 5's review.md."""
 
     VERSION = 5
 
@@ -36,6 +38,32 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
             return text.split("```text\n## Merge summary: <tier>", 1)[1].split("\n```", 1)[0]
         four = support_four(self)
         self.assertEqual(header(self.text("docs/agents/review.md")), header(four))
+
+    def test_review_omits_the_descriptive_merge_watch_paragraph(self):
+        review = self.review()
+        self.assertNotIn("Merge watch requires self-verification and the Merge summary at every tier", review)
+        self.assertNotIn("This is the Upgrade merge's transition exception.", review)
+
+    def test_both_medium_substitution_rules_require_the_last_enabled_bot(self):
+        bullets = self.text("docs/agents/review.md").split("\n- ")
+        condition = ("`no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot "
+                     "in the base record's ordered list.")
+        for opening in ("**No bot left at medium.**", "At medium a substituting Reviewer"):
+            with self.subTest(statement=opening):
+                matches = [flat(bullet) for bullet in bullets if bullet.startswith(opening)]
+                self.assertEqual(len(matches), 1)
+                self.assertIn(condition, matches[0])
+
+    def test_summary_examples_read_with_the_version_five_parser(self):
+        from test_merge_watch import watch_v5
+
+        review = self.text("docs/agents/review.md")
+        examples = re.findall(
+            r"^[ \t]*## Merge summary: (low|medium|high) at [0-9a-f]{7}\n[ \t]*(Required reviews: [^\n]+)",
+            review, re.MULTILINE)
+        self.assertEqual(len(examples), 3)
+        for tier, line in examples:
+            self.assertIsNotNone(watch_v5.parse_reviews(line, tier), line)
 
 
 def support_four(case):

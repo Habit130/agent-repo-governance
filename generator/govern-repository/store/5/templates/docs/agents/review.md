@@ -340,22 +340,6 @@ Required reviews: <kind>=<state>, <kind>=<state>
   Required reviews: self-verification=clear, bot-1=no-provider(none), reviewer=clear
   ```
 
-Merge watch requires self-verification and the Merge summary at every tier, the bot slot
-from medium, and the Reviewer at high. At medium it accepts substitution only after it
-successfully reads and parses the bot policy. A readable summary with `reviewer=clear` plus
-the agent account's successful `Reviewer` status on the head fills an unfilled bot slot
-only when `bot-1` declares `no-provider(none)` or `unavailable(<last enabled bot>)`, the last
-enabled bot in the base record's ordered list. Other unfilled slot states remain missing.
-A valid owner/exact-head bot-slot waiver is a separate exception; high has no Reviewer
-substitution. These declarations do not prove requests occurred; sessions verify the actual
-requests and unavailability evidence. On a base below version 4,
-Merge watch instead checks the Reviewer status from medium and the tier/head summary with a
-`Required reviews:` line of any kinds; it prints a `NOTE`. On a version 3 base only, an
-owner/exact-head `reviewer` waiver also satisfies the Reviewer requirement, and the Builder
-checks the bots before merge. Otherwise the PR's Reviewer judges the bots before merge.
-Versions 1 and 2 still require the Reviewer status. This is the Upgrade merge's transition
-exception.
-
 The rest of the comment is the terminal copy's first line and seven items, in English, with
 the high-risk report's additions at high.
 
