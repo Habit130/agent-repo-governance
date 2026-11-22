@@ -10,6 +10,6 @@ When unsure, the lower level, and a medium or high names what makes it so. The g
 
 habit wanted Builder sessions matched to the work to use agent allowance well, without quantifying it. Before this, 17 of the last 32 merged PRs declared high, and the tier was the only signal of how hard a ticket was; these criteria give about 12 low, 15 medium and 5 high for the same PRs. The session states difficulty and habit chooses the model and effort ([ADR 0025](0025-adapt-to-outside-changes.md)).
 
-Version 4 is an unpublished draft. This repository's dispatch plans have used difficulty since the planning round that decided it.
+This repository graded the entries in its 2026-11-17 dispatch plan while version 4 was still a draft. Difficulty grading becomes a model requirement for a repository when it adopts version 4. [Dispatch plan](https://github.com/Habit130/agent-repo-governance/issues/182#issuecomment-6935592841)
 
 Decided in [the version 4 planning round](https://github.com/Habit130/agent-repo-governance/issues/182), rounds 4 and 5.

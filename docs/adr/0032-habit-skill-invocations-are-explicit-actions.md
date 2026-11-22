@@ -10,4 +10,4 @@ habit verified one paste as the first message of a fresh Claude Code session wit
 
 The choice keeps one canonical policy while making habit's next action copyable, instead of assuming that one combined line works in every harness. There is no new machine check or review finding for an omitted invocation; the omission is a miss handled through `retro`.
 
-Decided in [the explicit-invocation ticket](https://github.com/Habit130/agent-repo-governance/issues/172) as part of [the version 4 planning round](https://github.com/Habit130/agent-repo-governance/issues/167). Version 4 is an unpublished draft. Until a repository adopts it, its existing wording remains in force; this decision introduces no interim rule.
+Version 4 was still a draft when habit approved the handoff wording in November 2026. A repository follows its existing invocation instructions until it adopts version 4, when the explicit handoff becomes required. [Explicit-invocation ticket](https://github.com/Habit130/agent-repo-governance/issues/172) · [Version 4 planning round](https://github.com/Habit130/agent-repo-governance/issues/167)

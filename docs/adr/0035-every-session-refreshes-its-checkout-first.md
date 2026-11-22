@@ -4,6 +4,6 @@ A session's first step, before reading its role file, is to fetch the remote and
 
 No rule refreshed the main checkout before, so sessions read whatever policy it happened to hold. The planning round found a four-day gap across the version 2 Upgrade, and a checkout still on version 1 recorded in [#127](https://github.com/Habit130/agent-repo-governance/issues/127): a session there follows rules the repository no longer has. Only a fast-forward is automatic, so the refresh never discards or merges anyone's work; anything else is left for habit.
 
-It landed first in this repository's own section of `AGENTS.md`, and version 4's fixed content carries it for every governed repository. Version 4 is an unpublished draft; this repository removes its own section once it adopts version 4.
+This repository added the refresh to its own instructions on 2026-11-17, while version 4 was still a draft. The refresh becomes part of a governed repository's fixed content when it adopts version 4. On 2026-11-19 this repository's Upgrade replaced its temporary instruction with that fixed content. [Repository instruction](https://github.com/Habit130/agent-repo-governance/pull/192) · [Version 4 Upgrade](https://github.com/Habit130/agent-repo-governance/pull/203)
 
 Decided in [the version 4 planning round](https://github.com/Habit130/agent-repo-governance/issues/182).
