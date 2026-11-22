@@ -1,5 +1,5 @@
 {
-  "description": "Expected results of the version 3 record fixtures (#148), for the parsers that read version 3 records: the machine parser and version 3's governed parser. From version 3 the record's confirmed part may also hold review_bots, last, the ordered list of enabled review bots, each one a bot version 3 supports (codex, copilot) and none twice; a record below version 3 holds no such key, and a record without it parses to the same shape as before. record_v3 maps each file under record-v3/ to its result, in the shapes tests/suites/parsers.py describes.",
+  "description": "Expected results of the version 3 record fixtures (#148) for the machine parser and governed parsers from version 3 onward. From version 3 the record's confirmed part may also hold review_bots, last, the ordered list of enabled review bots, each one a bot version 3 supports (codex, copilot) and none twice. A record below version 3 holds no such key, and a record without it parses to the same shape as before. record_v3 maps each file under record-v3/ to its result, in the shapes tests/suites/parsers.py describes.",
   "record_v3": {
     "bot-as-mapping.yml": "doesn't parse",
     "both-bots.yml": {

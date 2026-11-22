@@ -1,11 +1,8 @@
 """The parsers registered for the shared parser fixtures (#44 §5: machine and governed sides).
 
-The machine parser registers once; the governed parser registers once per stored version,
-so immutable v1 and v2 and draft v3 each run against every shared expectation. These are versioned
-copies of the same governed-side parser, not additional parser implementations. Each `Parser`
-in `PARSERS` has a name and two adapters. `V3_PARSERS` names the ones that read a version 3
-record, whose confirmed part also holds `review_bots` (#148); they alone run the version 3
-record fixtures.
+The machine parser registers once and every numbered version in the template store contributes
+its gate, including the draft. Each `Parser` in `PARSERS` has a name, two adapters and a flag
+for the confirmed `review_bots` record format introduced in version 3 (#148).
 
 - `record(data)` takes a record file's bytes. It returns the record as
   `{"version": int, "agent_account": str, "sensitive_paths": [{"pattern": str, "floor": str}],
@@ -22,72 +19,52 @@ parser offers, an import or a subprocess, and converts the result.
 
 import collections
 import importlib.util
-import os
 
 import support
-from govlib import prbody, record
+from govlib import prbody, record, store
 
 DOESNT_PARSE = "doesn't parse"
 
-Parser = collections.namedtuple("Parser", "name record pr_body")
+Parser = collections.namedtuple("Parser", "name record pr_body supports_review_bots")
 
 
-def machine_record(data):
-    try:
-        return record.parse(data)
-    except record.RecordError:
-        return DOESNT_PARSE
+def record_adapter(parse, record_error):
+    def parse_record(data):
+        try:
+            return parse(data)
+        except record_error:
+            return DOESNT_PARSE
+
+    return parse_record
 
 
-# The gate script's template in version 1's store. Its only token sits in its first line, a
-# comment, so the template loads as it is.
-GATE = os.path.join(support.REAL_STORE, "1", "templates", "dot-github", "governance", "gate.py")
+TEMPLATES = store.Store(support.REAL_STORE)
+GATE_PATH = ".github/governance/gate.py"
+GATE = TEMPLATES.template_path(1, GATE_PATH)
 
 
 def load_gate(version=1):
     """The gate script's template as a module."""
-    path = os.path.join(support.REAL_STORE, str(version), "templates", "dot-github", "governance", "gate.py")
+    path = TEMPLATES.template_path(version, GATE_PATH)
     spec = importlib.util.spec_from_file_location("governed_gate_v%d" % version, path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as error:
+        raise ImportError("cannot load governed-v%d parser from %s" % (version, path)) from error
     return module
 
 
-gate = load_gate()
-gate_v2 = load_gate(2)
-gate_v3 = load_gate(3)
-
-
-def governed_record(data):
-    try:
-        return gate.parse_record(data)
-    except gate.RecordError:
-        return DOESNT_PARSE
-
-
-def governed_v2_record(data):
-    try:
-        return gate_v2.parse_record(data)
-    except gate_v2.RecordError:
-        return DOESNT_PARSE
-
-
-def governed_v3_record(data):
-    try:
-        return gate_v3.parse_record(data)
-    except gate_v3.RecordError:
-        return DOESNT_PARSE
-
-
+_gates = {version: load_gate(version) for version in TEMPLATES.versions()}
+gate = _gates[1]  # The gate suite also exercises version 1's module directly.
 PARSERS = (
-    # The generator's library: the drift check, the governed-repository list and the
-    # scenario runner use it.
-    Parser("machine", machine_record, prbody.parse),
-    # The gate script: the gate, Merge watch's script and the owner script use it.
-    Parser("governed", governed_record, gate.parse_body),
-    Parser("governed-v2", governed_v2_record, gate_v2.parse_body),
-    Parser("governed-v3", governed_v3_record, gate_v3.parse_body),
+    Parser("machine", record_adapter(record.parse, record.RecordError), prbody.parse, supports_review_bots=True),
+) + tuple(
+    Parser(
+        "governed-v%d" % version,
+        record_adapter(module.parse_record, module.RecordError),
+        module.parse_body,
+        supports_review_bots=version >= 3,
+    )
+    for version, module in _gates.items()
 )
-
-# The parsers that read version 3's confirmed review_bots.
-V3_PARSERS = ("machine", "governed-v3")

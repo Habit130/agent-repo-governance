@@ -64,7 +64,7 @@ Register a new suite there under the job appropriate to its dependencies.
 | `compare` | Exact comparison naming each difference | linux |
 | `materialized-version` | Version 1 from the real store, rendered into tally and compared exactly, and its record parsed; each fixed file's notice, the Markdown form an HTML comment on line 1 (`MARKDOWN_NOTICE`); the mixed files' markers, well formed at version 1, with their notice as the first line inside them (`MIXED_NOTICE`) and their skeleton text after the end marker left uncompared; `AGENTS.md`'s sections in order and its bytes within `AGENTS_BUDGET`; `.cursor/BUGBOT.md` equal to its notice, a blank line and `AGENTS.md`'s Code Review Rules section, heading included; every path pointer in a Markdown file version 1 writes naming a file version 1 writes, with what stays outside in `UNROUTED`; no root `CLAUDE.md`, `AGENTS.override.md` or `.codex/` written; the `build.md` skeleton written with no notice and left uncompared; the role files' skill lists against #41 §13 and the relied-on list; the PR template's comment lines, continuation lines included, none starting with `Risk:` or `Reverts:`, and its one `Risk:` line, once filled, read by both parsers; `triage-labels.md` against the manifest's labels; Merge watch's workflow and script with the notice, their mode and exact comparison; planted mismatches failing; later templates' seam-3 checks join it | linux |
 | `record` | Version 1's record template, rendered with sample confirmed values and read back; confirmed values the parser would refuse, refused at rendering; version 3's `review_bots` rendered, read back and refused when missing or malformed | linux |
-| `parser-fixtures` | The machine parser and each stored version of the governed-side parser against every shared parser fixture, one test per registration and fixture; versioned registrations retain v1 coverage while checking v2 against the same expectations | linux |
+| `parser-fixtures` | One result per parser and applicable fixture for the machine parser and every stored governed version, including the draft. Checks the reported results against the store and fixture catalogs. | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged by version 1's gate, by version 4's and by version 5's, every case under `cases/v4/` by version 4's and by version 5's, and every case under `cases/v5/` by version 5's alone, each existing case given a lookup that confirms any commit and a `cases/v5/` case's `merged` key (`found`, `none` or `unreadable`) giving it, a case's `record_in` naming the commit that adds the record; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in; version 5's entry run against a recorded `gh` that answers the PR read, judging GitHub's body and head over the event's, posting on the event's head with one failure line when the read fails, calling the commit lookup only for a `Reverts:` line and reading its failure as unconfirmed, and titling the check with the declared tier; its workflow equal to version 4's byte for byte | linux |
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; version 4's template's six permissions and version 5's five, without `actions: read`; the entry reading and posting through the stand-in; version 3's cases under `v3/`, its review cases and its no-record base cases among them, judged by version 3's script beside version 3's gate; every version 4 case judged again by version 5's script beside version 5's gate, with the same records; GitHub's own `Not Found` told apart from a failed read | linux |
 | `release-check` | Seam E covers [version transitions and copy equality](#unpublished-model-development), fixture preservation, and CI's PR/main-push event contract, jobs, commands and permissions | linux |
@@ -121,9 +121,11 @@ a bounded contract amendment; never filter it out or change product semantics he
 
 One parser implementation per side (#44 §5): the generator's library holds the machine
 side's, and each stored version's gate script holds the governed repository's. The
-`parser-fixtures` suite registers the machine parser once and the governed parser once per
-registered stored version. Both versioned copies run against the same shared
-expectations, retaining immutable v1 coverage while checking the candidate.
+`parser-fixtures` suite registers the machine parser once and loads the gate from every
+numbered directory in the template store. Adding a draft directory brings its parser into
+the next run automatically. A gate that fails to load fails the suite and the error names
+the governed version. Verbose results name the machine parser or governed version and the
+individual fixture.
 
 - **The gate script's interface.** In a governed repository it is
   `.github/governance/gate.py`, and a script beside it, such as Merge watch's
@@ -164,14 +166,14 @@ expectations, retaining immutable v1 coverage while checking the candidate.
 - **The PR body's `Risk:` and `Reverts:` lines**: `govlib/prbody.py`. Only lines that start
   with `Risk:` or `Reverts:` count, inside comments and code fences too, and a CRLF body
   reads as LF.
-- **The shared parser fixtures**: `tests/fixtures/parsers/`, with every fixture's expected
-  result in `expected.json`, where the inputs `git diff --check` would flag sit as inline
-  texts. Version 3's record fixtures, whose confirmed part may hold `review_bots`, sit
-  under `record-v3/` with `expected-v3.json`, and run only against `V3_PARSERS`: the machine
-  parser and version 3's governed parser. The `parser-fixtures` suite runs each fixture against every parser in `PARSERS` in
-  `tests/suites/parsers.py`. A parser registers as one more `Parser` there, whose adapters
-  return the shapes that file's docstring gives, so registering changes no fixture or
-  expected result. A record that doesn't parse expects only "doesn't parse".
+- **The shared parser fixtures** live in `tests/fixtures/parsers/`. Every parser runs the
+  common record and PR-body cases in `expected.json`, including its inline texts for inputs
+  that `git diff --check` would flag. The machine parser and governed versions 3 and later
+  also run the `record-v3/` fixtures in `expected-v3.json` for the confirmed `review_bots`
+  format. Versions 1 and 2 predate that format and run the common cases. Add a fixture and
+  its expectation to the corresponding family to exercise it across all applicable
+  parsers. Each adapter returns the shapes described in `tests/suites/parsers.py`. A record
+  that doesn't parse expects only "doesn't parse".
 
 ### Reproducing the ref-pattern corpus
 
