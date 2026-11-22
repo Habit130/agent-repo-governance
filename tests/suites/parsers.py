@@ -1,8 +1,8 @@
 """The parsers registered for the shared parser fixtures (#44 §5: machine and governed sides).
 
 The machine parser registers once and every numbered version in the template store contributes
-its gate, including the draft. Each `Parser` in `PARSERS` has a name, two adapters and a flag
-for the confirmed `review_bots` record format introduced in version 3 (#148).
+its gate, including the draft. Each `Parser` has a name, two adapters and its governed
+version. The machine parser follows the current grammar.
 
 - `record(data)` takes a record file's bytes. It returns the record as
   `{"version": int, "agent_account": str, "sensitive_paths": [{"pattern": str, "floor": str}],
@@ -25,7 +25,10 @@ from govlib import prbody, record, store
 
 DOESNT_PARSE = "doesn't parse"
 
-Parser = collections.namedtuple("Parser", "name record pr_body supports_review_bots")
+
+class Parser(collections.namedtuple("Parser", "name record pr_body version")):
+    def supports(self, since):
+        return self.version is None or self.version >= since
 
 
 def record_adapter(parse, record_error):
@@ -58,13 +61,13 @@ def load_gate(version=1):
 _gates = {version: load_gate(version) for version in TEMPLATES.versions()}
 gate = _gates[1]  # The gate suite also exercises version 1's module directly.
 PARSERS = (
-    Parser("machine", record_adapter(record.parse, record.RecordError), prbody.parse, supports_review_bots=True),
+    Parser("machine", record_adapter(record.parse, record.RecordError), prbody.parse, version=None),
 ) + tuple(
     Parser(
         "governed-v%d" % version,
         record_adapter(module.parse_record, module.RecordError),
         module.parse_body,
-        supports_review_bots=version >= 3,
+        version=version,
     )
     for version, module in _gates.items()
 )

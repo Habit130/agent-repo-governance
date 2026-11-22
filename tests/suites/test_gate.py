@@ -33,6 +33,7 @@ from unittest import mock
 import materialized
 import parsers
 import support
+from govlib import render
 from standins import environment
 
 gate = parsers.gate
@@ -45,7 +46,6 @@ V5_CASES = os.path.join(CASES, "v5")
 RECORD = ".github/governance/record.yml"
 WORKFLOW = ".github/workflows/governance-gate.yml"
 SCRIPT = ".github/governance/gate.py"
-GATE_V5 = os.path.join(support.REAL_STORE, "5", "templates", "dot-github", "governance", "gate.py")
 
 
 def load(path):
@@ -69,6 +69,10 @@ def apply(repo, files, message):
 def lookup(answer):
     """Version 5's `merged` seam: "found" is True for any commit, "none" False, "unreadable" None."""
     return {"found": lambda sha: True, "none": lambda sha: False, "unreadable": lambda sha: None}[answer]
+
+
+def merged_pull(sha, branch="main"):
+    return {"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": branch}, "merge_commit_sha": sha}
 
 
 def build(root, case):
@@ -353,7 +357,7 @@ class Entry(GateCase):
         case = load(os.path.join(CASES, case_name + ".json"))
         origin, default_head, head, shas = build(self.tmp, case)
         support.git(origin, "config", "uploadpack.allowReachableSHA1InWant", "true")
-        checkout = self.path("checkout")
+        checkout = tempfile.mkdtemp(prefix="checkout-", dir=self.tmp)
         support.git(self.tmp, "clone", "-q", "--single-branch", "--branch", "main", origin, checkout)
         self.assertEqual(support.git(checkout, "rev-parse", "HEAD").strip(), default_head)
         return checkout, head, dict(case, body=body_of(case, shas))
@@ -436,14 +440,26 @@ class EntryVersionFive(GateCase):
 
     checkout = Entry.checkout
 
-    def run_entry(self, checkout, event_head, event_body, pull, post_head, conclusion, title, summary):
+    def setUp(self):
+        super().setUp()
+        rendered = self.path("rendered")
+        confirmed = dict(materialized.tally_fixture()["confirmed"], review_bots=["codex"])
+        render.render(parsers.TEMPLATES, rendered, "Habit130/tally", "main", confirmed,
+                      version=5, allow_unreleased=True)
+        self.script = os.path.join(rendered, SCRIPT)
+
+    def run_entry(self, checkout, event_head, event_body, pull, post_head, conclusion, title, summary,
+                  lookup_calls=(), default_branch="main"):
         """Run version 5's script; `pull` is GitHub's answer, or None when the read fails."""
         event = self.path("event.json")
+        repository = {"owner": {"login": "Habit130"}}
+        if default_branch is not None:
+            repository["default_branch"] = default_branch
         with open(event, "w") as handle:
             json.dump(
                 {
                     "pull_request": {"number": 7, "head": {"sha": event_head}, "user": {"login": "stale"}, "body": event_body},
-                    "repository": {"owner": {"login": "Habit130"}, "default_branch": "main"},
+                    "repository": repository,
                 },
                 handle,
             )
@@ -466,6 +482,7 @@ class EntryVersionFive(GateCase):
                     "tool": "gh",
                     "calls": [
                         read,
+                        *lookup_calls,
                         {
                             "args": ["api", "--method", "POST", "repos/Habit130/tally/check-runs", "--input", "-"],
                             "stdin": json.dumps(payload, sort_keys=True),
@@ -476,12 +493,11 @@ class EntryVersionFive(GateCase):
                 },
                 handle,
             )
-        scratch = self.path("scratch")
-        os.makedirs(scratch)
+        scratch = tempfile.mkdtemp(prefix="scratch-", dir=self.tmp)
         env = environment.environment(scratch, gh_recording=recording, base=support.isolated_env())
         env.update({"GITHUB_EVENT_PATH": event, "GITHUB_REPOSITORY": "Habit130/tally"})
         result = subprocess.run(
-            [sys.executable, GATE_V5, "--post-check"],
+            [sys.executable, self.script, "--post-check"],
             cwd=checkout,
             env=env,
             stdout=subprocess.PIPE,
@@ -512,6 +528,16 @@ class EntryVersionFive(GateCase):
         _, result = self.judge("risk-missing", gate_v5)
         self.assertEqual(len(result["failures"]), 1)
         self.passes("risk-missing", "Failed: 1 rule, no valid Risk: line", "failure", "- " + result["failures"][0], 1)
+
+    def test_a_whitespace_only_reason_posts_a_failed_risk_check(self):
+        checkout, head, case = self.checkout("low-on-plain-path")
+        pull = self.github(head, dict(case, body="Risk: low — \u00a0"))
+        summary = ("- Risk line: The `Risk:` line is malformed. Fix: keep exactly one line "
+                   "`Risk: <low|medium|high> — <reason>`, with an em dash and a reason.")
+        result, calls = self.run_entry(checkout, head, case["body"], pull, head, "failure",
+                                       "Failed: 1 rule, no valid Risk: line", summary)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual([call["recorded"] for call in calls], [True, True])
 
     def test_a_failing_event_body_is_not_judged_when_githubs_current_body_passes(self):
         checkout, head, case = self.checkout("high-on-high-floor")
@@ -560,61 +586,81 @@ class EntryVersionFive(GateCase):
             ["governance-gate on %s, judged by the default branch at %s" % (head, support.git(checkout, "rev-parse", "HEAD").strip()), "FAIL " + line],
         )
 
-    def revert_entry(self, merged_calls, note, returncode, base="main", default_branch="main"):
+    def revert_entry(self, merged_calls, note, returncode, base="main", default_branch="main", tier="low"):
         """Run a pure revert's entry; merged_calls are the lookup's recorded gh calls (none for no lookup).
 
         The event names `main` as the repository's default branch; base is the PR's target as GitHub shows it.
         """
         checkout, head, case = self.checkout("pure-revert-low-on-sensitive-path")
         sha = re.search(r"Reverts: ([0-9a-f]{40})", case["body"]).group(1)
-        event = self.path("event.json")
-        with open(event, "w") as handle:
-            repository = {"owner": {"login": "Habit130"}}
-            if default_branch is not None:
-                repository["default_branch"] = default_branch
-            json.dump({"pull_request": {"number": 7, "head": {"sha": head}}, "repository": repository}, handle)
+        case["body"] = case["body"].replace("Risk: low", "Risk: " + tier)
         pull = self.github(head, case, base)
         if note is None:
-            title, conclusion, summary = "Passed: a pure revert, declared low", "success", "Every gate rule passed."
-        else:  # the floors' line, written out from the contract rather than from the gate
+            title, conclusion, summary = "Passed: a pure revert, declared " + tier, "success", "Every gate rule passed."
+        elif returncode == 0:
+            title, conclusion = "Passed: declared " + tier, "success"
+            summary = "Every gate rule passed.\n`Reverts: %s` isn't confirmed as a pure revert: %s" % (sha, note)
+        else:
             title, conclusion = "Failed: 1 rule, declared low", "failure"
             summary = (
                 '- Floors: the PR declares low, and these changed paths have a high floor: "src/auth/login.ts". '
                 "`Reverts: %s` isn't confirmed as a pure revert: %s "
                 "Fix: declare `Risk: high \u2014 <reason>`; no tier goes below a floor." % (sha, note)
             )
-        payload = {
-            "name": "governance-gate", "head_sha": head, "status": "completed", "conclusion": conclusion,
-            "output": {"title": title, "summary": summary},
-        }
-        calls = [{"args": ["api", "repos/Habit130/tally/pulls/7"], "stdout": json.dumps(pull) + "\n", "exit": 0}]
-        calls += [dict(call, args=["api", "repos/Habit130/tally/commits/%s/pulls?per_page=100" % sha]) for call in merged_calls(sha)]
-        calls.append({
-            "args": ["api", "--method", "POST", "repos/Habit130/tally/check-runs", "--input", "-"],
-            "stdin": json.dumps(payload, sort_keys=True), "stdout": "{}\n", "exit": 0,
-        })
-        recording = self.path("gh.json")
-        with open(recording, "w") as handle:
-            json.dump({"tool": "gh", "calls": calls}, handle)
-        scratch = self.path("scratch")
-        os.makedirs(scratch)
-        env = environment.environment(scratch, gh_recording=recording, base=support.isolated_env())
-        env.update({"GITHUB_EVENT_PATH": event, "GITHUB_REPOSITORY": "Habit130/tally"})
-        result = subprocess.run(
-            [sys.executable, GATE_V5, "--post-check"], cwd=checkout, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True,
-        )
+        args = ["api", "repos/Habit130/tally/commits/%s/pulls?per_page=100" % sha]
+        lookup_calls = [dict(call, args=args) for call in merged_calls(sha)]
+        event_head = support.git(checkout, "rev-parse", "HEAD").strip()
+        result, calls = self.run_entry(checkout, event_head, "stale", pull, head, conclusion, title, summary,
+                                       lookup_calls, default_branch)
         self.assertEqual(result.returncode, returncode, result.stdout + result.stderr)
-        self.assertEqual([call["recorded"] for call in environment.read_log(scratch)], [True] * len(calls))
+        self.assertEqual([call["recorded"] for call in calls], [True] * (2 + len(lookup_calls)), result.stdout)
         return result
 
     def test_a_pr_without_a_reverts_line_makes_no_lookup_call(self):
         # passes() records only the PR read and the POST, so a third gh call would fail the run.
         self.passes("high-on-high-floor", "Passed: declared high")
 
+    def test_only_a_regular_historical_record_confirms_a_governed_revert(self):
+        record = support.read_text(os.path.join(FIXTURES, "record.yml"))
+        path = "src/auth/notes.txt"
+        histories = {
+            "regular": {RECORD: record},
+            "executable": {RECORD: {"content": record, "mode": "100755"}},
+            "missing": {},
+            "directory": {RECORD + "/notes": "notes\n"},
+            "symlink": {"policy.yml": record},
+        }
+        for kind, files in histories.items():
+            with self.subTest(kind=kind):
+                repo = support.init_repo(tempfile.mkdtemp(dir=self.tmp))
+                if kind == "symlink":
+                    os.makedirs(os.path.join(repo, os.path.dirname(RECORD)))
+                    os.symlink("../../policy.yml", os.path.join(repo, RECORD))
+                apply(repo, {**files, path: "before\n"}, "historical policy")
+                original = apply(repo, {path: "after\n"}, "original change")
+                base = support.commit_tree(repo, {RECORD: record, path: "after\n"}, "current policy")
+                support.git(repo, "checkout", "-q", "-b", "pr")
+                head = apply(repo, {path: "before\n"}, "restore notes")
+                support.git(repo, "checkout", "-q", "main")
+                body = "Risk: high — restore the reviewed notes\nReverts: " + original
+                pull = self.github(head, {"body": body, "author": "Habit098"})
+                lookup_calls = []
+                summary = "Every gate rule passed."
+                if kind in ("regular", "executable"):
+                    lookup_calls.append({"args": ["api", "repos/Habit130/tally/commits/%s/pulls?per_page=100" % original],
+                                         "stdout": json.dumps([merged_pull(original)]), "exit": 0})
+                    title = "Passed: a pure revert, declared high"
+                else:
+                    title = "Passed: declared high"
+                    summary += ("\n`Reverts: %s` isn't confirmed as a pure revert: "
+                                "its parent has no regular file at %s." % (original, RECORD))
+                result, calls = self.run_entry(repo, base, "", pull, head, "success", title, summary, lookup_calls)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual([call["recorded"] for call in calls], [True] * (2 + len(lookup_calls)))
+
     def test_a_pure_revert_whose_lookup_finds_the_merged_pr_passes_as_one_and_titles_the_declared_tier(self):
         def found(sha):
-            pulls = [{"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "main"}, "merge_commit_sha": sha}]
+            pulls = [merged_pull(sha)]
             return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
         result = self.revert_entry(found, None, 0)
         self.assertIn("PASS a pure revert", result.stdout)
@@ -625,26 +671,50 @@ class EntryVersionFive(GateCase):
         note = "GitHub couldn't be read to confirm it is a merged PR's squash commit."
         self.assertIn(note, self.revert_entry(unread, note, 1).stdout)
 
+    def test_incomplete_provenance_is_reported_at_and_below_the_floor(self):
+        note = "GitHub couldn't be read to confirm it is a merged PR's squash commit."
+        for tier, returncode in (("high", 0), ("low", 1)):
+            with self.subTest(tier=tier):
+                self.revert_entry(lambda sha: [{"stdout": "[{}]", "exit": 0}], note, returncode, tier=tier)
+
     def test_a_lookup_listing_no_matching_merged_pr_leaves_the_revert_unconfirmed(self):
         def other(sha):
             pulls = [{"merged_at": None, "base": {"ref": "main"}, "merge_commit_sha": sha},
-                     {"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "other"}, "merge_commit_sha": sha},
-                     {"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "main"}, "merge_commit_sha": "0" * 40}]
+                     merged_pull(sha, "other"), merged_pull("0" * 40)]
             return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
         note = "GitHub shows no PR merged into the default branch whose squash commit it is."
         self.assertIn(note, self.revert_entry(other, note, 1).stdout)
+        self.assertIn(note, self.revert_entry(other, note, 0, tier="high").stdout)
+
+    def test_a_definite_match_survives_an_unreadable_association(self):
+        def found(sha):
+            return [{"stdout": json.dumps([None, merged_pull(sha)]), "exit": 0}]
+        self.revert_entry(found, None, 0)
+
+    def test_malformed_merge_fields_cannot_confirm_a_match_or_an_absence(self):
+        note = "GitHub couldn't be read to confirm it is a merged PR's squash commit."
+        for invalid in ({"merged_at": "unknown"}, {"base": {}}, {"merge_commit_sha": None}):
+            with self.subTest(invalid=invalid):
+                def response(sha):
+                    return [{"stdout": json.dumps([{**merged_pull(sha), **invalid}]), "exit": 0}]
+                self.revert_entry(response, note, 0, tier="high")
+
+    def test_a_full_page_without_a_match_leaves_provenance_indeterminate(self):
+        note = "GitHub couldn't be read to confirm it is a merged PR's squash commit."
+        page = json.dumps([{"merged_at": None}] * 100)
+        self.revert_entry(lambda sha: [{"stdout": page, "exit": 0}], note, 0, tier="high")
 
     def test_a_retargeted_pr_is_still_confirmed_against_the_default_branch_that_judges_it(self):
         # GitHub now shows the PR's target as `release`; the default branch whose checkout judges is `main`.
         def found(sha):
-            pulls = [{"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "main"}, "merge_commit_sha": sha}]
+            pulls = [merged_pull(sha)]
             return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
         result = self.revert_entry(found, None, 0, base="release")
         self.assertIn("PASS a pure revert", result.stdout)
 
     def test_a_merged_pr_into_the_prs_new_target_doesnt_confirm_it(self):
         def other(sha):
-            pulls = [{"merged_at": "2026-11-01T00:00:00Z", "base": {"ref": "release"}, "merge_commit_sha": sha}]
+            pulls = [merged_pull(sha, "release")]
             return [{"stdout": json.dumps(pulls) + "\n", "exit": 0}]
         note = "GitHub shows no PR merged into the default branch whose squash commit it is."
         self.assertIn(note, self.revert_entry(other, note, 1, base="release").stdout)
@@ -657,6 +727,20 @@ class EntryVersionFive(GateCase):
         path = ("templates", "dot-github", "workflows", "governance-gate.yml")
         with open(os.path.join(support.REAL_STORE, "5", *path), "rb") as five, open(os.path.join(support.REAL_STORE, "4", *path), "rb") as four:
             self.assertEqual(five.read(), four.read())
+
+
+class RiskReasonConsumer(unittest.TestCase):
+    def test_merge_watch_judges_a_whitespace_only_risk_reason_at_high(self):
+        from test_merge_watch import watch_v5
+
+        case = load(os.path.join(support.FIXTURES, "merge-watch", "v4", "high-missing-all.json"))
+        event, github = case["event"], case["github"]
+        repository = event["repository"]["full_name"]
+        pull, = github["repos/%s/commits/%s/pulls" % (repository, event["after"])]
+        pull["body"] = "Risk: low — \u00a0"
+        record, = watch_v5.decide(case["event_name"], event, "Habit098", github.__getitem__)
+        self.assertIn("declared no readable tier (its `Risk:` line is malformed), judged at high", record["body"])
+        self.assertIn("reviewer", record["body"])
 
 
 if __name__ == "__main__":

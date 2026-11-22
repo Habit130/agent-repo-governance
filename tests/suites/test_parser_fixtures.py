@@ -33,7 +33,7 @@ def load_expected():
         return json.load(handle)
 
 
-def cases():
+def cases(parser):
     """Every fixture as (kind, name, bytes, expected): the files, then the inline texts."""
     expected = load_expected()
     for kind, directory in sorted(DIRECTORIES.items()):
@@ -41,7 +41,10 @@ def cases():
             with open(os.path.join(FIXTURES, directory, name), "rb") as handle:
                 yield kind, name, handle.read(), result
         for name, case in sorted(expected[kind + "_texts"].items()):
-            yield kind, name, case["text"].encode("utf-8"), case["expected"]
+            result = case["expected"]
+            if not parser.supports(5):
+                result = case.get("expected_before_v5", result)
+            yield kind, name, case["text"].encode("utf-8"), result
 
 
 def load_expected_v3():
@@ -93,9 +96,9 @@ def _add_test(parser, kind, name, data, expected):
 
 
 for _parser in parsers.PARSERS:
-    for _kind, _name, _data, _expected in cases():
+    for _kind, _name, _data, _expected in cases(_parser):
         _add_test(_parser, _kind, _name, _data, _expected)
-    if _parser.supports_review_bots:
+    if _parser.supports(3):
         for _name, _data, _expected in v3_cases():
             _add_test(_parser, "record_v3", _name, _data, _expected)
 

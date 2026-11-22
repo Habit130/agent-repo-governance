@@ -148,14 +148,17 @@ individual fixture.
     commit predates governance. It reads git objects only, with no GitHub API call. A commit
     pushed without a PR after the record arrived still confirms; that boundary is accepted.
     Versions 1 to 3 keep the rule without the record condition.
-  - **Version 5's pure revert** adds one condition, checked last, after every version 4 git
-    condition holds: GitHub shows a PR merged into the default branch whose squash commit
-    is the named one. `verdict` takes it as `merged(sha)`, returning `True`, `False` or
+  - **Version 5's pure revert** requires the historical record to be a regular file in the
+    parent tree. After the git checks, GitHub must show a PR merged into the default branch
+    whose squash commit is the named one. `verdict` takes this as `merged(sha)`, returning `True`, `False` or
     `None` (unreadable, an exception included). The entry builds it from
     `gh api "repos/<repository>/commits/<sha>/pulls?per_page=100"`, with the event's
     `repository.default_branch`, whose checkout judges, as the branch (never the PR's current
-    target, which a retargeted PR changes), testing as Merge watch's `_merged_pr` does.
-    `False` or `None` adds no failure line; a failing `Floors:` line carries the matching note.
+    target, which a retargeted PR changes). A positive association
+    confirms provenance even if another row is unreadable. With no match, a malformed
+    association or a full first page leaves provenance indeterminate. Both negative and
+    indeterminate lookups apply the ordinary floors. The posted check explains the outcome
+    in its floor failure or alongside a passing verdict.
 - **Its template loads as it is**, since its one token sits in its first line, a comment:
   `PARSERS` in `tests/suites/parsers.py` loads it by path.
 - **The record**: `govlib/record.py`, whose docstring defines the format in full. A list key
@@ -172,7 +175,9 @@ individual fixture.
   also run the `record-v3/` fixtures in `expected-v3.json` for the confirmed `review_bots`
   format. Versions 1 and 2 predate that format and run the common cases. Add a fixture and
   its expectation to the corresponding family to exercise it across all applicable
-  parsers. Each adapter returns the shapes described in `tests/suites/parsers.py`. A record
+  parsers. For an inline PR-body case whose grammar changed in v5, set `expected` to the
+  current result and `expected_before_v5` to the released v1–v4 result. Each adapter
+  returns the shapes described in `tests/suites/parsers.py`. A record
   that doesn't parse expects only "doesn't parse".
 
 ### Reproducing the ref-pattern corpus
