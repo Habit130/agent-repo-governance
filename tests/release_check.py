@@ -2,9 +2,10 @@
 
 It is keyed on the change note. A version whose note is on the base is released and frozen.
 Version directories are consecutive integers from 1. Only the highest version may lack
-its note and accumulate draft changes. Every note's fields parse. Each added version matches
-its predecessor at the head apart from the manifest's version number and a draft's absent
-change note. No fixture is removed or renamed.
+its note and accumulate draft changes. Releasing an existing draft requires its successor
+draft at the head. Every note's fields parse. Each added version matches its predecessor at
+the head apart from the manifest's version number and a draft's absent change note. No
+fixture is removed or renamed.
 Two INFO lines list the fixtures added and changed, which a PR's body or change note
 mentions.
 """
@@ -118,6 +119,16 @@ def rule_note_fields(repo, head):
     return True, "%d change notes have valid urgency and must-act fields" % checked
 
 
+def rule_next_draft(base, head):
+    for version, files in sorted(base.items()):
+        if store.CHANGE_NOTE in files or store.CHANGE_NOTE not in head.get(version, {}):
+            continue
+        successor = version + 1
+        if successor not in head or store.CHANGE_NOTE in head[successor]:
+            return False, "releasing version %d requires draft version %d at the head" % (version, successor)
+    return True, "each release of an existing draft has its next draft"
+
+
 def renumbered_manifest(before, after, version):
     for data, expected in ((before, version - 1), (after, version)):
         try:
@@ -177,6 +188,7 @@ def check(repo, base_rev, head_rev):
         ("consecutive", rule_consecutive(head_versions, strays)),
         ("notes", rule_notes(head_versions)),
         ("note-fields", rule_note_fields(repo, head_versions)),
+        ("next-draft", rule_next_draft(base_versions, head_versions)),
         ("version-copy", rule_version_copy(repo, base_versions, head_versions)),
         ("fixtures", rule_fixtures(base_fixtures, head_fixtures)),
     ]

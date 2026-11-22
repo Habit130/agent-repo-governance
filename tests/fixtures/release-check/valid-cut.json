@@ -9,11 +9,12 @@
     "tests/fixtures/change-notes/valid/a.md": "urgency: urgent\nmust-act: no\n\n正文。\n",
     "tests/fixtures/repositories/x/repo/README.md": "x\n"
   },
-  "description": "Version 1 has no note on the base, and the head adds the note: version 1's cut.",
+  "description": "The head releases draft version 1 and omits the required draft version 2.",
   "expect": {
     "consecutive": "PASS",
     "fixtures": "PASS",
     "frozen": "PASS",
+    "next-draft": "FAIL",
     "note-fields": "PASS",
     "notes": "PASS"
   },

@@ -3,7 +3,7 @@
     {"name": "create-draft", "write": {"2/manifest.json": "{\"version\": 2}\n", "2/templates/docs/agents/review.md": "fixed text\n", "2/templates/dot-github/governance/owner.sh": {"content": "#!/bin/bash\necho owner\n", "mode": "100755"}}},
     {"name": "first-update", "remove": ["2/templates/docs/agents/review.md", "2/templates/dot-github/governance/owner.sh"], "write": {"2/templates/policy.md": "revised draft\n"}},
     {"name": "second-update", "write": {"2/templates/extra.md": "final addition\n", "2/templates/policy.md": {"content": "final draft\n", "mode": "100755"}}},
-    {"name": "release", "write": {"2/change-note.md": "urgency: when convenient\nmust-act: no\n\n发布累积的修改。\n"}}
+    {"name": "release", "write": {"2/change-note.md": "urgency: when convenient\nmust-act: no\n\n发布累积的修改。\n"}, "failures": ["next-draft"]}
   ],
   "after_release": [
     {"name": "edit", "write": {"2/templates/policy.md": "changed after release\n"}},
