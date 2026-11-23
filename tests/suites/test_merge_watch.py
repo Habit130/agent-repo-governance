@@ -26,6 +26,7 @@ import unittest
 from unittest import mock
 
 import materialized
+from merge_watch_history import EARLY, HistoricalEvidence, supply_historical_fields  # noqa: F401
 import support
 from standins import environment
 from target_state import target_ruleset
@@ -546,6 +547,8 @@ class DeclaredWaivers(unittest.TestCase):
     def check_waivers(self, version, watch):
         # This high-tier PR already has both the completed Codex review and the Reviewer status.
         case = load(os.path.join(FIXTURES, "v4", "high-one-bot-reviewer.json"))
+        if version == 5:
+            supply_historical_fields(case)
         github, event = case["github"], case["event"]
         repository = event["repository"]["full_name"]
         pull, = github[f"repos/{repository}/commits/{event['after']}/pulls"]
@@ -579,7 +582,8 @@ class DeclaredWaivers(unittest.TestCase):
                 self.assertIn("Category: missing-review", lines)
                 self.assertIn(f"Observed: Merged head {head}, declared high, lacks: {kind}.", lines)
 
-                waiver = {"user": {"login": owner}, "body": f"Waiver: {kind} at {head} — approved for this head"}
+                waiver = {"user": {"login": owner}, "body": f"Waiver: {kind} at {head} — approved for this head",
+                          "created_at": EARLY, "updated_at": EARLY}
                 self.assertEqual(decide({**github, comments_path: comments + [waiver]}), [])
 
 
@@ -629,10 +633,10 @@ class VersionFour(unittest.TestCase):
 
 
 class VersionFive(unittest.TestCase):
-    """Version 5's script, after its one Merge summary lookup, judges every version 4 case alike."""
+    """Replay released v4 declarations with the historical fields the v5 reader also needs."""
 
-    def test_a_record_without_a_bot_list_leaves_the_slot_missing(self):
-        case = load(os.path.join(FIXTURES, "v4", "medium-unknown-bot-policy.json"))
+    def test_a_record_without_a_bot_list_leaves_the_slot_indeterminate(self):
+        case = supply_historical_fields(load(os.path.join(FIXTURES, "v4", "medium-unknown-bot-policy.json")))
         event = case["event"]
         record_path = "repos/%s/contents/%s?ref=%s" % (
             event["repository"]["full_name"], watch_v5.RECORD, event["before"]
@@ -642,13 +646,15 @@ class VersionFive(unittest.TestCase):
         self.assertTrue(record.endswith(invalid_list))
         case["github"][record_path] = record.removesuffix(invalid_list)
 
-        result = watch_v5.decide(case["event_name"], event, agent_account(), case["github"].__getitem__)
-        self.assertEqual(result, [dict(item, labels=["miss"]) for item in case["expected"]])
+        problems = []
+        result = watch_v5.decide(case["event_name"], event, agent_account(), case["github"].__getitem__, problems=problems)
+        self.assertEqual(result, [])
+        self.assertIn("omits review_bots", " ".join(problems))
 
     def test_a_version_three_reviewer_waiver_needs_no_status_read(self):
         for name in ("base-version-three-waived-reviewer-medium", "transition-reviewer-waiver-high"):
             with self.subTest(case=name):
-                case = load(os.path.join(FIXTURES, "v4", name + ".json"))
+                case = supply_historical_fields(load(os.path.join(FIXTURES, "v4", name + ".json")))
                 calls = []
 
                 def read(path):
@@ -663,7 +669,7 @@ class VersionFive(unittest.TestCase):
         cases = os.path.join(FIXTURES, "v4")
         for name in sorted(os.listdir(cases)):
             with self.subTest(case=name):
-                case = load(os.path.join(cases, name))
+                case = supply_historical_fields(load(os.path.join(cases, name)))
 
                 def read(path):
                     if path in case.get("not_found", ()):
@@ -673,7 +679,13 @@ class VersionFive(unittest.TestCase):
                     return case["github"][path]
 
                 notes = []
-                result = watch_v5.decide(case["event_name"], case["event"], agent_account(), read, notes)
+                problems = []
+                result = watch_v5.decide(case["event_name"], case["event"], agent_account(), read, notes, problems)
+                if name == "medium-unknown-bot-policy.json":
+                    self.assertEqual(result, [])
+                    self.assertIn("invalid historical record", " ".join(problems))
+                    continue
+                self.assertEqual(problems, [])
                 self.assertEqual(result, [dict(item, labels=["miss"]) for item in case["expected"]])
                 self.assertEqual(notes, case.get("notes", []))
 
@@ -682,7 +694,7 @@ class VersionFive(unittest.TestCase):
         head, agent = "1a2b3c4" + "d" * 33, agent_account()
 
         def comment(login, body):
-            return {"user": {"login": login}, "body": body}
+            return {"user": {"login": login}, "body": body, "created_at": EARLY, "updated_at": EARLY}
 
         older = comment(agent, "## Merge summary: low at 1a2b3c4\nRequired reviews: self-verification=clear\n")
         later = [comment("someone-else", "## Merge summary: low at 1a2b3c4\nRequired reviews: self-verification=clear\n"),
@@ -701,14 +713,15 @@ class VersionFive(unittest.TestCase):
         for name, (comments, reads, earlier) in cases.items():
             with self.subTest(case=name):
                 for watch in (watch_v4, watch_v5):
+                    times = (watch.timestamp(EARLY), [], []) if watch is watch_v5 else ()
                     pull = watch.Pull(lambda path, c=comments + later: c if path.endswith("/comments") else [],
-                                      "Habit130/tally", 7, head)
+                                      "Habit130/tally", 7, head, *times)
                     self.assertEqual(watch._summary(pull, agent, "low") is not None, reads, watch.__name__)
                     self.assertEqual(watch.earlier_version_missing(pull, agent, "Habit130", "low", 3), earlier, watch.__name__)
 
 
 class WorkflowPermissions(unittest.TestCase):
-    """Version 4's template grants six permissions; version 5's grants five, without `actions: read`."""
+    """v4 and v5 grant six permissions. v5 needs Actions read to identify the check producer."""
 
     five = (
         "\npermissions:\n  contents: read\n  pull-requests: read\n  issues: write\n"
@@ -724,12 +737,12 @@ class WorkflowPermissions(unittest.TestCase):
         self.assertIn("# Exactly these six;", workflow)
         self.assertIn(self.five.rstrip("\n") + "\n  actions: read\n\n", workflow)
 
-    def test_version_five_grants_exactly_five(self):
+    def test_version_five_can_read_the_linked_actions_run(self):
         workflow = self.template("5")
-        self.assertIn("# Exactly these five;", workflow)
-        self.assertIn(self.five, workflow)
-        self.assertNotIn("actions:", workflow)
+        section = workflow.split("\npermissions:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertEqual(section, self.five.split("permissions:\n", 1)[1].strip("\n") + "\n  actions: read")
         self.assertEqual(workflow.count("permissions:"), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

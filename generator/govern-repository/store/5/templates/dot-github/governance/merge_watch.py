@@ -61,8 +61,9 @@ On `push` to the default branch, for each pushed commit:
   judged, an accepted transition exception: that PR's Reviewer checks them before the merge,
   or its Builder does when an owner/exact-head `reviewer` waiver applies on a version 3 base.
   Versions 1 and 2 still require the Reviewer status; their transition rules are unchanged.
-  The run says so in a `NOTE` line. If the applicable record can't be read, doesn't parse
-  or omits the bot list, it enables no provider and an unfilled bot slot reads as missing.
+  The run says so in a `NOTE` line. An unsupported version or unreadable record leaves
+  its policy unresolved. An omitted bot list leaves its order unknown; an empty list
+  establishes that no bot was enabled.
 
   "No record" is GitHub's own answer for the path: HTTP 404 with the message `Not Found`
   (`NotFound`). Any other answer, a missing ref's 404 among them, is a read that failed. The
@@ -76,8 +77,12 @@ that concludes `failure`, `cancelled`, `timed_out` or `startup_failure` records 
 already open. Manual cancellation or a `cancel-in-progress` group on the default branch
 may open a false record; that cost is accepted because a false record beats a lost one.
 
-A format it can't read, or a GitHub read that fails, counts that review or fact as absent, so
-it yields a false miss record, never a blocked merge. A record whose title and `Observed:`
+Review evidence is bounded by the PR's merge time. The historical record supplies the
+agent identity for both the summary and the Reviewer status. Edited comment content that
+cannot be reconstructed, missing timestamps and ambiguous Copilot check attribution are
+reported as INCOMPLETE. The workflow posts independently supported misses and exits 1.
+Copilot requires a submitted review and a successful check tied to its dynamic Actions
+workflow, same head, job and check suite. A record whose title and `Observed:`
 line an open record already has isn't opened again, so a rerun adds nothing. Two runs at once
 can each read no open record, so two workflows failing together may open two
 `red-default-branch` records: a concurrency group would cancel a pending run and lose its
@@ -88,6 +93,7 @@ imported from beside this file. Python 3's standard library at the 3.9 level, pl
 """
 
 import argparse
+from datetime import datetime
 import json
 import os
 import re
@@ -139,15 +145,24 @@ class NotFound(ReadError):
     """GitHub answered that the file isn't there: HTTP 404 with the message `Not Found`."""
 
 
-def _same_login(a, b):
-    return bool(a) and bool(b) and a.lower() == b.lower()
+UNKNOWN = object()
 
 
-def _read(read, path, default):
+def unresolved(problems, message):
+    if message not in problems:
+        problems.append(message)
+    return UNKNOWN
+
+
+def read_rows(read, path, problems):
     try:
-        return read(path)
+        rows = read(path)
     except ReadError:
-        return default
+        rows = None
+    if not isinstance(rows, list):
+        return [unresolved(problems, path + ": list could not be read")]
+    return [row if isinstance(row, dict) else unresolved(problems, path + ": malformed list member")
+            for row in rows]
 
 
 def record(merged_pr, kind, category, observed):
@@ -173,46 +188,251 @@ def _field(body, name):
     return None
 
 
-def _open_records(read, repository):
-    issues = _read(read, "repos/%s/issues?labels=%s&state=open" % (repository, LABEL), [])
-    return [issue for issue in issues if "pull_request" not in issue]
+def _open_records(read, repository, problems):
+    issues = read_rows(read, "repos/%s/issues?labels=%s&state=open" % (repository, LABEL), problems)
+    records = []
+    for issue in issues:
+        if issue is UNKNOWN or "pull_request" in issue:
+            continue
+        if isinstance(issue.get("title"), str) and isinstance(issue.get("body"), str):
+            records.append(issue)
+        elif issue.get("body") is not None or not isinstance(issue.get("title"), str):
+            unresolved(problems, "open miss records: malformed issue")
+    return records
 
 
-def _merged_pr(read, repository, default_branch, sha):
-    """(the PR merged as sha, or None; whether sha is in another merged PR's history). ReadError when unread."""
-    merged = [
-        pull for pull in read("repos/%s/commits/%s/pulls" % (repository, sha))
-        if pull.get("merged_at") and (pull.get("base") or {}).get("ref") == default_branch
-    ]
-    for pull in merged:
-        if pull.get("merge_commit_sha") == sha:
-            return pull, False
-    return None, bool(merged)
+def is_sha(value):
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value) is not None
 
 
-class Pull(object):
-    """One merged PR's facts on its head, each read from GitHub once, when first needed."""
+def _merged_into(pull, default_branch, sha):
+    """Does this association establish a merge into the branch? Raise on an unresolved candidate."""
+    base = pull.get("base")
+    if not isinstance(base, dict) or not isinstance(base.get("ref"), str) or not base["ref"]:
+        raise ValueError("missing base ref")
+    if base["ref"] != default_branch:
+        return False
+    head = pull.get("head")
+    if (type(pull.get("number")) is not int or pull["number"] < 1
+            or not isinstance(head, dict) or not is_sha(head.get("sha"))):
+        raise ValueError("invalid PR identity")
+    squash = pull.get("merge_commit_sha")
+    if "merged_at" in pull and pull["merged_at"] is None:
+        if squash is not None and not is_sha(squash):
+            raise ValueError("invalid merge_commit_sha")
+        if pull.get("merged") is True or (squash == sha and pull.get("state") != "open" and pull.get("merged") is not False):
+            raise ValueError("matching merge has no merged_at")
+        return False
+    if timestamp(pull.get("merged_at")) is None:
+        raise ValueError("missing or invalid merged_at")
+    if not is_sha(squash):
+        raise ValueError("missing or invalid merge_commit_sha")
+    if pull.get("merged") is False or pull.get("state") == "open":
+        raise ValueError("merged_at conflicts with PR state")
+    return True
 
-    def __init__(self, read, repository, number, head):
+
+def _merged_pr(read, repository, default_branch, sha, problems):
+    """Return the matching merge; report direct push only if every association excludes a merge."""
+    path = "repos/%s/commits/%s/pulls" % (repository, sha)
+    matches = []
+    possible_history = False
+    for pull in read_rows(read, path, problems):
+        if pull is UNKNOWN:
+            possible_history = True
+            continue
+        try:
+            merged = _merged_into(pull, default_branch, sha)
+        except ValueError as error:
+            unresolved(problems, "%s: unresolved PR association: %s" % (path, error))
+            possible_history = True
+            continue
+        if merged:
+            possible_history = True
+            if pull["merge_commit_sha"] == sha:
+                matches.append(pull)
+    if matches and any(row["number"] != matches[0]["number"] for row in matches[1:]):
+        unresolved(problems, path + ": conflicting exact PR associations")
+        return [], True
+    return matches, possible_history
+
+
+def agreed(values, problems, source):
+    """Only a disagreement between readable observations can contradict a known value."""
+    if not values:
+        return UNKNOWN
+    first = values[0]
+    if any(value != first for value in values[1:]):
+        return unresolved(problems, source)
+    return first
+
+
+def possible_tiers(risks):
+    if not risks:
+        return set(REQUIRED)
+    return {risk if risk in REQUIRED else "high" for risk in risks}
+
+
+def merge_facts(matches, problems):
+    """Preserve the risk observations for each reported (head, merge time) and the shared revert fact."""
+    number = matches[0]["number"]
+    revisions, reverts = {}, []
+    for row in matches:
+        key = (row["head"]["sha"], timestamp(row["merged_at"]))
+        risks = revisions.setdefault(key, set())
+        text = row.get("body")
+        if "body" not in row or (text is not None and not isinstance(text, str)):
+            unresolved(problems, "#%d: malformed PR body" % number)
+            continue
+        body = gate.parse_body(text or "")
+        risk = body["risk"]
+        risks.add(risk["tier"] if isinstance(risk, dict) else risk)
+        reverts.append(body["reverts"])
+    if len({head for head, _ in revisions}) > 1:
+        unresolved(problems, "#%d: conflicting merged heads" % number)
+    if len({when for _, when in revisions}) > 1:
+        unresolved(problems, "#%d: conflicting merge times" % number)
+    observed = set().union(*revisions.values())
+    if len(observed) > 1:
+        unresolved(problems, "#%d: conflicting risk declarations" % number)
+    if len(observed) == 1 and all(revisions.values()):
+        risk = next(iter(observed))
+        declared = ("declared %s" % risk if risk in REQUIRED else
+                    "declared no readable tier (its `Risk:` line is %s), judged at high" % risk)
+    elif all(revisions.values()) and len(possible_tiers(observed)) == 1:
+        declared = "risk declaration indeterminate, judged at high"
+    else:
+        declared = "risk tier indeterminate"
+    return revisions, declared, agreed(reverts, problems, "#%d: conflicting revert declarations" % number)
+
+
+def any_evidence(values):
+    """A witness proves an existential claim. Only a complete negative proves absence."""
+    uncertain = False
+    for value in values:
+        if value is True:
+            return True
+        if value is UNKNOWN:
+            uncertain = True
+    return UNKNOWN if uncertain else False
+
+
+def timestamp(value):
+    if isinstance(value, str):
+        try:
+            if value.endswith("Z"):
+                value = value[:-1] + "+00:00"
+            time = datetime.fromisoformat(value)
+            if time.tzinfo is not None:
+                return time
+        except ValueError:
+            pass
+    return None
+
+
+class Pull:
+    """The historical policy and evidence for one PR. Every lookup is scoped to its merge."""
+
+    def __init__(self, read, repository, number, head, cutoff, problems, notes, cache=None):
         self.read, self.repository, self.number, self.head = read, repository, number, head
-        self._cache = {}
+        self.prefix = "repos/" + repository
+        self.cutoff = cutoff
+        self.problems, self.notes = problems, notes
+        self._cache = {} if cache is None else cache
 
-    def _get(self, path):
-        if path not in self._cache:
-            self._cache[path] = _read(self.read, path, [])
-        return self._cache[path]
+    def unknown(self, source, reason):
+        return unresolved(self.problems, "#%d %s: %s" % (self.number, source, reason))
 
-    def comments(self):
-        return self._get("repos/%s/issues/%d/comments" % (self.repository, self.number))
+    def rows(self, endpoint):
+        if endpoint not in self._cache:
+            self._cache[endpoint] = read_rows(self.read, self.prefix + endpoint, self.problems)
+        return self._cache[endpoint]
 
-    def reviews(self):
-        return self._get("repos/%s/pulls/%d/reviews" % (self.repository, self.number))
+    def object_at(self, endpoint):
+        if endpoint not in self._cache:
+            try:
+                value = self.read(self.prefix + endpoint)
+            except ReadError:
+                value = None
+            self._cache[endpoint] = value if isinstance(value, dict) else {}
+        return self._cache[endpoint]
 
-    def check_runs(self, name):
-        return self._get("repos/%s/commits/%s/check-runs?check_name=%s&filter=all" % (self.repository, self.head, name))
+    def matches(self, row, source, fields, *, by=None):
+        """An identity mismatch or a known-late time excludes even a partially readable row."""
+        if row is UNKNOWN:
+            return UNKNOWN
+        missing = []
+        if by is not None:
+            when = timestamp(row.get(by))
+            if when is None or self.cutoff is UNKNOWN:
+                missing.append(by)
+            elif when > self.cutoff:
+                return False
+        for path, expected in fields.items():
+            value = row
+            for part in path.split("."):
+                value = value.get(part) if isinstance(value, dict) else None
+            if (type(value) is not type(expected) or value == ""
+                    or (path in ("commit_id", "head_sha") and not is_sha(value))):
+                missing.append(path)
+            elif (value.lower() != expected.lower() if path.endswith(".login") else value != expected):
+                return False
+        if missing:
+            return self.unknown(source, "missing or invalid " + ", ".join(missing))
+        return True
 
-    def statuses(self):
-        return self._get("repos/%s/commits/%s/statuses" % (self.repository, self.head))
+    def by_merge(self, row, field, source):
+        when = timestamp(row.get(field))
+        if when is None or self.cutoff is UNKNOWN:
+            return self.unknown(source, "cannot establish " + field + " at merge")
+        return when <= self.cutoff
+
+    def comment_bodies(self, login, newest_first=False):
+        rows = self.rows("/issues/%d/comments" % self.number)
+        source = "comments by " + login
+        for row in (reversed(rows) if newest_first else rows):
+            eligible = self.matches(row, source, {"user.login": login}, by="created_at")
+            if eligible is False:
+                continue
+            if eligible is UNKNOWN:
+                yield UNKNOWN
+            elif self.by_merge(row, "updated_at", source) is not True:
+                yield self.unknown(source, "pre-edit content cannot be established")
+            elif not isinstance(row.get("body"), str):
+                yield self.unknown(source, "malformed comment body")
+            else:
+                yield row["body"]
+
+    def policy(self, squash):
+        """Only the absence of the record at a verified parent permits the Initialize fallback."""
+        commit = self.object_at("/git/commits/" + squash)
+        parents = commit.get("parents") if commit.get("sha") == squash else None
+        if not isinstance(parents, list) or len(parents) != 1 or not isinstance(parents[0], dict):
+            return self.unknown("policy", "could not establish the squash commit's parent")
+        base = parents[0].get("sha")
+        if not is_sha(base):
+            return self.unknown("policy", "invalid squash parent")
+        path = self.prefix + "/contents/" + RECORD + "?ref="
+        try:
+            try:
+                raw = self.read(path + base)
+            except NotFound:
+                self.notes.append("#%d merged onto a base with no governance record, so the record it adds names the enabled "
+                                  "review bots." % self.number)
+                raw = self.read(path + squash)
+        except ReadError:
+            return self.unknown("policy", "historical record could not be read")
+        if not isinstance(raw, str):
+            return self.unknown("policy", "invalid historical record")
+        try:
+            policy = gate.parse_record(raw.encode("utf-8"))
+        except (gate.RecordError, UnicodeError):
+            return self.unknown("policy", "invalid historical record")
+        if policy["version"] not in (1, 2, 3, 4, 5):
+            return self.unknown("policy", "unsupported historical version %d" % policy["version"])
+        if policy["version"] >= REVIEW_BOTS_VERSION and "review_bots" not in policy["confirmed"]:
+            self.unknown("policy", "historical record omits review_bots")
+        return policy
 
 
 # One reader per review bot: whether its review completed on the head, findings or not.
@@ -225,49 +445,100 @@ COPILOT_CHECK = "copilot-pull-request-reviewer"
 
 
 def _codex(pull):
-    """A `codex-review-state:v1` marker in the Codex review bot's comment, for the head, completed."""
-    for comment in pull.comments():
-        if (comment.get("user") or {}).get("login") != CODEX_LOGIN:
-            continue
-        for match in CODEX_MARKER.finditer(comment.get("body") or ""):
+    def completed(body):
+        if body is UNKNOWN:
+            return UNKNOWN
+        for match in CODEX_MARKER.finditer(body):
             try:
                 review = json.loads(match.group(1)).get("code_review")
             except (ValueError, AttributeError):
                 continue
             if isinstance(review, dict) and review.get("commit_sha") == pull.head and review.get("status") == "completed":
                 return True
-    return False
+        return False
+
+    return any_evidence([completed(body) for body in pull.comment_bodies(CODEX_LOGIN)])
+
+
+def _copilot_review(pull, review):
+    source = "Copilot review"
+    if review is not UNKNOWN and review.get("state") == "PENDING":
+        return False
+    identity = pull.matches(review, source, {"user.login": COPILOT_LOGIN, "commit_id": pull.head,
+                                             "is_copilot_code_review": True}, by="submitted_at")
+    if identity is not True:
+        return identity
+    state = review.get("state")
+    if not isinstance(state, str):
+        return pull.unknown(source, "missing review state")
+    if state == "DISMISSED":
+        return pull.unknown(source, "state at merge before dismissal cannot be established")
+    if state not in ("COMMENTED", "APPROVED", "CHANGES_REQUESTED"):
+        pull.notes.append("#%d Copilot has an unrecognized submitted review state." % pull.number)
+        return False
+    return True
+
+
+def _copilot_check(pull, check):
+    source = "Copilot check"
+    match = pull.matches(check, source, {"name": COPILOT_CHECK, "status": "completed", "conclusion": "success",
+                                         "head_sha": pull.head, "app.slug": "github-actions"}, by="completed_at")
+    if match is not True:
+        return match
+    # The check links to a job and the job links back to the check. Fetch only same-repo
+    # API paths built from their numeric IDs; the shared Actions app identifies no workflow.
+    url = check.get("details_url")
+    pattern = (r"https://github\.com/" + re.escape(pull.repository)
+               + r"/actions/runs/([1-9][0-9]*)/job/([1-9][0-9]*)")
+    link = re.fullmatch(pattern, url, re.I) if isinstance(url, str) else None
+    suite = check.get("check_suite")
+    if (not link or type(check.get("id")) is not int or check["id"] <= 0
+            or not isinstance(suite, dict) or type(suite.get("id")) is not int or suite["id"] <= 0):
+        return pull.unknown(source, "ambiguous producer: no matching Actions job and suite")
+    run_id, job_id = link.groups()
+    job = pull.object_at("/actions/jobs/" + job_id)
+    check_url = "https://api.github.com/%s/check-runs/%d" % (pull.prefix, check["id"])
+    if (type(job.get("id")) is not int or str(job["id"]) != job_id or type(job.get("run_id")) is not int
+            or str(job["run_id"]) != run_id or job.get("head_sha") != pull.head
+            or job.get("check_run_url") != check_url):
+        return pull.unknown(source, "ambiguous producer: linked Actions job does not corroborate this check")
+    run = pull.object_at("/actions/runs/" + run_id)
+    if (run.get("id") != job["run_id"] or run.get("check_suite_id") != suite["id"]
+            or run.get("head_sha") != pull.head):
+        return pull.unknown(source, "ambiguous producer: linked Actions run cannot be corroborated")
+    producer = pull.matches(run, "Copilot check (ambiguous producer)", {
+        "event": "dynamic", "path": "dynamic/agents/" + COPILOT_CHECK, "actor.login": "Copilot",
+    })
+    if producer is False:
+        pull.notes.append("#%d Copilot check belongs to a different Actions workflow." % pull.number)
+    return producer
 
 
 def _copilot(pull):
-    """A Copilot code review object on the head, corroborated by its check run completed there.
-
-    Copilot leaves a review by its bot login with `is_copilot_code_review` true and `commit_id`
-    the head, and a `copilot-pull-request-reviewer` check run on the head. A comment by its
-    login without a review object, or a review for an older head, is no review of this head.
-    Only `success` was observed on a finished run, so only it counts.
-    """
-    reviewed = any(
-        (review.get("user") or {}).get("login") == COPILOT_LOGIN
-        and review.get("is_copilot_code_review") is True
-        and review.get("commit_id") == pull.head
-        and review.get("state") != "PENDING"
-        for review in pull.reviews()
-    )
-    return reviewed and any(
-        run.get("name") == COPILOT_CHECK and run.get("status") == "completed" and run.get("conclusion") == "success"
-        for run in pull.check_runs(COPILOT_CHECK)
-    )
+    # Inspect every relevant row so a valid witness and an unresolved sibling both survive.
+    reviewed = any_evidence([_copilot_review(pull, row) for row in pull.rows("/pulls/%d/reviews" % pull.number)])
+    if reviewed is False:
+        return False
+    endpoint = "/commits/%s/check-runs?check_name=%s&filter=all" % (pull.head, COPILOT_CHECK)
+    checked = any_evidence([_copilot_check(pull, row) for row in pull.rows(endpoint)])
+    return reviewed if checked is True else checked
 
 
 PROVIDERS = {"codex": _codex, "copilot": _copilot}
 
 
 def _reviewer(pull, agent_account):
-    """Whether the agent account's newest `Reviewer` status on the head is success; GitHub lists the newest first."""
-    for status in pull.statuses():
-        if status.get("context") == REVIEWER_CONTEXT and _same_login((status.get("creator") or {}).get("login"), agent_account):
-            return status.get("state") == "success"
+    """GitHub lists statuses newest first. Ignore later postings, including later failures."""
+    source = "Reviewer status"
+    for row in pull.rows("/commits/%s/statuses" % pull.head):
+        match = pull.matches(row, source, {"context": REVIEWER_CONTEXT, "creator.login": agent_account}, by="created_at")
+        if match is False:
+            continue
+        if match is UNKNOWN:
+            return UNKNOWN
+        if row.get("state") not in ("success", "failure", "error", "pending"):
+            return pull.unknown(source, "missing or invalid status state")
+        return row["state"] == "success"
     return False
 
 
@@ -308,10 +579,10 @@ def parse_reviews(line, tier):
 
 def _summary_lines(pull, agent_account, tier):
     """The lines of the agent account's newest Merge summary titled for the tier and the head, or None."""
-    for comment in reversed(pull.comments()):
-        if not _same_login((comment.get("user") or {}).get("login"), agent_account):
-            continue
-        lines = (comment.get("body") or "").replace("\r\n", "\n").split("\n")
+    for body in pull.comment_bodies(agent_account, newest_first=True):
+        if body is UNKNOWN:
+            return UNKNOWN
+        lines = body.replace("\r\n", "\n").split("\n")
         title = SUMMARY_TITLE.fullmatch(lines[0].rstrip(" \t"))
         if title and title.group(1) == tier and title.group(2) == pull.head[:7]:
             return lines
@@ -321,172 +592,144 @@ def _summary_lines(pull, agent_account, tier):
 def _summary(pull, agent_account, tier):
     """The newest Merge summary for the tier and head, parsed; None when absent or its line doesn't read."""
     lines = _summary_lines(pull, agent_account, tier)
+    if lines is UNKNOWN:
+        return UNKNOWN
     return parse_reviews(lines[1], tier) if lines and len(lines) > 1 else None
 
 
 def waived(pull, owner):
-    """The review kinds the repository owner waived for this head, each by its own comment."""
-    kinds = set()
-    for comment in pull.comments():
-        if not _same_login((comment.get("user") or {}).get("login"), owner):
+    """A known owner waiver applies only to its named kind. An unreadable one proves nothing."""
+    kinds, uncertain = set(), False
+    for body in pull.comment_bodies(owner):
+        if body is UNKNOWN:
+            uncertain = True
             continue
-        first = (comment.get("body") or "").replace("\r\n", "\n").split("\n")[0].rstrip(" \t")
+        first = body.replace("\r\n", "\n").split("\n", 1)[0].rstrip(" \t")
         match = WAIVER.fullmatch(first)
         if match and match.group(2) == pull.head and match.group(1) in KINDS:
             kinds.add(match.group(1))
-    return kinds
+    absent = UNKNOWN if uncertain else False
+    return {kind: True if kind in kinds else absent for kind in KINDS}
 
 
 def earlier_version_missing(pull, agent_account, owner, tier, version):
-    """What every version requires of a merge onto a base below version 4: the Reviewer's
-    status from medium (or an owner/exact-head `reviewer` waiver on a version 3 base), and
-    the agent account's Merge summary titled for the tier and head with a `Required reviews:`
-    line, whatever kinds that version's line names. Versions 1 and 2 keep requiring status."""
     missing = []
-    reviewer_waived = version == 3 and "reviewer" in waived(pull, owner)
-    if tier != "low" and not reviewer_waived and not _reviewer(pull, agent_account):
-        missing.append("reviewer")
+    if tier != "low":
+        waiver = waived(pull, owner)["reviewer"] if version == 3 else False
+        if waiver is not True and any_evidence((waiver, _reviewer(pull, agent_account))) is False:
+            missing.append("reviewer")
     lines = _summary_lines(pull, agent_account, tier)
-    if lines and len(lines) > 1 and lines[1].startswith(SUMMARY_REVIEWS):
-        return missing
-    return missing + [MERGE_SUMMARY]
+    if lines is not UNKNOWN and not (lines and len(lines) > 1 and lines[1].startswith(SUMMARY_REVIEWS)):
+        missing.append(MERGE_SUMMARY)
+    return missing
 
 
-def enabled_bots(read, repository, ref):
-    """Return the record's version and enabled bots, with None for either unknown value.
-
-    NotFound when GitHub answers that ref holds no record."""
-    try:
-        text = read("repos/%s/contents/%s?ref=%s" % (repository, RECORD, ref))
-        parsed = gate.parse_record(text.encode("utf-8"))
-    except NotFound:
-        raise
-    except (ReadError, gate.RecordError, AttributeError):
-        return None, None
-    bots = parsed["confirmed"].get("review_bots")
+def _bot_slot(pull, summary, bots, tier, agent):
     if bots is None:
-        return parsed["version"], None
-    return parsed["version"], [bot for bot in bots if bot in PROVIDERS]
+        return UNKNOWN
+    if summary is None or summary is UNKNOWN:
+        completed = any_evidence(PROVIDERS[bot](pull) for bot in bots)
+        if summary is None:
+            return completed
+        # Even unreadable declarations cannot supply a review when no provider completed
+        # and a medium Reviewer substitution is impossible.
+        if completed is False and (tier == "high" or _reviewer(pull, agent) is False):
+            return False
+        return UNKNOWN
+    state, provider = summary["bot-1"]
+    if state in ("clear", "fallback"):
+        allowed = bots[:1] if state == "clear" else bots[1:]
+        return provider in allowed and PROVIDERS[provider](pull)
+    exhausted = ((state, provider) == ("no-provider", "none")
+                 or (state == "unavailable" and bool(bots) and provider == bots[-1]))
+    return (tier == "medium" and exhausted and summary.get("reviewer") == ("clear", None)
+            and _reviewer(pull, agent))
 
 
 def missing_reviews(pull, agent_account, owner, tier, bots):
-    """Each review missing from the head at the tier: Merge summary kinds in their order, then `merge-summary`."""
-    policy_known = bots is not None
-    bots = bots or ()
+    """List only established absences. Pull retains the reasons for unresolved evidence."""
     summary = _summary(pull, agent_account, tier)
     waivers = waived(pull, owner)
     missing = set()
-    slots = [kind for kind in REQUIRED[tier] if kind in BOT_SLOTS and kind not in waivers]
-    completed = {}
-
-    def done(provider):
-        if provider not in completed:
-            completed[provider] = provider in bots and PROVIDERS[provider](pull)
-        return completed[provider]
-
-    def in_place(state, provider):
-        # `clear` names the first enabled provider and `fallback` a later one. An unknown
-        # policy enables no provider, so `done` already leaves the slot missing.
-        if not policy_known:
-            return True
-        return provider in (bots[:1] if state == "clear" else bots[1:])
-
-    if summary is not None:
-        used = set()
-        for slot in slots:
-            state, provider = summary[slot]
-            if (state in ("clear", "fallback") and provider not in used
-                    and in_place(state, provider) and done(provider)):
-                used.add(provider)
-            else:
-                missing.add(slot)
-    elif slots:
-        filled = []
-        for bot in bots:
-            if len(filled) == len(slots):
-                break
-            if done(bot):
-                filled.append(bot)
-        missing.update(slots[len(filled):])
-    if "reviewer" in REQUIRED[tier] and "reviewer" not in waivers and not _reviewer(pull, agent_account):
-        missing.add("reviewer")
-    for kind in ("self-verification", "reviewer", "security"):
-        if summary is not None and kind in summary and summary[kind][0] == "waived" and kind not in waivers:
-            missing.add(kind)
-    if (tier == "medium" and policy_known and summary is not None
-            and summary.get("reviewer") == ("clear", None)
-            and (summary.get("bot-1") == ("no-provider", "none")
-                 or (bots and summary.get("bot-1") == ("unavailable", bots[-1])))
-            and _reviewer(pull, agent_account)):
-        missing.discard("bot-1")
+    if "bot-1" in REQUIRED[tier] and waivers["bot-1"] is not True:
+        slot = _bot_slot(pull, summary, bots, tier, agent_account)
+        if any_evidence((slot, waivers["bot-1"])) is False:
+            missing.add("bot-1")
+    if "reviewer" in REQUIRED[tier] and waivers["reviewer"] is not True:
+        if any_evidence((_reviewer(pull, agent_account), waivers["reviewer"])) is False:
+            missing.add("reviewer")
+    if isinstance(summary, dict):
+        for kind in ("self-verification", "reviewer", "security"):
+            if summary.get(kind) == ("waived", None) and waivers[kind] is False:
+                missing.add(kind)
     ordered = [kind for kind in KINDS if kind in missing]
     if summary is None:
         ordered.append(MERGE_SUMMARY)
     return ordered
 
 
-def _judge_pull(read, repository, agent_account, pull, squash, base, notes):
+def _judge_pull(read, repository, matches, squash, notes, problems):
     records = []
-    number, head = pull["number"], pull["head"]["sha"]
-    body = gate.parse_body(pull.get("body") or "")
-    reverts = body["reverts"]
+    pull = matches[0]
+    number = pull["number"]
+    revisions, declared, reverts = merge_facts(matches, problems)
     if isinstance(reverts, dict):
-        try:
-            reverted, _ = _merged_pr(read, repository, pull["base"]["ref"], reverts["sha"])
-        except ReadError:
-            reverted = None
+        reverted, _ = _merged_pr(read, repository, pull["base"]["ref"], reverts["sha"], problems)
         records.append(record(
-            reverted["number"] if reverted else None, "escape", "revert",
+            reverted[0]["number"] if reverted else None, "escape", "revert",
             "#%d, merged as %s, reverted %s, and its body had a `Reverts:` line." % (number, squash, reverts["sha"]),
         ))
-    elif reverts is not None:
+    elif reverts is not None and reverts is not UNKNOWN:
         records.append(record(
             None, "escape", "revert",
             "#%d, merged as %s, has a `Reverts:` line that doesn't read (%s), so the reverted PR is unknown."
             % (number, squash, reverts),
         ))
-    risk = body["risk"]
-    if isinstance(risk, dict):
-        tier, declared = risk["tier"], "declared %s" % risk["tier"]
-    else:
-        tier, declared = "high", "declared no readable tier (its `Risk:` line is %s), judged at high" % risk
-    try:
-        version, bots = enabled_bots(read, repository, base)
-    except NotFound:
-        notes.append("#%d merged onto a base with no governance record, so the record it adds names the enabled "
-                     "review bots." % number)
-        try:
-            version, bots = enabled_bots(read, repository, squash)
-        except NotFound:
-            version, bots = None, None
-    facts = Pull(read, repository, number, head)
-    if version is not None and version < REVIEW_BOTS_VERSION:
+    # A missing body leaves all tiers possible. A readable sibling for the same
+    # revision bounds them. Establish only absences common to every supported reading.
+    cache = {}
+    candidates = [(Pull(read, repository, number, head, cutoff, problems, notes, cache), risks)
+                  for (head, cutoff), risks in revisions.items()]
+    first_pull, _ = candidates[0]
+    policy = first_pull.policy(squash)  # All candidate revisions share this squash parent.
+    if policy is UNKNOWN:
+        return records
+    version, agent = policy["version"], policy["agent_account"]
+    owner = repository.split("/", 1)[0]
+    if version < REVIEW_BOTS_VERSION:
         notes.append("#%d merged onto a base whose record is at version %d; its review bots follow that version's "
                      "rules, which this script doesn't judge." % (number, version))
-        missing = earlier_version_missing(facts, agent_account, repository.split("/")[0], tier, version)
-    else:
-        missing = missing_reviews(facts, agent_account, repository.split("/")[0], tier, bots)
-    if missing:
-        records.append(record(
-            number, "process miss", "missing-review",
-            "Merged head %s, %s, lacks: %s." % (head, declared, ", ".join(missing)),
-        ))
+    common = set(KINDS + (MERGE_SUMMARY,))
+    for facts, risks in candidates:
+        tiers = possible_tiers(risks)
+        for tier in REQUIRED:
+            if tier not in tiers:
+                continue
+            if version < REVIEW_BOTS_VERSION:
+                missing = earlier_version_missing(facts, agent, owner, tier, version)
+            else:
+                missing = missing_reviews(facts, agent, owner, tier, policy["confirmed"].get("review_bots"))
+            common.intersection_update(missing)
+    if common:
+        heads = sorted({head for head, _ in revisions})
+        subject = ("Merged head %s" % heads[0] if len(heads) == 1 else
+                   "Merged as %s (possible heads %s)" % (squash, ", ".join(heads)))
+        kinds = [kind for kind in KINDS + (MERGE_SUMMARY,) if kind in common]
+        records.append(record(number, "process miss", "missing-review",
+                              "%s, %s, lacks: %s." % (subject, declared, ", ".join(kinds))))
     return records
 
 
-def _on_push(event, read, repository, default_branch, agent_account, notes):
+def _on_push(event, read, repository, default_branch, notes, problems):
     records = []
-    # Each commit's parent: the one before it in the push, or the push's `before` for the first.
-    base = event.get("before")
     for commit in event.get("commits") or []:
-        sha = commit["id"]
-        parent, base = base, sha
-        try:
-            pull, in_history = _merged_pr(read, repository, default_branch, sha)
-        except ReadError:
-            pull, in_history = None, False
-        if pull is not None:
-            records.extend(_judge_pull(read, repository, agent_account, pull, sha, parent, notes))
+        sha = commit.get("id") if isinstance(commit, dict) else None
+        if not is_sha(sha):
+            unresolved(problems, "push commits: malformed list member")
+            continue
+        matches, in_history = _merged_pr(read, repository, default_branch, sha, problems)
+        if matches:
+            records.extend(_judge_pull(read, repository, matches, sha, notes, problems))
         elif not in_history:
             records.append(record(
                 None, "process miss", "push-without-pr",
@@ -495,7 +738,7 @@ def _on_push(event, read, repository, default_branch, agent_account, notes):
     return records
 
 
-def _on_workflow_run(event, read, repository, default_branch, open_records):
+def _on_workflow_run(event, read, repository, default_branch, open_records, problems):
     run = event["workflow_run"]
     if (
         run.get("event") != "push"
@@ -507,35 +750,33 @@ def _on_workflow_run(event, read, repository, default_branch, open_records):
     if any(_field(issue.get("body"), "Category") == "red-default-branch" for issue in open_records):
         return []
     sha = run["head_sha"]
-    try:
-        pull, _ = _merged_pr(read, repository, default_branch, sha)
-    except ReadError:
-        pull = None
+    matches, _ = _merged_pr(read, repository, default_branch, sha, problems)
     return [record(
-        pull["number"] if pull else None, "escape", "red-default-branch",
+        matches[0]["number"] if matches else None, "escape", "red-default-branch",
         "Workflow %s concluded %s on its push-triggered run %s at commit %s."
         % (run.get("name"), run.get("conclusion"), run.get("html_url"), sha),
     )]
 
 
-def decide(event_name, event, agent_account, read, notes=None):
+def decide(event_name, event, agent_account, read, notes=None, problems=None):
     """The miss records to open for one event.
 
     `read(path)` returns the JSON list GitHub gives for a REST path, every page joined (a
-    check-runs answer's `check_runs`), a file's text for a `contents` path, or raises
-    ReadError. `agent_account` is the record's, or None when the record doesn't parse. Each
-    record is {"title", "body", "labels"}. A fact worth saying that records nothing is
-    appended to `notes`, when given.
+    check-runs answer's `check_runs`), a Git commit or Actions run object, or record text.
+    Reads may raise ReadError. The legacy agent_account argument is ignored: each merge's
+    historical record supplies its account. Return {title, body, labels} records, add
+    observations to notes, and incomplete assessments to problems (or notes when omitted).
     """
     notes = [] if notes is None else notes
+    problems = notes if problems is None else problems
     repository = event["repository"]["full_name"]
     default_branch = event["repository"]["default_branch"]
     if event_name == "push" and event.get("ref") == "refs/heads/" + default_branch:
-        open_records = _open_records(read, repository)
-        records = _on_push(event, read, repository, default_branch, agent_account, notes)
+        open_records = _open_records(read, repository, problems)
+        records = _on_push(event, read, repository, default_branch, notes, problems)
     elif event_name == "workflow_run":
-        open_records = _open_records(read, repository)
-        records = _on_workflow_run(event, read, repository, default_branch, open_records)
+        open_records = _open_records(read, repository, problems)
+        records = _on_workflow_run(event, read, repository, default_branch, open_records, problems)
     else:
         return []
     seen = set((issue.get("title"), _field(issue.get("body"), "Observed")) for issue in open_records)
@@ -553,29 +794,36 @@ class GitHub(object):
     def __init__(self):
         self.unreadable = []
 
+    def _json(self, path):
+        result = subprocess.run(["gh", "api", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            if result.returncode:
+                raise ValueError(" ".join(result.stderr.decode("utf-8", "replace").split()) or "gh failed")
+            return json.loads(result.stdout)
+        except ValueError as error:
+            self.unreadable.append("%s: %s" % (path, error))
+            raise ReadError(path)
+
     def __call__(self, path):
-        if "/contents/" in path:
+        # All requests have the form repos/{owner}/{repository}/{endpoint}.
+        endpoint = path.split("/", 3)[3]
+        if endpoint.startswith("contents/"):
             return self._file(path)
+        if endpoint.startswith(("git/commits/", "actions/jobs/", "actions/runs/")):
+            return self._json(path)
         items, page = [], 1
         while True:
             paged = "%s%sper_page=%d&page=%d" % (path, "&" if "?" in path else "?", PER_PAGE, page)
-            result = subprocess.run(["gh", "api", paged], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            try:
-                if result.returncode != 0:
-                    raise ValueError(" ".join(result.stderr.decode("utf-8", "replace").split()) or "gh failed")
-                data = json.loads(result.stdout.decode("utf-8"))
-                if isinstance(data, dict) and isinstance(data.get("check_runs"), list):
-                    data = data["check_runs"]
-                if not isinstance(data, list):
-                    raise ValueError("the answer isn't a list")
-            except ValueError as error:
-                self.unreadable.append("%s: %s" % (paged, error))
+            data = self._json(paged)
+            if endpoint.partition("?")[0].endswith("/check-runs"):
+                data = data.get("check_runs") if isinstance(data, dict) else None
+            if not isinstance(data, list):
+                self.unreadable.append(paged + ": the answer isn't a list")
                 raise ReadError(path)
             items.extend(data)
             if len(data) < PER_PAGE:
                 return items
             page += 1
-
 
     def _file(self, path):
         """A file's text at a ref, from the contents API's raw form; NotFound on GitHub's own answer that it isn't there."""
@@ -619,26 +867,22 @@ def main(argv=None):
     with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as handle:
         event = json.load(handle)
     event_name = os.environ["GITHUB_EVENT_NAME"]
-    try:
-        with open(os.path.join(os.getcwd(), *RECORD.split("/")), "rb") as handle:
-            agent_account = gate.parse_record(handle.read())["agent_account"]
-    except (OSError, gate.RecordError) as error:
-        agent_account = None
-        print("UNREADABLE %s: %s; no comment or status counts as the agent account's" % (RECORD, error))
     github = GitHub()
-    notes = []
-    records = decide(event_name, event, agent_account, github, notes)
-    failed = agent_account is None or bool(github.unreadable)
+    notes, problems = [], []
+    records = decide(event_name, event, None, github, notes, problems)
+    failed = bool(github.unreadable or problems)
     for line in github.unreadable:
         print("UNREADABLE " + line)
     for line in notes:
         print("NOTE " + line)
+    for line in problems:
+        print("INCOMPLETE " + line)
     for rec in records:
         print("MISS %s. %s" % (rec["title"], _field(rec["body"], "Observed")))
         if args.post and not _post(event["repository"]["full_name"], rec):
             print("FAIL opening the record %s" % rec["title"])
             failed = True
-    if not records:
+    if not records and not failed:
         print("No miss in this %s event." % event_name)
     return 1 if failed else 0
 

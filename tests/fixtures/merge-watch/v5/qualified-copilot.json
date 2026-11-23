@@ -1,0 +1,112 @@
+{
+  "description": "F03/F05/F08/F09/F12 (#224, repair #233). The review, check and linked Actions job and run fields are from #131's qualified public sandbox PR #54. The merge, record, summary and Reviewer status are synthetic.",
+  "source": "https://github.com/Habit130/agent-repo-governance/issues/131#issuecomment-6764123174",
+  "event_name": "push",
+  "event": {
+    "ref": "refs/heads/main",
+    "before": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "after": "dddddddddddddddddddddddddddddddddddddddd",
+    "commits": [
+      {
+        "id": "dddddddddddddddddddddddddddddddddddddddd"
+      }
+    ],
+    "repository": {
+      "full_name": "Habit130/governance-sandbox",
+      "default_branch": "main"
+    }
+  },
+  "github": {
+    "repos/Habit130/governance-sandbox/commits/dddddddddddddddddddddddddddddddddddddddd/pulls": [
+      {
+        "number": 54,
+        "merged_at": "2026-11-10T09:45:00Z",
+        "merge_commit_sha": "dddddddddddddddddddddddddddddddddddddddd",
+        "base": {
+          "ref": "main"
+        },
+        "head": {
+          "sha": "4dd0a59f20bb3937346627d31dc70b3d5b07db49"
+        },
+        "body": "Risk: high — governance changes"
+      }
+    ],
+    "repos/Habit130/governance-sandbox/git/commits/dddddddddddddddddddddddddddddddddddddddd": {
+      "sha": "dddddddddddddddddddddddddddddddddddddddd",
+      "parents": [
+        {
+          "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ]
+    },
+    "repos/Habit130/governance-sandbox/contents/.github/governance/record.yml?ref=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": "version: 5\nagent_account: HistoricalAgent\nsensitive_paths:\nconfirmed:\n  sensitive_paths:\n  required_checks:\n  review_bots:\n    - \"copilot\"\n    - \"codex\"\n",
+    "repos/Habit130/governance-sandbox/issues/54/comments": [
+      {
+        "user": {
+          "login": "HistoricalAgent"
+        },
+        "created_at": "2026-11-10T09:44:00Z",
+        "updated_at": "2026-11-10T09:44:00Z",
+        "body": "## Merge summary: high at 4dd0a59\nRequired reviews: self-verification=clear, bot-1=clear(copilot), reviewer=clear"
+      }
+    ],
+    "repos/Habit130/governance-sandbox/pulls/54/reviews": [
+      {
+        "id": 5839759179,
+        "user": {
+          "login": "copilot-pull-request-reviewer[bot]",
+          "type": "Bot"
+        },
+        "state": "COMMENTED",
+        "commit_id": "4dd0a59f20bb3937346627d31dc70b3d5b07db49",
+        "is_copilot_code_review": true,
+        "submitted_at": "2026-11-10T09:43:07Z"
+      }
+    ],
+    "repos/Habit130/governance-sandbox/commits/4dd0a59f20bb3937346627d31dc70b3d5b07db49/check-runs?check_name=copilot-pull-request-reviewer&filter=all": [
+      {
+        "id": 129750222497,
+        "name": "copilot-pull-request-reviewer",
+        "head_sha": "4dd0a59f20bb3937346627d31dc70b3d5b07db49",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-10T09:43:08Z",
+        "app": {
+          "slug": "github-actions"
+        },
+        "check_suite": {
+          "id": 115892093650
+        },
+        "details_url": "https://github.com/Habit130/governance-sandbox/actions/runs/42792788901/job/129750222497"
+      }
+    ],
+    "repos/Habit130/governance-sandbox/actions/runs/42792788901": {
+      "id": 42792788901,
+      "head_sha": "4dd0a59f20bb3937346627d31dc70b3d5b07db49",
+      "check_suite_id": 115892093650,
+      "event": "dynamic",
+      "path": "dynamic/agents/copilot-pull-request-reviewer",
+      "actor": {
+        "login": "Copilot"
+      }
+    },
+    "repos/Habit130/governance-sandbox/commits/4dd0a59f20bb3937346627d31dc70b3d5b07db49/statuses": [
+      {
+        "context": "Reviewer",
+        "creator": {
+          "login": "HistoricalAgent"
+        },
+        "state": "success",
+        "created_at": "2026-11-10T09:44:00Z"
+      }
+    ],
+    "repos/Habit130/governance-sandbox/issues?labels=miss&state=open": [],
+    "repos/Habit130/governance-sandbox/actions/jobs/129750222497": {
+      "id": 129750222497,
+      "run_id": 42792788901,
+      "head_sha": "4dd0a59f20bb3937346627d31dc70b3d5b07db49",
+      "check_run_url": "https://api.github.com/repos/Habit130/governance-sandbox/check-runs/129750222497"
+    }
+  },
+  "expected": []
+}
