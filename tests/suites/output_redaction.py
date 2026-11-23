@@ -159,6 +159,12 @@ class ListColumn(NamedTuple):
     index: int
 
 
+class ImportedMember(NamedTuple):
+    module: str
+    name: str
+    site: ast.ImportFrom
+
+
 class ClassHierarchy:
     """Identify field writes that can affect the same instance, including through inherited methods."""
 
@@ -189,7 +195,7 @@ class ClassHierarchy:
             bindings = scope.bindings.get(node.name, ())
             module, _, attribute = name.rpartition(".")
             assignments = [*field_writes.get(attribute, ()), *field_writes.get(None, ())]
-            replaced = any(module in writer.origins(receiver) for writer, receiver, _ in assignments)
+            replaced = any(module in writer.origins(receiver) for writer, receiver, _, _ in assignments)
             if (len(bindings) == 1 and bindings[0][0] is node and not node.decorator_list
                     and node.name not in scope.external_writes
                     and not scope.shared_bindings.get(node.name) and not replaced):
@@ -279,7 +285,7 @@ class Scope:
             receiver = INSTANCE + class_id(path, node)
             for name, bindings in self.bindings.items():
                 self.fields.add(name)
-                self.field_writes[name].extend((self, receiver, value) for _, value, _ in bindings)
+                self.field_writes[name].extend((self, receiver, value, site) for site, value, _ in bindings)
         if isinstance(node, ast.Lambda):
             self.returns.append(node.body)
         self.nested_reads = {n.id for child in self.children for n in ast.walk(child) if isinstance(n, ast.Name)}
@@ -289,7 +295,7 @@ class Scope:
             targets = self.origins(call.func)
             if "builtins.setattr" in targets and len(call.args) == 3:
                 field = literal(self.origins(call.args[1]))
-                self.field_writes[field].append((self, call.args[0], call.args[2]))
+                self.field_writes[field].append((self, call.args[0], call.args[2], call))
             if not self.has_redactor or all(reads_argument(target, call) for target in targets):
                 continue
             for arg in [*call.args, *(kw.value for kw in call.keywords)]:
@@ -395,7 +401,8 @@ class Scope:
                         module = resolve_name("." * node.level + (node.module or ""), package)
                     except ImportError:
                         module = UNKNOWN
-                    self.bindings[alias.asname or alias.name].append((node, module + "." + alias.name, True))
+                    member = ImportedMember(module, alias.name, node)
+                    self.bindings[alias.asname or alias.name].append((node, member, True))
                 else:
                     first = alias.name.split(".")[0]
                     self.bindings[alias.asname or first].append((node, alias.name if alias.asname else first, True))
@@ -441,7 +448,7 @@ class Scope:
             self.invalidate(node.value, node)
             if isinstance(node, ast.Attribute):
                 value = parent.value if isinstance(parent, (ast.Assign, ast.AnnAssign)) else UNKNOWN
-                self.field_writes[node.attr].append((self, node.value, value))
+                self.field_writes[node.attr].append((self, node.value, value, parent))
                 if self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self":
                     self.fields.add(node.attr)
         elif isinstance(node, ast.Call):
@@ -527,6 +534,8 @@ class Scope:
         """Imported names, output handles, or redacted values this expression can produce."""
         if isinstance(node, str):
             return {node}
+        if isinstance(node, ImportedMember):
+            return self.member_values({node.module}, node.name, node.site, seen)
         if isinstance(node, ListColumn) and node not in seen:
             return self.column_origins(node, seen | {node})
         if isinstance(node, ast.Name):
@@ -548,7 +557,7 @@ class Scope:
                 values = self.field_writes[node.attr] + self.field_writes.get(None, [])
                 if self.ordinary_field(values, seen | {node}):
                     return {PATH}
-            return {name + "." + node.attr for name in self.origins(node.value, seen)}
+            return self.member_values(self.origins(node.value, seen), node.attr, node, seen)
         if isinstance(node, ast.Constant):
             if node.value is None:
                 return {"None"}
@@ -602,13 +611,38 @@ class Scope:
         return {UNKNOWN}
 
     def ordinary_field(self, writes, seen):
-        for writer, receiver, value in writes:
+        for writer, receiver, value, _ in writes:
             owners = writer.origins(receiver, seen)
             if owners and all(self.classes.disjoint(owner, self.instance) for owner in owners):
                 continue
             if not ordinary_paths(writer.origins(value, seen)):
                 return False
         return True
+
+    def member_values(self, owners, name, read, seen):
+        values = {owner + "." + name for owner in owners}
+        modules = owners & {"os", "os.path", "sys", "builtins", "json", "re", "io", "govlib",
+                            "govlib.secrets", "govlib.storedform"}
+        if modules:
+            for field in (name, None):
+                for writer, receiver, value, site in self.field_writes.get(field, ()):
+                    if site in seen:
+                        continue
+                    if (writer is self and isinstance(self.node, ast.Module)
+                            and (site.end_lineno, site.end_col_offset) > (read.lineno, read.col_offset)
+                            and self.enclosing_loops(site).isdisjoint(self.enclosing_loops(read))):
+                        continue  # A later write cannot change an already captured module-level import.
+                    if modules & writer.origins(receiver, seen | {site}):
+                        values.update(writer.origins(value, seen | {site}))
+        return values
+
+    def enclosing_loops(self, node):
+        loops = set()
+        while node in self.parents:
+            node = self.parents[node]
+            if isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
+                loops.add(node)
+        return loops
 
     def column_origins(self, column, seen):
         """Marker repair opens paths from local (checked path, text) pairs. An escaping list loses that proof."""
@@ -652,8 +686,8 @@ class Scope:
         if names == {"builtins.getattr"} and len(call.args) >= 2:
             owners = self.origins(call.args[0], seen)
             attrs = self.origins(call.args[1], seen)
-            resolved = {owner + "." + attr[len(LITERAL):] for owner in owners
-                        for attr in attrs if attr.startswith(LITERAL)}
+            resolved = set().union(*(self.member_values(owners, attr[len(LITERAL):], call, seen)
+                                     for attr in attrs if attr.startswith(LITERAL)))
             if len(call.args) == 3:
                 resolved.update(self.origins(call.args[2], seen))
             if any(not attr.startswith(LITERAL) for attr in attrs):
@@ -819,7 +853,7 @@ def verified_path_helper(module):
             or module.shared_bindings.get("check_target")):
         return False
     for field in ("check_target", None):
-        for writer, receiver, _ in module.field_writes.get(field, []):
+        for writer, receiver, _, _ in module.field_writes.get(field, []):
             if "govlib.storedform" in writer.origins(receiver):
                 return False
     helper = next(s for s in module.children if s.node is bindings[0][0])

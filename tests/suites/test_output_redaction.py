@@ -547,3 +547,22 @@ class OutputRedaction(unittest.TestCase):
         self.assertEqual(unredacted_writes("sample.py", source), [6])
         actual_terminal = source.replace('("/tmp", "report.txt")', '("/dev", "stderr")')
         self.assertEqual(unredacted_writes("sample.py", actual_terminal), [4, 6])
+
+    def test_zero_argument_join_depends_on_which_callable_the_program_imported(self):
+        prefix = "import os, sys\n"
+        patch = "os.path.join = lambda *parts: sys.stderr\n"
+        capture = "from os.path import join\n"
+        emit = "print(raw, file=join(*()))\n"
+        self.assertEqual(unredacted_writes("sample.py", prefix + patch + capture + emit), [4])
+        self.assertEqual(unredacted_writes("sample.py", prefix + capture + patch + emit), [])
+        descriptor = prefix + "setattr(os.path, 'join', lambda *parts: 2)\n" + capture
+        self.assertEqual(unredacted_writes("sample.py", descriptor + "os.write(join(*()), raw_bytes)\n"), [4])
+        repeated = dedent("""\
+            import os, sys
+            for iteration in range(2):
+                from os.path import join
+                if iteration:
+                    print(raw, file=join(*()))
+                os.path.join = lambda *parts: sys.stderr
+        """)
+        self.assertEqual(unredacted_writes("sample.py", repeated), [5])
