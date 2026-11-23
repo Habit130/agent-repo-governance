@@ -8,19 +8,21 @@ real git, whose global file is the home's. So the call log shows each step's cal
 second run finds the state the first one left.
 
 Every answer the wizard reads carries a planted credential-shaped value, in fields it ignores
-as well (`PLANTS`), and no test runs `ghm` or any `gh` inside a login shell: the macOS login
+as well, and no test runs `ghm` or any `gh` inside a login shell: the macOS login
 profile reorders PATH, and a real gh there could reach the keychain.
 """
 
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import time
 import unittest
 from unittest import mock
 
+import credential_plants as plants
 import machine_support as ms
 import support
 from standins import environment
@@ -47,18 +49,13 @@ def credential_section(helper=GH_HELPER):
     return '[credential "https://github.com"]\n\thelper = \n\thelper = %s\n' % helper
 
 
-def _plant(n):
-    return "ghp_" + ("PLANTED%02d" % n).ljust(36, "x")
-
-
-PLANTS = [_plant(n) for n in range(12)]
 WIZARD = os.path.join(ms.MACHINE, "wizard.sh")
 REAL_GIT = shutil.which("git", path="/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin")
 
 
 def status_entry(login, scopes="gist, read:org, repo, workflow", source="keyring", state="success"):
     return {"state": state, "active": True, "host": "github.com", "login": login, "tokenSource": source,
-            "scopes": scopes, "gitProtocol": "https", "error": PLANTS[1], "token": PLANTS[2]}
+            "scopes": scopes, "gitProtocol": "https", "error": plants.FIELD, "token": plants.FIELD}
 
 
 def recording(path, agent_login=AGENT, maintainer_login=MAINTAINER, agent_exit=0, maintainer_exit=0, extra=(),
@@ -66,20 +63,20 @@ def recording(path, agent_login=AGENT, maintainer_login=MAINTAINER, agent_exit=0
     """The stand-in GitHub for the wizard: which account each login yields, or its failure."""
     calls = list(extra)
     calls.append({"args": STATUS, "when": [{"path": STATE, "absent": True}], "exit": 0,
-                  "stdout": json.dumps({"hosts": {}, "note": PLANTS[0]}) + "\n",
-                  "stderr": "You are not logged into any accounts on github.com %s\n" % PLANTS[3]})
+                  "stdout": json.dumps({"hosts": {}, "note": plants.FIELD}) + "\n",
+                  "stderr": "You are not logged into any accounts on github.com %s\n" % plants.FIELD})
     for login in (AGENT, MAINTAINER, OTHER):
         when = [{"path": STATE, "contains": login + "\n"}]
-        calls.append({"args": STATUS, "when": when, "exit": 0, "stderr": PLANTS[4],
+        calls.append({"args": STATUS, "when": when, "exit": 0, "stderr": plants.FIELD,
                       "stdout": json.dumps({"hosts": {"github.com": [status_entry(login)]}}) + "\n"})
-        calls.append({"args": ["api", "user"], "when": when, "exit": 0, "stderr": PLANTS[5],
-                      "stdout": json.dumps({"login": login, "id": IDS[login], "bio": PLANTS[6], "name": PLANTS[7]}) + "\n"})
+        calls.append({"args": ["api", "user"], "when": when, "exit": 0, "stderr": plants.FIELD,
+                      "stdout": json.dumps({"login": login, "id": IDS[login], "bio": plants.FIELD, "name": plants.FIELD}) + "\n"})
     for args, login, code in ((AGENT_LOGIN, agent_login, agent_exit), (MAINTAINER_LOGIN, maintainer_login, maintainer_exit)):
         call = {"args": args, "exit": code, "stdout": "%s\n" % ATTACHED, "stderr": ""}
         if code == 0:
             call["effects"] = [{"path": STATE, "write": login + "\n"}]
         calls.append(call)
-    calls.append({"args": SETUP_GIT, "exit": 0, "stdout": PLANTS[8], "stderr": PLANTS[9],
+    calls.append({"args": SETUP_GIT, "exit": 0, "stdout": plants.FIELD, "stderr": plants.FIELD,
                   "effects": [{"path": "${HOME}/.gitconfig", "append": credential_section(helper)}]})
     with open(path, "w") as handle:
         json.dump({"description": "The account wizard's stand-in GitHub, written by test_machine_wizard.py.",
@@ -120,16 +117,16 @@ class WizardCase(support.TempDirCase):
         self.runs += 1
         scratch, env = self.env(path, extra)
         code, out, err = ms.run_machine(["wizard", "--home", self.home], env)
+        plants.assert_no_values(self, out, err)
         self.assertEqual(err, "", "the wizard wrote to stderr")
         self.assertFalse(ms.ghm_called(scratch), "the wizard called ghm")
         calls = environment.read_log(scratch)
+        plants.assert_absent(self, json.dumps(calls), "wizard stand-in log")
         for call in calls:
             self.assertTrue(call["recorded"], "a call no recording answers: %r" % call)
             self.assertNotEqual(call["args"][:2], ["auth", "logout"])
             self.assertNotEqual(call["args"][:2], ["auth", "token"])
             self.assertNotIn("--insecure-storage", call["args"])
-        for plant in PLANTS:
-            self.assertNotIn(plant, out)
         return code, out, calls
 
     def gh_calls(self, calls):
@@ -190,6 +187,7 @@ class Walkthrough(WizardCase):
     def test_ghm_takes_19s_form_and_the_profile_holds_no_token(self):
         self.assertEqual(self.wizard()[0], 0)
         profile = self.read(".zshrc")
+        plants.assert_absent(self, profile, "wizard-written shell profile")
         self.assertIn('GH_CONFIG_DIR="$HOME/.config/gh-maintainer"', profile)
         self.assertEqual(profile.count("gh auth token"), 1)
         definition = re.search(r"^ghm\(\) \{\n(.*?)^\}\n", profile, re.S | re.M)
@@ -237,6 +235,7 @@ class Command(WizardCase):
         scratch, env = self.env()
         result = subprocess.run(["/bin/bash", "-c", self.line()], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 universal_newlines=True, stdin=subprocess.DEVNULL)
+        plants.assert_no_values(self, result.stdout, result.stderr)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(result.stdout.startswith("== account wizard\n"), result.stdout)
         self.assertIn("下一步：install", result.stdout)
@@ -306,7 +305,7 @@ class Stops(WizardCase):
         self.assert_picks_up(ALL_ACTING)
 
     def test_a_token_variable_in_the_environment(self):
-        self.assert_stops("前提", [], "GH_TOKEN", extra={"GH_TOKEN": PLANTS[10]})
+        self.assert_stops("前提", [], "GH_TOKEN", extra={"GH_TOKEN": plants.FIELD})
         self.assert_picks_up(ALL_ACTING)
 
     def test_the_default_login_held_by_another_account(self):
@@ -351,7 +350,7 @@ class Stops(WizardCase):
             {"args": ["api", "user"], "once": True, "when": [{"path": STATE, "contains": AGENT + "\n"}],
              "stdout": json.dumps({"login": AGENT, "id": ms.AGENT_ID}) + "\n"},
             {"args": ["api", "user"], "when": [{"path": STATE, "contains": AGENT + "\n"}], "exit": 1,
-             "stdout": "", "stderr": "gh: Bad credentials %s\n" % PLANTS[11]},
+             "stdout": "", "stderr": "gh: Bad credentials %s\n" % plants.FIELD},
         ])
         code, out, _ = self.wizard()  # wizard() asserts no plant in the output
         self.assertEqual(code, 1, out)
@@ -408,8 +407,8 @@ class CredentialRoute(WizardCase):
         self.recording = recording(self.path("gh-route.json"), helper=self.gh_helper)
         self.other_mark = self.path("other-helper-ran")
         # A helper that supplies a complete credential for the maintainer account, and a planted value.
-        self.other = "!f() { cat >/dev/null; touch '%s'; echo username=Habit130; echo password=%s; }; f" % (
-            self.other_mark, PLANTS[9])
+        self.other = "!f() { cat >/dev/null; touch '%s'; echo username=Habit130; echo %s; }; f" % (
+            self.other_mark, shlex.quote("password=" + plants.FIELD))
 
     def after_setup_git(self, text):
         """Have the stand-in's setup-git leave text after gh's section, where its reset can't clear it."""
@@ -554,10 +553,10 @@ class CredentialRoute(WizardCase):
         self.assertIn("单独授权", out)
         self.assertNotIn("找出其余的设置并删掉", out)
         self.assertNotIn("--get-regexp", out)
-        self.assertNotIn(self.other, out)
+        self.assertFalse(self.other in out, "helper contents in wizard output")
         self.assertEqual(self.git_writes(calls), [])
         with open(other_config) as handle:
-            self.assertEqual(handle.read(), text)
+            self.assertTrue(handle.read() == text, "wizard changed its input configuration")
 
     def test_conditional_guidance_lists_each_condition_and_source_as_unverified(self):
         conditions = ('gitdir:~/work/', 'hasconfig:remote.*.url:https://example.invalid/**',
@@ -584,17 +583,21 @@ class CredentialRoute(WizardCase):
 
     def test_diagnostic_metadata_redacts_credentials_and_quotes_control_characters(self):
         # Non-token-shaped URL passwords need protection as well as known secret shapes.
-        password = "synthetic password not a token"
-        origin = self.path("source-" + PLANTS[10] + ".config")
+        password = plants.URL_PARTS["password"] + " synthetic password not a token"
+        # File names can carry each recognized shape. The URL fields live inside the file.
+        directory = self.path(*(plants.SAMPLES[kind] for kind in plants.SHAPE_PLANTS))
+        with ms.diagnostic_fixture():
+            os.makedirs(directory)
+        origin = os.path.join(directory, "source.config")
         url = "https://someone:%s@GitLab.com:8443/project" % password
         text = ('[credential "%s"]\n\thelper = "%s"\n'
                 '[includeIf "hasconfig:remote.*.url:%s"]\n\tpath = ~/unused.config\n'
                 '[includeIf "gitdir:~/line\x1bforged/"]\n\tpath = ~/unused.config\n' %
                 (url, self.other, url))
         text += '[credential "someone:%s@GitLab.com"]\n\thelper = store\n' % password
-        with open(origin, "w") as handle:
+        with ms.diagnostic_fixture(), open(origin, "w") as handle:
             handle.write(text)
-        self.after_setup_git('[include]\n\tpath = %s\n' % origin)
+        self.after_setup_git('[include]\n\tpath = "%s"\n' % origin)
         code, out, _ = self.wizard()
         self.assertEqual(code, 1, out)
         self.assertFalse("synthetic" in out, "URL password leaked in diagnostic metadata")
@@ -603,8 +606,8 @@ class CredentialRoute(WizardCase):
         self.assertIn("仓库内路由尚未验证", out)
         self.assertNotIn("\x1b", out)
         self.assertIn("line\\u001bforged/", out)
-        with open(origin) as handle:
-            self.assertEqual(handle.read(), text)
+        with ms.diagnostic_fixture(), open(origin) as handle:
+            self.assertTrue(handle.read() == text, "wizard changed its input configuration")
 
     def test_path_provenance_preserves_url_punctuation_outside_url_fields(self):
         origin = self.path("team@work", "config?#local")
@@ -618,9 +621,9 @@ class CredentialRoute(WizardCase):
         self.assertIn(origin, out)
         for condition in conditions:
             self.assertIn(condition, out)
-        self.assertNotIn(self.other, out)
+        self.assertFalse(self.other in out, "helper contents in wizard output")
         with open(origin) as handle:
-            self.assertEqual(handle.read(), text)
+            self.assertTrue(handle.read() == text, "wizard changed its input configuration")
 
     def test_url_tails_are_withheld_before_userinfo_in_both_diagnostics(self):
         origin = self.path("url-tails.config")
@@ -628,7 +631,7 @@ class CredentialRoute(WizardCase):
         for field in ("credential", "remote-condition"):
             for delimiter in ("?", "#"):
                 with self.subTest(field=field, delimiter=delimiter):
-                    marker = "synthetic-private-tail"
+                    marker = plants.URL_PARTS["query" if delimiter == "?" else "fragment"]
                     url = "https://GitLab.com%signored@%s" % (delimiter, marker)
                     text = '[credential "%s"]\n\thelper = "%s"\n' % (
                         url if field == "credential" else "https://GitLab.com", self.other)
@@ -642,7 +645,7 @@ class CredentialRoute(WizardCase):
                     self.assertIn(origin, out)
                     self.assertIn("<已隐藏>", out)
                     with open(origin) as handle:
-                        self.assertEqual(handle.read(), text)
+                        self.assertTrue(handle.read() == text, "wizard changed its input configuration")
 
     def test_a_key_git_can_read_but_urlsplit_cant_still_counts(self):
         self.after_setup_git('[credential "https://["]\n\thelper = "%s"\n' % self.other)
@@ -876,22 +879,23 @@ class Credentials(WizardCase):
     """CRIT-7 beyond the stand-in's answers: planted values in the files the wizard reads."""
 
     def test_no_planted_value_reaches_the_output_or_what_the_wizard_writes(self):
-        gitconfig = "[user]\n\temail = %s\n\tname = %s\n[credential]\n\thelper = %s\n" % (PLANTS[10], PLANTS[11], PLANTS[0])
-        zshrc = "export NOT_A_SECRET=%s\n" % PLANTS[3]
+        old_email = "old-email " + plants.FIELD
+        gitconfig = "[user]\n\temail = %s\n\tname = %s\n[credential]\n\thelper = %s\n" % (
+            json.dumps(old_email), json.dumps(plants.FIELD), json.dumps(plants.FIELD))
+        zshrc = "export NOT_A_SECRET=%s\n" % shlex.quote(plants.FIELD)
         support.write_tree(self.home, {".gitconfig": gitconfig, ".zshrc": zshrc})
         code, out, _ = self.wizard()  # wizard() asserts no plant in the output
         self.assertEqual(code, 0, out)
         for rel, old in ((".gitconfig", gitconfig), (".zshrc", zshrc)):
             added = [line for line in self.read(rel).splitlines() if line not in old.splitlines()]
-            for plant in PLANTS:
-                self.assertNotIn(plant, "\n".join(added), rel)
-        self.assertNotIn(PLANTS[10], self.read(".gitconfig"))  # the old email is replaced, never echoed
-        self.assertTrue(self.read(".zshrc").startswith(zshrc))
+            plants.assert_absent(self, "\n".join(added), "wizard additions to " + rel)
+        self.assertFalse(old_email in self.read(".gitconfig"), "old email survived the identity update")
+        self.assertTrue(self.read(".zshrc").startswith(zshrc), "original shell profile changed")
 
     def test_a_token_outside_the_keychain_stops_the_login_step(self):
         self.recording = recording(self.path("gh-plain.json"), extra=[
             {"args": STATUS, "when": [{"path": STATE, "contains": AGENT + "\n"}],
-             "stdout": json.dumps({"hosts": {"github.com": [status_entry(AGENT, source="/x/hosts.yml %s" % PLANTS[6])]}}) + "\n"},
+             "stdout": json.dumps({"hosts": {"github.com": [status_entry(AGENT, source="/x/hosts.yml %s" % plants.FIELD)]}}) + "\n"},
         ])
         support.write_tree(self.home, {".config/gh/standin-account": AGENT + "\n"})
         code, out, _ = self.wizard()

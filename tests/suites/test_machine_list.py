@@ -13,6 +13,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
+import credential_plants as plants
 import machine_support as ms
 import support
 import machine
@@ -126,16 +127,13 @@ class GovernedRepositories(ListCase):
 class AccountDiagnostic(support.TempDirCase):
     """The two inputs to the account failure line in miss #245."""
 
-    aws_key = "AKIA" + "Z" * 16
-
     def assert_account_failure(self, response, expected):
         stdout, stderr = io.StringIO(), io.StringIO()
         with mock.patch.object(machine.homes.Home, "run", return_value=response) as run:
             with redirect_stdout(stdout), redirect_stderr(stderr):
                 code = machine.main(["list", "--home", self.tmp])
 
-        for stream, output in (("stdout", stdout.getvalue()), ("stderr", stderr.getvalue())):
-            self.assertFalse(self.aws_key in output, "AWS access key ID in list " + stream)
+        plants.assert_no_values(self, stdout.getvalue(), stderr.getvalue())
         self.assertEqual(code, 1)
         account = [detail for status, subject, detail in ms.lines(stdout.getvalue())
                    if status == "失败" and subject == "account"]
@@ -144,12 +142,14 @@ class AccountDiagnostic(support.TempDirCase):
         self.assertTrue(run.call_args_list == [mock.call(["gh", "api", "user"])],
                         "list must stop at the identity lookup")
 
-    def test_aws_access_key_id_in_login_is_withheld(self):
-        response = (0, json.dumps({"login": self.aws_key}), "")
-        self.assert_account_failure(response, "gh 应以 agent account Habit098 运行")
+    def test_credential_shapes_in_login_are_withheld(self):
+        for kind, value in plants.SAMPLES.items():
+            with self.subTest(shape=kind):
+                shown = "<redacted %s>" % kind if kind in plants.SHAPE_PLANTS else "（已隐藏）"
+                self.assert_account_failure((0, json.dumps({"login": value}), ""), "实际：" + shown)
 
-    def test_aws_access_key_id_in_lookup_error_is_withheld(self):
-        response = (1, "", "gh: lookup failed: " + self.aws_key)
+    def test_credential_shapes_in_lookup_error_are_withheld(self):
+        response = (1, "", "gh: lookup failed: " + plants.FIELD)
         self.assert_account_failure(response, "无法确认 gh 是否以 agent account Habit098 运行")
 
 

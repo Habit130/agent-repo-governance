@@ -4,7 +4,9 @@ import json
 import os
 import subprocess
 import unittest
+from urllib.parse import quote
 
+import credential_plants as plants
 import support
 from standins import environment
 
@@ -52,6 +54,33 @@ class StandInCase(support.TempDirCase):
 
 
 class StandInGitHub(StandInCase):
+    def test_credential_fixture_keeps_the_request_audit_without_its_values(self):
+        self.env["STANDIN_REDACT_PLANTS"] = "1"
+        self.env.pop("PYTHONPATH", None)  # Exercise the standalone entry's own imports.
+        token = plants.PLANTED["github-token"]
+        header = quote(plants.PLANTED["private-key"], safe="")
+        path = "repos/fixture/branches/" + header
+        args = ["api", path, "--method", "PATCH", "-f", "label=" + token]
+        stdin = "note=" + plants.URL_PARTS["query"]
+        recording = self.path("requests.json")
+        with open(recording, "w") as handle:
+            json.dump({"tool": "gh", "calls": [{"args": args, "stdin": stdin, "stdout": token}]}, handle)
+        self.env["STANDIN_GH_RECORDING"] = recording
+        code, out, _ = self.call(["gh"] + args, stdin=stdin)
+        self.assertTrue(code == 0 and out == token, "exact request or recorded response changed")
+        self.assertNotEqual(self.call(["gh", "api", "missing/" + token])[0], 0)
+
+        raw = support.read_text(self.env["STANDIN_LOG"])
+        plants.assert_absent(self, raw, "stand-in request log")
+        self.assertFalse(header in raw, "encoded private key header in stand-in request log")
+        self.assertEqual(self.calls(), [
+            {"tool": "gh", "call": 0, "recorded": True, "stdin": "note=<planted:query>",
+             "args": ["api", "repos/fixture/branches/<planted:private-key>", "--method", "PATCH",
+                      "-f", "label=<planted:github-token>"]},
+            {"tool": "gh", "recorded": False, "args": ["api", "missing/<planted:github-token>"]},
+        ])
+        self.assert_nothing_reached_the_real_tools()
+
     def test_is_first_on_the_path_and_carries_no_credential(self):
         code, out, _ = self.call(["/bin/bash", "-c", "command -v gh; echo \"token=${GH_TOKEN-unset}\""])
         self.assertEqual(code, 0)
