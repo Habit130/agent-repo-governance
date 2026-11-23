@@ -55,6 +55,18 @@ class InstallCase(support.TempDirCase):
 class InstallDiagnostics(InstallCase):
     """An install's own diagnostics and embedded reports (miss #253)."""
 
+    def test_credential_in_the_upstream_commit_is_not_abbreviated(self):
+        relative = "skill-copies/provenance.json"
+        provenance = json.loads(support.read_text(os.path.join(self.source, relative)))
+        provenance["license"]["commit"] = ms.AWS_KEY_ID
+        support.write_tree(self.source, {relative: json.dumps(provenance)})
+        env = self.env()
+        # The offline stand-in rejects this unknown comparison. Its argv contains the plant.
+        env.pop("STANDIN_LOG")
+        result = ms.run_machine(["install", "--source", self.source, "--home", self.home], env)
+        self.assertFalse(any(ms.AWS_KEY_ID[:12] in stream for stream in result[1:]), "credential prefix in output")
+        ms.assert_diagnostic(self, result, 0, "[说明] upstream：无法比较 mattpocock/skills 与 <redacted AWS access key ID>")
+
     def test_upstream_failure_stays_informational(self):
         gh = ms.write_gh_recording(self.path("gh.json"))
         ms.replace_response(gh, ["api", "repos/mattpocock/skills/compare/%s...HEAD" % ms.UPSTREAM_COMMIT],

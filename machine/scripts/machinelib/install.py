@@ -21,8 +21,10 @@ state's commit isn't an ancestor of. Then it runs §8's steps in order:
 
 import json
 import os
+import re
 import shutil
 
+from govlib import secrets
 from machinelib import MachineError, check, governed, home as homes, rules, skills, state as states
 
 PROVENANCE = "skill-copies/provenance.json"
@@ -190,7 +192,12 @@ def _upstream(home, report, source):
         ["gh", "api", "repos/%s/compare/%s...HEAD" % (repository, commit), "--jq", "{ahead_by, status}"]
     )
     shown_repository = homes.shown_identifier(repository)
-    shown_commit = homes.shown_identifier(commit)[:12]
+    if isinstance(commit, str) and re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", commit):
+        shown_commit = commit[:12]
+    else:
+        # An invalid object ID has no useful abbreviation. Name only the credential types found.
+        kinds = secrets.kinds(str(commit))
+        shown_commit = "<redacted %s>" % ", ".join(kinds) if kinds else "（无效 commit）"
     try:
         facts = json.loads(out) if code == 0 else None
         ahead = facts["ahead_by"]

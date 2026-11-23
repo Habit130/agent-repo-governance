@@ -56,6 +56,7 @@ def run(home):
             login = identity.get("login")
     if login != AGENT:
         if isinstance(login, str) and login:
+            # An unterminated key in the login must not consume the list outcome that follows it.
             detail = "gh 应以 agent account %s 运行，实际：%s" % (AGENT, secrets.redact(homes.shown_identifier(login)))
         else:
             detail = "无法确认 gh 是否以 agent account %s 运行" % AGENT
