@@ -54,9 +54,9 @@ rests on what GitHub holds.
    unavailability evidence, then declare the exhausted slot as Review bots and the Merge
    summary grammar require. Otherwise review alongside the completed bot when its subsection
    requires it.
-   Judge the Builder's answers to any bot findings. At high, when
-   the tier's reason involves authentication, privacy or secret handling, run the security
-   review (`review.md`, Security review).
+   Judge the Builder's answers to any bot findings. At high, check the change for
+   authentication, privacy or secret handling. If any applies, run the security review
+   (`review.md`, Security review). Record the decision in the Merge summary.
 9. **Remove your worktree** once the outputs are posted.
 
 Wait in your harness when it can wait. Otherwise stop and say what you wait for, and habit

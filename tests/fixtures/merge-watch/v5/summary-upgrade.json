@@ -1,0 +1,115 @@
+{
+  "description": "F06 (#224, repair #234). Synthetic two-squash recording: the Upgrade uses its v4 parent's seven-digit summary. The following v5 head shares that prefix. The table substitutes the follow-on title and lists the expected miss records.",
+  "event": {
+    "ref": "refs/heads/main",
+    "before": "1111111111111111111111111111111111111111",
+    "after": "3333333333333333333333333333333333333333",
+    "commits": [
+      {
+        "id": "2222222222222222222222222222222222222222"
+      },
+      {
+        "id": "3333333333333333333333333333333333333333"
+      }
+    ],
+    "repository": {
+      "full_name": "Habit130/tally",
+      "default_branch": "main"
+    }
+  },
+  "github": {
+    "repos/Habit130/tally/git/commits/2222222222222222222222222222222222222222": {
+      "sha": "2222222222222222222222222222222222222222",
+      "parents": [
+        {
+          "sha": "1111111111111111111111111111111111111111"
+        }
+      ]
+    },
+    "repos/Habit130/tally/commits/2222222222222222222222222222222222222222/pulls": [
+      {
+        "number": 42,
+        "merged_at": "2026-11-11T02:25:44Z",
+        "merge_commit_sha": "2222222222222222222222222222222222222222",
+        "base": {
+          "ref": "main"
+        },
+        "head": {
+          "sha": "1a954628a960aaef81d7b2d4521929579f3541e6"
+        },
+        "body": "Risk: medium — pure governance Upgrade"
+      }
+    ],
+    "repos/Habit130/tally/contents/.github/governance/record.yml?ref=1111111111111111111111111111111111111111": "version: 4\nagent_account: Habit098\nsensitive_paths:\nconfirmed:\n  sensitive_paths:\n  required_checks:\n  review_bots:\n    - \"codex\"\n",
+    "repos/Habit130/tally/issues/42/comments": [
+      {
+        "user": {
+          "login": "chatgpt-codex-connector[bot]"
+        },
+        "created_at": "2026-11-10T09:43:00Z",
+        "updated_at": "2026-11-10T09:43:00Z",
+        "body": "<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"1a954628a960aaef81d7b2d4521929579f3541e6\",\"status\":\"completed\"}} -->"
+      },
+      {
+        "user": {
+          "login": "Habit098"
+        },
+        "created_at": "2026-11-10T09:44:00Z",
+        "updated_at": "2026-11-10T09:44:00Z",
+        "body": "## Merge summary: medium at 1a95462\nRequired reviews: self-verification=clear, bot-1=clear(codex)"
+      }
+    ],
+    "repos/Habit130/tally/git/commits/3333333333333333333333333333333333333333": {
+      "sha": "3333333333333333333333333333333333333333",
+      "parents": [
+        {
+          "sha": "2222222222222222222222222222222222222222"
+        }
+      ]
+    },
+    "repos/Habit130/tally/commits/3333333333333333333333333333333333333333/pulls": [
+      {
+        "number": 43,
+        "merged_at": "2026-11-11T02:25:44Z",
+        "merge_commit_sha": "3333333333333333333333333333333333333333",
+        "base": {
+          "ref": "main"
+        },
+        "head": {
+          "sha": "1a95462000000000000000000000000000000000"
+        },
+        "body": "Risk: low — sandbox control"
+      }
+    ],
+    "repos/Habit130/tally/contents/.github/governance/record.yml?ref=2222222222222222222222222222222222222222": "version: 5\nagent_account: Habit098\nsensitive_paths:\nconfirmed:\n  sensitive_paths:\n  required_checks:\n  review_bots:\n    - \"codex\"\n",
+    "repos/Habit130/tally/issues/43/comments": [
+      {
+        "user": {
+          "login": "Habit098"
+        },
+        "created_at": "2026-11-10T09:44:00Z",
+        "updated_at": "2026-11-10T09:44:00Z",
+        "body": "## Merge summary: low at 1a95462\nRequired reviews: self-verification=clear"
+      }
+    ],
+    "repos/Habit130/tally/issues?labels=miss&state=open": []
+  },
+  "follow_on_titles": [
+    [
+      "1a95462",
+      [
+        "Miss: process miss, missing-review in #43"
+      ]
+    ],
+    [
+      "1a954628a960aaef81d7b2d4521929579f3541e6",
+      [
+        "Miss: process miss, missing-review in #43"
+      ]
+    ],
+    [
+      "1a95462000000000000000000000000000000000",
+      []
+    ]
+  ]
+}

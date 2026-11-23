@@ -18,10 +18,11 @@ On `push` to the default branch, for each pushed commit:
   (`docs/agents/review.md`, Merge summary), then `merge-summary`. The tier requires
   `self-verification` and `merge-summary` at every tier, `bot-1` from medium,
   and `reviewer` at high:
-  - **the Merge summary**: the agent account's newest comment titled
-    `## Merge summary: <tier> at <short sha>` for the declared tier and the head, whose second
-    line reads by `parse_reviews`, listing every kind the tier requires and each bot slot's
-    provider. One that doesn't read is absent: `merge-summary`;
+  - **the Merge summary**: the historical agent account's newest comment titled
+    `## Merge summary: <tier> at <sha>` for the declared tier and head. V5 uses all 40 hex
+    digits. Known v1–v4 bases use the first seven, including a v4-to-v5 Upgrade.
+    The second line lists the reviews. V5 checks each listed bot and Reviewer as well
+    as the tier minimum. A missing required declaration is a `merge-summary` miss;
   - **a bot slot** is filled by a completed review on the head from a provider enabled in the
     record at the merge's base, the commit before the squash commit. A PR can't lower its own
     requirements by changing that list. When GitHub answers that the base holds no record at
@@ -42,12 +43,12 @@ On `push` to the default branch, for each pushed commit:
     waiver is a separate exception; high has no Reviewer substitution. `PROVIDERS` holds one
     reader per provider, and a provider not on the list is never read or reported;
   - **`reviewer`**: the agent account's newest `Reviewer` status on the head is `success`;
-  - **`self-verification`**, and **`security`** when the summary lists it, are present when a
-    summary that reads writes them `clear`, since nothing else on GitHub shows them;
-  - **a waiver**: any of those reviews counts as present when the repository owner's own PR
-    comment waives it for this head, in the fixed form `WAIVER` reads. A summary writing
-    `waived` with no such comment, a waiver naming another head, and one by any other
-    account, the agent account included, count the review as missing.
+  - **`self-verification`** and **`security`**: the writer attests to completion. At high,
+    v5 requires the writer's security applicability decision on the third line. An
+    applicable review needs a `security` declaration;
+  - **a waiver**: the repository owner's PR comment authorizes its named item on this head
+    in the fixed form `WAIVER` reads. In v5 a waived slot naming a provider also requires
+    that provider to be enabled. A declaration of completion still needs its own evidence.
 
   The repository owner is the owner in the repository's full name, a user account, as the
   generator requires. It doesn't check a condition a review bot's subsection in `review.md`
@@ -111,8 +112,7 @@ RECORD = ".github/governance/record.yml"
 
 REVIEWER_CONTEXT = "Reviewer"
 
-# The Merge summary's fixed first two lines (docs/agents/review.md, Merge summary, On the PR).
-SUMMARY_TITLE = re.compile(r"## Merge summary: (low|medium|high) at ([0-9a-f]{7})")
+# The Merge summary header (docs/agents/review.md, Merge summary, On the PR).
 SUMMARY_REVIEWS = "Required reviews: "
 KINDS = ("self-verification", "bot-1", "reviewer", "security")
 BOT_SLOTS = ("bot-1",)
@@ -542,12 +542,13 @@ def _reviewer(pull, agent_account):
     return False
 
 
-def parse_reviews(line, tier):
+def parse_reviews(line, tier, *, require_minimum=True):
     """The `Required reviews:` line as {kind: (state, provider or None)}, or None when it doesn't read.
 
     It reads when every item is `<kind>=<state>`, a bot slot's state with its provider in
     parentheses, the kinds in their order and none twice, and it lists every kind the tier
-    requires. A provider is one `PROVIDERS` holds, or `none` where the state allows it, and
+    requires. V5 also reads individual declarations when a required kind is omitted.
+    A provider is one `PROVIDERS` holds, or `none` where the state allows it, and
     `fallback` stands in `bot-1` at medium and high.
     """
     if not line.startswith(SUMMARY_REVIEWS):
@@ -572,29 +573,28 @@ def parse_reviews(line, tier):
             return None
         states[kind] = (state, provider)
         order.append(KINDS.index(kind))
-    if order != sorted(order) or any(kind not in states for kind in REQUIRED[tier]):
+    if order != sorted(order) or (require_minimum and any(kind not in states for kind in REQUIRED[tier])):
         return None
     return states
 
 
-def _summary_lines(pull, agent_account, tier):
+def _summary_lines(pull, agent_account, tier, version):
     """The lines of the agent account's newest Merge summary titled for the tier and the head, or None."""
+    head = pull.head if version == 5 else pull.head[:7]
+    title = f"## Merge summary: {tier} at {head}"
     for body in pull.comment_bodies(agent_account, newest_first=True):
         if body is UNKNOWN:
             return UNKNOWN
         lines = body.replace("\r\n", "\n").split("\n")
-        title = SUMMARY_TITLE.fullmatch(lines[0].rstrip(" \t"))
-        if title and title.group(1) == tier and title.group(2) == pull.head[:7]:
+        if lines[0].rstrip(" \t") == title:
             return lines
     return None
 
 
-def _summary(pull, agent_account, tier):
-    """The newest Merge summary for the tier and head, parsed; None when absent or its line doesn't read."""
-    lines = _summary_lines(pull, agent_account, tier)
+def _summary_reviews(lines, tier, version):
     if lines is UNKNOWN:
         return UNKNOWN
-    return parse_reviews(lines[1], tier) if lines and len(lines) > 1 else None
+    return parse_reviews(lines[1], tier, require_minimum=version == 4) if lines and len(lines) > 1 else None
 
 
 def waived(pull, owner):
@@ -618,7 +618,7 @@ def earlier_version_missing(pull, agent_account, owner, tier, version):
         waiver = waived(pull, owner)["reviewer"] if version == 3 else False
         if waiver is not True and any_evidence((waiver, _reviewer(pull, agent_account))) is False:
             missing.append("reviewer")
-    lines = _summary_lines(pull, agent_account, tier)
+    lines = _summary_lines(pull, agent_account, tier, version)
     if lines is not UNKNOWN and not (lines and len(lines) > 1 and lines[1].startswith(SUMMARY_REVIEWS)):
         missing.append(MERGE_SUMMARY)
     return missing
@@ -627,9 +627,9 @@ def earlier_version_missing(pull, agent_account, owner, tier, version):
 def _bot_slot(pull, summary, bots, tier, agent):
     if bots is None:
         return UNKNOWN
-    if summary is None or summary is UNKNOWN:
+    if summary is None or summary is UNKNOWN or "bot-1" not in summary:
         completed = any_evidence(PROVIDERS[bot](pull) for bot in bots)
-        if summary is None:
+        if summary is not UNKNOWN:
             return completed
         # Even unreadable declarations cannot supply a review when no provider completed
         # and a medium Reviewer substitution is impossible.
@@ -642,30 +642,68 @@ def _bot_slot(pull, summary, bots, tier, agent):
         return provider in allowed and PROVIDERS[provider](pull)
     exhausted = ((state, provider) == ("no-provider", "none")
                  or (state == "unavailable" and bool(bots) and provider == bots[-1]))
-    return (tier == "medium" and exhausted and summary.get("reviewer") == ("clear", None)
-            and _reviewer(pull, agent))
+    return (tier == "medium" and exhausted and "self-verification" in summary
+            and summary.get("reviewer") == ("clear", None) and _reviewer(pull, agent))
 
 
-def missing_reviews(pull, agent_account, owner, tier, bots):
+def _declared_missing(pull, summary, bots, tier, agent, waivers):
+    """Check each declaration against its own evidence, including reviews above the minimum."""
+    missing = []
+    for kind, (state, provider) in summary.items():
+        if state == "waived":
+            evidence = waivers[kind]
+            if kind == "bot-1" and provider != NO_PROVIDER and bots is not None and provider not in bots:
+                evidence = False
+        elif kind == "bot-1":
+            evidence = _bot_slot(pull, summary, bots, tier, agent)
+        elif kind == "reviewer":
+            evidence = _reviewer(pull, agent)
+        else:
+            continue  # The writer attests to a clear self-verification or security review.
+        if evidence is False:
+            missing.append(kind)
+    return missing
+
+
+def _high_security_missing(lines, summary, waiver):
+    decision = lines[2].rstrip(" \t") if len(lines) > 2 else ""
+    if decision == "Security review applies: no":
+        return ()
+    if decision != "Security review applies: yes":
+        return (MERGE_SUMMARY,)
+    if "security" in summary:
+        return ()
+    return ("security", MERGE_SUMMARY) if waiver is False else (MERGE_SUMMARY,)
+
+
+def missing_reviews(pull, agent_account, owner, tier, bots, version):
     """List only established absences. Pull retains the reasons for unresolved evidence."""
-    summary = _summary(pull, agent_account, tier)
+    lines = _summary_lines(pull, agent_account, tier, version)
+    summary = _summary_reviews(lines, tier, version)
     waivers = waived(pull, owner)
+    minimum = REQUIRED[tier]
     missing = set()
-    if "bot-1" in REQUIRED[tier] and waivers["bot-1"] is not True:
-        slot = _bot_slot(pull, summary, bots, tier, agent_account)
-        if any_evidence((slot, waivers["bot-1"])) is False:
-            missing.add("bot-1")
-    if "reviewer" in REQUIRED[tier] and waivers["reviewer"] is not True:
-        if any_evidence((_reviewer(pull, agent_account), waivers["reviewer"])) is False:
-            missing.add("reviewer")
-    if isinstance(summary, dict):
+    if version == 5 and isinstance(summary, dict):
+        missing.update(_declared_missing(pull, summary, bots, tier, agent_account, waivers))
+        minimum = set(minimum).difference(summary)
+        if minimum:
+            missing.add(MERGE_SUMMARY)
+        if tier == "high":
+            missing.update(_high_security_missing(lines, summary, waivers["security"]))
+    elif isinstance(summary, dict):  # Published v4 waiver and minimum rules.
         for kind in ("self-verification", "reviewer", "security"):
             if summary.get(kind) == ("waived", None) and waivers[kind] is False:
                 missing.add(kind)
-    ordered = [kind for kind in KINDS if kind in missing]
-    if summary is None:
-        ordered.append(MERGE_SUMMARY)
-    return ordered
+    elif summary is None:
+        missing.add(MERGE_SUMMARY)
+    if "bot-1" in minimum and waivers["bot-1"] is not True:
+        slot = _bot_slot(pull, summary, bots, tier, agent_account)
+        if any_evidence((slot, waivers["bot-1"])) is False:
+            missing.add("bot-1")
+    if "reviewer" in minimum and waivers["reviewer"] is not True:
+        if any_evidence((_reviewer(pull, agent_account), waivers["reviewer"])) is False:
+            missing.add("reviewer")
+    return [kind for kind in KINDS + (MERGE_SUMMARY,) if kind in missing]
 
 
 def _judge_pull(read, repository, matches, squash, notes, problems):
@@ -708,7 +746,7 @@ def _judge_pull(read, repository, matches, squash, notes, problems):
             if version < REVIEW_BOTS_VERSION:
                 missing = earlier_version_missing(facts, agent, owner, tier, version)
             else:
-                missing = missing_reviews(facts, agent, owner, tier, policy["confirmed"].get("review_bots"))
+                missing = missing_reviews(facts, agent, owner, tier, policy["confirmed"].get("review_bots"), version)
             common.intersection_update(missing)
     if common:
         heads = sorted({head for head, _ in revisions})

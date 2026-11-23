@@ -27,6 +27,7 @@ from unittest import mock
 
 import materialized
 from merge_watch_history import EARLY, HistoricalEvidence, load_v4_case_for_v5  # noqa: F401
+from merge_watch_declarations import SummaryDeclarations  # noqa: F401
 import support
 from standins import environment
 from target_state import target_ruleset
@@ -561,6 +562,10 @@ class DeclaredWaivers(unittest.TestCase):
         comments = github[comments_path]
         agent = agent_account()
         summary, = (comment for comment in comments if comment["user"]["login"] == agent)
+        title_head = head if version == 5 else head[:7]
+        if version == 5:
+            summary["body"] = (summary["body"].replace(head[:7], title_head, 1).rstrip("\n")
+                               + "\nSecurity review applies: no")
         owner = repository.split("/")[0]
 
         def decide(responses):
@@ -576,7 +581,9 @@ class DeclaredWaivers(unittest.TestCase):
                     if review in watch.BOT_SLOTS:
                         state += "(codex)"
                     items.append(f"{review}={state}")
-                summary["body"] = f"## Merge summary: high at {head[:7]}\nRequired reviews: " + ", ".join(items)
+                summary["body"] = f"## Merge summary: high at {title_head}\nRequired reviews: " + ", ".join(items)
+                if version == 5:
+                    summary["body"] += "\nSecurity review applies: yes"
 
                 records = decide(github)
                 self.assertEqual(len(records), 1)
@@ -636,6 +643,20 @@ class VersionFour(unittest.TestCase):
 
 class VersionFive(unittest.TestCase):
     """Replay released v4 declarations with the historical fields the v5 reader also needs."""
+
+    def test_upgrade_and_follow_on_select_their_own_summary_title(self):
+        case = load(os.path.join(FIXTURES, "v5", "summary-upgrade.json"))
+        github = case["github"]
+        follow_on, = github["repos/Habit130/tally/issues/43/comments"]
+        for title_head, missing in case["follow_on_titles"]:
+            with self.subTest(title_head=title_head):
+                follow_on["body"] = (f"## Merge summary: low at {title_head}\n"
+                                     "Required reviews: self-verification=clear")
+                problems = []
+                result = watch_v5.decide("push", case["event"], agent_account(), github.__getitem__,
+                                         problems=problems)
+                self.assertEqual(problems, [])
+                self.assertEqual([r["title"] for r in result], missing)
 
     def test_reloading_a_recording_restores_its_comments(self):
         filename = "high-missing-all.json"
@@ -727,7 +748,12 @@ class VersionFive(unittest.TestCase):
                     times = (watch.timestamp(EARLY), [], []) if watch is watch_v5 else ()
                     pull = watch.Pull(lambda path, c=comments + later: c if path.endswith("/comments") else [],
                                       "Habit130/tally", 7, head, *times)
-                    self.assertEqual(watch._summary(pull, agent, "low") is not None, reads, watch.__name__)
+                    if watch is watch_v5:
+                        lines = watch._summary_lines(pull, agent, "low", 4)
+                        summary = watch._summary_reviews(lines, "low", 4)
+                    else:
+                        summary = watch._summary(pull, agent, "low")
+                    self.assertEqual(summary is not None, reads, watch.__name__)
                     self.assertEqual(watch.earlier_version_missing(pull, agent, "Habit130", "low", 3), earlier, watch.__name__)
 
 
