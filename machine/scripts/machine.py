@@ -66,7 +66,10 @@ from machinelib import MachineError, check, governed, home as homes, install, wi
 class MachineArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         # Argparse includes raw argv here, even inside brackets or after an equals sign.
-        shown = homes.withhold_url(message)
+        if "//" in message and any(mark in message for mark in "@?#"):
+            shown = homes.withheld_value(message)
+        else:
+            shown = homes.withhold_url(message)
         super().error(message if shown == message else "参数解析失败：%s" % shown)
 
     def _print_message(self, message, file=None):

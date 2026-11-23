@@ -67,6 +67,21 @@ class CheckCase(support.TempDirCase):
 class CheckDiagnostics(CheckCase):
     """Failed gh and Codex probes through the CLI (miss #253)."""
 
+    def test_local_skill_names_remain_distinguishable(self):
+        state = self.h(".agents", "governance", "installed.json")
+        installed = json.loads(support.read_text(state))
+        names = ("review#1", "review?draft")
+        installed["skills"].update({name: "0" * 64 for name in names})
+        support.write_tree(self.home, {
+            ".agents/governance/installed.json": json.dumps(installed),
+            ".agents/skills/personal#notes/SKILL.md": "---\nname: alpha-check\ndescription: Fixture.\n---\n",
+        })
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        result = ms.run_machine(["check"], env)
+        for name in names:
+            ms.assert_diagnostic(self, result, 1, "[失败] managed skills：%s 不在了" % name)
+        ms.assert_diagnostic(self, result, 1, "personal skill ~/.agents/skills/personal#notes 与 machine skill alpha-check 同名")
+
     def test_probe_and_identity_diagnostics(self):
         identity = "[失败] identity：gh 应以 agent account Habit098 操作"
         rules = "[失败] Codex rules：`ghm pr merge 1`"
@@ -108,7 +123,7 @@ class CheckDiagnostics(CheckCase):
     def test_wrong_git_emails_keep_their_local_part(self):
         env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
         for address in ("build/ci@example.invalid", "build//ci@example.invalid", "build/ci?foo#bar@example.invalid",
-                        '"build // ci"@example.invalid'):
+                        "build//ci?foo#bar@example.invalid", '"build // ci"@example.invalid', '"QA: who?"@example.invalid'):
             with self.subTest(address=address):
                 support.write_tree(self.home, {".gitconfig": "[user]\n\temail = %s\n" % json.dumps(address)})
                 result = ms.run_machine(["check"], env)
