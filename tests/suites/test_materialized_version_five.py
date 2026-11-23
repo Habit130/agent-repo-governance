@@ -57,6 +57,11 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
         self.assertNotIn("Merge watch requires self-verification and the Merge summary at every tier", review)
         self.assertNotIn("This is the Upgrade merge's transition exception.", review)
 
+    def test_writer_checks_waiver_eligibility_and_omits_unused_optional_slots(self):
+        checks = flat(level_three_section(self.text("docs/agents/review.md"), "### Checks first"))
+        self.assertIn("required and eligible for a waiver on this PR", checks)
+        self.assertIn("At low, omit an unused optional slot.", flat(self.on_the_pr()))
+
     def test_builder_summaries_report_whether_an_independent_session_ran(self):
         section = flat(level_three_section(self.text("docs/agents/review.md"), "### In the terminal"))
         self.assertIn("state whether a session independent of the Builder reviewed the change", section)

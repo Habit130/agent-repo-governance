@@ -48,9 +48,10 @@ On `push` to the default branch, for each pushed commit:
   - **`self-verification`** and **`security`**: the writer attests to completion. At high,
     v5 requires the writer's security applicability decision on the third line. An
     applicable review needs a `security` declaration;
-  - **a waiver** requires the repository owner's PR comment for one item on the exact
-    head, in the fixed form `WAIVER` reads. In v5, only a `waived` declaration can
-    use it. A named bot must be enabled. At high, `security=waived` with
+  - **a waiver** requires the repository owner's PR comment for one required item on
+    the exact head, in the fixed form `WAIVER` reads. In v5, only a `waived` declaration
+    can use it. The writer checks that the review was required and eligible for a waiver
+    on this PR. A named bot must be enabled. At high, `security=waived` with
     `Security review applies: no` records a missing security review even with an
     exact-head security waiver.
     An omitted required row still yields `merge-summary` even when a waiver covers

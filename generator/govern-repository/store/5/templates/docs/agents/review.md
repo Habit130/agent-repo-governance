@@ -281,7 +281,9 @@ and link each cause's open issue in the summary. Then check:
    on this head, substituted at medium (Review bots), or waived by habit for this head
    (Waivers). For a bot declared complete, verify the named provider's completion and
    position in the enabled list. For a clear Reviewer, verify the agent account's successful
-   `Reviewer` status. A waiver supports only a waived declaration.
+   `Reviewer` status. A waiver supports only a waived declaration. Before using it,
+   confirm that the review was required and eligible for a waiver on this PR and that
+   habit's exact-head comment names the item.
 2. The Gate and Merge rules are in effect on the default branch. Read, as the agent
    account, `gh repo view --json visibility,defaultBranchRef`, then:
    - **public**: `gh api repos/{owner}/{repo}/rulesets` lists the Gate and Merge rulesets,
@@ -320,9 +322,9 @@ Security review applies: <yes|no>
   `self-verification`, `bot-1`, `reviewer`, `security`.
 - `self-verification`, `reviewer` and `security` take `clear` or `waived`.
 - For a completed slot, write `clear(<bot>)` for the first enabled bot or, at medium and
-  high, `fallback(<bot>)` for a later one. For habit's exact-head slot waiver, write
+  high, `fallback(<bot>)` for a later one. When habit waives a required slot for this head, write
   `waived(<bot>)` for an enabled provider or `waived(none)` when none was left.
-  At low, omit an optional slot when no bot completed and no waiver applies. Reserve
+  At low, omit an unused optional slot. Reserve
   `unavailable(<bot>)` and `no-provider(none)` for the medium substitution below.
 - A line that leaves out a kind the tier requires, or a bot slot's provider, doesn't read.
 - At medium a substituting Reviewer appears as `reviewer=clear`; `bot-1` must be
