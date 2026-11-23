@@ -7,7 +7,7 @@ from materialized_version_support import VersionThreeRendered, flat, level_three
 
 
 class VersionFiveInitializeChecks(VersionThreeRendered):
-    """Initialize requirements and Merge summary policy in version 5's review.md."""
+    """Initialize requirements, Merge summary policy, and Planner dispatch in version 5."""
 
     VERSION = 5
 
@@ -98,6 +98,34 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
                 self.assertEqual(watch_v5.decide("push", case["event"], "Habit098", github.__getitem__,
                                                 problems=problems), [])
                 self.assertEqual(problems, [])
+
+    def test_dispatch_rule_lives_only_in_the_planner(self):
+        # #249: separate files and sandboxes did not make the reader and its consumer independent.
+        planner = self.text("docs/agents/planner.md")
+        tickets = level_two_section(planner, "## Tickets", "planner.md")
+        dispatch_plan = tickets.split("\n**The dispatch plan.**", 1)[1]
+        rule = (
+            "- Read both tickets' acceptance criteria. If one ticket's acceptance test exercises an "
+            "interface the other changes, record the ticket changing the interface as a native "
+            "blocker of the ticket with the test. Schedule the ticket with the test to start from "
+            "the updated default branch after the blocker merges. Otherwise, the tickets may run "
+            "together if they share no files or resources. When unsure, schedule one after the other."
+        )
+        self.assertIn(rule, flat(dispatch_plan))
+        self.assertEqual(flat(planner).count(rule), 1)
+
+        handoff = self.text("docs/agents/handoff.md")
+        handoff_rule = level_two_section(
+            handoff, "## Only the Planner arranges what comes next", "handoff.md")
+        self.assertIn(
+            "- To decide which start requests are ready together, follow the dispatch plan rule in "
+            "`planner.md`, Tickets. Each start request holds one start instruction.",
+            flat(handoff_rule))
+        examples = level_two_section(handoff, "## Examples", "handoff.md")
+        self.assertIn("2. #42，按派发计划与 #41 并行。", examples.splitlines())
+        self.assertNotIn("native blocker of the ticket with the test", flat(handoff))
+        self.assertNotIn("no shared files", flat(handoff))
+        self.assertNotIn("没有共享文件或资源", handoff)
 
 
 class VersionFivePureRevert(VersionThreeRendered):

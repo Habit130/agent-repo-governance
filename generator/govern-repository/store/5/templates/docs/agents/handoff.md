@@ -68,9 +68,8 @@ unfinished.
   table, and each terminal start form stands alone in its own block so habit can copy it
   whole. Its GitHub copy uses the canonical form (`AGENTS.md`, How to start).
   Every start request follows `AGENTS.md`'s layout for its harness.
-- **More than one start request** is ready at once only when the tickets surely can run
-  together: no shared files and no shared resource. When unsure, one. Each start request
-  still holds one start instruction.
+- To decide which start requests are ready together, follow the dispatch plan rule in
+  `planner.md`, Tickets. Each start request holds one start instruction.
 
 ## Examples
 
@@ -178,7 +177,7 @@ Planner → habit：spec #40 的三张 ticket 已批准，派发计划也已写�
    Role: Builder. Ticket: #41. Skills: tdd.
    ```
 
-2. #42，与 #41 并行：两者没有共享文件或资源。
+2. #42，按派发计划与 #41 并行。
 
    给 habit：在本仓库的 Codex app Local mode 新开 chat；难度：medium，ticket 固定结果，在单一区域选择实现并以测试确认。不占用共享资源。
    粘贴给 agent：

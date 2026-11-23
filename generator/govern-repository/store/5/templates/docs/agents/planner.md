@@ -84,8 +84,11 @@ Planner after each merge.
 - It is a list, never a table. Each terminal translation uses a start request for one
   harness (`AGENTS.md`, How to start and Talking to habit and to other agents), with its
   paste block standing alone so habit copies it whole.
-- Two entries run beside each other only when the tickets surely can run together: no shared
-  files and no shared resource. When unsure, one after the other.
+- Read both tickets' acceptance criteria. If one ticket's acceptance test exercises an
+  interface the other changes, record the ticket changing the interface as a native
+  blocker of the ticket with the test. Schedule the ticket with the test to start from
+  the updated default branch after the blocker merges. Otherwise, the tickets may run
+  together if they share no files or resources. When unsure, schedule one after the other.
 - The Planner also writes the plan in English, using the canonical form from `AGENTS.md`,
   How to start, as a comment on the effort's parent issue. Only a Planner updates it, such
   as when a Builder or a Reviewer reports something the plan didn't foresee.
