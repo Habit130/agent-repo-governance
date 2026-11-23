@@ -396,3 +396,48 @@ class OutputRedaction(unittest.TestCase):
         other = "class Runner:\n    def __init__(self, task):\n        self.run = task\n"
         findings = program_writes({"sample.py": source, "worker.py": other})
         self.assertEqual(findings, [("sample.py", 6), ("sample.py", 9)])
+
+    def test_pathname_literals_survive_unpacking_and_string_interpolation(self):
+        source = dedent("""\
+            import os
+            device = "stderr"
+            parts = ("/dev", device)
+            open(os.path.join(root, *("/dev", "stderr")), "w").write(raw)
+            open(os.path.join(root, *parts), "w").write(raw)
+            open(os.path.join(f"/dev/{device}"), "w").write(raw)
+            open(os.path.join("/tmp", *("dev", device)), "w").write(raw)
+            open(f"/tmp/{device}", "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [4, 5, 6])
+
+    def test_global_deletion_restores_print_for_nested_and_module_reads(self):
+        source = dedent("""\
+            print = lambda *items: None
+            def clear():
+                global print
+                del print
+            clear()
+            print(raw)
+            def emit():
+                global print
+                print(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [6, 9])
+
+    def test_inherited_methods_see_subclass_fields_but_unrelated_classes_keep_their_own(self):
+        source = dedent("""\
+            class Base:
+                def save(self):
+                    self.path = self.destination
+                    open(self.path, "w").write(raw)
+                def __init__(self):
+                    self.destination = "/tmp/report"
+            class Child(Base):
+                def __init__(self):
+                    self.destination = "/dev/stderr"
+            class Separate:
+                def save(self):
+                    self.path = "/tmp/separate"
+                    open(self.path, "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [4])

@@ -6,6 +6,7 @@ device destinations visible in source. The check does not simulate the filesyste
 """
 
 import ast
+import builtins
 from collections import defaultdict
 from importlib.util import resolve_name
 import posixpath
@@ -115,13 +116,66 @@ class ListColumn(NamedTuple):
     index: int
 
 
+class ClassHierarchy:
+    """Identify field writes that can affect the same instance, including through inherited methods."""
+
+    def __init__(self):
+        self.bases = {}
+        self.exported = {}
+        self.overlap = None
+        self.uncertain = set()
+
+    def register(self, scope, node):
+        key = class_id(scope.path, node)
+        instance = INSTANCE + key
+        self.bases[instance] = (scope, node.bases)
+        if isinstance(scope.node, ast.Module):
+            module = scope.path.rpartition("/scripts/")[2].removesuffix(".py").replace("/", ".")
+            self.exported[module.removesuffix(".__init__") + "." + node.name] = instance
+        return CLASS + key
+
+    def instance_for(self, name):
+        return INSTANCE + name[len(CLASS):] if name.startswith(CLASS) else self.exported.get(name)
+
+    def resolve(self):
+        parents = defaultdict(set)
+        unknown = set()
+        for child, (scope, bases) in self.bases.items():
+            for base in bases:
+                for origin in scope.origins(base):
+                    parent = self.instance_for(origin)
+                    if parent is not None:
+                        parents[child].add(parent)
+                    elif origin == UNKNOWN:
+                        unknown.add(child)
+        overlap = defaultdict(set)
+        for child in self.bases:
+            lineage, pending = set(), [child]
+            while pending:
+                member = pending.pop()
+                if member not in lineage:
+                    lineage.add(member)
+                    pending.extend(parents[member] - lineage)
+            if lineage & unknown:
+                self.uncertain.update(lineage)
+            for member in lineage:
+                overlap[member].update(lineage)
+        self.overlap = overlap
+
+    def disjoint(self, owner, target):
+        return (self.overlap is not None and owner.startswith(INSTANCE) and target is not None
+                and owner not in self.uncertain and target not in self.uncertain and owner not in self.overlap[target])
+
+
 class Scope:
     """Consider every binding in this lexical scope when proving redaction."""
 
-    def __init__(self, node, path, parent=None, path_functions=None, definition_scope=None, field_writes=None):
+    def __init__(self, node, path, parent=None, path_functions=None, definition_scope=None, field_writes=None,
+                 classes=None):
         self.node = node
         self.path = path
         self.parent = parent
+        self.classes = classes if parent is None else parent.classes
         self.has_redactor = imports_govlib(node) if parent is None else parent.has_redactor
         self.path_functions = path_functions if parent is None else parent.path_functions
         self.field_writes = field_writes if parent is None else parent.field_writes
@@ -253,7 +307,7 @@ class Scope:
             if hasattr(node, "name"):
                 symbol = UNKNOWN
                 if isinstance(node, ast.ClassDef):
-                    symbol = CLASS + class_id(self.path, node)
+                    symbol = self.classes.register(self, node)
                 if isinstance(self.node, ast.Module) and isinstance(node, ast.FunctionDef):
                     if self.path == STORED_FORM and node.name == "check_target":
                         symbol = CHECK_TARGET
@@ -362,11 +416,8 @@ class Scope:
                 definite and self.blocks.get(site) == id(self.node.body)
                 and (site.end_lineno, site.end_col_offset) <= use for site, _, definite in bindings
             )
-            if UNBOUND in values or not guaranteed:
-                if isinstance(self.node, ast.ClassDef):
-                    values.extend(self.parent.origins(read, seen))
-                elif name in ("open", "print", "getattr", "setattr"):
-                    values.append("builtins." + name)
+            if not guaranteed:
+                values.append(UNBOUND)
         return values
 
     def owner_of(self, name):
@@ -391,13 +442,19 @@ class Scope:
         if isinstance(node, ast.Name):
             scope = self.owner_of(node.id)
             if not scope:
-                return {"builtins." + node.id}
+                return {"builtins." + node.id} if hasattr(builtins, node.id) else {UNKNOWN}
             if node not in seen:
                 result = set().union(*(scope.origins(v, seen | {node}) for v in scope.values_at(node.id, node, seen)))
                 if not scope.bindings.get(node.id):
-                    result.add("builtins." + node.id)
+                    result.add(UNBOUND)
                 for writer, value in scope.shared_bindings.get(node.id, ()):
                     result.update(writer.origins(value, seen | {node}))
+                if UNBOUND in result:
+                    result.discard(UNBOUND)
+                    if isinstance(scope.node, ast.ClassDef):
+                        result.update(scope.parent.origins(node, seen))
+                    elif isinstance(scope.node, ast.Module) and hasattr(builtins, node.id):
+                        result.add("builtins." + node.id)
                 if MUTATED in result:
                     result.discard(MUTATED)
                     # Changing a field can invalidate a payload or callable, but the
@@ -406,7 +463,7 @@ class Scope:
                         result.add(UNKNOWN)
                 if node.id in scope.external_writes:
                     result.add(UNKNOWN)
-                return result
+                return result or {UNKNOWN}
         if isinstance(node, ast.Attribute):
             if (self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self"
                     and node.attr in self.fields and node not in seen):
@@ -422,6 +479,26 @@ class Scope:
             if isinstance(node.value, (str, bytes)):
                 text = node.value.decode("utf-8", "replace") if isinstance(node.value, bytes) else node.value
                 return {LITERAL + text}
+        if isinstance(node, ast.JoinedStr):
+            parts = []
+            possible = set()
+            redacted_parts = True
+            for part in node.values:
+                if isinstance(part, ast.Constant):
+                    parts.append(part.value)
+                    possible.add(LITERAL + part.value)
+                    redacted_parts &= not part.value.strip()
+                else:
+                    origins = self.origins(part.value, seen)
+                    possible.update(origins)
+                    simple = part.format_spec is None and part.conversion in (-1, ord("s"))
+                    parts.append(literal(origins) if simple else None)
+                    redacted_parts &= simple and bool(origins) and origins <= {REDACTED, ENCODED}
+            if None not in parts:
+                return {LITERAL + "".join(parts)}
+            if redacted_parts:
+                return {REDACTED}
+            return {UNRESOLVED_PATH if any(device_hint(v) for v in possible) else PATH}
         if isinstance(node, ast.IfExp):
             body = self.origins(node.body, seen)
             if self.machine_writer and body == {REDACTED} and isinstance(node.orelse, ast.Constant):
@@ -444,7 +521,7 @@ class Scope:
     def ordinary_field(self, writes, seen):
         for writer, receiver, value in writes:
             owners = writer.origins(receiver, seen)
-            if owners and all(owner.startswith(INSTANCE) and owner != self.instance for owner in owners):
+            if owners and all(self.classes.disjoint(owner, self.instance) for owner in owners):
                 continue
             if not ordinary_paths(writer.origins(value, seen)):
                 return False
@@ -486,8 +563,9 @@ class Scope:
 
     def call_result(self, call, seen):
         names = self.origins(call.func, seen)
-        if names and all(name.startswith(CLASS) for name in names):
-            return {INSTANCE + name[len(CLASS):] for name in names}
+        instances = {self.classes.instance_for(name) for name in names}
+        if instances and None not in instances:
+            return instances
         if names == {"builtins.getattr"} and len(call.args) >= 2:
             owners = self.origins(call.args[0], seen)
             attrs = self.origins(call.args[1], seen)
@@ -500,7 +578,7 @@ class Scope:
                 resolved.update(owner + ".write" for owner in owners if owner in STREAMS or owner == "os")
             return resolved
         if names == {"os.path.join"}:
-            operands = [self.origins(arg, seen) for arg in call.args]
+            operands = self.path_operands(call.args, seen)
             parts = [literal(values) for values in operands]
             suffix = []
             for part in reversed(parts):
@@ -558,6 +636,38 @@ class Scope:
         if names == {FILE + ".fileno"}:
             return {"other fd"}
         return {UNKNOWN}
+
+    def path_operands(self, args, seen):
+        parts = []
+        for arg in args:
+            if isinstance(arg, ast.Starred):
+                parts.extend(self.unpacked_parts(arg.value, seen))
+            else:
+                parts.append(self.origins(arg, seen))
+        return parts
+
+    def unpacked_parts(self, value, seen):
+        if isinstance(value, (ast.List, ast.Tuple)):
+            return self.path_operands(value.elts, seen)
+        if isinstance(value, ast.Call) and isinstance(value.func, ast.Attribute) and value.func.attr == "split":
+            text = literal(self.origins(value.func.value, seen))
+            if text is not None and len(value.args) == 1 and not value.keywords:
+                sep = literal(self.origins(value.args[0], seen))
+                if sep:
+                    return [{LITERAL + part} for part in text.split(sep)]
+        variants = []
+        if isinstance(value, ast.Name) and value not in seen:
+            scope = self.owner_of(value.id)
+            if scope:
+                variants = [scope.unpacked_parts(v, seen | {value}) for v in scope.values_at(value.id, value, seen)]
+        elif isinstance(value, ast.IfExp):
+            variants = [self.unpacked_parts(branch, seen) for branch in (value.body, value.orelse)]
+        if variants:
+            if all(len(parts) == len(variants[0]) for parts in variants):
+                return [set().union(*alternatives) for alternatives in zip(*variants)]
+            if any(device_hint(v) for parts in variants for part in parts for v in part):
+                return [{UNRESOLVED_PATH}]
+        return [{UNKNOWN}]
 
     def safe(self, value, binary=False):
         allowed = {ENCODED} if binary else {REDACTED, ENCODED}
@@ -629,8 +739,10 @@ def program_writes(sources):
     path_functions = set()
     trees = {path: ast.parse(source, filename=path) for path, source in sources.items()}
     field_writes = defaultdict(list)
-    modules = {path: Scope(tree, path, path_functions=path_functions, field_writes=field_writes)
+    classes = ClassHierarchy()
+    modules = {path: Scope(tree, path, path_functions=path_functions, field_writes=field_writes, classes=classes)
                for path, tree in trees.items()}
+    classes.resolve()
     if STORED_FORM in modules and verified_path_helper(modules[STORED_FORM]):
         path_functions.add(CHECK_TARGET)
     return [(path, line) for path, scope in modules.items() for line in sorted(scope.problems())]
