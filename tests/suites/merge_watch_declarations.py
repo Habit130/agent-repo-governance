@@ -44,6 +44,36 @@ class SummaryDeclarations(RecordedMerge):
         self.comments.pop()
         self.replay(missing=("bot-1", "reviewer"))
 
+    def test_slot_waiver_does_not_fill_a_slot_declared_exhausted(self):
+        self.comments.append(self.waiver("bot-1"))
+        self.review["state"] = "PENDING"
+        self.declare("high", "bot-1=unavailable(codex)", "reviewer=clear")
+        self.summary["body"] += "\nSecurity review applies: no"
+        self.replay(missing=("bot-1",))
+
+        self.statuses.clear()
+        for slot in ("unavailable(codex)", "no-provider(none)"):
+            with self.subTest(slot=slot):
+                self.declare("medium", "bot-1=" + slot)
+                self.replay(missing=("bot-1",))
+        self.declare("medium", "bot-1=waived(none)")
+        self.replay()
+
+        # The published v4 rule credits the slot waiver with the same exhaustion declaration.
+        self.api[self.record_path] = self.record.replace("version: 5", "version: 4")
+        self.declare("medium", "bot-1=no-provider(none)")
+        self.summary["body"] = self.summary["body"].replace(self.head, self.head[:7], 1)
+        self.replay()
+
+    def test_low_accepts_an_omitted_slot_and_reports_either_exhaustion_declaration(self):
+        self.review["state"] = "PENDING"
+        self.declare("low")
+        self.replay()
+        for slot in ("unavailable(codex)", "no-provider(none)"):
+            with self.subTest(slot=slot):
+                self.declare("low", "bot-1=" + slot)
+                self.replay(missing=("bot-1",))
+
     def test_high_requires_the_writers_decision_and_the_applicable_security_row(self):
         for decision, security, waiver, missing in (
             ("no", None, False, ()),

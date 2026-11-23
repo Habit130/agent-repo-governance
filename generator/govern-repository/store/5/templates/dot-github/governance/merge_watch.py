@@ -39,16 +39,23 @@ On `push` to the default branch, for each pushed commit:
     the last enabled bot in the base record's ordered list. An earlier unavailable provider
     or any other unfilled slot state stays missing. `no-provider(none)` declares exhaustion
     of an initially empty list or of all enabled bots; it does not prove requests occurred.
-    Sessions verify actual requests and unavailability evidence. An owner/exact-head bot-slot
-    waiver is a separate exception; high has no Reviewer substitution. `PROVIDERS` holds one
-    reader per provider, and a provider not on the list is never read or reported;
+    Sessions verify actual requests and unavailability evidence. In v5 a declared
+    `unavailable` or `no-provider` slot needs that medium substitution even with a slot
+    waiver. With a known bot policy, either state at low or high records a missing bot.
+    A low summary may omit the optional slot. `PROVIDERS` holds one reader per provider.
+    Only enabled providers are read or reported.
   - **`reviewer`**: the agent account's newest `Reviewer` status on the head is `success`;
   - **`self-verification`** and **`security`**: the writer attests to completion. At high,
     v5 requires the writer's security applicability decision on the third line. An
     applicable review needs a `security` declaration;
-  - **a waiver**: the repository owner's PR comment authorizes its named item on this head
-    in the fixed form `WAIVER` reads. In v5 a waived slot naming a provider also requires
-    that provider to be enabled. A declaration of completion still needs its own evidence.
+  - **a waiver** requires the repository owner's PR comment for one item on the exact
+    head, in the fixed form `WAIVER` reads. In v5, only a `waived` declaration can
+    use it. A named bot must be enabled. At high, `security=waived` with
+    `Security review applies: no` records a missing security review even with an
+    exact-head security waiver.
+    An omitted required row still yields `merge-summary` even when a waiver covers
+    the underlying requirement. A v4 base keeps its published rule allowing a slot
+    waiver to satisfy the required slot independently of its state.
 
   The repository owner is the owner in the repository's full name, a user account, as the
   generator requires. It doesn't check a condition a review bot's subsection in `review.md`

@@ -39,7 +39,12 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
 
     def test_the_writer_names_the_full_head_and_judges_security_from_the_change(self):
         section = self.on_the_pr()
-        self.assertIn("## Merge summary: <tier> at <full head sha>\nRequired reviews:", section)
+        template = section.split("```text\n", 1)[1].split("\n```", 1)[0]
+        self.assertEqual(template.splitlines(), [
+            "## Merge summary: <tier> at <full head sha>",
+            "Required reviews: <kind>=<state>, <kind>=<state>",
+            "Security review applies: <yes|no>",
+        ])
         self.assertIn("all 40", section)
         self.assertIn("Security review applies: yes", section)
         self.assertIn("Security review applies: no", section)

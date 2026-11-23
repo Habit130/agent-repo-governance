@@ -115,7 +115,8 @@ counted, and never reported as unavailable.
   Builder's Reviewer handoff. It posts the Comment review and a successful `Reviewer` status
   on the head, then writes a readable Merge summary with `reviewer=clear` and the slot as
   `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
-  base record's ordered list. habit may waive the slot instead (Waivers). No session skips
+  base record's ordered list. To use habit's slot waiver for this head, declare
+  `waived(<bot>)` or `waived(none)` (Waivers and Merge summary). No session skips
   the review on its own authority.
 - **No bot left at high.** Escalate to habit, who waits or waives the slot (Waivers).
   The Reviewer's review proceeds either way.
@@ -297,12 +298,13 @@ and link each cause's open issue in the summary. Then check:
 
 ### On the PR
 
-One comment in English on the final head, by the writer. A new head makes it stale, and the
-next summary is a new comment. Its first two lines are fixed, for Merge watch:
+Post one English comment on the final head. Post a new comment when the head changes.
+Use the first two header lines at low and medium. At high, write all three on consecutive lines.
 
 ```text
 ## Merge summary: <tier> at <full head sha>
 Required reviews: <kind>=<state>, <kind>=<state>
+Security review applies: <yes|no>
 ```
 
 - Write `low`, `medium` or `high` and all 40 lowercase hex digits of the PR head.
@@ -317,10 +319,11 @@ Required reviews: <kind>=<state>, <kind>=<state>
 - Kinds, in this order, each one the tier requires (Minimum reviews) and any other that ran:
   `self-verification`, `bot-1`, `reviewer`, `security`.
 - `self-verification`, `reviewer` and `security` take `clear` or `waived`.
-- A bot slot writes its provider's name in parentheses: `clear(<bot>)` when the first bot
-  asked completed it, `fallback(<bot>)` at medium and high when a later one did, `unavailable(<bot>)`,
-  `waived(<bot>)` for an enabled bot covered by habit's slot waiver, or `waived(none)` and
-  `no-provider(none)` when no enabled bot was left.
+- For a completed slot, write `clear(<bot>)` for the first enabled bot or, at medium and
+  high, `fallback(<bot>)` for a later one. For habit's exact-head slot waiver, write
+  `waived(<bot>)` for an enabled provider or `waived(none)` when none was left.
+  At low, omit an optional slot when no bot completed and no waiver applies. Reserve
+  `unavailable(<bot>)` and `no-provider(none)` for the medium substitution below.
 - A line that leaves out a kind the tier requires, or a bot slot's provider, doesn't read.
 - At medium a substituting Reviewer appears as `reviewer=clear`; `bot-1` must be
   `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
