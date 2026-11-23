@@ -94,7 +94,7 @@ class RecordedMerge(VersionThreeRendered):
             if "/contents/" in path:
                 args = ["api", "-H", "Accept: application/vnd.github.raw", path]
                 output = value
-            elif "/git/commits/" in path or "/actions/" in path:
+            elif "/git/commits/" in path or "/actions/" in path or "/compare/" in path:
                 args, output = ["api", path], json.dumps(value)
             else:
                 paged = path + ("&" if "?" in path else "?") + "per_page=100&page=1"
@@ -344,6 +344,9 @@ class HistoricalEvidence(RecordedMerge):
         self.replay(incomplete="merged_at")
         self.pr["merged_at"] = "2026-11-10T09:45:00Z"
         self.event["commits"].insert(0, None)
+        comparison = f"{self.prefix}/compare/{self.parent}...{self.unassociated}?per_page=100&page=1"
+        self.api[comparison] = {"base_commit": {"sha": self.parent}, "total_commits": 2,
+                                "commits": [{"sha": self.squash}, {"sha": self.unassociated}]}
         self.replay(incomplete="malformed")
 
     def test_malformed_open_issue_does_not_hide_an_independent_miss(self):

@@ -27,6 +27,7 @@ from unittest import mock
 
 import materialized
 from merge_watch_history import EARLY, HistoricalEvidence, load_v4_case_for_v5  # noqa: F401
+from merge_watch_push import PushAndOpenRecords
 from merge_watch_declarations import SummaryDeclarations  # noqa: F401
 import support
 from standins import environment
@@ -755,6 +756,10 @@ class VersionFive(unittest.TestCase):
                         summary = watch._summary(pull, agent, "low")
                     self.assertEqual(summary is not None, reads, watch.__name__)
                     self.assertEqual(watch.earlier_version_missing(pull, agent, "Habit130", "low", 3), earlier, watch.__name__)
+
+
+class VersionFivePush(PushAndOpenRecords, support.TempDirCase):
+    watch = watch_v5
 
 
 class WorkflowPermissions(unittest.TestCase):

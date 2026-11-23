@@ -1,0 +1,7 @@
+{
+  "number": 108,
+  "state": "open",
+  "labels": [{"name": "miss"}],
+  "title": "Miss: escape, red-default-branch in #40",
+  "body": "Merged PR: #40\r\nKind: escape\r\nCategory: red-default-branch\r\nObserved: Workflow ci concluded failure on its push-triggered run https://github.com/Habit130/tally/actions/runs/100 at commit bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.\r\nFound by: Builder\r\nBug issue: none\r\n\r\nThe default branch is still red."
+}
