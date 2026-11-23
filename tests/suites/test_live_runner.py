@@ -203,6 +203,8 @@ class ChosenVersion(support.TempDirCase):
         self.assertNotIn("review_bots", live.context(state, self.tmp).confirmed)
         state["version"] = 4
         self.assertEqual(live.context(state, self.tmp).confirmed["review_bots"], ["codex", "copilot"])
+        state["version"] = 5
+        self.assertEqual(live.context(state, self.tmp).version, 5)
 
     def test_prepare_refuses_a_version_below_the_probes_before_tools_or_setup(self):
         import contextlib
@@ -1354,6 +1356,7 @@ class MergeWatchV4Probes(support.TempDirCase):
     def setUp(self):
         support.TempDirCase.setUp(self)
         self.sandbox = MergeWatchV3Sandbox(tempfile.mkdtemp(prefix="check-", dir=self.tmp))
+        self.sandbox.version = 4
         self.statuses_by_head = {}
         original_gh, original_read = self.sandbox.gh, self.sandbox.read
 
@@ -1416,6 +1419,22 @@ class MergeWatchV4Probes(support.TempDirCase):
         self.sandbox.answer.add((11, "codex"))
         self.statuses_by_head[self.sandbox.head_of(11)] = [{"context": "Reviewer", "state": "failure", "creator": {"login": "Habit098"}}]
         self.assertIn("no Reviewer status is on the probe head", self.failed(self.run_probe(name)))
+
+    def test_v5_ladder_writes_and_reads_back_the_full_head_and_high_decision(self):
+        self.sandbox.version = 5
+        for number, spec in enumerate(v4_probes.SPECS, start=10):
+            with self.subTest(probe=spec.name):
+                self.run_probe(spec.name)
+                self.sandbox.answer.add((number, "codex"))
+                results = self.run_probe(spec.name)
+                self.assertEqual(self.failed(results), ["habit merged the PR at the ready head"])
+                head = self.sandbox.head_of(number)
+                body, = (w[2] for w in self.sandbox.writes if w[:2] == ("comment", number))
+                header = [f"## Merge summary: {spec.tier} at {head}", "Required reviews: " + spec.summary]
+                if spec.tier == "high":
+                    header.append("Security review applies: no")
+                self.assertEqual(body.split("\n\n", 1)[0].splitlines(), header)
+                self.assertTrue(any(r.passed and "; ".join(header) in r.detail for r in results))
 
     def test_the_merged_probes_require_the_exact_push_result_and_planted_record(self):
         for spec in v4_probes.SPECS:

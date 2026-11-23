@@ -104,10 +104,10 @@ The Steps below apply to it as to a ticket, with these differences:
    naming the check, the failed run and how it ended, or link an open issue that already
    covers it. An outside cause, such as a GitHub outage, still needs the issue. Record each
    in the evidence comment; the Merge summary links each issue. Then, at high or at medium when a Reviewer is required (`review.md`, Review bots),
-   hand habit the Reviewer handoff below and wait on the PR. At low and medium, when no
-   Reviewer is required and none ran, write the Merge summary; at medium when one ran,
-   that Reviewer writes it. When habit waived the Reviewer session at high, write the
-   high-risk report (`review.md`, Waivers).
+   hand habit the Reviewer handoff below and wait on the PR. At low, the Builder writes
+   the Merge summary. At medium, a Reviewer who ran writes it. When no Reviewer is
+   required at medium and none ran, the Builder writes it. When habit waived the Reviewer
+   session at high, write the high-risk report (`review.md`, Waivers).
 
 ## The Reviewer handoff
 

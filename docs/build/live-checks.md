@@ -73,7 +73,11 @@ the PR's merge time. The `actions: read` permission lets it identify the linked 
 workflow by its job, run, head and check suite. The public sandbox recording on #131
 supplies the positive producer control. For a draft v5 render, pass `--version 5` to
 `prepare` with the public sandbox's `merge-watch-v4-high`, `merge-watch-v4-medium` and
-`merge-watch-v4-miss` probes. These probes exercise Codex.
+`merge-watch-v4-miss` probes. These probes exercise Codex. The prepared version selects
+the summary format for the probe PRs. Read back all 40 head digits on each v5 probe and
+`Security review applies: no` on both high probes, which change only a sandbox text file.
+The recorded v4-to-v5 Upgrade and v5 follow-on in the offline `merge-watch` suite check
+the transition across the two historical policies.
 On incomplete evidence the workflow prints `INCOMPLETE`, posts independently supported
 miss records and exits 1.
 

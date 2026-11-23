@@ -62,7 +62,7 @@ def load_v4_case_for_v5(filename):
     return supply_historical_fields(json.loads(path.read_text(encoding="utf-8")))
 
 
-class HistoricalEvidence(VersionThreeRendered):
+class RecordedMerge(VersionThreeRendered):
     VERSION = 5
 
     def setUp(self):
@@ -149,6 +149,13 @@ class HistoricalEvidence(VersionThreeRendered):
         self.assertTrue(all(call["recorded"] for call in log), log)
         return [call["args"] for call in log]
 
+    def waiver(self, kind):
+        return {"user": {"login": "Habit130"}, "created_at": EARLY, "updated_at": EARLY,
+                "body": f"Waiver: {kind} at {self.head} — authorized for the fixture"}
+
+
+class HistoricalEvidence(RecordedMerge):
+
     def test_qualified_review_uses_the_historical_agent(self):
         self.replay()
         checkout = Path(self.dest, ".github/governance/record.yml")
@@ -169,14 +176,11 @@ class HistoricalEvidence(VersionThreeRendered):
         self.api[unrelated] = self.record.replace("HistoricalAgent", "AnotherAgent")
         self.replay()
 
-    def medium_substitution(self):
+    def medium_substitution(self, version=5):
         self.pr["body"] = "Risk: medium — internal clients"
-        self.summary["body"] = (f"## Merge summary: medium at {self.head[:7]}\nRequired reviews: "
+        head = self.head if version == 5 else self.head[:7]
+        self.summary["body"] = (f"## Merge summary: medium at {head}\nRequired reviews: "
                                 "self-verification=clear, bot-1=no-provider(none), reviewer=clear")
-
-    def waiver(self, kind):
-        return {"user": {"login": "Habit130"}, "created_at": EARLY, "updated_at": EARLY,
-                "body": f"Waiver: {kind} at {self.head} — authorized for the fixture"}
 
     def use_codex(self):
         self.api[self.record_path] = self.record.replace('    - "copilot"\n', "")
@@ -214,19 +218,20 @@ class HistoricalEvidence(VersionThreeRendered):
         self.replay(incomplete="unsupported historical version")
 
     def test_published_transition_and_modern_controls(self):
-        self.medium_substitution()
         self.comments.append(self.waiver("reviewer"))
         status = self.statuses.pop()
         for version in (1, 2, 3, 4, 5):
             with self.subTest(version=version):
+                self.medium_substitution(version)
                 base = self.record if version >= 3 else self.record.split("  review_bots:")[0]
                 self.api[self.record_path] = base.replace("version: 5", f"version: {version}")
-                expected = {1: ("reviewer",), 2: ("reviewer",), 3: (), 4: ("bot-1",), 5: ("bot-1",)}
+                expected = {1: ("reviewer",), 2: ("reviewer",), 3: (), 4: ("bot-1",), 5: ("bot-1", "reviewer")}
                 self.replay(missing=expected[version])
                 self.statuses.append(status)
                 self.replay()
                 self.statuses.clear()
         self.api[self.record_path] = self.record.replace("version: 5", "version: 3")
+        self.medium_substitution(3)
         self.comments[-1]["body"] = self.comments[-1]["body"].replace(self.head, "f" * 40)
         self.summary["body"] = self.summary["body"].split("Required reviews:")[0] + "Required reviews: old-bot=done"
         self.replay(missing=("reviewer",), notes=("its review bots follow that version",))
@@ -458,7 +463,7 @@ class HistoricalEvidence(VersionThreeRendered):
         self.replay(missing=("merge-summary",), incomplete="malformed PR body", observation=observation)
         pulls[:] = [self.pr, dict(self.pr, body="Risk: low — conflicting declaration")]
         self.replay(missing=("merge-summary",), incomplete="conflicting risk", observation=observation)
-        self.comments.append(dict(self.summary, body=f"## Merge summary: low at {self.head[:7]}\n"
+        self.comments.append(dict(self.summary, body=f"## Merge summary: low at {self.head}\n"
                                   "Required reviews: self-verification=clear"))
         self.replay(incomplete="conflicting risk")
         self.comments.clear()
@@ -482,6 +487,6 @@ class HistoricalEvidence(VersionThreeRendered):
         self.comments.clear()
         observation = f"Merged as {self.squash} (possible heads {self.head}, {other}), declared low"
         self.replay(missing=("merge-summary",), incomplete="conflicting merged heads", observation=observation)
-        self.comments.append(dict(self.summary, body=f"## Merge summary: low at {self.head[:7]}\n"
+        self.comments.append(dict(self.summary, body=f"## Merge summary: low at {self.head}\n"
                                   "Required reviews: self-verification=clear"))
         self.replay(incomplete="conflicting merged heads")

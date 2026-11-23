@@ -1,4 +1,4 @@
-"""Version 4's public-sandbox review ladder probes (#183, #187).
+"""Public-sandbox review ladder for v4 and v5 (#183, #187, #234).
 
 Each probe opens its own PR, collects one completed Codex review, posts a sandbox-only
 Merge summary, and hands habit a pinned merge. The high probe posts the agent-account
@@ -61,12 +61,12 @@ def _open_pull(context, spec):
         _git(["clone", "-q", url, clone], work)
         _git(["checkout", "-q", "-b", branch, "origin/%s" % context.default_branch], clone)
         head = _commit_file(clone, "%s-%s-%s.md" % (spec.name, context.sandbox_pr, stamp),
-                            "Merge watch's version 4 live check, %s, for %s.\n" % (spec.name, context.commit))
+                            "Merge watch's version %d live check, %s, for %s.\n" % (context.version, spec.name, context.commit))
         _git(["push", "-q", url, "HEAD:refs/heads/%s" % branch], clone)
     finally:
         shutil.rmtree(work, True)
-    body = ("A probe PR of Merge watch's version 4 live check (`tests/live/probes/merge_watch_v4.py`).\n\n"
-            "Risk: %s — one sandbox live-check file\n" % spec.tier)
+    body = ("A probe PR of Merge watch's version %d live check (`tests/live/probes/merge_watch_v4.py`).\n\n"
+            "Risk: %s — one sandbox live-check file\n" % (context.version, spec.tier))
     opened = _gh(context, ["pr", "create", "--repo", context.repository, "--base", context.default_branch, "--head", branch,
                            "--title", "Live check: %s %s" % (spec.name, branch), "--body-file", "-"], stdin=body).strip()
     return {"pull": int(opened.rstrip("/").rsplit("/", 1)[-1]), "branch": branch, "head": head, "url": opened}
@@ -88,7 +88,7 @@ def _setup(context, spec):
     if spec.reviewer and not setup.get("reviewer"):
         _gh(context, ["api", "--method", "POST", "repos/%s/statuses/%s" % (context.repository, setup["head"]),
                       "-f", "state=success", "-f", "context=Reviewer",
-                      "-f", "description=the agent's status, Merge watch's version 4 live check"])
+                      "-f", "description=the agent's status, Merge watch's live check"])
         setup["reviewer"] = True
         context.remember(_setup_key(spec), setup)
     return setup
@@ -101,16 +101,20 @@ def _comments(context, setup):
     return context.api("repos/%s/issues/%d/comments?per_page=100" % (context.repository, setup["pull"])) or []
 
 
-def _title(spec, head):
-    return "## Merge summary: %s at %s" % (spec.tier, head[:7])
+def _summary_header(spec, head, version):
+    title_head = head if version >= 5 else head[:7]
+    lines = [f"## Merge summary: {spec.tier} at {title_head}", "Required reviews: " + spec.summary]
+    if version >= 5 and spec.tier == "high":
+        lines.append("Security review applies: no")  # Each probe changes one sandbox text file.
+    return lines
 
 
-def _summary(spec, setup, comments):
+def _summary(comments, header):
     for comment in reversed(comments):
         lines = watch._lines(comment)
-        if watch._login(comment).lower() == AGENT.lower() and lines[0] == _title(spec, setup["head"]):
-            line = "Required reviews: " + spec.summary
-            return "%s; %s" % (lines[0], lines[1]) if lines[1:2] == [line] else None
+        if watch._login(comment).lower() == AGENT.lower() and lines[0] == header[0]:
+            actual = lines[:len(header)]
+            return "; ".join(actual) if actual == header else None
     return None
 
 
@@ -124,7 +128,8 @@ def _fact_results(context, spec, setup):
         present = any(status.get("context") == "Reviewer" for status in statuses)
         results.append(Result("no Reviewer status is on the probe head", not present, "present" if present else "absent"))
     facts.append(("a completed review by codex", watch._codex(comments, head)))
-    facts.append(("the probe's version 4 Merge summary naming the head", _summary(spec, setup, comments)))
+    header = _summary_header(spec, head, context.version)
+    facts.append((f"the probe's version {context.version} Merge summary", _summary(comments, header)))
     return results + [Result("%s is on the head %s" % (name, head[:12]), detail is not None, detail or "absent") for name, detail in facts]
 
 
@@ -155,10 +160,11 @@ def _collect(context, spec, setup):
         return [Result("habit's Codex review bot request is on the probe PR", False,
                        "not yet: habit runs the printed request for PR #%d, then run `live.py probe` again" % setup["pull"])]
     _await(context, setup)
-    if _summary(spec, setup, _comments(context, setup)) is None:
+    header = _summary_header(spec, head, context.version)
+    if _summary(_comments(context, setup), header) is None:
         _gh(context, ["pr", "comment", str(setup["pull"]), "--repo", context.repository, "--body-file", "-"],
-            stdin="%s\nRequired reviews: %s\n\n%sMerge watch's version 4 live check posted this as probe data on a sandbox PR.\n"
-            % (_title(spec, head), spec.summary,
+            stdin="%s\n\n%sMerge watch's live check posted this as probe data on a sandbox PR.\n"
+            % ("\n".join(header),
                "No session independent of the Builder looked at this change; the Codex review bot completed.\n\n"
                if spec.tier == "medium" else ""))
     results = _fact_results(context, spec, setup)

@@ -29,7 +29,7 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 | Self-verification | yes | yes | yes |
 | Review bot | — | one: `bot-1` | one: `bot-1` |
 | Reviewer session | — | when substituting for the bot or required alongside it, same vendor allowed (Review bots) | yes, a vendor different from every Builder session that pushed to the PR, judged by the session marks |
-| Security review | — | — | when the tier's reason involves authentication, privacy or secret handling |
+| Security review | — | — | when the change involves authentication, privacy or secret handling |
 | Merge summary by | Builder | Builder; the Reviewer when one ran | Reviewer, or the Builder when it is waived, as the high-risk report |
 
 - Minimums are floors: every review that runs on a head binds. A Reviewer substitutes for
@@ -115,7 +115,8 @@ counted, and never reported as unavailable.
   Builder's Reviewer handoff. It posts the Comment review and a successful `Reviewer` status
   on the head, then writes a readable Merge summary with `reviewer=clear` and the slot as
   `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
-  base record's ordered list. habit may waive the slot instead (Waivers). No session skips
+  base record's ordered list. To use habit's slot waiver for this head, declare
+  `waived(<bot>)` or `waived(none)` (Waivers and Merge summary). No session skips
   the review on its own authority.
 - **No bot left at high.** Escalate to habit, who waits or waives the slot (Waivers).
   The Reviewer's review proceeds either way.
@@ -253,7 +254,7 @@ One PR comment by the Builder, bound to the head it names and updated on every n
 
 ## Security review
 
-At high, when the tier's reason involves authentication, privacy or secret handling, the
+At high, when the change involves authentication, privacy or secret handling, the
 Reviewer runs a security-review subagent with no conversation context. Its task names the
 diff against the merge-base, the ticket, and these checks: authentication and authorization
 paths; credentials and Actions secrets, in code, logs, errors and CI output; trust in input
@@ -276,9 +277,13 @@ the Builder does when habit waived the Reviewer session (Waivers).
 On the head the summary names, perform the history and issue checks in Rerun-only passes
 and link each cause's open issue in the summary. Then check:
 
-1. Each review the tier requires ran on that head and is clear, or habit waived it for that
-   head (Waivers), or a Reviewer substituted at medium (Review bots). The bot slot holds
-   an enabled bot's completed review unless substituted or waived.
+1. Check that each required review and every additional review the summary lists is clear
+   on this head, substituted at medium (Review bots), or waived by habit for this head
+   (Waivers). For a bot declared complete, verify the named provider's completion and
+   position in the enabled list. For a clear Reviewer, verify the agent account's successful
+   `Reviewer` status. A waiver supports only a waived declaration. Before using it,
+   confirm that the review was required and eligible for a waiver on this PR and that
+   habit's exact-head comment names the item.
 2. The Gate and Merge rules are in effect on the default branch. Read, as the agent
    account, `gh repo view --json visibility,defaultBranchRef`, then:
    - **public**: `gh api repos/{owner}/{repo}/rulesets` lists the Gate and Merge rulesets,
@@ -295,22 +300,32 @@ and link each cause's open issue in the summary. Then check:
 
 ### On the PR
 
-One comment in English on the final head, by the writer. A new head makes it stale, and the
-next summary is a new comment. Its first two lines are fixed, for Merge watch:
+Post one English comment on the final head. Post a new comment when the head changes.
+Use the first two header lines at low and medium. At high, write all three on consecutive lines.
 
 ```text
-## Merge summary: <tier> at <short sha>
+## Merge summary: <tier> at <full head sha>
 Required reviews: <kind>=<state>, <kind>=<state>
+Security review applies: <yes|no>
 ```
 
-- `<tier>` is `low`, `medium` or `high`; `<short sha>` is the head's first seven hex digits.
+- Write `low`, `medium` or `high` and all 40 lowercase hex digits of the PR head.
+  Write an Upgrade's summary under the policy on its base. A v4-to-v5 Upgrade uses the
+  published v4 title with seven digits. The first PR governed by v5 uses the full head.
+- At high, judge whether the change involves authentication, privacy or secret handling.
+  On the third line write `Security review applies: yes` if it does and
+  `Security review applies: no` otherwise. With `yes`, include `security=clear` or
+  `security=waived` on the second line. A waiver requires habit's exact-head comment for
+  `security`. With `no`, list `security=clear` only if a security review ran, otherwise
+  omit the row. Record the optional Codex security review separately in the evidence comment.
 - Kinds, in this order, each one the tier requires (Minimum reviews) and any other that ran:
   `self-verification`, `bot-1`, `reviewer`, `security`.
 - `self-verification`, `reviewer` and `security` take `clear` or `waived`.
-- A bot slot writes its provider's name in parentheses: `clear(<bot>)` when the first bot
-  asked completed it, `fallback(<bot>)` at medium and high when a later one did, `unavailable(<bot>)`,
-  `waived(<bot>)` for the bot habit waived, or `waived(none)` and `no-provider(none)` when
-  no enabled bot was left.
+- For a completed slot, write `clear(<bot>)` for the first enabled bot or, at medium and
+  high, `fallback(<bot>)` for a later one. When habit waives a required slot for this head, write
+  `waived(<bot>)` for an enabled provider or `waived(none)` when none was left.
+  At low, omit an unused optional slot. Reserve
+  `unavailable(<bot>)` and `no-provider(none)` for the medium substitution below.
 - A line that leaves out a kind the tier requires, or a bot slot's provider, doesn't read.
 - At medium a substituting Reviewer appears as `reviewer=clear`; `bot-1` must be
   `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
@@ -318,17 +333,18 @@ Required reviews: <kind>=<state>, <kind>=<state>
   When the bot policy is known, `no-provider(none)` declares that the list was initially empty
   or all enabled bots became unavailable. Sessions still verify the actual requests and
   unavailability evidence.
-- For example, at high:
+- For example, on a high change involving privacy:
 
   ```text
-  ## Merge summary: high at 1a2b3c4
-  Required reviews: self-verification=clear, bot-1=clear(codex), reviewer=clear
+  ## Merge summary: high at 1a954628a960aaef81d7b2d4521929579f3541e6
+  Required reviews: self-verification=clear, bot-1=clear(codex), reviewer=clear, security=clear
+  Security review applies: yes
   ```
 
   and at medium, after the first enabled bot was unavailable:
 
   ```text
-  ## Merge summary: medium at 1a2b3c4
+  ## Merge summary: medium at 1a954628a960aaef81d7b2d4521929579f3541e6
   Required reviews: self-verification=clear, bot-1=fallback(copilot)
   ```
 
@@ -336,7 +352,7 @@ Required reviews: <kind>=<state>, <kind>=<state>
   qualifies), with a substituting Reviewer:
 
   ```text
-  ## Merge summary: medium at 1a2b3c4
+  ## Merge summary: medium at 1a954628a960aaef81d7b2d4521929579f3541e6
   Required reviews: self-verification=clear, bot-1=no-provider(none), reviewer=clear
   ```
 
@@ -362,8 +378,8 @@ In Chinese (`AGENTS.md`, Talking to habit and to other agents):
   awaiting habit's go-ahead, with what it does and whether it can be undone.
   Its evidence item adds one plain sentence naming each Builder's and the Reviewer's vendor,
   in both the terminal copy and the English copy; when the Reviewer is waived, follow Waivers.
-- **At low and at medium when the Builder writes it**, items 4 and 5 state only checkable
-  facts, and the summary says that no session independent of the Builder looked at the change.
+- **At low and at medium when the Builder writes it**, use checkable facts for items 4
+  and 5 and state whether a session independent of the Builder reviewed the change.
   At medium it also names the bot whose review ran, or states its exact-head waiver.
 
 Neither copy points at code: no paths, line numbers, diffs or snippets.

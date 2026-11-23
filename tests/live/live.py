@@ -198,9 +198,10 @@ def chosen_probes(names, sandbox):
 
 def context(state, directory):
     fixture = seed_fixture()
-    confirmed = confirmed_values(state.get("version") or model_version(state.get("probes") or []), fixture)
+    version = state.get("version") or model_version(state.get("probes") or [])
+    confirmed = confirmed_values(version, fixture)
     return probes.Context(state["sandbox"], state["visibility"], fixture["default_branch"], confirmed,
-                          state["commit"], state.get("sandbox_pr"), directory)
+                          state["commit"], state.get("sandbox_pr"), directory, version=version)
 
 
 def model_version(names, chosen=None):

@@ -1,8 +1,9 @@
 """Governance model version five, the unpublished draft: rendered policy-text checks."""
 
 import re
+from textwrap import dedent
 
-from materialized_version_support import VersionThreeRendered, flat, level_three_section, level_two_section  # noqa: F401
+from materialized_version_support import VersionThreeRendered, flat, level_three_section, level_two_section
 
 
 class VersionFiveInitializeChecks(VersionThreeRendered):
@@ -12,6 +13,9 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
 
     def review(self):
         return flat(self.text("docs/agents/review.md"))
+
+    def on_the_pr(self):
+        return self.text("docs/agents/review.md").split("\n### On the PR\n")[1].split("\n### In the terminal\n")[0]
 
     def test_required_checks_say_the_gate_applies_from_the_first_pr_after_initialize(self):
         text = self.review()
@@ -33,16 +37,35 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
             "A governance gate run after a PR body edit qualifies as repaired only when the edit "
             "corrects the failed gate input, such as its Risk declaration.", self.review())
 
-    def test_the_merge_summary_title_and_reviews_line_are_unchanged_from_version_four(self):
-        def header(text):
-            return text.split("```text\n## Merge summary: <tier>", 1)[1].split("\n```", 1)[0]
-        four = support_four(self)
-        self.assertEqual(header(self.text("docs/agents/review.md")), header(four))
+    def test_the_writer_names_the_full_head_and_judges_security_from_the_change(self):
+        section = self.on_the_pr()
+        template = section.split("```text\n", 1)[1].split("\n```", 1)[0]
+        self.assertEqual(template.splitlines(), [
+            "## Merge summary: <tier> at <full head sha>",
+            "Required reviews: <kind>=<state>, <kind>=<state>",
+            "Security review applies: <yes|no>",
+        ])
+        self.assertIn("all 40", section)
+        self.assertIn("Security review applies: yes", section)
+        self.assertIn("Security review applies: no", section)
+        self.assertIn("authentication, privacy or secret handling", flat(section))
+        for path in ("docs/agents/review.md", "docs/agents/reviewer.md"):
+            self.assertNotIn("the tier's reason involves", flat(self.text(path)))
 
     def test_review_omits_the_descriptive_merge_watch_paragraph(self):
         review = self.review()
         self.assertNotIn("Merge watch requires self-verification and the Merge summary at every tier", review)
         self.assertNotIn("This is the Upgrade merge's transition exception.", review)
+
+    def test_writer_checks_waiver_eligibility_and_omits_unused_optional_slots(self):
+        checks = flat(level_three_section(self.text("docs/agents/review.md"), "### Checks first"))
+        self.assertIn("required and eligible for a waiver on this PR", checks)
+        self.assertIn("At low, omit an unused optional slot.", flat(self.on_the_pr()))
+
+    def test_builder_summaries_report_whether_an_independent_session_ran(self):
+        section = flat(level_three_section(self.text("docs/agents/review.md"), "### In the terminal"))
+        self.assertIn("state whether a session independent of the Builder reviewed the change", section)
+        self.assertIn("At low, the Builder writes the Merge summary", flat(self.text("docs/agents/builder.md")))
 
     def test_both_medium_substitution_rules_require_the_last_enabled_bot(self):
         bullets = self.text("docs/agents/review.md").split("\n- ")
@@ -55,25 +78,26 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
                 self.assertIn(condition, matches[0])
 
     def test_summary_examples_read_with_the_version_five_parser(self):
-        from test_merge_watch import watch_v5
+        from test_merge_watch import load_v4_case_for_v5, watch_v5
 
-        review = self.text("docs/agents/review.md")
-        examples = re.findall(
-            r"^[ \t]*## Merge summary: (low|medium|high) at [0-9a-f]{7}\n[ \t]*(Required reviews: [^\n]+)",
-            review, re.MULTILINE)
-        self.assertEqual(len(examples), 3)
-        for tier, line in examples:
-            self.assertIsNotNone(watch_v5.parse_reviews(line, tier), line)
-
-
-def support_four(case):
-    """Version 4's review.md, read from the store."""
-    import os
-    import support
-    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    path = os.path.join(root, "generator", "govern-repository", "store", "4", "templates",
-                        "docs", "agents", "review.md")
-    return support.read_text(path)
+        section = self.on_the_pr()
+        examples = [dedent(block).strip() for block in re.findall(r"```text\n(.*?)\n *```", section, re.S)
+                    if "<tier>" not in block]
+        recordings = ("high-one-bot-reviewer", "medium-fallback", "medium-reviewer-no-provider-exhausted-list")
+        self.assertEqual(len(examples), len(recordings))
+        for body, name in zip(examples, recordings):
+            with self.subTest(recording=name):
+                case = load_v4_case_for_v5(name + ".json")
+                github = case["github"]
+                policy = next(path for path in github if "/contents/" in path)
+                github[policy] = github[policy].replace("version: 4\n", "version: 5\n")
+                comments = next(rows for path, rows in github.items() if path.endswith("/comments"))
+                summary, = (c for c in comments if c["body"].startswith("## Merge summary:"))
+                summary["body"] = body
+                problems = []
+                self.assertEqual(watch_v5.decide("push", case["event"], "Habit098", github.__getitem__,
+                                                problems=problems), [])
+                self.assertEqual(problems, [])
 
 
 class VersionFivePureRevert(VersionThreeRendered):

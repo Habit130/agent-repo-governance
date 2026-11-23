@@ -56,9 +56,10 @@ def registered():
 
 
 class Context(object):
-    def __init__(self, repository, visibility, default_branch, confirmed, commit, sandbox_pr, directory):
+    def __init__(self, repository, visibility, default_branch, confirmed, commit, sandbox_pr, directory, version=None):
         self.repository, self.visibility, self.default_branch = repository, visibility, default_branch
         self.confirmed, self.commit, self.sandbox_pr, self.directory = confirmed, commit, sandbox_pr, directory
+        self.version = version
 
     def input_path(self, name):
         return os.path.join(self.directory, "%s.txt" % name)
