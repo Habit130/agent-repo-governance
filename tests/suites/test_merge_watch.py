@@ -26,7 +26,7 @@ import unittest
 from unittest import mock
 
 import materialized
-from merge_watch_history import EARLY, HistoricalEvidence, supply_historical_fields  # noqa: F401
+from merge_watch_history import EARLY, HistoricalEvidence, load_v4_case_for_v5  # noqa: F401
 import support
 from standins import environment
 from target_state import target_ruleset
@@ -546,9 +546,11 @@ class DeclaredWaivers(unittest.TestCase):
 
     def check_waivers(self, version, watch):
         # This high-tier PR already has both the completed Codex review and the Reviewer status.
-        case = load(os.path.join(FIXTURES, "v4", "high-one-bot-reviewer.json"))
+        filename = "high-one-bot-reviewer.json"
         if version == 5:
-            supply_historical_fields(case)
+            case = load_v4_case_for_v5(filename)
+        else:
+            case = load(os.path.join(FIXTURES, "v4", filename))
         github, event = case["github"], case["event"]
         repository = event["repository"]["full_name"]
         pull, = github[f"repos/{repository}/commits/{event['after']}/pulls"]
@@ -635,8 +637,17 @@ class VersionFour(unittest.TestCase):
 class VersionFive(unittest.TestCase):
     """Replay released v4 declarations with the historical fields the v5 reader also needs."""
 
+    def test_reloading_a_recording_restores_its_comments(self):
+        filename = "high-missing-all.json"
+        case = load_v4_case_for_v5(filename)
+        comments_path = next(path for path in case["github"] if path.endswith("/comments"))
+        case["github"][comments_path].clear()
+
+        fresh = load_v4_case_for_v5(filename)
+        self.assertEqual(len(fresh["github"][comments_path]), 1)
+
     def test_a_record_without_a_bot_list_leaves_the_slot_indeterminate(self):
-        case = supply_historical_fields(load(os.path.join(FIXTURES, "v4", "medium-unknown-bot-policy.json")))
+        case = load_v4_case_for_v5("medium-unknown-bot-policy.json")
         event = case["event"]
         record_path = "repos/%s/contents/%s?ref=%s" % (
             event["repository"]["full_name"], watch_v5.RECORD, event["before"]
@@ -654,7 +665,7 @@ class VersionFive(unittest.TestCase):
     def test_a_version_three_reviewer_waiver_needs_no_status_read(self):
         for name in ("base-version-three-waived-reviewer-medium", "transition-reviewer-waiver-high"):
             with self.subTest(case=name):
-                case = supply_historical_fields(load(os.path.join(FIXTURES, "v4", name + ".json")))
+                case = load_v4_case_for_v5(name + ".json")
                 calls = []
 
                 def read(path):
@@ -669,7 +680,7 @@ class VersionFive(unittest.TestCase):
         cases = os.path.join(FIXTURES, "v4")
         for name in sorted(os.listdir(cases)):
             with self.subTest(case=name):
-                case = supply_historical_fields(load(os.path.join(cases, name)))
+                case = load_v4_case_for_v5(name)
 
                 def read(path):
                     if path in case.get("not_found", ()):
