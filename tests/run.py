@@ -39,6 +39,7 @@ AREAS = ("generator", "skill-copies", "machine", "tests")
 # job also runs every Linux suite under Python 3.9, as the 3.9 compatibility check.
 SUITES = (
     ("stored-form", "test_stored_form", "linux"),
+    ("output-redaction", "test_output_redaction", "linux"),
     ("store", "test_store", "linux"),
     ("render", "test_render", "linux"),
     ("compare", "test_compare", "linux"),
