@@ -52,6 +52,35 @@ class InstallCase(support.TempDirCase):
         return ms.statuses(out, "machine check")
 
 
+class InstallDiagnostics(InstallCase):
+    """An install's own diagnostics and embedded reports (miss #253)."""
+
+    def test_upstream_failure_stays_informational(self):
+        gh = ms.write_gh_recording(self.path("gh.json"))
+        ms.replace_response(gh, ["api", "repos/mattpocock/skills/compare/%s...HEAD" % ms.UPSTREAM_COMMIT],
+                            1, "", ms.remote_error())
+        result = ms.run_machine(["install", "--source", self.source, "--home", self.home], self.env(gh=gh))
+        ms.assert_diagnostic(self, result, 0, "[说明] upstream：无法比较 mattpocock/skills")
+
+    def test_unreadable_source_refusal(self):
+        env = self.env()
+        # Only this child's git fails. Keep the fixture response out of args and logs.
+        git_bin = self.path("git-bin")
+        support.write_tree(git_bin, {"git": {"mode": "100755", "content": "#!/bin/sh\ncat \"$FIXTURE_ERROR\" >&2\nexit 1\n"}})
+        env["PATH"] = git_bin + os.pathsep + env["PATH"]
+        env["FIXTURE_ERROR"] = self.path("git-error")
+        support.write_tree(self.tmp, {"git-error": ms.remote_error()})
+        result = ms.run_machine(["install", "--source", self.source, "--home", self.home], env)
+        ms.assert_diagnostic(self, result, 2, "不是可读的 git checkout：git rev-parse HEAD 失败")
+
+    def test_install_prints_the_check_and_list_failures(self):
+        gh = ms.write_gh_recording(self.path("gh.json"))
+        ms.replace_response(gh, ["api", "user"], 0, json.dumps({"login": ms.AWS_KEY_ID}))
+        result = ms.run_machine(["install", "--source", self.source, "--home", self.home], self.env(gh=gh))
+        ms.assert_diagnostic(self, result, 1, "[失败] identity：gh 应以 agent account Habit098 操作")
+        ms.assert_diagnostic(self, result, 1, "[失败] account：gh 应以 agent account Habit098 运行")
+
+
 class FreshMachine(InstallCase):
     """A fresh machine, with the Codex stand-in replaying real output (CRIT-1, CRIT-3, CRIT-4)."""
 

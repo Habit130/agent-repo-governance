@@ -63,7 +63,7 @@ def _refuse_older(home, source, commit):
     if installed and installed["commit"] != commit and not skills.is_ancestor(source, installed["commit"], commit):
         raise MachineError(
             "本机已安装 %s，而源码树的 %s 不比它新（install 只向前移动）；install 未写入任何内容"
-            % (installed["commit"], commit)
+            % (installed["commit"], homes.shown_identifier(commit))
         )
     return installed
 
@@ -186,20 +186,22 @@ def _upstream(home, report, source):
     except (OSError, ValueError, KeyError, TypeError) as error:
         report.add(homes.FAIL, "upstream", "无法读取 %s：%s" % (PROVENANCE, error))
         return
-    code, out, err = home.run(
+    code, out, _ = home.run(
         ["gh", "api", "repos/%s/compare/%s...HEAD" % (repository, commit), "--jq", "{ahead_by, status}"]
     )
+    shown_repository = homes.shown_identifier(repository)
+    shown_commit = homes.shown_identifier(commit)[:12]
     try:
         facts = json.loads(out) if code == 0 else None
         ahead = facts["ahead_by"]
     except (ValueError, KeyError, TypeError):
-        report.add(homes.NOTE, "upstream", "无法比较 %s 与 %s 的最新 commit：%s" % (repository, commit[:12], (err or out).strip()))
+        report.add(homes.NOTE, "upstream", "无法比较 %s 与 %s 的最新 commit" % (shown_repository, shown_commit))
         return
     if ahead:
         report.add(homes.NOTE, "upstream", "%s 比 skill copies 记录的 %s 新 %d 个 commit；是否更新由 habit 决定"
-                   % (repository, commit[:12], ahead))
+                   % (shown_repository, shown_commit, ahead))
     else:
-        report.add(homes.NOTE, "upstream", "%s 没有比 %s 更新的 commit" % (repository, commit[:12]))
+        report.add(homes.NOTE, "upstream", "%s 没有比 %s 更新的 commit" % (shown_repository, shown_commit))
 
 
 def run(source, home, codex=None):
@@ -210,7 +212,8 @@ def run(source, home, codex=None):
     skill_set = skills.machine_skill_set(source)
     tools = skills.tracked(source, skills.MACHINE_SOURCE)
 
-    report = homes.Report("install %s" % commit)
+    shown_commit = homes.shown_identifier(commit)
+    report = homes.Report("install %s" % shown_commit)
     written = _machine_skills(home, report, skill_set, installed)
     _lock_file(home, report, set(skill_set))
     _machine_rules(home, report, codex)
@@ -220,7 +223,7 @@ def run(source, home, codex=None):
     if os.path.isdir(home.staging) and not os.listdir(home.staging):
         os.rmdir(home.staging)
     report.add(homes.PASS, "installed state", "已记录 commit %s 和 %d 个 managed skills；machine check 和 list 可从 %s 单独运行"
-               % (commit, len(written), home.show(home.tools)))
+               % (shown_commit, len(written), home.show(home.tools)))
     reports = [report, check.run(home, codex, set(skill_set)), governed.run(home)]
     upstream = homes.Report("upstream")
     _upstream(home, upstream, source)

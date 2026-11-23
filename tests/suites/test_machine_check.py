@@ -64,6 +64,39 @@ class CheckCase(support.TempDirCase):
             self.assertTrue(any(text in failure for failure in failures), (text, failures))
 
 
+class CheckDiagnostics(CheckCase):
+    """Failed gh and Codex probes through the CLI (miss #253)."""
+
+    def test_probe_and_identity_diagnostics(self):
+        identity = "[失败] identity：gh 应以 agent account Habit098 操作"
+        rules = "[失败] Codex rules：`ghm pr merge 1`"
+        cases = (
+            ("identity login", "gh", ["api", "user"], 0, json.dumps({"login": ms.AWS_KEY_ID}), "", identity),
+            ("URL in login", "gh", ["api", "user"], 0, json.dumps({"login": ms.remote_error()}), "", identity),
+            ("identity stderr", "gh", ["api", "user"], 1, "", ms.remote_error(), identity),
+            ("identity stdout", "gh", ["api", "user"], 0, ms.remote_error(), "", identity),
+            ("rules stderr", "codex", ["execpolicy", "check"], 1, "", ms.remote_error(), rules + " 检查失败"),
+            ("rules stdout", "codex", ["execpolicy", "check"], 0, ms.remote_error(), "", rules + " 的输出不是预期的 JSON"),
+            ("skill list", "codex", ["debug", "prompt-input"], 1, "", ms.remote_error(),
+             "[失败] Codex skill list：`codex debug prompt-input` 失败"),
+        )
+        for label, tool, prefix, code, out, err, expected in cases:
+            with self.subTest(route=label):
+                gh = ms.write_gh_recording(self.path("gh.json"))
+                codex = ms.merge_codex_recordings(self.path("codex.json"), "codex-execpolicy.json", "codex-prompt-input-ready.json")
+                ms.replace_response(gh if tool == "gh" else codex, prefix, code, out, err)
+                env = ms.machine_env(self.home, self.path(label), gh_recording=gh, codex_recording=codex)
+                result = ms.run_machine(["check", "--codex", ms.STANDIN_CODEX], env)
+                ms.assert_diagnostic(self, result, 1, expected)
+
+    def test_url_returned_as_the_git_identity(self):
+        remote = ms.remote_error().splitlines()[-1].split(" ", 1)[1]
+        support.write_tree(self.home, {".gitconfig": '[user]\n\temail = "%s"\n' % remote})
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        result = ms.run_machine(["check"], env)
+        ms.assert_diagnostic(self, result, 1, "[失败] identity：git 的全局 commit 身份应是 " + ms.NOREPLY)
+
+
 class EveryItem(CheckCase):
     def test_a_ready_machine_passes_every_item(self):
         statuses, failures = self.check()

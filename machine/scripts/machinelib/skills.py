@@ -83,10 +83,9 @@ def write_dir(path, files):
 
 
 def _git(source, *args):
-    result = subprocess.run(["git", "-C", source] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(["git", "-C", source] + list(args), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if result.returncode != 0:
-        raise MachineError("源码树 %s 不是可读的 git checkout：git %s 失败：%s"
-                           % (source, " ".join(args), result.stderr.decode("utf-8", "replace").strip()))
+        raise MachineError("源码树 %s 不是可读的 git checkout：git %s 失败" % (source, " ".join(args)))
     return result.stdout
 
 

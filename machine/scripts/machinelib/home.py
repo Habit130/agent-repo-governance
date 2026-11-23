@@ -13,6 +13,14 @@ import tempfile
 PASS, FAIL, SKIP, NOTE = "通过", "失败", "跳过", "说明"
 
 
+def shown_identifier(value):
+    """A URL returned in place of a login, email, repository, commit or decision is opaque."""
+    text = str(value)
+    if "//" in text or (("/" in text or ":" in text) and any(mark in text for mark in "@?#")):
+        return "（已隐藏）"
+    return text
+
+
 class Home(object):
     def __init__(self, root, env=None):
         self.root = os.path.realpath(root)
@@ -177,8 +185,7 @@ class Report(object):
     def failed(self):
         return any(status == FAIL for status, _, _ in self.lines)
 
-    def render(self):
-        out = ["== %s" % self.title]
+    def render_lines(self):
+        yield "== %s" % self.title
         for status, subject, detail in self.lines:
-            out.append("[%s] %s：%s" % (status, subject, detail))
-        return "\n".join(out) + "\n"
+            yield "[%s] %s：%s" % (status, subject, detail)

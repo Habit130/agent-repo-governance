@@ -22,23 +22,40 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import machinelib  # noqa: E402
 
+
+def write_line(line, stream):
+    """Redact one logical diagnostic, including any continuation lines it owns."""
+    # If bootstrap failed, even govlib's search paths are unsafe to repeat.
+    safe = redact(line) if redact is not None else "拒绝：找不到 generator 的 govlib"
+    stream.write(safe + "\n")
+
+
 try:
     machinelib.find_govlib()
-except machinelib.MachineError as error:
-    sys.stdout.write("拒绝：%s\n" % error)
+    from govlib.secrets import redact
+except (machinelib.MachineError, ImportError) as error:
+    redact = None
+    write_line(str(error), sys.stdout)
     sys.exit(2)
 
 from machinelib import MachineError, check, governed, home as homes, install, wizard  # noqa: E402
 
 
+class MachineArgumentParser(argparse.ArgumentParser):
+    def _print_message(self, message, file=None):
+        if message:
+            write_line(message.removesuffix("\n"), file if file is not None else sys.stderr)
+
+
 def emit(reports):
     for report in reports:
-        sys.stdout.write(report.render())
+        for line in report.render_lines():
+            write_line(line, sys.stdout)
     return 1 if any(report.failed() for report in reports) else 0
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog="machine.py", description=__doc__.splitlines()[0])
+    parser = MachineArgumentParser(prog="machine.py", description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", metavar="command")
     commands.required = True
     for name in ("install", "check", "list", "wizard"):
@@ -60,7 +77,7 @@ def main(argv=None):
             return emit([check.run(home, codex)])
         return emit([governed.run(home)])
     except MachineError as error:
-        sys.stdout.write("拒绝：%s\n" % error)
+        write_line("拒绝：%s" % error, sys.stdout)
         return 2
 
 
