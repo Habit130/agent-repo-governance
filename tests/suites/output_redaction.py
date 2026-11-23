@@ -1,7 +1,8 @@
 """Check explicit Python terminal writes without importing the programs.
 
-Only recognized data-preserving operations carry redaction to a write. An opaque
-destination can be a terminal. Path proofs cover the programs' ordinary file writes.
+Only recognized data-preserving operations carry redaction to a write. An untyped
+handle or descriptor can denote either stream. Pathname I/O is checked for explicit
+device destinations visible in source. The check does not simulate the filesystem.
 """
 
 import ast
@@ -10,14 +11,16 @@ from importlib.util import resolve_name
 import posixpath
 from typing import NamedTuple
 
-from skill_file_inputs import FLOWS, relative_skill_inputs
-
 
 UNKNOWN = "<unknown>"
+UNBOUND = "<unbound>"
+MUTATED = "<possibly modified>"
 FILE = "<ordinary file>"
 PATH = "<pathname>"
 UNRESOLVED_PATH = "<unresolved pathname>"
 LITERAL = "<literal>:"
+CLASS = "<class>:"
+INSTANCE = "<instance>:"
 REDACTED = "<redacted text>"
 ENCODED = "<encoded redacted text>"
 SHARED = "govlib.secrets.redact"
@@ -28,6 +31,7 @@ SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda) + COM
 STREAMS = {"sys.stdout", "sys.stderr", "sys.__stdout__", "sys.__stderr__"}
 STREAM_PREFIXES = tuple(stream + "." for stream in STREAMS)
 MUTATORS = {"append", "extend", "insert", "update", "setdefault", "__setitem__"}
+IMMUTABLE_READERS = {"builtins.str", "builtins.bytes", "builtins.repr", "builtins.len", "builtins.format"}
 TERMINAL_PATHS = {"/dev/stdout", "/dev/stderr", "/dev/fd/1", "/dev/fd/2", "/proc/self/fd/1", "/proc/self/fd/2"}
 
 # If govlib cannot load, #248's machine writer substitutes this fixed refusal.
@@ -44,16 +48,29 @@ def _hide_private_uri(match):
 ''').body[0]
 
 
-def matches(node, expression):
-    return ast.dump(node) == ast.dump(ast.parse(expression, mode="eval").body)
-
-
-def function_name(path, name):
-    return path.rpartition("/scripts/")[2].removesuffix(".py").replace("/", ".") + "." + name
+def imports_govlib(tree):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and (node.level or (node.module or "").split(".")[0] == "govlib"):
+            return True
+        if isinstance(node, ast.Import) and any(a.name.split(".")[0] == "govlib" for a in node.names):
+            return True
+    return False
 
 
 def parameters(args):
     return [a for a in (*args.posonlyargs, *args.args, args.vararg, *args.kwonlyargs, args.kwarg) if a]
+
+
+def class_id(path, node):
+    return "%s:%s:%d" % (path, node.name, node.lineno)
+
+
+def reads_argument(target, call):
+    if target in ("builtins.print", SHARED) or target in IMMUTABLE_READERS:
+        return True
+    if target == "json.dumps":
+        return not any(kw.arg in (None, "default", "cls") for kw in call.keywords)
+    return target.startswith((*STREAM_PREFIXES, FILE + ".")) and target.endswith((".write", ".writelines"))
 
 
 def path_origin(value):
@@ -83,6 +100,16 @@ def ordinary_suffix(suffix):
     return leaf not in ("", ".", "..") and not any(name.endswith(leaf) for name in ("stdout", "stderr", "1", "2"))
 
 
+def device_hint(value):
+    if value in ("terminal fd", UNRESOLVED_PATH):
+        return True
+    if not value.startswith(LITERAL):
+        return False
+    part = posixpath.normpath(value[len(LITERAL):])
+    return (path_origin(part) == "terminal fd" or part in ("/dev", "/dev/fd", "/proc/self/fd")
+            or posixpath.basename(part) in ("stdout", "stderr", "1", "2"))
+
+
 class ListColumn(NamedTuple):
     name: str
     index: int
@@ -95,11 +122,14 @@ class Scope:
         self.node = node
         self.path = path
         self.parent = parent
+        self.has_redactor = imports_govlib(node) if parent is None else parent.has_redactor
         self.path_functions = path_functions if parent is None else parent.path_functions
         self.field_writes = field_writes if parent is None else parent.field_writes
         self.fields = None
+        self.instance = None
         if definition_scope and isinstance(definition_scope.node, ast.ClassDef):
             self.fields = definition_scope.fields
+            self.instance = INSTANCE + class_id(path, definition_scope.node)
         if isinstance(node, ast.ClassDef):
             self.fields = set()
         self.external_writes = set()
@@ -117,7 +147,8 @@ class Scope:
         self.children = []
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
             for arg in parameters(node.args):
-                self.bindings[arg.arg].append((arg, UNKNOWN, False))
+                origin = self.instance if self.instance and arg.arg == "self" else UNKNOWN
+                self.bindings[arg.arg].append((arg, origin, False))
             defaults = zip(reversed(node.args.posonlyargs + node.args.args), reversed(node.args.defaults))
             for arg, default in [*defaults, *zip(node.args.kwonlyargs, node.args.kw_defaults)]:
                 if default is not None:
@@ -134,42 +165,28 @@ class Scope:
         if isinstance(node, ast.Lambda):
             self.returns.append(node.body)
         self.nested_reads = {n.id for child in self.children for n in ast.walk(child) if isinstance(n, ast.Name)}
-        # A helper can modify a redacted list or dictionary it receives.
-        for ref, parent_node in self.parents.items():
-            if not isinstance(ref, ast.Name) or not isinstance(ref.ctx, ast.Load):
-                continue
-            if (isinstance(parent_node, (ast.List, ast.Tuple, ast.Dict, ast.Set))
-                    or isinstance(parent_node, ast.Attribute) and parent_node.attr != "encode"):
-                if REDACTED in self.origins(ref):
-                    self.invalidate(ref, parent_node)
-        for value in [*self.returns, *self.escapes]:
-            if value is not None:
-                for ref in ast.walk(value):
-                    if isinstance(ref, ast.Name) and REDACTED in self.origins(ref):
-                        self.invalidate(ref, value)
+        if self.has_redactor:
+            self.record_escapes()
         for call in self.calls:
             targets = self.origins(call.func)
             if "builtins.setattr" in targets and len(call.args) == 3:
                 field = literal(self.origins(call.args[1]))
-                self.field_writes[field].append((self, call.args[2]))
-            if all(target in ("builtins.print", SHARED, "json.dumps") or (
-                target.startswith((*STREAM_PREFIXES, FILE + "."))
-                and target.endswith((".write", ".writelines"))
-            ) for target in targets):
+                self.field_writes[field].append((self, call.args[0], call.args[2]))
+            if not self.has_redactor or all(reads_argument(target, call) for target in targets):
                 continue
             for arg in [*call.args, *(kw.value for kw in call.keywords)]:
-                for ref in ast.walk(arg):
-                    if isinstance(ref, ast.Name) and REDACTED in self.origins(ref):
+                for ref in self.retained_names(arg):
+                    if REDACTED in self.origins(ref):
                         self.invalidate(ref, call)
         local_names = set(self.bindings)
         for name, site in self.mutations:
-            if name not in local_names and parent:
-                outer = parent
-                while outer.parent and name not in outer.bindings:
-                    outer = outer.parent
-                outer.external_writes.update(outer.related_names(name))
             for alias in self.related_names(name):
-                self.bindings[alias].append((site, UNKNOWN, False))
+                if alias in self.declarations or alias not in local_names:
+                    outer = self.owner_of(alias) if alias in self.declarations else parent and parent.owner_of(alias)
+                    if outer is not None and outer is not self:
+                        outer.external_writes.update(outer.related_names(alias))
+                if alias in local_names:
+                    self.bindings[alias].append((site, MUTATED, False))
         for name, declaration in self.declarations.items():
             if name in self.bindings:
                 outer = self.owner_of(name)
@@ -188,6 +205,40 @@ class Scope:
                 pending.extend(self.aliases[alias] - reached)
         return reached
 
+    def record_escapes(self):
+        for ref, parent in self.parents.items():
+            if isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load):
+                if (isinstance(parent, (ast.List, ast.Tuple, ast.Dict, ast.Set))
+                        or isinstance(parent, ast.Attribute) and parent.attr != "encode"):
+                    if REDACTED in self.origins(ref):
+                        self.invalidate(ref, parent)
+        for value in [*self.returns, *self.escapes]:
+            if value is not None:
+                for ref in self.retained_names(value):
+                    if REDACTED in self.origins(ref):
+                        self.invalidate(ref, value)
+
+    def retained_names(self, value):
+        """Names whose objects can be returned or stored through this expression."""
+        if isinstance(value, ast.Name):
+            if isinstance(value.ctx, ast.Load):
+                yield value
+            return
+        if isinstance(value, (ast.JoinedStr, ast.FormattedValue, ast.Constant, ast.Compare)):
+            return  # Formatting makes text; comparison makes a boolean.
+        if isinstance(value, ast.Call):
+            targets = self.origins(value.func)
+            if targets and targets <= IMMUTABLE_READERS:
+                return
+        if isinstance(value, ast.IfExp):
+            children = (value.body, value.orelse)
+        elif isinstance(value, (ast.Subscript, ast.Attribute)):
+            children = (value.value,)
+        else:
+            children = ast.iter_child_nodes(value)
+        for child in children:
+            yield from self.retained_names(child)
+
     def collect(self, node, parent, block=None):
         if isinstance(node, ast.stmt):
             block = next(id(items) for _, items in ast.iter_fields(parent)
@@ -201,9 +252,11 @@ class Scope:
                 return
             if hasattr(node, "name"):
                 symbol = UNKNOWN
+                if isinstance(node, ast.ClassDef):
+                    symbol = CLASS + class_id(self.path, node)
                 if isinstance(self.node, ast.Module) and isinstance(node, ast.FunctionDef):
-                    if (self.path, node.name) in FLOWS or (self.path == STORED_FORM and node.name == "check_target"):
-                        symbol = function_name(self.path, node.name)
+                    if self.path == STORED_FORM and node.name == "check_target":
+                        symbol = CHECK_TARGET
                 if node.name == "_hide_private_uri" and ast.dump(node) == ast.dump(URI_REPLACEMENT):
                     symbol = "<reviewed regex replacement>"
                 self.bindings[node.name].append((node, symbol, True))
@@ -233,7 +286,7 @@ class Scope:
             declaration = "global" if isinstance(node, ast.Global) else "nonlocal"
             self.declarations.update(dict.fromkeys(node.names, declaration))
         elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
-            site, value, definite = node, UNKNOWN, False
+            site, value, definite = node, UNBOUND if isinstance(node.ctx, ast.Del) else UNKNOWN, False
             if isinstance(parent, (ast.Assign, ast.AnnAssign, ast.NamedExpr)) and parent.value is not None:
                 site = parent
                 value = parent.value
@@ -253,18 +306,20 @@ class Scope:
             self.bindings[node.id].append((site, value, definite))
         elif isinstance(node, ast.ExceptHandler) and node.name:
             self.bindings[node.name].append((node, UNKNOWN, False))
+            self.bindings[node.name].append((node, UNBOUND, False))
         elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             # Only a plain local copy is covered by the alias graph. A conditional
             # reference or a store through another object can escape anywhere.
-            if (any(not isinstance(t, ast.Name) for t in targets)
+            if (any(not isinstance(t, ast.Name) or t.id in self.declarations for t in targets)
+                    or isinstance(self.node, ast.ClassDef)
                     or isinstance(node.value, (ast.IfExp, ast.BoolOp, ast.Starred))):
                 self.escapes.append(node.value)
         elif isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.ctx, ast.Store):
             self.invalidate(node.value, node)
             if isinstance(node, ast.Attribute):
                 value = parent.value if isinstance(parent, (ast.Assign, ast.AnnAssign)) else UNKNOWN
-                self.field_writes[node.attr].append((self, value))
+                self.field_writes[node.attr].append((self, node.value, value))
                 if self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self":
                     self.fields.add(node.attr)
         elif isinstance(node, ast.Call):
@@ -286,26 +341,32 @@ class Scope:
         if isinstance(target, ast.Name):
             self.mutations.append((target.id, site))
 
-    def values_at(self, name, read):
+    def values_at(self, name, read, seen):
         bindings = self.bindings.get(name, ())
-        if len(bindings) > 1 and read in self.blocks:
+        use = (read.lineno, read.col_offset)
+        last = None
+        if read in self.blocks:
             # A preceding assignment in this same statement list overwrites earlier values.
             # Keep all subsequent possibilities, including conditional assignments and mutations.
-            use = (read.lineno, read.col_offset)
             last = max(((site.end_lineno, site.end_col_offset) for site, _, definite in bindings
                         if definite and self.blocks[site] == self.blocks[read]
                         and (site.end_lineno, site.end_col_offset) <= use), default=None)
             if last is not None:
-                return [value for site, value, _ in bindings if last <= (site.end_lineno, site.end_col_offset) <= use]
+                bindings = [(site, value, definite) for site, value, definite in bindings
+                            if last <= (site.end_lineno, site.end_col_offset) <= use]
         values = [value for _, value, _ in bindings]
-        if isinstance(self.node, ast.Module) and name in ("open", "print"):
-            # A conditional module binding can leave the builtin visible, including
-            # to a nested function with an explicit global declaration.
-            top_level = id(self.node.body)
-            use = (read.lineno, read.col_offset)
-            if not any(definite and self.blocks.get(site) == top_level
-                       and (site.end_lineno, site.end_col_offset) <= use for site, _, definite in bindings):
-                values.append("builtins." + name)
+        if isinstance(self.node, (ast.Module, ast.ClassDef)):
+            # Both namespaces can fall back when a conditional binding was skipped or
+            # deleted. A class body can also see a writer bound in the enclosing scope.
+            guaranteed = last is not None or any(
+                definite and self.blocks.get(site) == id(self.node.body)
+                and (site.end_lineno, site.end_col_offset) <= use for site, _, definite in bindings
+            )
+            if UNBOUND in values or not guaranteed:
+                if isinstance(self.node, ast.ClassDef):
+                    values.extend(self.parent.origins(read, seen))
+                elif name in ("open", "print", "getattr", "setattr"):
+                    values.append("builtins." + name)
         return values
 
     def owner_of(self, name):
@@ -332,20 +393,25 @@ class Scope:
             if not scope:
                 return {"builtins." + node.id}
             if node not in seen:
-                result = set().union(*(scope.origins(v, seen | {node}) for v in scope.values_at(node.id, node)))
+                result = set().union(*(scope.origins(v, seen | {node}) for v in scope.values_at(node.id, node, seen)))
                 if not scope.bindings.get(node.id):
                     result.add("builtins." + node.id)
                 for writer, value in scope.shared_bindings.get(node.id, ()):
                     result.update(writer.origins(value, seen | {node}))
+                if MUTATED in result:
+                    result.discard(MUTATED)
+                    # Changing a field can invalidate a payload or callable, but the
+                    # receiver remains an instance of the same class.
+                    if not result or not all(value.startswith(INSTANCE) for value in result):
+                        result.add(UNKNOWN)
                 if node.id in scope.external_writes:
                     result.add(UNKNOWN)
                 return result
         if isinstance(node, ast.Attribute):
             if (self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self"
                     and node.attr in self.fields and node not in seen):
-                values = self.field_writes[node.attr]
-                if (None not in self.field_writes
-                        and all(ordinary_paths(scope.origins(value, seen | {node})) for scope, value in values)):
+                values = self.field_writes[node.attr] + self.field_writes.get(None, [])
+                if self.ordinary_field(values, seen | {node}):
                     return {PATH}
             return {name + "." + node.attr for name in self.origins(node.value, seen)}
         if isinstance(node, ast.Constant):
@@ -374,6 +440,15 @@ class Scope:
         if isinstance(node, ast.Call):
             return self.call_result(node, seen)
         return {UNKNOWN}
+
+    def ordinary_field(self, writes, seen):
+        for writer, receiver, value in writes:
+            owners = writer.origins(receiver, seen)
+            if owners and all(owner.startswith(INSTANCE) and owner != self.instance for owner in owners):
+                continue
+            if not ordinary_paths(writer.origins(value, seen)):
+                return False
+        return True
 
     def column_origins(self, column, seen):
         """Marker repair opens paths from local (checked path, text) pairs. An escaping list loses that proof."""
@@ -409,15 +484,10 @@ class Scope:
             values.update(self.origins(row.elts[column.index], seen))
         return values if initialized and values else {UNKNOWN}
 
-    def joins_fresh_skill_directory(self, call):
-        """Only the checked relative-name maps can certify this otherwise opaque join."""
-        return ("machinelib.skills.write_dir" in self.path_functions
-                and self.path == "machine/scripts/machinelib/skills.py"
-                and getattr(self.node, "name", "") == "write_dir"
-                and matches(call, 'os.path.join(path, *rel.split("/"))'))
-
     def call_result(self, call, seen):
         names = self.origins(call.func, seen)
+        if names and all(name.startswith(CLASS) for name in names):
+            return {INSTANCE + name[len(CLASS):] for name in names}
         if names == {"builtins.getattr"} and len(call.args) >= 2:
             owners = self.origins(call.args[0], seen)
             attrs = self.origins(call.args[1], seen)
@@ -430,7 +500,8 @@ class Scope:
                 resolved.update(owner + ".write" for owner in owners if owner in STREAMS or owner == "os")
             return resolved
         if names == {"os.path.join"}:
-            parts = [literal(self.origins(arg, seen)) for arg in call.args]
+            operands = [self.origins(arg, seen) for arg in call.args]
+            parts = [literal(values) for values in operands]
             suffix = []
             for part in reversed(parts):
                 if part is None:
@@ -442,9 +513,12 @@ class Scope:
                 return {LITERAL + posixpath.join(*suffix)}
             if suffix and ordinary_suffix(suffix[-1]):
                 return {PATH}
-            if self.joins_fresh_skill_directory(call):
-                return {PATH}
-            return {UNRESOLVED_PATH}
+            # A join produces a pathname. Check known device components, including
+            # alternatives in branches. General filesystem routing is outside this
+            # direct-output check, just as opening a literal log filename is.
+            if any(device_hint(value) for values in operands for value in values):
+                return {UNRESOLVED_PATH}
+            return {PATH}
         if names == {CHECK_TARGET} and CHECK_TARGET in self.path_functions:
             return {PATH}
         if names == {"re.compile"}:
@@ -542,19 +616,13 @@ def verified_path_helper(module):
     bindings = module.bindings.get("check_target", [])
     if len(bindings) != 1 or bindings[0][1] != CHECK_TARGET or "check_target" in module.external_writes:
         return False
+    for field in ("check_target", None):
+        for writer, receiver, _ in module.field_writes.get(field, []):
+            if "govlib.storedform" in writer.origins(receiver):
+                return False
     helper = next(s for s in module.children if s.node is bindings[0][0])
-    if helper.returns and all(ordinary_paths(helper.origins(v)) for v in helper.returns):
-        return True
-    # The generator can also prove a dynamic pathname by rejecting links and existing
-    # nonregular files immediately before returning it. A new return path needs evidence.
-    if len(helper.returns) != 1 or len(helper.node.body) < 2:
-        return False
-    guard, result = helper.node.body[-2:]
-    return (isinstance(result, ast.Return) and matches(result.value, "full") and isinstance(guard, ast.If)
-            and matches(guard.test, "os.path.islink(full) or (os.path.lexists(full) and not os.path.isfile(full))")
-            and helper.origins(guard.test.values[0].func) == {"os.path.islink"}
-            and len(guard.body) == 1 and isinstance(guard.body[0], ast.Raise) and not guard.orelse
-            and helper.origins(result.value) == {UNRESOLVED_PATH})
+    return (not helper.node.decorator_list and bool(helper.returns)
+            and all(ordinary_paths(helper.origins(value)) for value in helper.returns))
 
 
 def program_writes(sources):
@@ -563,40 +631,6 @@ def program_writes(sources):
     field_writes = defaultdict(list)
     modules = {path: Scope(tree, path, path_functions=path_functions, field_writes=field_writes)
                for path, tree in trees.items()}
-    if relative_skill_inputs(trees) and bound_skill_inputs(modules, field_writes):
-        path_functions.add("machinelib.skills.write_dir")
     if STORED_FORM in modules and verified_path_helper(modules[STORED_FORM]):
         path_functions.add(CHECK_TARGET)
     return [(path, line) for path, scope in modules.items() for line in sorted(scope.problems())]
-
-
-def bound_skill_inputs(modules, field_writes):
-    """The reviewed functions must still be the bindings their callers invoke."""
-    if None in field_writes:
-        return False
-    callees = {name: function_name(path, name) for path, name in FLOWS if name != "run"}
-    imported = {
-        "skills": "machinelib.skills", "storedform": "govlib.storedform",
-        "subprocess": "subprocess", "os": "os",
-    }
-    for path, name in FLOWS:
-        module = modules[path]
-        bindings = module.bindings.get(name, ())
-        if (len(bindings) != 1 or not isinstance(bindings[0][0], ast.FunctionDef)
-                or name in module.external_writes or name in field_writes):
-            return False
-        function = next(child for child in module.children if child.node is bindings[0][0])
-        for ref in function.parents:
-            if isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load) and ref.id in imported:
-                if function.origins(ref) != {imported[ref.id]}:
-                    return False
-        for call in function.calls:
-            callee = call.func
-            called = callee.attr if isinstance(callee, ast.Attribute) else getattr(callee, "id", "")
-            # A bytes/text decode method is distinct from the stored-path decoder.
-            if called == "decode" and not (isinstance(callee, ast.Attribute)
-                                          and isinstance(callee.value, ast.Name) and callee.value.id == "storedform"):
-                continue
-            if called in callees and function.origins(callee) != {callees[called]}:
-                return False
-    return True

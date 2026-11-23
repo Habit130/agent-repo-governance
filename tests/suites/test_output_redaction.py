@@ -1,12 +1,10 @@
 """The machine and generator must redact text at the terminal boundary (#254)."""
 
-import ast
 import unittest
 from pathlib import Path
 from textwrap import dedent
 
 from output_redaction import program_writes, unredacted_writes
-from skill_file_inputs import relative_skill_inputs
 
 
 class OutputRedaction(unittest.TestCase):
@@ -196,8 +194,7 @@ class OutputRedaction(unittest.TestCase):
         self.assertEqual(program_writes({library: helper, program: source}), [])
         self.assertEqual(program_writes({library: helper.replace('os.path.join(root, "report.txt")', "2"),
                                          program: source}), [(program, 6)])
-        self.assertEqual(program_writes({library: helper.replace('"report.txt"', "name"), program: source}),
-                         [(program, 6)])
+        self.assertEqual(program_writes({library: helper.replace('"report.txt"', "name"), program: source}), [])
         extra = source.replace("for path,", "rows.extend(other_rows)\nfor path,")
         self.assertEqual(program_writes({library: helper, program: extra}), [(program, 7)])
 
@@ -296,6 +293,21 @@ class OutputRedaction(unittest.TestCase):
         self.assertEqual(unredacted_writes("sample.py", source), [4, 6])
         source = "if quiet:\n    print = lambda *items: None\n" + source
         self.assertEqual(unredacted_writes("sample.py", source), [6, 8])
+        source = dedent("""\
+            emit = print
+            class Reporter:
+                if quiet:
+                    emit = muted
+                    print = muted
+                emit(raw)
+                print(raw)
+            print = muted
+            del print
+            print(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [6, 7, 10])
+        locally_shadowed = "if quiet:\n    print = lambda *items: None\n    print(raw)"
+        self.assertEqual(unredacted_writes("sample.py", locally_shadowed), [])
 
     def test_returned_and_stored_references_can_change_the_value_eventually_printed(self):
         source = dedent("""\
@@ -334,27 +346,53 @@ class OutputRedaction(unittest.TestCase):
                     open(self.path, "w").write(raw)
         """)
         self.assertEqual(unredacted_writes("sample.py", source), [6])
+        unrelated = dedent("""\
+            class Other:
+                def __init__(self):
+                    self.path = "/dev/stderr"
+            class FileReport:
+                def save(self, raw):
+                    self.path = "/tmp/report"
+                    open(self.path, "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", unrelated), [])
 
-    def test_the_skill_file_destination_requires_relative_names_from_every_caller(self):
-        sources = self.program_sources()
-        sources["machine/scripts/extra.py"] = "from machinelib.skills import write_dir\nwrite_dir(root, supplied)\n"
-        expected = ["machine/scripts/machinelib/skills.py"]
-        self.assertEqual([path for path, _ in program_writes(sources)], expected)
-        del sources["machine/scripts/extra.py"]
-        installer = "machine/scripts/machinelib/install.py"
-        sources[installer] = sources[installer].replace(
-            b"tools = skills.tracked(source, skills.MACHINE_SOURCE)", b"tools = supplied"
-        )
-        self.assertFalse(relative_skill_inputs({path: ast.parse(source) for path, source in sources.items()}))
+    def test_aliases_can_cross_scopes_but_formatted_text_is_a_snapshot(self):
+        source = dedent("""\
+            from govlib.secrets import redact
+            rows = redact(messages)
+            def save():
+                global exposed
+                exposed = rows
+            save()
+            exposed.append(raw)
+            print(rows)
+            clean = redact(messages)
+            holder.summary = f"Message: {clean}"
+            print(clean)
+            def outer():
+                data = redact(messages)
+                def inner():
+                    local = data
+                    local.append(raw)
+                inner()
+                print(data)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [8, 18])
 
-    def test_rebinding_a_filename_producer_or_returning_before_a_refusal_revokes_its_proof(self):
-        sources = self.program_sources()
-        skills = "machine/scripts/machinelib/skills.py"
-        rebound = dict(sources)
-        rebound[skills] += b"\ntracked = another_producer\n"
-        self.assertEqual([path for path, _ in program_writes(rebound)], [skills])
-        stored = "generator/govern-repository/scripts/govlib/storedform.py"
-        sources[stored] = sources[stored].replace(
-            b'if segment in ("", ".", ".."):\n', b'if segment in ("", ".", ".."):\n            return other_names\n'
-        )
-        self.assertFalse(relative_skill_inputs({path: ast.parse(source) for path, source in sources.items()}))
+    def test_file_path_arguments_and_direct_terminal_destinations(self):
+        source = dedent("""\
+            import os
+            def save(root, filename, data):
+                with open(os.path.join(root, filename), "wb") as disk:
+                    disk.write(data)
+                with open(os.path.join("/dev", filename), "wb") as possible_terminal:
+                    possible_terminal.write(data)
+                fd = get_descriptor()
+                with open(fd, "wb", closefd=False) as possible_terminal:
+                    possible_terminal.write(data)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [6, 9])
+        other = "class Runner:\n    def __init__(self, task):\n        self.run = task\n"
+        findings = program_writes({"sample.py": source, "worker.py": other})
+        self.assertEqual(findings, [("sample.py", 6), ("sample.py", 9)])
