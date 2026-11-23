@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from textwrap import dedent
 
-from output_redaction import unredacted_writes
+from output_redaction import program_writes, unredacted_writes
 
 
 class OutputRedaction(unittest.TestCase):
@@ -14,17 +14,17 @@ class OutputRedaction(unittest.TestCase):
         Each writer's own payload must pass the same check as a new direct write.
         """
         root = Path(__file__).resolve().parents[2]
-        problems = []
+        sources = {}
         for directory in ("machine/scripts", "generator/govern-repository/scripts"):
             programs = sorted((root / directory).rglob("*.py"))
             self.assertTrue(programs, "No Python sources found in " + directory)
             for program in programs:
                 path = program.relative_to(root).as_posix()
-                try:
-                    lines = unredacted_writes(path, program.read_bytes())
-                except SyntaxError as error:
-                    raise self.failureException("Cannot parse %s:%d" % (path, error.lineno or 1)) from None
-                problems.extend("%s:%d" % (path, line) for line in lines)
+                sources[path] = program.read_bytes()
+        try:
+            problems = ["%s:%d" % location for location in program_writes(sources)]
+        except SyntaxError as error:
+            raise self.failureException("Cannot parse %s:%d" % (error.filename, error.lineno or 1)) from None
         if problems:
             self.fail("Unredacted terminal write:\n" + "\n".join(problems))
 
@@ -110,15 +110,19 @@ class OutputRedaction(unittest.TestCase):
 
     def test_machine_uri_cleanup_preserves_only_its_redacted_input_and_fixed_refusal(self):
         source = dedent("""\
+            import re
             from govlib.secrets import redact as scrub
+            _URI = re.compile(".+")
+            def _hide_private_uri(match):
+                return raw
             def write_line(message, stream):
                 cleaned = scrub(message)
-                line = _URI.sub(_hide_private_uri, cleaned) if scrub else "拒绝：找不到 generator 的 govlib"
+                line = cleaned if scrub else "拒绝：找不到 generator 的 govlib"
                 stream.write(line)
-                stream.write(_URI.sub(_hide_private_uri, message))
+                stream.write(_URI.sub(_hide_private_uri, cleaned))
                 stream.write(cleaned if scrub else message)
         """)
-        self.assertEqual(unredacted_writes("machine/scripts/machine.py", source), [6, 7])
+        self.assertEqual(unredacted_writes("machine/scripts/machine.py", source), [10, 11])
 
     def test_changing_redacted_data_before_the_write_invalidates_its_origin(self):
         source = dedent("""\
@@ -129,5 +133,93 @@ class OutputRedaction(unittest.TestCase):
             lines = redact(messages)
             lines.append(message)
             print(lines)
+            original = redact(report)
+            alias = original
+            alias["extra"] = message
+            print(original)
+            def add_note(target):
+                target["extra"] = message
+            other = redact(report)
+            add_note(other)
+            print(other)
         """)
-        self.assertEqual(unredacted_writes("sample.py", source), [4, 7])
+        self.assertEqual(unredacted_writes("sample.py", source), [4, 7, 11, 16])
+
+    def test_a_write_uses_the_value_reaching_that_statement(self):
+        source = dedent("""\
+            from govlib.secrets import redact
+            def show(text, condition):
+                print(text)
+                text = redact(text)
+                print(text)
+                if condition:
+                    text = raw
+                print(text)
+                text = redact(text)
+                text = text + "\\n"
+                print(text)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [3, 8])
+
+    def test_opaque_descriptors_and_bound_stream_methods_are_checked_at_the_write(self):
+        source = dedent("""\
+            import sys
+            fd = int("2")
+            with open(fd, "w", closefd=False) as destination:
+                destination.write(message)
+            send = getattr(sys.stderr, "write")
+            send(message)
+            def announce(message, send=print):
+                send(message)
+            with open(b"/dev/stderr", "wb") as binary:
+                binary.write(message)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [4, 6, 8, 10])
+
+    def test_a_file_path_from_a_list_requires_a_path_return_and_no_other_list_writes(self):
+        library = "generator/govern-repository/scripts/govlib/storedform.py"
+        program = "generator/govern-repository/scripts/sample.py"
+        source = dedent("""\
+            from govlib import storedform
+            rows = []
+            rows.append((storedform.check_target(root, name), data))
+            for path, text in rows:
+                with open(path, "w") as report:
+                    report.write(text)
+        """)
+        helper = "import os\ndef check_target(root, name):\n    return os.path.join(root, name)\n"
+        self.assertEqual(program_writes({library: helper, program: source}), [])
+        self.assertEqual(program_writes({library: helper.replace("os.path.join(root, name)", "2"),
+                                         program: source}), [(program, 6)])
+        extra = source.replace("for path,", "rows.extend(other_rows)\nfor path,")
+        self.assertEqual(program_writes({library: helper, program: extra}), [(program, 7)])
+
+    def test_definition_expressions_and_shared_bindings_use_their_python_scope(self):
+        source = dedent("""\
+            from govlib.secrets import redact
+            def report(print=print(message)):
+                pass
+            value = redact(message)
+            def replace():
+                global value
+                value = message
+            replace()
+            print(value)
+            def outer():
+                data = redact(message)
+                def change():
+                    nonlocal data
+                    data = message
+                change()
+                print(data)
+            def comprehension(items):
+                print(message)
+                return [print for print in items]
+            def captured():
+                facts = redact(message)
+                def insert():
+                    facts["note"] = message
+                insert()
+                print(facts)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [2, 9, 16, 18, 25])
