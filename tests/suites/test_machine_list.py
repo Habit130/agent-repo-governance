@@ -5,11 +5,16 @@ Each case sets the urgencies of versions 1 to 4 in its isolated installed store 
 both highest-urgency outcomes.
 """
 
+import io
+import json
 import os
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 import machine_support as ms
 import support
+import machine
 from standins import environment
 
 TALLY = os.path.join(support.FIXTURES, "parsers", "record", "tally.yml")
@@ -115,6 +120,36 @@ class GovernedRepositories(ListCase):
         self.assertEqual(code, 1, out)
         self.assertIn("gh 应以 agent account Habit098 运行，实际：Habit130", found["account"])
         self.assertEqual([c["args"] for c in self.calls], [["api", "user"]])
+
+
+class AccountDiagnostic(support.TempDirCase):
+    """The two inputs to the account failure line in miss #245."""
+
+    aws_key = "AKIA" + "Z" * 16
+
+    def assert_account_failure(self, response, expected):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with mock.patch.object(machine.homes.Home, "run", return_value=response) as run:
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = machine.main(["list", "--home", self.tmp])
+
+        for stream, output in (("stdout", stdout.getvalue()), ("stderr", stderr.getvalue())):
+            self.assertFalse(self.aws_key in output, "AWS access key ID in list " + stream)
+        self.assertEqual(code, 1)
+        account = [detail for status, subject, detail in ms.lines(stdout.getvalue())
+                   if status == "失败" and subject == "account"]
+        self.assertTrue(any(expected in line and "列表未生成" in line for line in account),
+                        "missing account failure or list outcome in stdout")
+        self.assertTrue(run.call_args_list == [mock.call(["gh", "api", "user"])],
+                        "list must stop at the identity lookup")
+
+    def test_aws_access_key_id_in_login_is_withheld(self):
+        response = (0, json.dumps({"login": self.aws_key}), "")
+        self.assert_account_failure(response, "gh 应以 agent account Habit098 运行")
+
+    def test_aws_access_key_id_in_lookup_error_is_withheld(self):
+        response = (1, "", "gh: lookup failed: " + self.aws_key)
+        self.assert_account_failure(response, "无法确认 gh 是否以 agent account Habit098 运行")
 
 
 class NoReleasedVersion(ListCase):
