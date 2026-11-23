@@ -14,6 +14,8 @@ from typing import NamedTuple
 UNKNOWN = "<unknown>"
 FILE = "<ordinary file>"
 PATH = "<pathname>"
+UNRESOLVED_PATH = "<unresolved pathname>"
+LITERAL = "<literal>:"
 REDACTED = "<redacted text>"
 ENCODED = "<encoded redacted text>"
 SHARED = "govlib.secrets.redact"
@@ -40,6 +42,10 @@ def _hide_private_uri(match):
 ''').body[0]
 
 
+def matches(node, expression):
+    return ast.dump(node) == ast.dump(ast.parse(expression, mode="eval").body)
+
+
 def parameters(args):
     return [a for a in (*args.posonlyargs, *args.args, args.vararg, *args.kwonlyargs, args.kwarg) if a]
 
@@ -48,6 +54,24 @@ def path_origin(value):
     if isinstance(value, bytes):
         value = value.decode("utf-8", "replace")
     return "terminal fd" if posixpath.normpath(value) in TERMINAL_PATHS else PATH
+
+
+def literal(origins):
+    if len(origins) == 1:
+        value = next(iter(origins))
+        if value.startswith(LITERAL):
+            return value[len(LITERAL):]
+    return None
+
+
+def ordinary_paths(origins):
+    return bool(origins) and all(value == PATH or value.startswith(LITERAL) and
+                                 path_origin(value[len(LITERAL):]) == PATH for value in origins)
+
+
+def ordinary_suffix(suffix):
+    leaf = suffix.rsplit("/", 1)[-1] if suffix else ""
+    return leaf not in ("", ".", "..") and not any(name.endswith(leaf) for name in ("stdout", "stderr", "1", "2"))
 
 
 class ListColumn(NamedTuple):
@@ -69,6 +93,7 @@ class Scope:
         if isinstance(node, ast.ClassDef):
             self.fields = defaultdict(list)
         self.external_writes = set()
+        self.shared_bindings = defaultdict(list)
         self.declarations = {}
         self.machine_writer = path == "machine/scripts/machine.py" and getattr(node, "name", "") == "write_line"
         self.bindings = defaultdict(list)
@@ -97,13 +122,23 @@ class Scope:
             self.collect(child, node)
         self.nested_reads = {n.id for child in self.children for n in ast.walk(child) if isinstance(n, ast.Name)}
         # A helper can modify a redacted list or dictionary it receives.
+        for ref, parent_node in self.parents.items():
+            if not isinstance(ref, ast.Name) or not isinstance(ref.ctx, ast.Load):
+                continue
+            if isinstance(parent_node, (ast.List, ast.Tuple, ast.Dict, ast.Set)) or (
+                isinstance(parent_node, ast.Attribute) and parent_node.attr != "encode"
+            ):
+                if REDACTED in self.origins(ref):
+                    self.invalidate(ref, parent_node)
         for call in self.calls:
+            targets = self.origins(call.func)
+            if all(target in ("builtins.print", SHARED, "json.dumps")
+                   or target.endswith((".write", ".writelines")) for target in targets):
+                continue
             for arg in [*call.args, *(kw.value for kw in call.keywords)]:
-                if isinstance(arg, ast.Name) and REDACTED in self.origins(arg):
-                    targets = self.origins(call.func)
-                    if not all(target in ("builtins.print", SHARED, "json.dumps")
-                               or target.endswith((".write", ".writelines")) for target in targets):
-                        self.invalidate(arg, call)
+                for ref in ast.walk(arg):
+                    if isinstance(ref, ast.Name) and REDACTED in self.origins(ref):
+                        self.invalidate(ref, call)
         local_names = set(self.bindings)
         for name, site in self.mutations:
             if name not in local_names and parent:
@@ -115,11 +150,10 @@ class Scope:
                 self.bindings[alias].append((site, UNKNOWN, False))
         for name, declaration in self.declarations.items():
             if name in self.bindings:
-                outer = parent
-                while outer and outer.parent and (declaration == "global" or name not in outer.bindings):
-                    outer = outer.parent
+                outer = self.owner_of(name)
                 if outer:
                     outer.external_writes.update(outer.related_names(name))
+                    outer.shared_bindings[name].extend((self, value) for _, value, _ in self.bindings[name])
         outer = parent if isinstance(node, ast.ClassDef) else self
         self.children = [Scope(child, path, outer, definition_scope=self) for child in self.children]
 
@@ -198,14 +232,15 @@ class Scope:
             self.bindings[node.name].append((node, UNKNOWN, False))
         elif isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.ctx, ast.Store):
             self.invalidate(node.value, node)
-            if (self.fields is not None and isinstance(node, ast.Attribute)
-                    and isinstance(node.value, ast.Name) and node.value.id == "self"):
+            if self.fields is not None and isinstance(node, ast.Attribute):
                 value = parent.value if isinstance(parent, (ast.Assign, ast.AnnAssign)) else UNKNOWN
                 self.fields[node.attr].append((self, value))
         elif isinstance(node, ast.Call):
             self.calls.append(node)
             if isinstance(node.func, ast.Attribute) and node.func.attr in MUTATORS:
                 self.invalidate(node.func.value, node)
+        elif isinstance(node, ast.AugAssign):
+            self.invalidate(node.target, node)
         elif isinstance(node, ast.Return):
             self.returns.append(node.value)
         for child in ast.iter_child_nodes(node):
@@ -233,6 +268,19 @@ class Scope:
                 return [value for site, value, _ in bindings if last <= (site.end_lineno, site.end_col_offset) <= use]
         return [value for _, value, _ in bindings]
 
+    def owner_of(self, name):
+        scope = self
+        while scope:
+            declaration = scope.declarations.get(name)
+            if declaration == "global":
+                while scope.parent:
+                    scope = scope.parent
+                return scope
+            if declaration != "nonlocal" and (name in scope.bindings or name in scope.shared_bindings):
+                return scope
+            scope = scope.parent
+        return None
+
     def origins(self, node, seen=frozenset()):
         """Imported names, output handles, or redacted values this expression can produce."""
         if isinstance(node, str):
@@ -240,13 +288,13 @@ class Scope:
         if isinstance(node, ListColumn) and node not in seen:
             return self.column_origins(node, seen | {node})
         if isinstance(node, ast.Name):
-            scope = self
-            while scope and node.id not in scope.bindings:
-                scope = scope.parent
+            scope = self.owner_of(node.id)
             if not scope:
                 return {"builtins." + node.id}
             if node not in seen:
                 result = set().union(*(scope.origins(v, seen | {node}) for v in scope.values_at(node.id, node)))
+                for writer, value in scope.shared_bindings.get(node.id, ()):
+                    result.update(writer.origins(value, seen | {node}))
                 if node.id in scope.external_writes:
                     result.add(UNKNOWN)
                 return result
@@ -254,7 +302,7 @@ class Scope:
             if (self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self"
                     and node.attr in self.fields and node not in seen):
                 values = self.fields[node.attr]
-                if all(scope.origins(value, seen | {node}) == {PATH} for scope, value in values):
+                if all(ordinary_paths(scope.origins(value, seen | {node})) for scope, value in values):
                     return {PATH}
             return {name + "." + node.attr for name in self.origins(node.value, seen)}
         if isinstance(node, ast.Constant):
@@ -263,7 +311,8 @@ class Scope:
             if isinstance(node.value, int):
                 return {"terminal fd" if node.value in (1, 2) else "other fd"}
             if isinstance(node.value, (str, bytes)):
-                return {path_origin(node.value)}
+                text = node.value.decode("utf-8", "replace") if isinstance(node.value, bytes) else node.value
+                return {LITERAL + text}
         if isinstance(node, ast.IfExp):
             body = self.origins(node.body, seen)
             if self.machine_writer and body == {REDACTED} and isinstance(node.orelse, ast.Constant):
@@ -273,10 +322,12 @@ class Scope:
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
             if isinstance(node.right, ast.Constant) and node.right.value in ("\n", b"\n"):
                 return self.origins(node.left, seen)
-            if isinstance(node.right, ast.Constant) and isinstance(node.right.value, str):
-                if isinstance(node.left, ast.Constant) and isinstance(node.left.value, str):
-                    return {path_origin(node.left.value + node.right.value)}
-                return {PATH}
+            left = literal(self.origins(node.left, seen))
+            right = literal(self.origins(node.right, seen))
+            if left is not None and right is not None:
+                return {LITERAL + left + right}
+            if right is not None:
+                return {PATH if ordinary_suffix(right) else UNRESOLVED_PATH}
         if isinstance(node, ast.Call):
             return self.call_result(node, seen)
         return {UNKNOWN}
@@ -315,16 +366,48 @@ class Scope:
             values.update(self.origins(row.elts[column.index], seen))
         return values if initialized and values else {UNKNOWN}
 
+    def joins_fresh_skill_directory(self, call):
+        """write_dir creates its target before opening any of the skill's relative files."""
+        if self.path != "machine/scripts/machinelib/skills.py" or getattr(self.node, "name", "") != "write_dir":
+            return False
+        body = [stmt for stmt in self.node.body if not (isinstance(stmt, ast.Expr)
+                and isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str))]
+        if len(body) < 2 or not isinstance(body[0], ast.Expr) or not isinstance(body[1], ast.For):
+            return False
+        create, loop = body[0].value, body[1]
+        return (matches(create, "os.makedirs(path)") and self.origins(create.func) == {"os.makedirs"}
+                and isinstance(loop.target, ast.Name) and loop.target.id == "rel"
+                and matches(loop.iter, "sorted(files)") and self.origins(loop.iter.func) == {"builtins.sorted"}
+                and len(self.bindings["path"]) == len(self.bindings["rel"]) == len(self.bindings["files"]) == 1
+                and matches(call, 'os.path.join(path, *rel.split("/"))') and call in ast.walk(loop))
+
     def call_result(self, call, seen):
         names = self.origins(call.func, seen)
         if names == {"builtins.getattr"} and len(call.args) >= 2:
-            attr = call.args[1]
-            if isinstance(attr, ast.Constant) and isinstance(attr.value, str):
-                return {value + "." + attr.value for value in self.origins(call.args[0], seen)}
+            owners = self.origins(call.args[0], seen)
+            attrs = self.origins(call.args[1], seen)
+            resolved = {owner + "." + attr[len(LITERAL):] for owner in owners
+                        for attr in attrs if attr.startswith(LITERAL)}
+            if any(not attr.startswith(LITERAL) for attr in attrs):
+                resolved.add(UNKNOWN)
+                resolved.update(owner + ".write" for owner in owners if owner in STREAMS or owner == "os")
+            return resolved
         if names == {"os.path.join"}:
-            if call.args and all(isinstance(arg, ast.Constant) and isinstance(arg.value, str) for arg in call.args):
-                return {path_origin(posixpath.join(*(arg.value for arg in call.args)))}
-            return {PATH}
+            parts = [literal(self.origins(arg, seen)) for arg in call.args]
+            suffix = []
+            for part in reversed(parts):
+                if part is None:
+                    break
+                suffix.insert(0, part)
+                if posixpath.isabs(part):
+                    return {LITERAL + posixpath.join(*suffix)}
+            if suffix and len(suffix) == len(parts):
+                return {LITERAL + posixpath.join(*suffix)}
+            if suffix and ordinary_suffix(suffix[-1]):
+                return {PATH}
+            if self.joins_fresh_skill_directory(call):
+                return {PATH}
+            return {UNRESOLVED_PATH}
         if names == {CHECK_TARGET} and CHECK_TARGET in self.path_functions:
             return {PATH}
         if names == {"re.compile"}:
@@ -350,7 +433,7 @@ class Scope:
             options = {kw.arg: kw.value for kw in call.keywords}
             target = call.args[0] if call.args else options.get("fd" if names == {"os.fdopen"} else "file")
             fd = self.origins(target, seen)
-            if fd == {"other fd"} or fd == {PATH} and names != {"os.fdopen"}:
+            if fd == {"other fd"} or ordinary_paths(fd) and names != {"os.fdopen"}:
                 return {FILE}
             mode = call.args[1] if len(call.args) > 1 else options.get("mode")
             if mode is not None and not (isinstance(mode, ast.Constant) and
@@ -418,13 +501,29 @@ def unredacted_writes(path, source):
     return [line for _, line in program_writes({path: source})]
 
 
+def verified_path_helper(module):
+    bindings = module.bindings.get("check_target", [])
+    if len(bindings) != 1 or bindings[0][1] != CHECK_TARGET or "check_target" in module.external_writes:
+        return False
+    helper = next(s for s in module.children if s.node is bindings[0][0])
+    if helper.returns and all(ordinary_paths(helper.origins(v)) for v in helper.returns):
+        return True
+    # The generator can also prove a dynamic pathname by rejecting links and existing
+    # nonregular files immediately before returning it. A new return path needs evidence.
+    if len(helper.returns) != 1 or len(helper.node.body) < 2:
+        return False
+    guard, result = helper.node.body[-2:]
+    return (isinstance(result, ast.Return) and matches(result.value, "full") and isinstance(guard, ast.If)
+            and matches(guard.test, "os.path.islink(full) or (os.path.lexists(full) and not os.path.isfile(full))")
+            and helper.origins(guard.test.values[0].func) == {"os.path.islink"}
+            and len(guard.body) == 1 and isinstance(guard.body[0], ast.Raise) and not guard.orelse
+            and helper.origins(result.value) == {UNRESOLVED_PATH})
+
+
 def program_writes(sources):
     path_functions = set()
     modules = {path: Scope(ast.parse(source, filename=path), path, path_functions=path_functions)
                for path, source in sources.items()}
-    if STORED_FORM in modules:
-        helpers = [s for s in modules[STORED_FORM].children if getattr(s.node, "name", "") == "check_target"]
-        if len(helpers) == 1 and helpers[0].returns:
-            if all(helpers[0].origins(value) == {PATH} for value in helpers[0].returns):
-                path_functions.add(CHECK_TARGET)
+    if STORED_FORM in modules and verified_path_helper(modules[STORED_FORM]):
+        path_functions.add(CHECK_TARGET)
     return [(path, line) for path, scope in modules.items() for line in sorted(scope.problems())]

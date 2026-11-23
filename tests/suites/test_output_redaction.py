@@ -187,10 +187,12 @@ class OutputRedaction(unittest.TestCase):
                 with open(path, "w") as report:
                     report.write(text)
         """)
-        helper = "import os\ndef check_target(root, name):\n    return os.path.join(root, name)\n"
+        helper = 'import os\ndef check_target(root, name):\n    return os.path.join(root, "report.txt")\n'
         self.assertEqual(program_writes({library: helper, program: source}), [])
-        self.assertEqual(program_writes({library: helper.replace("os.path.join(root, name)", "2"),
+        self.assertEqual(program_writes({library: helper.replace('os.path.join(root, "report.txt")', "2"),
                                          program: source}), [(program, 6)])
+        self.assertEqual(program_writes({library: helper.replace('"report.txt"', "name"), program: source}),
+                         [(program, 6)])
         extra = source.replace("for path,", "rows.extend(other_rows)\nfor path,")
         self.assertEqual(program_writes({library: helper, program: extra}), [(program, 7)])
 
@@ -223,3 +225,56 @@ class OutputRedaction(unittest.TestCase):
                 print(facts)
         """)
         self.assertEqual(unredacted_writes("sample.py", source), [2, 9, 16, 18, 25])
+
+    def test_reconstructed_terminal_paths_and_methods_remain_terminal(self):
+        source = dedent("""\
+            import os, sys
+            root = "/dev/"
+            open(root + "stderr", "w").write(raw)
+            open(os.path.join(base, "/dev/stderr"), "w").write(raw)
+            name = "write"
+            getattr(sys.stderr, name)(raw)
+            class Report:
+                def emit(self):
+                    self.path = "/tmp/log"
+                    alias = self
+                    alias.path = "/dev/stderr"
+                    open(self.path, "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [3, 4, 6, 12])
+
+    def test_an_escaped_or_augmented_redacted_container_needs_fresh_redaction(self):
+        source = dedent("""\
+            from govlib.secrets import redact
+            data = redact(messages)
+            alias = data
+            alias += [raw]
+            print(data)
+            rows = redact(messages)
+            add = rows.append
+            add(raw)
+            print(rows)
+            groups = redact(data)
+            modify(groups[0], raw)
+            print(groups)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [5, 9, 12])
+
+    def test_declarations_resolve_reads_and_keep_possible_terminal_callables(self):
+        source = dedent("""\
+            import sys
+            from govlib.secrets import redact
+            message = raw
+            def outer():
+                message = redact(raw)
+                emit = None
+                def show():
+                    global message
+                    print(message)
+                def setup():
+                    nonlocal emit
+                    emit = sys.stderr.write
+                setup()
+                emit(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [9, 14])
