@@ -251,7 +251,7 @@ class PushAndOpenRecords:
         api = {OPEN: [previous], path + "?per_page=100&page=1": case["github"][path]}
         original, = case["expected"]
         red = dict(original, labels=["miss"], body=original["body"].replace("ci failed", "ci concluded failure"))
-        prior_run = dict(current, id=100, head_sha=previous_sha, html_url=link)
+        prior_run = dict(current, id=100, head_sha=previous_sha, html_url=link, run_attempt=1)
         for run, expected in ((prior_run, []), (dict(prior_run, conclusion="success"), [red]),
                               (dict(prior_run, head_branch="topic"), [red]),
                               (dict(prior_run, head_sha="a" * 40), [red])):
@@ -261,3 +261,30 @@ class PushAndOpenRecords:
         api[run_path] = dict(prior_run, conclusion="success")
         previous["body"] = previous["body"].replace(observation, observation + " No failure was seen.")
         self.replay_event(event, api, [red], name="workflow_run")
+
+    def test_standard_and_free_form_red_records_survive_a_green_rerun_only_after_a_red_attempt(self):
+        case = case_file("cases/red-push-run.json")
+        present = case["event"]["workflow_run"]
+        previous = case_file("v5/open-red-record.json")
+        sha = "b" * 40
+        link = "https://github.com/Habit130/tally/actions/runs/100"
+        run_path = PREFIX + "/actions/runs/100"
+        associations = f"{PREFIX}/commits/{present['head_sha']}/pulls"
+        red = dict(case["expected"][0], labels=["miss"],
+                   body=case["expected"][0]["body"].replace("ci failed", "ci concluded failure"))
+        latest = dict(present, id=100, html_url=link, head_sha=sha, conclusion="success", run_attempt=2)
+        api = {associations + "?per_page=100&page=1": case["github"][associations], run_path: latest}
+        standard = previous["body"].splitlines()[3]
+        for observation in (standard, f"Observed: CI check at {sha}. [Run]({link})."):
+            api[OPEN] = [dict(previous, body=previous["body"].replace(standard, observation))]
+            for old, expected in ((dict(latest, conclusion="timed_out", run_attempt=1), []),
+                                  (dict(latest, run_attempt=1), [red])):
+                with self.subTest(observation=observation, old=old["conclusion"]):
+                    api[run_path + "/attempts/1"] = old
+                    self.replay_event(case["event"], api, expected, name="workflow_run")
+        api[run_path + "/attempts/1"] = dict(latest, conclusion="failure", run_attempt=1)
+        api[run_path + "/attempts/2"] = latest
+        for number, expected in ((1, []), (2, [red])):
+            with self.subTest(explicit_attempt=number):
+                api[OPEN] = [dict(previous, body=previous["body"].replace(link, f"{link}/attempts/{number}"))]
+                self.replay_event(case["event"], api, expected, name="workflow_run")

@@ -222,29 +222,54 @@ def _red_incident(observed, repository, default_branch, read, problems):
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
     prefix = re.escape(server + "/" + repository + "/actions/runs/")
     url = prefix + r"([1-9][0-9]*)"
-    # Recognize the complete observation in the current and historical writer forms.
-    report = re.match(r"Workflow .+? (?:concluded ([a-z_]+)|(failed)) on its push-triggered run "
-                      + url + r" at commit [0-9a-f]{40}\b\.?", observed)
-    if report:
-        if report[1] and report[1] not in RED:
-            return False
-        if report.end() == len(observed):
-            return True
-    # The tracker also accepts human prose. Identify the one linked run and commit,
-    # then judge their actual workflow facts. Failure words in prose prove nothing.
-    runs = re.findall(r"(?:^|[\s(<])" + url + r"(?=$|[\s)>.,])", observed, re.I)
+    # A written non-red verdict cannot describe the open red incident.
+    verdict = re.match(r"Workflow .+? concluded ([a-z_]+) on its push-triggered run ", observed)
+    if verdict and verdict[1] not in RED:
+        return False
+    # The six fields identify an incident through its run and commit, however the
+    # writer phrases the observation. Validate those facts for every author.
+    pattern = r"(?:^|[\s(<])" + url + r"(?:/attempts/([1-9][0-9]*))?/?(?=$|[\s)>.,?#])"
+    links = set(re.findall(pattern, observed, re.I))
     shas = set(re.findall(r"\b[0-9a-f]{40}\b", observed.lower()))
-    if len(set(runs)) != 1 or len(shas) != 1:
+    if len(links) != 1 or len(shas) != 1:
         return False
-    path = "repos/%s/actions/runs/%s" % (repository, runs[0])
-    try:
-        run = read(path)
-    except ReadError:
-        unresolved(problems, path + ": could not verify the open red record's run")
+    run_id, attempt = links.pop()
+    sha = shas.pop()
+    path = "repos/%s/actions/runs/%s" % (repository, run_id)
+
+    def read_run(suffix=""):
+        try:
+            run = read(path + suffix)
+        except ReadError:
+            run = None
+        if (not isinstance(run, dict) or str(run.get("id")) != run_id or not is_sha(run.get("head_sha"))
+                or not all(isinstance(run.get(key), str) and run[key] for key in ("event", "head_branch", "path"))
+                or "conclusion" not in run):
+            unresolved(problems, path + suffix + ": could not verify the open red record's run")
+            return {}
+        return run
+
+    run = read_run("/attempts/" + attempt if attempt else "")
+    if run.get("head_sha") != sha:
         return False
-    return (isinstance(run, dict) and str(run.get("id")) == runs[0]
-            and run.get("path") and is_sha(run.get("head_sha")) and run["head_sha"] in shas
-            and _red_push(run, default_branch))
+    if attempt and str(run.get("run_attempt")) != attempt:
+        return False
+    if _red_push(run, default_branch):
+        return True
+    if attempt:
+        return False
+    # A bare run URL follows its latest attempt. A successful rerun does not close
+    # the tracker record covering the earlier failed default-branch push.
+    latest = run.get("run_attempt")
+    if type(latest) is not int or latest < 1:
+        unresolved(problems, path + ": could not establish the run attempt")
+        return False
+    for number in range(latest - 1, 0, -1):
+        earlier = read_run("/attempts/%d" % number)
+        if (earlier.get("run_attempt") == number and earlier.get("head_sha") == sha
+                and _red_push(earlier, default_branch)):
+            return True
+    return False
 
 
 def _record_key(title, body):
@@ -926,10 +951,11 @@ def _on_workflow_run(event, read, repository, default_branch, open_records, prob
     run = event["workflow_run"]
     if not _red_push(run, default_branch):
         return []
-    for kind, category, _, observed in open_records:
-        if kind == "escape" and category == "red-default-branch":
-            if _red_incident(observed, repository, default_branch, read, problems):
-                return []
+    incidents = [_red_incident(observed, repository, default_branch, read, problems)
+                 for kind, category, _, observed in open_records
+                 if (kind, category) == ("escape", "red-default-branch")]
+    if any(incidents):
+        return []
     sha = run["head_sha"]
     matches, _ = _merged_pr(read, repository, default_branch, sha, problems)
     return [record(
