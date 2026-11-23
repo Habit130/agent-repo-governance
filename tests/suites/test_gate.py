@@ -731,16 +731,21 @@ class EntryVersionFive(GateCase):
 
 class RiskReasonConsumer(unittest.TestCase):
     def test_merge_watch_judges_a_whitespace_only_risk_reason_at_high(self):
+        from merge_watch_history import load_v4_case_for_v5
         from test_merge_watch import watch_v5
 
-        case = load(os.path.join(support.FIXTURES, "merge-watch", "v4", "high-missing-all.json"))
+        case = load_v4_case_for_v5("high-missing-all.json")
         event, github = case["event"], case["github"]
         repository = event["repository"]["full_name"]
         pull, = github["repos/%s/commits/%s/pulls" % (repository, event["after"])]
         pull["body"] = "Risk: low — \u00a0"
-        record, = watch_v5.decide(case["event_name"], event, "Habit098", github.__getitem__)
+        problems = []
+        record, = watch_v5.decide(case["event_name"], event, "Habit098", github.__getitem__, problems=problems)
+        self.assertEqual(problems, [])
+        self.assertIn("Category: missing-review", record["body"].splitlines())
         self.assertIn("declared no readable tier (its `Risk:` line is malformed), judged at high", record["body"])
         self.assertIn("reviewer", record["body"])
+        self.assertIn("lacks: bot-1, reviewer, merge-summary.", record["body"])
 
 
 if __name__ == "__main__":

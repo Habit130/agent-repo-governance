@@ -56,6 +56,12 @@ def supply_historical_fields(case):
     return case
 
 
+def load_v4_case_for_v5(filename):
+    """Load a fresh v4 recording with the historical fields needed for v5 replay."""
+    path = Path(support.FIXTURES, "merge-watch", "v4", filename)
+    return supply_historical_fields(json.loads(path.read_text(encoding="utf-8")))
+
+
 class HistoricalEvidence(VersionThreeRendered):
     VERSION = 5
 
