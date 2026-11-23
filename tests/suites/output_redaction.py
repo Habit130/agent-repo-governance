@@ -173,8 +173,12 @@ class ClassHierarchy:
                     parent = self.instance_for(origin)
                     if parent is not None:
                         parents[child].add(parent)
-                    elif origin == UNKNOWN or origin in self.declarations:
-                        unknown.add(child)
+                    else:
+                        owner, _, name = origin.rpartition(".")
+                        if owner != "builtins" or not isinstance(getattr(builtins, name, None), type):
+                            # An imported alias or computed base can still designate a scanned
+                            # class. Only a recognized independent base proves separation.
+                            unknown.add(child)
         overlap = defaultdict(set)
         for child in self.bases:
             lineage, pending = set(), [child]

@@ -473,3 +473,6 @@ class OutputRedaction(unittest.TestCase):
                 def __init__(self): pass
         """)
         self.assertEqual(unredacted_writes("target.py", target + subclass), [5])
+        alias = original + "Alias = Target\n"
+        child = 'from target import Alias\nclass Child(Alias):\n    def __init__(self): self.path = "/dev/stderr"\n'
+        self.assertEqual(program_writes({"target.py": alias, "child.py": child}), [("target.py", 5)])
