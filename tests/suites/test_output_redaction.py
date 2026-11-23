@@ -532,3 +532,18 @@ class OutputRedaction(unittest.TestCase):
         partial = 'import os\nparts = (subdir, "report.txt")\nopen(os.path.join("/dev", *parts), "w").write(raw)\n'
         self.assertEqual(unredacted_writes("sample.py", partial), [])
         self.assertEqual(unredacted_writes("sample.py", partial.replace('"report.txt"', '"/dev/stderr"')), [3])
+
+    def test_empty_expansion_only_contributes_a_destination_with_other_join_arguments(self):
+        source = dedent("""\
+            import os
+            parts = ("/tmp", "report.txt") if enabled else ()
+            if parts:
+                open(os.path.join(*parts), "w").write(raw)
+            open(os.path.join(*()), "w").write(raw)
+            open(os.path.join("/dev", *(), "stderr"), "w").write(raw)
+            missing = os.path.join(*())
+            print(raw, file=open(missing, "w"))
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [6])
+        actual_terminal = source.replace('("/tmp", "report.txt")', '("/dev", "stderr")')
+        self.assertEqual(unredacted_writes("sample.py", actual_terminal), [4, 6])

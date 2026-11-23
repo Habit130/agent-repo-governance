@@ -132,7 +132,7 @@ def device_hint(value):
 
 def joined_paths(operands):
     if not operands:
-        return {UNKNOWN}
+        return set()  # join() raises before an open or a write can occur.
     candidates, complete = fold_literals(operands, lambda parts: posixpath.join(*parts))
     if complete:
         return candidates
@@ -532,6 +532,8 @@ class Scope:
         if isinstance(node, ast.Name):
             if node not in seen:
                 sources = self.binding_sources(node)
+                if not sources:
+                    return {UNKNOWN}
                 result = set().union(*(owner.origins(value, seen | {node}) for owner, value in sources))
                 if MUTATED in result:
                     result.discard(MUTATED)
@@ -539,7 +541,7 @@ class Scope:
                     # receiver remains an instance of the same class.
                     if not result or not all(value.startswith(INSTANCE) for value in result):
                         result.add(UNKNOWN)
-                return result or {UNKNOWN}
+                return result
         if isinstance(node, ast.Attribute):
             if (self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self"
                     and node.attr in self.fields and node not in seen):
@@ -685,6 +687,8 @@ class Scope:
             options = {kw.arg: kw.value for kw in call.keywords}
             target = call.args[0] if call.args else options.get("fd" if names == {"os.fdopen"} else "file")
             fd = self.origins(target, seen)
+            if target is not None and not fd:
+                return set()
             if fd == {"other fd"} or ordinary_paths(fd) and names != {"os.fdopen"}:
                 return {FILE}
             mode = call.args[1] if len(call.args) > 1 else options.get("mode")
@@ -765,7 +769,8 @@ class Scope:
                 if self.unredacted_print(call):
                     return True
             elif name in ("os.write", "os.writev"):
-                if call.args and self.origins(call.args[0]) != {"other fd"}:
+                descriptors = self.origins(call.args[0]) if call.args else set()
+                if descriptors and descriptors != {"other fd"}:
                     if len(call.args) != 2 or not self.safe_sequence(call.args[1], name == "os.writev", binary=True):
                         return True
             elif name.endswith((".write", ".writelines")) and not name.startswith(FILE + "."):
@@ -778,7 +783,8 @@ class Scope:
 
     def unredacted_print(self, call):
         options = {kw.arg: kw.value for kw in call.keywords}
-        if self.origins(options.get("file")) == {FILE}:
+        destination = self.origins(options.get("file"))
+        if not destination or destination == {FILE}:
             return False
         values = list(call.args)
         for key in ("sep", "end"):
