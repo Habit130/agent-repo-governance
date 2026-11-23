@@ -57,7 +57,7 @@ class PushAndOpenRecords:
                 mock.patch("time.sleep") as sleep, mock.patch("time.time", return_value=1000):
             result = self.watch.main(["--post"])
         self.assertEqual(result, int(incomplete is not None or refused), output.getvalue()[:2000])
-        self.assertEqual(posts, expected)
+        self.assertEqual(sorted(posts, key=lambda rec: rec["body"]), sorted(expected, key=lambda rec: rec["body"]))
         self.assertEqual([call.args[0] for call in sleep.call_args_list], list(waits))
         if refused:
             self.assertIn("FAIL opening the record", output.getvalue())
@@ -75,6 +75,7 @@ class PushAndOpenRecords:
         original, = case["expected"]
         red = dict(original, labels=["miss"], body=original["body"].replace("ci failed", "ci concluded failure"))
         prior = case_file("v5/open-red-record.json")
+        api[PREFIX + "/actions/runs/100"] = dict(event["workflow_run"], id=100, head_sha="b" * 40)
         for issue, expected in (
             (prior, []),
             (dict(prior, body="An example follows.\n\n" + prior["body"]), [red]),
@@ -225,3 +226,38 @@ class PushAndOpenRecords:
         for status in (None, 502):
             with self.subTest(status=status):
                 self.replay_event(event, api, expected[1:], refused=True, throttled={"POST": [(status, "")]})
+
+    def test_compare_rate_limit_preserves_payload_and_first_page_records(self):
+        event, api, shas, expected = self.push_range(101)
+        before, after = event["before"], event["after"]
+        event.update(commits=[{"id": after}], size=len(shas))
+        path = f"{PREFIX}/compare/{before}...{after}?per_page=100&page="
+        api[path + "1"] = {"base_commit": {"sha": before}, "total_commits": len(shas),
+                           "commits": [{"sha": sha} for sha in shas[:100]]}
+        self.replay_event(event, api, expected[:99] + expected[-1:], incomplete=path + "2",
+                          throttled={path + "2": [(429, "Retry-After: 99999")]})
+
+    def test_free_form_red_record_identifies_a_real_red_push_run_on_the_named_commit(self):
+        case = case_file("cases/red-push-run.json")
+        event = case["event"]
+        current = event["workflow_run"]
+        previous = case_file("v5/open-red-record.json")
+        previous_sha = "b" * 40
+        link = "https://github.com/Habit130/tally/actions/runs/100"
+        observation = f"Observed: [CI run]({link}) at {previous_sha}."
+        previous["body"] = previous["body"].replace(previous["body"].splitlines()[3], observation)
+        path = f"{PREFIX}/commits/{current['head_sha']}/pulls"
+        run_path = PREFIX + "/actions/runs/100"
+        api = {OPEN: [previous], path + "?per_page=100&page=1": case["github"][path]}
+        original, = case["expected"]
+        red = dict(original, labels=["miss"], body=original["body"].replace("ci failed", "ci concluded failure"))
+        prior_run = dict(current, id=100, head_sha=previous_sha, html_url=link)
+        for run, expected in ((prior_run, []), (dict(prior_run, conclusion="success"), [red]),
+                              (dict(prior_run, head_branch="topic"), [red]),
+                              (dict(prior_run, head_sha="a" * 40), [red])):
+            with self.subTest(run=run):
+                api[run_path] = run
+                self.replay_event(event, api, expected, name="workflow_run")
+        api[run_path] = dict(prior_run, conclusion="success")
+        previous["body"] = previous["body"].replace(observation, observation + " No failure was seen.")
+        self.replay_event(event, api, [red], name="workflow_run")

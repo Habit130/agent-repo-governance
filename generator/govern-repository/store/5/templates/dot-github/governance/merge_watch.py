@@ -208,20 +208,46 @@ RECORD_OPENING = re.compile(
     r"Observed: ([^\n]+)\nFound by: (?:Merge watch|Planner|Builder|Reviewer|habit)\n"
     r"Bug issue: none(?=\n\n|\n?\Z)"
 )
-CONTINUING_RED = ("red-default-branch",)
+RED = ("failure", "cancelled", "timed_out", "startup_failure")
 
 
-def _red_incident(observed, repository):
-    # The run URL identifies the workflow even for records written by a person.
+def _red_push(run, default_branch):
+    path = run.get("path") or ""
+    return (run.get("event") == "push" and run.get("conclusion") in RED
+            and run.get("head_branch") == default_branch
+            and isinstance(path, str) and path.partition("@")[0] != WORKFLOW)
+
+
+def _red_incident(observed, repository, default_branch, read, problems):
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
-    run_url = re.escape(server + "/" + repository + "/actions/runs/") + r"[1-9][0-9]*\b"
-    return (re.search(run_url, observed, re.I)
-            and re.search(r"\b[0-9a-f]{40}\b", observed, re.I)
-            and re.search(r"\b(?:fail(?:ed|ure)?|cancel(?:l?ed|lation)|timed[ _-]out|timeout|"
-                          r"startup[ _-]failure|red)\b", re.sub(r"https?://\S+", "", observed), re.I))
+    prefix = re.escape(server + "/" + repository + "/actions/runs/")
+    url = prefix + r"([1-9][0-9]*)"
+    # Recognize the complete observation in the current and historical writer forms.
+    report = re.match(r"Workflow .+? (?:concluded ([a-z_]+)|(failed)) on its push-triggered run "
+                      + url + r" at commit [0-9a-f]{40}\b\.?", observed)
+    if report:
+        if report[1] and report[1] not in RED:
+            return False
+        if report.end() == len(observed):
+            return True
+    # The tracker also accepts human prose. Identify the one linked run and commit,
+    # then judge their actual workflow facts. Failure words in prose prove nothing.
+    runs = re.findall(r"(?:^|[\s(<])" + url + r"(?=$|[\s)>.,])", observed, re.I)
+    shas = set(re.findall(r"\b[0-9a-f]{40}\b", observed.lower()))
+    if len(set(runs)) != 1 or len(shas) != 1:
+        return False
+    path = "repos/%s/actions/runs/%s" % (repository, runs[0])
+    try:
+        run = read(path)
+    except ReadError:
+        unresolved(problems, path + ": could not verify the open red record's run")
+        return False
+    return (isinstance(run, dict) and str(run.get("id")) == runs[0]
+            and run.get("path") and is_sha(run.get("head_sha")) and run["head_sha"] in shas
+            and _red_push(run, default_branch))
 
 
-def _record_key(title, body, repository):
+def _record_key(title, body):
     opening = RECORD_OPENING.match(body.replace("\r\n", "\n"))
     if not opening:
         return None
@@ -231,9 +257,7 @@ def _record_key(title, body, repository):
         expected += " in " + merged
     if title != expected or not observed.strip():
         return None
-    if kind == "escape" and category == "red-default-branch":
-        return CONTINUING_RED if _red_incident(observed, repository) else None
-    return title, observed
+    return kind, category, merged, observed
 
 
 def _open_records(read, repository, problems):
@@ -248,7 +272,7 @@ def _open_records(read, repository, problems):
         ):
             continue
         if isinstance(issue.get("title"), str) and isinstance(issue.get("body"), str):
-            key = _record_key(issue["title"], issue["body"], repository)
+            key = _record_key(issue["title"], issue["body"])
             if key is not None:
                 keys.add(key)
         elif issue.get("body") is not None or not isinstance(issue.get("title"), str):
@@ -817,11 +841,37 @@ PUSH_COMMIT_LIMIT = 2048
 PER_PAGE = 100
 
 
-def _compared_commits(read, repository, before, after, location, problems):
-    recovered = {}
-    total = None
+def _push_commits(event, read, repository, problems):
+    before, after = event.get("before"), event.get("after")
+    commits = event.get("commits")
+    listed = {}
+    if isinstance(commits, list):
+        for commit in commits:
+            sha = commit.get("id") if isinstance(commit, dict) else None
+            if is_sha(sha):
+                listed[sha] = None
+            else:
+                unresolved(problems, "push commits: malformed list member")
+        if (is_sha(before) and is_sha(after) and len(commits) < PUSH_COMMIT_LIMIT
+                and len(listed) == event.get("size", len(commits))
+                and (after in listed or event.get("forced") or event.get("deleted") or before == after)):
+            yield from listed
+            return
+
+    # A non-forced update to a different tip introduces that commit even when the
+    # webhook omits it. A forced rewind can point at an already-reachable commit.
+    if (event.get("forced") is False and not event.get("deleted") and before != after
+            and is_sha(after) and after != "0" * 40):
+        listed[after] = None
+    location = "push range %s..%s" % (before, after)
+    # Judge each witness before requesting another page. Even a quota stop on that
+    # page cannot discard the events or comparison rows already accounted for.
+    yield from listed
     if not is_sha(before) or not is_sha(after) or "0" * 40 in (before, after):
-        return recovered, total
+        unresolved(problems, location + ": no comparable before and after commits")
+        return
+    recovered = set()
+    total = None
     path = "repos/%s/compare/%s...%s" % (repository, before, after)
     page = 1
     while True:
@@ -843,7 +893,9 @@ def _compared_commits(read, repository, before, after, location, problems):
             if not is_sha(sha) or sha == before or sha in recovered:
                 unresolved(problems, "%s: invalid or repeated commit on page %d" % (location, page))
             else:
-                recovered[sha] = None
+                recovered.add(sha)
+                if sha not in listed:
+                    yield sha
         if type(count) is not int or count < 0 or total not in (None, count):
             unresolved(problems, "%s: invalid comparison total on page %d" % (location, page))
             break
@@ -852,39 +904,10 @@ def _compared_commits(read, repository, before, after, location, problems):
             break
         page += 1
 
-    return recovered, total
-
-
-def _push_commits(event, read, repository, problems):
-    before, after = event.get("before"), event.get("after")
-    commits = event.get("commits")
-    listed = {}
-    if isinstance(commits, list):
-        for commit in commits:
-            sha = commit.get("id") if isinstance(commit, dict) else None
-            if is_sha(sha):
-                listed[sha] = None
-            else:
-                unresolved(problems, "push commits: malformed list member")
-        if (is_sha(before) and is_sha(after) and len(commits) < PUSH_COMMIT_LIMIT
-                and len(listed) == event.get("size", len(commits))
-                and (after in listed or event.get("forced") or event.get("deleted") or before == after)):
-            return listed
-
-    # A non-forced update to a different tip introduces that commit even when the
-    # webhook omits it. A forced rewind can point at an already-reachable commit.
-    if (event.get("forced") is False and not event.get("deleted") and before != after
-            and is_sha(after) and after != "0" * 40):
-        listed[after] = None
-    location = "push range %s..%s" % (before, after)
-    recovered, total = _compared_commits(read, repository, before, after, location, problems)
-    covered = (total is not None and len(recovered) == total and listed.keys() <= recovered.keys()
-               and (not total or after in recovered) and event.get("size", total) == total)
-    recovered.update(listed)
-    if not covered:
-        unresolved(problems, "%s: incomplete commit coverage; auditing %d identified commits (comparison total: %s)"
-                   % (location, len(recovered), total if total is not None else "unknown"))
-    return recovered
+    if (total is None or len(recovered) != total or not listed.keys() <= recovered
+            or (total and after not in recovered) or event.get("size", total) != total):
+        unresolved(problems, "%s: incomplete commit coverage; identified %d commits (comparison total: %s)"
+                   % (location, len(recovered | listed.keys()), total if total is not None else "unknown"))
 
 
 def _on_push(event, read, repository, default_branch, notes, problems):
@@ -901,15 +924,12 @@ def _on_push(event, read, repository, default_branch, notes, problems):
 
 def _on_workflow_run(event, read, repository, default_branch, open_records, problems):
     run = event["workflow_run"]
-    if (
-        run.get("event") != "push"
-        or run.get("conclusion") not in ("failure", "cancelled", "timed_out", "startup_failure")
-        or run.get("head_branch") != default_branch
-        or (run.get("path") or "").split("@")[0] == WORKFLOW
-    ):
+    if not _red_push(run, default_branch):
         return []
-    if CONTINUING_RED in open_records:
-        return []
+    for kind, category, _, observed in open_records:
+        if kind == "escape" and category == "red-default-branch":
+            if _red_incident(observed, repository, default_branch, read, problems):
+                return []
     sha = run["head_sha"]
     matches, _ = _merged_pr(read, repository, default_branch, sha, problems)
     return [record(
@@ -946,7 +966,7 @@ def _event_records(event_name, event, read, notes, problems):
     else:
         return
     for rec in records:
-        if _record_key(rec["title"], rec["body"], repository) not in open_records:
+        if _record_key(rec["title"], rec["body"]) not in open_records:
             yield rec
 
 
