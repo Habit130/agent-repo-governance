@@ -47,6 +47,8 @@ class SummaryDeclarations(RecordedMerge):
     def test_high_requires_the_writers_decision_and_the_applicable_security_row(self):
         for decision, security, waiver, missing in (
             ("no", None, False, ()),
+            ("no", "waived", True, ("security",)),
+            ("no", "clear", False, ()),
             ("yes", "clear", False, ()),
             ("yes", "waived", True, ()),
             ("yes", "waived", False, ("security",)),

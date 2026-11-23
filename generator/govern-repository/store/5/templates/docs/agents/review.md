@@ -312,7 +312,8 @@ Required reviews: <kind>=<state>, <kind>=<state>
   On the third line write `Security review applies: yes` if it does and
   `Security review applies: no` otherwise. With `yes`, include `security=clear` or
   `security=waived` on the second line. A waiver requires habit's exact-head comment for
-  `security`. Record the optional Codex security review separately in the evidence comment.
+  `security`. With `no`, list `security=clear` only if a security review ran, otherwise
+  omit the row. Record the optional Codex security review separately in the evidence comment.
 - Kinds, in this order, each one the tier requires (Minimum reviews) and any other that ran:
   `self-verification`, `bot-1`, `reviewer`, `security`.
 - `self-verification`, `reviewer` and `security` take `clear` or `waived`.
@@ -372,8 +373,8 @@ In Chinese (`AGENTS.md`, Talking to habit and to other agents):
   awaiting habit's go-ahead, with what it does and whether it can be undone.
   Its evidence item adds one plain sentence naming each Builder's and the Reviewer's vendor,
   in both the terminal copy and the English copy; when the Reviewer is waived, follow Waivers.
-- **At low and at medium when the Builder writes it**, items 4 and 5 state only checkable
-  facts, and the summary says that no session independent of the Builder looked at the change.
+- **At low and at medium when the Builder writes it**, use checkable facts for items 4
+  and 5 and state whether a session independent of the Builder reviewed the change.
   At medium it also names the bot whose review ran, or states its exact-head waiver.
 
 Neither copy points at code: no paths, line numbers, diffs or snippets.

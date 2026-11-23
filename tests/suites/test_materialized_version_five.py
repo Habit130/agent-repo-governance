@@ -3,7 +3,7 @@
 import re
 from textwrap import dedent
 
-from materialized_version_support import VersionThreeRendered, flat, level_two_section
+from materialized_version_support import VersionThreeRendered, flat, level_three_section, level_two_section
 
 
 class VersionFiveInitializeChecks(VersionThreeRendered):
@@ -51,6 +51,11 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
         review = self.review()
         self.assertNotIn("Merge watch requires self-verification and the Merge summary at every tier", review)
         self.assertNotIn("This is the Upgrade merge's transition exception.", review)
+
+    def test_builder_summaries_report_whether_an_independent_session_ran(self):
+        section = flat(level_three_section(self.text("docs/agents/review.md"), "### In the terminal"))
+        self.assertIn("state whether a session independent of the Builder reviewed the change", section)
+        self.assertIn("At low, the Builder writes the Merge summary", flat(self.text("docs/agents/builder.md")))
 
     def test_both_medium_substitution_rules_require_the_last_enabled_bot(self):
         bullets = self.text("docs/agents/review.md").split("\n- ")

@@ -668,7 +668,7 @@ def _declared_missing(pull, summary, bots, tier, agent, waivers):
 def _high_security_missing(lines, summary, waiver):
     decision = lines[2].rstrip(" \t") if len(lines) > 2 else ""
     if decision == "Security review applies: no":
-        return ()
+        return ("security",) if summary.get("security") == ("waived", None) else ()
     if decision != "Security review applies: yes":
         return (MERGE_SUMMARY,)
     if "security" in summary:
