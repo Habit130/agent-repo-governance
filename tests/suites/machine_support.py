@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+from contextlib import contextmanager
 from urllib.parse import quote
 
 import support
@@ -228,6 +229,53 @@ def run_machine(args, env):
         universal_newlines=True, stdin=subprocess.DEVNULL,
     )
     return result.returncode, result.stdout, result.stderr
+
+
+# Nonfunctional values for the machine diagnostic regressions (miss #253).
+AWS_KEY_ID = "AKIA" + "Z" * 16
+DIAGNOSTIC_PLANTS = {
+    "aws": AWS_KEY_ID,
+    "password": "synthetic-" + "userinfo",
+    "query": "synthetic-" + "query",
+    "fragment": "synthetic-" + "fragment",
+}
+
+
+def remote_error():
+    return support.read_text(os.path.join(RECORDINGS, "diagnostic-remote-error.txt")).format(**DIAGNOSTIC_PLANTS)
+
+
+@contextmanager
+def diagnostic_fixture():
+    """OS and git setup errors can include a planted pathname or argument."""
+    try:
+        yield
+    except (OSError, subprocess.SubprocessError, AssertionError):
+        raise AssertionError("could not prepare or launch the synthetic diagnostic fixture") from None
+
+
+def replace_response(recording, prefix, code, stdout="", stderr=""):
+    """Change one recorded tool response, keeping the arguments and the other calls."""
+    with open(recording) as handle:
+        data = json.load(handle)
+    for call in data["calls"]:
+        if call["args"][:len(prefix)] == prefix:
+            call.update({"exit": code, "stdout": stdout, "stderr": stderr})
+            break
+    else:
+        raise AssertionError("diagnostic fixture has no matching call")
+    with open(recording, "w") as handle:
+        json.dump(data, handle)
+
+
+def assert_diagnostic(case, result, code, expected, stream="stdout"):
+    """Check both streams before any assertion can quote their contents."""
+    actual, stdout, stderr = result
+    for name, value in DIAGNOSTIC_PLANTS.items():
+        for channel, output in (("stdout", stdout), ("stderr", stderr)):
+            case.assertFalse(value in output, "diagnostic exposed %s on %s" % (name, channel))
+    case.assertEqual(actual, code)
+    case.assertTrue(expected in (stdout if stream == "stdout" else stderr), "missing diagnostic: " + expected)
 
 
 def lines(out):

@@ -21,14 +21,12 @@ def installed_store(home):
 
 
 def _record(home, repository, branch):
-    """(record bytes, None), (None, None) when there is no record, or (None, error)."""
+    """Return (record bytes or None, read failed). A missing record is expected."""
     path = "repos/%s/contents/%s?ref=%s" % (repository, RECORD_PATH, quote(branch, safe=""))
     code, out, err = home.run(["gh", "api", path, "-H", "Accept: application/vnd.github.raw"], binary=True)
     if code == 0:
-        return out, None
-    if "HTTP 404" in err:
-        return None, None
-    return None, err.strip() or "gh api 失败"
+        return out, False
+    return None, "HTTP 404" not in err
 
 
 def _misses(home, repository):
@@ -58,7 +56,8 @@ def run(home):
             login = identity.get("login")
     if login != AGENT:
         if isinstance(login, str) and login:
-            detail = "gh 应以 agent account %s 运行，实际：%s" % (AGENT, secrets.redact(login))
+            # An unterminated key in the login must not consume the list outcome that follows it.
+            detail = "gh 应以 agent account %s 运行，实际：%s" % (AGENT, secrets.redact(homes.withhold_url(login)))
         else:
             detail = "无法确认 gh 是否以 agent account %s 运行" % AGENT
         report.add(homes.FAIL, "account", detail + "；列表未生成")
@@ -85,7 +84,7 @@ def run(home):
         % (commit or "无（尚未 install）", installed_version if installed_version is not None else "无（store 里没有已发布版本）"),
     )
 
-    code, out, err = home.run(
+    code, out, _ = home.run(
         ["gh", "repo", "list", MAINTAINER, "--limit", "1000", "--json", "nameWithOwner,isPrivate,defaultBranchRef"]
     )
     try:
@@ -93,7 +92,7 @@ def run(home):
     except ValueError:
         repositories = None
     if not isinstance(repositories, list):
-        report.add(homes.FAIL, "repositories", "无法列出 %s 的仓库：%s" % (MAINTAINER, err.strip() or out.strip()))
+        report.add(homes.FAIL, "repositories", "无法列出 %s 的仓库" % MAINTAINER)
         return report
 
     governed = 0
@@ -104,9 +103,9 @@ def run(home):
         branch = (entry.get("defaultBranchRef") or {}).get("name")
         if not name or not branch:
             continue
-        data, error = _record(home, name, branch)
-        if error:
-            report.add(homes.FAIL, name, "读取 record 失败：%s" % error)
+        data, failed = _record(home, name, branch)
+        if failed:
+            report.add(homes.FAIL, homes.withhold_url(name), "读取 record 失败")
             continue
         if data is None:
             continue
@@ -137,7 +136,7 @@ def run(home):
         parts.append("未关闭 miss record %s 条" % ("?" if misses is None else misses))
         if entry.get("isPrivate"):
             parts.append("私有")
-        report.add(homes.NOTE, name, "；".join(parts))
+        report.add(homes.NOTE, homes.withhold_url(name), "；".join(parts))
     if not governed:
         report.add(homes.NOTE, "repositories", "没有找到 governed repository")
     return report

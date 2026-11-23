@@ -21,6 +21,7 @@ state's commit isn't an ancestor of. Then it runs §8's steps in order:
 
 import json
 import os
+import re
 import shutil
 
 from machinelib import MachineError, check, governed, home as homes, rules, skills, state as states
@@ -63,7 +64,7 @@ def _refuse_older(home, source, commit):
     if installed and installed["commit"] != commit and not skills.is_ancestor(source, installed["commit"], commit):
         raise MachineError(
             "本机已安装 %s，而源码树的 %s 不比它新（install 只向前移动）；install 未写入任何内容"
-            % (installed["commit"], commit)
+            % (installed["commit"], homes.withhold_url(commit))
         )
     return installed
 
@@ -79,10 +80,10 @@ def _machine_skills(home, report, skill_set, installed):
         current = None if linked else skills.disk_hash(target)
         if name in managed:
             if current != managed[name]:
-                report.add(homes.NOTE, "machine skills", "%s 在上次 install 后被改动或删除，已恢复" % name)
+                report.add(homes.NOTE, "machine skills", "%s 在上次 install 后被改动或删除，已恢复" % homes.withhold_url(name))
         elif os.path.lexists(target):
             if linked or current != new_hash:
-                report.add(homes.NOTE, "machine skills", "接管同名 skill %s：内容不同，已替换" % name)
+                report.add(homes.NOTE, "machine skills", "接管同名 skill %s：内容不同，已替换" % homes.withhold_url(name))
         if linked or current != new_hash:
             _replace_dir(home, target, files)
         written[name] = new_hash
@@ -92,8 +93,9 @@ def _machine_skills(home, report, skill_set, installed):
         if os.path.lexists(target):
             _remove(target)
         report.add(homes.NOTE, "machine skills", "%s 已不在 machine skill set 里，已移除%s"
-                   % (name, "（它在上次 install 后有本地改动）" if edited else ""))
-    report.add(homes.PASS, "machine skills", "%d 个 machine skills 就位：%s" % (len(written), "、".join(sorted(written))))
+                   % (homes.withhold_url(name), "（它在上次 install 后有本地改动）" if edited else ""))
+    shown_names = "、".join(homes.withhold_url(name) for name in sorted(written))
+    report.add(homes.PASS, "machine skills", "%d 个 machine skills 就位：%s" % (len(written), shown_names))
     return written
 
 
@@ -121,7 +123,7 @@ def _lock_file(home, report, names):
         ending = "\n" if handle.read().endswith(b"\n") else ""
     rules.write_text(path, json.dumps(lock, indent=2, ensure_ascii=False) + ending)
     report.add(homes.NOTE, "lock file", "已从 %s 移除被接管的条目：%s（备份 %s）"
-               % (home.show(path), "、".join(taken), home.show(backup)))
+               % (home.show(path), "、".join(homes.withhold_url(name) for name in taken), home.show(backup)))
 
 
 def _machine_rules(home, report, codex):
@@ -186,20 +188,26 @@ def _upstream(home, report, source):
     except (OSError, ValueError, KeyError, TypeError) as error:
         report.add(homes.FAIL, "upstream", "无法读取 %s：%s" % (PROVENANCE, error))
         return
-    code, out, err = home.run(
+    code, out, _ = home.run(
         ["gh", "api", "repos/%s/compare/%s...HEAD" % (repository, commit), "--jq", "{ahead_by, status}"]
     )
+    shown_repository = homes.withhold_url(repository)
+    if isinstance(commit, str) and re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", commit):
+        shown_commit = commit[:12]
+    else:
+        # An invalid object ID has no useful abbreviation. Name only the credential types found.
+        shown_commit = homes.withheld_value(str(commit), "（无效 commit）")
     try:
         facts = json.loads(out) if code == 0 else None
         ahead = facts["ahead_by"]
     except (ValueError, KeyError, TypeError):
-        report.add(homes.NOTE, "upstream", "无法比较 %s 与 %s 的最新 commit：%s" % (repository, commit[:12], (err or out).strip()))
+        report.add(homes.NOTE, "upstream", "无法比较 %s 与 %s 的最新 commit" % (shown_repository, shown_commit))
         return
     if ahead:
         report.add(homes.NOTE, "upstream", "%s 比 skill copies 记录的 %s 新 %d 个 commit；是否更新由 habit 决定"
-                   % (repository, commit[:12], ahead))
+                   % (shown_repository, shown_commit, ahead))
     else:
-        report.add(homes.NOTE, "upstream", "%s 没有比 %s 更新的 commit" % (repository, commit[:12]))
+        report.add(homes.NOTE, "upstream", "%s 没有比 %s 更新的 commit" % (shown_repository, shown_commit))
 
 
 def run(source, home, codex=None):
@@ -210,7 +218,8 @@ def run(source, home, codex=None):
     skill_set = skills.machine_skill_set(source)
     tools = skills.tracked(source, skills.MACHINE_SOURCE)
 
-    report = homes.Report("install %s" % commit)
+    shown_commit = homes.withhold_url(commit)
+    report = homes.Report("install %s" % shown_commit)
     written = _machine_skills(home, report, skill_set, installed)
     _lock_file(home, report, set(skill_set))
     _machine_rules(home, report, codex)
@@ -220,7 +229,7 @@ def run(source, home, codex=None):
     if os.path.isdir(home.staging) and not os.listdir(home.staging):
         os.rmdir(home.staging)
     report.add(homes.PASS, "installed state", "已记录 commit %s 和 %d 个 managed skills；machine check 和 list 可从 %s 单独运行"
-               % (commit, len(written), home.show(home.tools)))
+               % (shown_commit, len(written), home.show(home.tools)))
     reports = [report, check.run(home, codex, set(skill_set)), governed.run(home)]
     upstream = homes.Report("upstream")
     _upstream(home, upstream, source)

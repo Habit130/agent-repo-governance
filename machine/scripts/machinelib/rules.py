@@ -21,6 +21,8 @@ import os
 import shutil
 import time
 
+from machinelib.home import withhold_url
+
 FORBIDDEN_COMMANDS = ("ghm", "gh secret set", "gh secret delete", "gh secret remove")
 LISTING = "gh secret list"
 
@@ -225,18 +227,18 @@ def check_codex_rules(home, codex):
     """Problems `codex execpolicy check` finds with the installed rules, in Chinese; empty when they hold."""
     problems = []
     for command, forbidden in CODEX_PROBES:
-        code, out, err = home.run_codex(codex, ["execpolicy", "check", "--rules", home.codex_rules] + command)
+        code, out, _ = home.run_codex(codex, ["execpolicy", "check", "--rules", home.codex_rules] + command)
         shown = " ".join(command)
         if code != 0:
-            problems.append("`%s` 检查失败：%s" % (shown, (err or out).strip()))
+            problems.append("`%s` 检查失败" % shown)
             continue
         try:
             decision = codex_decision(out)
         except ValueError:
-            problems.append("`%s` 的输出不是预期的 JSON：%s" % (shown, out.strip()))
+            problems.append("`%s` 的输出不是预期的 JSON" % shown)
             continue
         if forbidden and decision != "forbidden":
-            problems.append("`%s` 未被禁止（decision：%s）" % (shown, decision))
+            problems.append("`%s` 未被禁止（decision：%s）" % (shown, withhold_url(decision)))
         if not forbidden and decision == "forbidden":
             problems.append("`%s` 被禁止了，但列出名称应保持允许" % shown)
     return problems

@@ -1,0 +1,2 @@
+fatal: remote lookup failed ({aws})
+remote: https://fixture:{password}@example.invalid/project?ref={query}#{fragment}

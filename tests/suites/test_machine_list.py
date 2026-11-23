@@ -8,6 +8,7 @@ both highest-urgency outcomes.
 import io
 import json
 import os
+import shutil
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
@@ -150,6 +151,89 @@ class AccountDiagnostic(support.TempDirCase):
     def test_aws_access_key_id_in_lookup_error_is_withheld(self):
         response = (1, "", "gh: lookup failed: " + self.aws_key)
         self.assert_account_failure(response, "无法确认 gh 是否以 agent account Habit098 运行")
+
+
+class RepositoryDiagnostics(support.TempDirCase):
+    """Entry-point fixtures for repository diagnostics from miss #253."""
+
+    def test_argument_error_on_stderr(self):
+        result = ms.run_machine(["list", "--unexpected", ms.AWS_KEY_ID], support.isolated_env())
+        ms.assert_diagnostic(self, result, 2, "unrecognized arguments: --unexpected <redacted AWS access key ID>", "stderr")
+
+    def test_separate_ordinary_arguments_remain_identifiable(self):
+        args = ["list", "--unexpected", "//example.invalid/repo", "ordinary@example.invalid"]
+        result = ms.run_machine(args, support.isolated_env())
+        ms.assert_diagnostic(self, result, 2, "unrecognized arguments: --unexpected //example.invalid/repo ordinary@example.invalid", "stderr")
+
+    def test_argument_error_withholds_an_embedded_network_path(self):
+        for label, arg in (("bracket", "[//example.invalid/repo#%s]" % ms.DIAGNOSTIC_PLANTS["fragment"]),
+                           ("assignment", "--extra=//example.invalid/repo?ref=%s" % ms.DIAGNOSTIC_PLANTS["query"])):
+            with self.subTest(route=label):
+                result = ms.run_machine(["list", arg], support.isolated_env())
+                ms.assert_diagnostic(self, result, 2, "参数解析失败", "stderr")
+
+    def test_url_in_a_login_keeps_the_list_outcome(self):
+        login = ms.remote_error().splitlines()[-1].split(" ", 1)[1]
+        home = ms.make_home(self.path("home"))
+        env = ms.machine_env(home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json"), user=login))
+        result = ms.run_machine(["list"], env)
+        ms.assert_diagnostic(self, result, 1, "[失败] account：gh 应以 agent account Habit098 运行，实际：（已隐藏）；列表未生成")
+
+    def test_url_in_a_login_keeps_the_credential_type(self):
+        login = "https://%s:%s@example.invalid/" % (ms.AWS_KEY_ID, ms.DIAGNOSTIC_PLANTS["password"])
+        home = ms.make_home(self.path("home"))
+        env = ms.machine_env(home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json"), user=login))
+        result = ms.run_machine(["list"], env)
+        ms.assert_diagnostic(self, result, 1, "[失败] account：gh 应以 agent account Habit098 运行，实际：<redacted AWS access key ID>；列表未生成")
+
+    def test_missing_redactor_refuses_without_echoing_install_paths(self):
+        scripts = self.path(ms.AWS_KEY_ID, "machine", "scripts")
+        with ms.diagnostic_fixture():
+            shutil.copytree(os.path.dirname(ms.ENTRY), scripts)
+            result = support.run_cli(os.path.join(scripts, "machine.py"), ["list"], env=support.isolated_env())
+        ms.assert_diagnostic(self, result, 2, "拒绝：找不到 generator 的 govlib")
+
+    def test_any_report_entry_and_refusal_withhold_credentials(self):
+        report = machine.homes.Report("fixture")
+        report.add("通过", "first", "首项通过")
+        report.add("说明", "arbitrary", ms.AWS_KEY_ID)
+        remote = "https://%s:%s@example.invalid/project" % (ms.AWS_KEY_ID, ms.DIAGNOSTIC_PLANTS["password"])
+        report.add("说明", "remote", "读取 mailto:fixture?ref=%s 和 %s 失败" % (ms.DIAGNOSTIC_PLANTS["query"], remote))
+        # A key may span physical lines within one diagnostic, with no end marker.
+        key_body = "synthetic-" + "key-body"
+        report.add("失败", "key", "-----BEGIN " + "PRIVATE KEY-----\n" + key_body)
+        report.add("说明", "last", "最后一项说明")
+        expected_report = ("== fixture\n[通过] first：首项通过\n[说明] arbitrary：<redacted AWS access key ID>\n"
+                           "[说明] remote：读取 （已隐藏） 和 <redacted AWS access key ID> 失败\n"
+                           "[失败] key：<redacted private key>\n[说明] last：最后一项说明\n")
+        refusal = machine.MachineError("任意操作失败：%s file:/record#%s" % (ms.AWS_KEY_ID, ms.DIAGNOSTIC_PLANTS["fragment"]))
+        for label, outcome, code, expected in (("report", [report], 1, expected_report),
+                                               ("refusal", refusal, 2, "拒绝：任意操作失败：<redacted AWS access key ID> （已隐藏）\n")):
+            with self.subTest(output=label):
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with mock.patch.object(machine.governed, "run", side_effect=outcome):
+                    with redirect_stdout(stdout), redirect_stderr(stderr):
+                        actual = machine.main(["list", "--home", self.tmp])
+                result = (actual, stdout.getvalue(), stderr.getvalue())
+                self.assertFalse(any(key_body in stream for stream in result[1:]), "private key body in output")
+                ms.assert_diagnostic(self, result, code, expected)
+                self.assertTrue(result[1:] == (expected, ""), "unrelated report content or output stream changed")
+
+    def test_enumeration_and_record_read_errors(self):
+        home = ms.make_home(self.path("home"))
+        name = "Habit130/flaky"
+        cases = (
+            ("record stderr", ["api", "repos/%s/contents/.github/governance/record.yml?ref=main" % name],
+             1, "", ms.AWS_KEY_ID, "[失败] Habit130/flaky：读取 record 失败"),
+            ("enumeration stderr", ["repo", "list"], 1, "", ms.remote_error(), "[失败] repositories：无法列出 Habit130 的仓库"),
+            ("enumeration stdout", ["repo", "list"], 0, ms.remote_error(), "", "[失败] repositories：无法列出 Habit130 的仓库"),
+        )
+        for label, prefix, code, out, err, expected in cases:
+            with self.subTest(route=label):
+                recording = ms.write_gh_recording(self.path("gh.json"), repositories=[repository("flaky")], records={name: None})
+                ms.replace_response(recording, prefix, code, out, err)
+                env = ms.machine_env(home, self.path(label), gh_recording=recording)
+                ms.assert_diagnostic(self, ms.run_machine(["list"], env), 1, expected)
 
 
 class NoReleasedVersion(ListCase):

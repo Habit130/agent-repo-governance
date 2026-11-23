@@ -12,6 +12,7 @@ import re
 import subprocess
 
 from machinelib import GENERATOR, MachineError
+from machinelib.home import withhold_url
 
 GENERATOR_SOURCE = "generator/govern-repository"
 COPIES_SOURCE = "skill-copies/skills"
@@ -83,10 +84,9 @@ def write_dir(path, files):
 
 
 def _git(source, *args):
-    result = subprocess.run(["git", "-C", source] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(["git", "-C", source] + list(args), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if result.returncode != 0:
-        raise MachineError("源码树 %s 不是可读的 git checkout：git %s 失败：%s"
-                           % (source, " ".join(args), result.stderr.decode("utf-8", "replace").strip()))
+        raise MachineError("源码树 %s 不是可读的 git checkout：git %s 失败" % (source, " ".join(args)))
     return result.stdout
 
 
@@ -116,8 +116,8 @@ def machine_skill_set(source):
         name, _, inner = rel.partition("/")
         try:
             copies.setdefault(name, {})[storedform.decode(inner)] = entry
-        except storedform.StoredFormError as error:
-            raise MachineError("skill copy %s 无法解码：%s" % (name, error))
+        except storedform.StoredFormError:
+            raise MachineError("skill copy %s 无法解码" % withhold_url(name))
     if GENERATOR in copies:
         raise MachineError("skill copy 不能叫 %s" % GENERATOR)
     skill_set.update(copies)

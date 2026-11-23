@@ -64,6 +64,83 @@ class CheckCase(support.TempDirCase):
             self.assertTrue(any(text in failure for failure in failures), (text, failures))
 
 
+class CheckDiagnostics(CheckCase):
+    """Failed gh and Codex probes through the CLI (miss #253)."""
+
+    def test_missing_codex_path_withholds_a_private_uri_after_a_prefix(self):
+        uri = ms.remote_error().splitlines()[-1].removeprefix("remote: ")
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        for prefix in ("1", "-", "+", "."):
+            with self.subTest(prefix=prefix):
+                env["MACHINE_CODEX"] = prefix + uri
+                result = ms.run_machine(["check"], env)
+                for item in ("Codex rules", "Codex skill list"):
+                    ms.assert_diagnostic(self, result, 0, "[跳过] %s：没有找到 ChatGPT app 自带的 Codex CLI" % item)
+
+    def test_local_skill_names_remain_distinguishable(self):
+        state = self.h(".agents", "governance", "installed.json")
+        installed = json.loads(support.read_text(state))
+        names = ("review#1", "review?draft")
+        installed["skills"].update({name: "0" * 64 for name in names})
+        support.write_tree(self.home, {
+            ".agents/governance/installed.json": json.dumps(installed),
+            ".agents/skills/personal#notes/SKILL.md": "---\nname: alpha-check\ndescription: Fixture.\n---\n",
+        })
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        result = ms.run_machine(["check"], env)
+        for name in names:
+            ms.assert_diagnostic(self, result, 1, "[失败] managed skills：%s 不在了" % name)
+        ms.assert_diagnostic(self, result, 1, "personal skill ~/.agents/skills/personal#notes 与 machine skill alpha-check 同名")
+
+    def test_probe_and_identity_diagnostics(self):
+        identity = "[失败] identity：gh 应以 agent account Habit098 操作"
+        rules = "[失败] Codex rules：`ghm pr merge 1`"
+        cases = (
+            ("identity login", "gh", ["api", "user"], 0, json.dumps({"login": ms.AWS_KEY_ID}), "", identity),
+            ("URL in login", "gh", ["api", "user"], 0, json.dumps({"login": ms.remote_error()}), "", identity),
+            ("identity stderr", "gh", ["api", "user"], 1, "", ms.remote_error(), identity),
+            ("identity stdout", "gh", ["api", "user"], 0, ms.remote_error(), "", identity),
+            ("rules stderr", "codex", ["execpolicy", "check"], 1, "", ms.remote_error(), rules + " 检查失败"),
+            ("rules stdout", "codex", ["execpolicy", "check"], 0, ms.remote_error(), "", rules + " 的输出不是预期的 JSON"),
+            ("skill list", "codex", ["debug", "prompt-input"], 1, "", ms.remote_error(),
+             "[失败] Codex skill list：`codex debug prompt-input` 失败"),
+        )
+        for label, tool, prefix, code, out, err, expected in cases:
+            with self.subTest(route=label):
+                gh = ms.write_gh_recording(self.path("gh.json"))
+                codex = ms.merge_codex_recordings(self.path("codex.json"), "codex-execpolicy.json", "codex-prompt-input-ready.json")
+                ms.replace_response(gh if tool == "gh" else codex, prefix, code, out, err)
+                env = ms.machine_env(self.home, self.path(label), gh_recording=gh, codex_recording=codex)
+                result = ms.run_machine(["check", "--codex", ms.STANDIN_CODEX], env)
+                ms.assert_diagnostic(self, result, 1, expected)
+
+    def test_url_returned_as_the_git_identity(self):
+        remote = ms.remote_error().splitlines()[-1].split(" ", 1)[1]
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        network_path = remote.removeprefix("https:")
+        cases = (
+            ("remote", remote),
+            ("embedded authority", '"build(%s)"@example.invalid' % network_path),
+            ("embedded query", '"build(//example.invalid/project?ref=%s)"@example.invalid' % ms.DIAGNOSTIC_PLANTS["query"]),
+            ("embedded fragment", '"build(//example.invalid/project#%s)"@example.invalid' % ms.DIAGNOSTIC_PLANTS["fragment"]),
+        )
+        for label, address in cases:
+            with self.subTest(route=label):
+                support.write_tree(self.home, {".gitconfig": "[user]\n\temail = %s\n" % json.dumps(address)})
+                result = ms.run_machine(["check"], env)
+                ms.assert_diagnostic(self, result, 1, "[失败] identity：git 的全局 commit 身份应是 " + ms.NOREPLY)
+
+    def test_wrong_git_emails_keep_their_local_part(self):
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        for address in ("build/ci@example.invalid", "build//ci@example.invalid", "build/ci?foo#bar@example.invalid",
+                        "build//ci?foo#bar@example.invalid", '"build // ci"@example.invalid', '"QA: who?"@example.invalid',
+                        '"//review"@example.invalid'):
+            with self.subTest(address=address):
+                support.write_tree(self.home, {".gitconfig": "[user]\n\temail = %s\n" % json.dumps(address)})
+                result = ms.run_machine(["check"], env)
+                ms.assert_diagnostic(self, result, 1, "git 的全局 commit 身份应是 %s，实际：%s" % (ms.NOREPLY, address))
+
+
 class EveryItem(CheckCase):
     def test_a_ready_machine_passes_every_item(self):
         statuses, failures = self.check()

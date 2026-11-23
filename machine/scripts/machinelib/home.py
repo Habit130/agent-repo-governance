@@ -6,11 +6,44 @@ all into a throwaway home never touches the real one.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 
 PASS, FAIL, SKIP, NOTE = "通过", "失败", "跳过", "说明"
+
+_BARE_EMAIL = re.compile(r'(?P<local>[^\s@:<>()\[\],;"\\]+|"(?:[^"\\\r\n]|\\.)*")@(?:[\w.-]+|\[[\w:.%-]+\])')
+# A field can contain prose or a local name. Its punctuation is private only
+# within a URI, after a scheme or the start of a network-path reference.
+_PRIVATE_URI = re.compile(
+    r'(?:(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*:|(?<![\w./+-])//)[^\s"<>]*[@?#]'
+)
+
+
+def withheld_value(text, fallback="（已隐藏）"):
+    """Name only the credential types when a whole field must be withheld."""
+    from govlib import secrets
+
+    kinds = secrets.kinds(text)
+    return "<redacted %s>" % ", ".join(kinds) if kinds else fallback
+
+
+def withhold_url(value):
+    """Withhold URL-like data returned in place of a named field."""
+    text = str(value)
+    return withheld_value(text) if _PRIVATE_URI.search(text) else text
+
+
+def shown_git_email(text):
+    """The address's final @ is structural. Its local part may itself contain a URL."""
+    address = _BARE_EMAIL.fullmatch(text)
+    if not address:
+        return withhold_url(text)
+    # Only an unquoted leading // can use the address's final @ as URI userinfo.
+    local = address["local"]
+    has_url = re.match(r"//\S", local) or _PRIVATE_URI.search(local)
+    return withheld_value(text) if has_url else text
 
 
 class Home(object):
@@ -177,8 +210,7 @@ class Report(object):
     def failed(self):
         return any(status == FAIL for status, _, _ in self.lines)
 
-    def render(self):
-        out = ["== %s" % self.title]
+    def render_lines(self):
+        yield "== %s" % self.title
         for status, subject, detail in self.lines:
-            out.append("[%s] %s：%s" % (status, subject, detail))
-        return "\n".join(out) + "\n"
+            yield "[%s] %s：%s" % (status, subject, detail)
