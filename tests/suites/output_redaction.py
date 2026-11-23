@@ -34,6 +34,8 @@ STREAMS = {"sys.stdout", "sys.stderr", "sys.__stdout__", "sys.__stderr__"}
 STREAM_PREFIXES = tuple(stream + "." for stream in STREAMS)
 MUTATORS = {"append", "extend", "insert", "update", "setdefault", "__setitem__"}
 IMMUTABLE_READERS = {"builtins.str", "builtins.bytes", "builtins.repr", "builtins.len", "builtins.format"}
+MAX_ALTERNATIVES = 128
+MAX_PATH_COMPONENTS = 4096
 TERMINAL_PATHS = {"/dev/stdout", "/dev/stderr", "/dev/fd/1", "/dev/fd/2", "/proc/self/fd/1", "/proc/self/fd/2"}
 
 # If govlib cannot load, #248's machine writer substitutes this fixed refusal.
@@ -106,7 +108,7 @@ def fold_literals(operands, combine):
             return set(), False
         complete &= len(parts) == len(origins)
         count *= len(parts)
-        if count > 128:
+        if count > MAX_ALTERNATIVES:
             return {UNRESOLVED_PATH}, False
         choices.append(parts)
     return {LITERAL + combine(parts) for parts in product(*choices)}, complete
@@ -245,6 +247,7 @@ class Scope:
         self.external_writes = set()
         self.shared_bindings = defaultdict(list)
         self.declarations = {}
+        self.annotation_locals = set()
         self.machine_writer = path == "machine/scripts/machine.py" and getattr(node, "name", "") == "write_line"
         self.bindings = defaultdict(list)
         self.blocks = {}
@@ -293,7 +296,7 @@ class Scope:
                 for ref in self.retained_names(arg):
                     if REDACTED in self.origins(ref):
                         self.invalidate(ref, call)
-        local_names = set(self.bindings)
+        local_names = set(self.bindings) | self.annotation_locals
         for name, site in self.mutations:
             for alias in self.related_names(name):
                 if alias in self.declarations or alias not in local_names:
@@ -403,7 +406,7 @@ class Scope:
             site, value, definite = node, UNBOUND if isinstance(node.ctx, ast.Del) else UNKNOWN, False
             if isinstance(parent, ast.AnnAssign) and parent.value is None:
                 if not isinstance(self.node, (ast.ClassDef, ast.Module)):
-                    self.bindings[node.id].append((node, UNBOUND, False))
+                    self.annotation_locals.add(node.id)
                 return
             if isinstance(parent, (ast.Assign, ast.AnnAssign, ast.NamedExpr)) and parent.value is not None:
                 site = parent
@@ -493,7 +496,9 @@ class Scope:
                 while scope.parent:
                     scope = scope.parent
                 return scope
-            if declaration != "nonlocal" and (name in scope.bindings or name in scope.shared_bindings):
+            if declaration != "nonlocal" and (
+                name in scope.bindings or name in scope.annotation_locals or name in scope.shared_bindings
+            ):
                 return scope
             scope = scope.parent
         return None
@@ -501,14 +506,22 @@ class Scope:
     def binding_sources(self, name):
         scope = self.owner_of(name.id)
         if scope is None:
-            return None, []
+            return [(self, "builtins." + name.id)] if hasattr(builtins, name.id) else []
         sources = [(scope, value) for value in scope.values_at(name.id, name)]
         sources.extend(scope.shared_bindings.get(name.id, ()))
         if not scope.bindings.get(name.id):
             sources.append((scope, UNBOUND))
         if name.id in scope.external_writes:
             sources.append((scope, MUTATED))
-        return scope, sources
+        if any(value == UNBOUND for _, value in sources):
+            # A missing local raises before the write. Only module and class
+            # namespaces can contribute an actual lookup fallback.
+            sources = [(owner, value) for owner, value in sources if value != UNBOUND]
+            if isinstance(scope.node, ast.ClassDef):
+                sources.extend(scope.parent.binding_sources(name))
+            elif isinstance(scope.node, ast.Module) and hasattr(builtins, name.id):
+                sources.append((scope, "builtins." + name.id))
+        return sources
 
     def origins(self, node, seen=frozenset()):
         """Imported names, output handles, or redacted values this expression can produce."""
@@ -517,17 +530,9 @@ class Scope:
         if isinstance(node, ListColumn) and node not in seen:
             return self.column_origins(node, seen | {node})
         if isinstance(node, ast.Name):
-            scope, sources = self.binding_sources(node)
-            if not scope:
-                return {"builtins." + node.id} if hasattr(builtins, node.id) else {UNKNOWN}
             if node not in seen:
+                sources = self.binding_sources(node)
                 result = set().union(*(owner.origins(value, seen | {node}) for owner, value in sources))
-                if UNBOUND in result:
-                    result.discard(UNBOUND)
-                    if isinstance(scope.node, ast.ClassDef):
-                        result.update(scope.parent.origins(node, seen))
-                    elif isinstance(scope.node, ast.Module) and hasattr(builtins, node.id):
-                        result.add("builtins." + node.id)
                 if MUTATED in result:
                     result.discard(MUTATED)
                     # Changing a field can invalidate a payload or callable, but the
@@ -696,32 +701,58 @@ class Scope:
         return {UNKNOWN}
 
     def path_value(self, args, seen):
-        operands = [self.unpacked_path(arg.value, seen) if isinstance(arg, ast.Starred)
-                    else self.origins(arg, seen) for arg in args]
-        return joined_paths(operands) if operands else {LITERAL}
+        alternatives = self.path_variants(args, seen, {})
+        return set().union(*(joined_paths(parts) for parts in alternatives))
 
-    def unpacked_path(self, value, seen):
-        # Joining each entire sequence before merging alternatives preserves component
-        # order and correlations. An absolute component resets the prefix in either form.
-        if isinstance(value, (ast.List, ast.Tuple)):
-            return self.path_value(value.elts, seen)
-        if value == MUTATED:
-            return {UNRESOLVED_PATH}
-        if isinstance(value, ast.Call) and isinstance(value.func, ast.Attribute) and value.func.attr == "split":
-            if len(value.args) == 1 and not value.keywords:
-                texts = self.origins(value.func.value, seen)
-                separators = self.origins(value.args[0], seen) - {LITERAL}
-                candidates, complete = fold_literals(
-                    (texts, separators), lambda pair: posixpath.join(*pair[0].split(pair[1]))
-                )
-                return candidates if complete else candidates | {UNKNOWN}
-        if isinstance(value, ast.Name) and value not in seen:
-            scope, sources = self.binding_sources(value)
-            if scope and sources:
-                return set().union(*(owner.unpacked_path(v, seen | {value}) for owner, v in sources))
-        if isinstance(value, ast.IfExp):
-            return self.unpacked_path(value.body, seen) | self.unpacked_path(value.orelse, seen)
-        return {UNKNOWN}
+    def path_variants(self, args, seen, cache):
+        alternatives = {()}
+        for arg in args:
+            if isinstance(arg, ast.Starred):
+                choices = self.unpacked_variants(arg.value, seen, cache)
+            else:
+                choices = {(frozenset(self.origins(arg, seen)),)}
+            if (len(alternatives) * len(choices) > MAX_ALTERNATIVES
+                    or max(map(len, alternatives)) + max(map(len, choices)) > MAX_PATH_COMPONENTS):
+                alternatives = {(frozenset({UNRESOLVED_PATH}),)}
+                continue
+            alternatives = {prefix + tail for prefix in alternatives for tail in choices}
+        return alternatives
+
+    def unpacked_variants(self, value, seen, cache):
+        # Each alternative is one ordered tuple. Defer the join until the outer
+        # call knows its prefix and suffix, so components from two tuples never mix.
+        key = (self, value)
+        if key in cache:
+            return cache[key]
+        unknown = {(frozenset({UNKNOWN}),)}
+        cache[key] = {(frozenset({UNRESOLVED_PATH}),)}  # cyclic or modified sequence
+        if isinstance(value, (ast.Tuple, ast.List)):
+            options = self.path_variants(value.elts, seen, cache)
+        elif isinstance(value, ast.Name) and value not in seen:
+            options = set().union(*(owner.unpacked_variants(v, seen | {value}, cache)
+                                    for owner, v in self.binding_sources(value)))
+        elif isinstance(value, ast.IfExp):
+            options = self.unpacked_variants(value.body, seen, cache)
+            options = options | self.unpacked_variants(value.orelse, seen, cache)
+        elif (isinstance(value, ast.Call) and isinstance(value.func, ast.Attribute) and value.func.attr == "split"
+              and len(value.args) == 1 and not value.keywords):
+            texts = self.origins(value.func.value, seen)
+            separators = self.origins(value.args[0], seen) - {LITERAL}
+            options = set()
+            if len(texts) * len(separators) > MAX_ALTERNATIVES:
+                return cache[key]
+            for text, separator in product(texts, separators):
+                if text.startswith(LITERAL) and separator.startswith(LITERAL):
+                    parts = text[len(LITERAL):].split(separator[len(LITERAL):])
+                    options.add(tuple(frozenset({LITERAL + part}) for part in parts))
+                else:
+                    options.update(unknown)
+        elif value == MUTATED:
+            return cache[key]
+        else:
+            options = unknown
+        cache[key] = options or unknown
+        return cache[key]
 
     def safe(self, value, binary=False):
         allowed = {ENCODED} if binary else {REDACTED, ENCODED}

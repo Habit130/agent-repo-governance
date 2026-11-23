@@ -488,6 +488,28 @@ class OutputRedaction(unittest.TestCase):
                     open(self.path, "w").write(raw)
         """)
         self.assertEqual(unredacted_writes("sample.py", source), [])
+        local = dedent("""\
+            import os
+            def save(raw):
+                parts = ("/tmp", "stderr")
+                parts: tuple
+                open(os.path.join(*parts), "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", local), [])
+        self.assertEqual(unredacted_writes("sample.py", local.replace('"/tmp"', '"/dev"')), [5])
+        nonlocal_value = dedent("""\
+            import os
+            def save(raw):
+                parts: tuple
+                def prepare():
+                    nonlocal parts
+                    parts = ("shm", "report.txt")
+                prepare()
+                open(os.path.join("/dev", *parts), "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", nonlocal_value), [])
+        terminal = nonlocal_value.replace('("shm", "report.txt")', '("stderr",)')
+        self.assertEqual(unredacted_writes("sample.py", terminal), [8])
 
     def test_shared_tuple_alternatives_keep_their_components_together(self):
         source = dedent("""\
@@ -507,3 +529,6 @@ class OutputRedaction(unittest.TestCase):
         split = 'import os\npath = "/dev/stderr" if mode else "/tmp/log"\n'
         emit = 'open(os.path.join("/", *path.split("/")), "w").write(raw)'
         self.assertEqual(unredacted_writes("sample.py", split + emit), [3])
+        partial = 'import os\nparts = (subdir, "report.txt")\nopen(os.path.join("/dev", *parts), "w").write(raw)\n'
+        self.assertEqual(unredacted_writes("sample.py", partial), [])
+        self.assertEqual(unredacted_writes("sample.py", partial.replace('"report.txt"', '"/dev/stderr"')), [3])
