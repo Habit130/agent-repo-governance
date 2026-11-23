@@ -21,7 +21,7 @@ import os
 import shutil
 import time
 
-from machinelib.home import shown_identifier
+from machinelib.home import withhold_url
 
 FORBIDDEN_COMMANDS = ("ghm", "gh secret set", "gh secret delete", "gh secret remove")
 LISTING = "gh secret list"
@@ -238,7 +238,7 @@ def check_codex_rules(home, codex):
             problems.append("`%s` 的输出不是预期的 JSON" % shown)
             continue
         if forbidden and decision != "forbidden":
-            problems.append("`%s` 未被禁止（decision：%s）" % (shown, shown_identifier(decision)))
+            problems.append("`%s` 未被禁止（decision：%s）" % (shown, withhold_url(decision)))
         if not forbidden and decision == "forbidden":
             problems.append("`%s` 被禁止了，但列出名称应保持允许" % shown)
     return problems

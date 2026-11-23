@@ -57,7 +57,7 @@ def run(home):
     if login != AGENT:
         if isinstance(login, str) and login:
             # An unterminated key in the login must not consume the list outcome that follows it.
-            detail = "gh 应以 agent account %s 运行，实际：%s" % (AGENT, secrets.redact(homes.shown_identifier(login)))
+            detail = "gh 应以 agent account %s 运行，实际：%s" % (AGENT, secrets.redact(homes.withhold_url(login)))
         else:
             detail = "无法确认 gh 是否以 agent account %s 运行" % AGENT
         report.add(homes.FAIL, "account", detail + "；列表未生成")
@@ -105,7 +105,7 @@ def run(home):
             continue
         data, failed = _record(home, name, branch)
         if failed:
-            report.add(homes.FAIL, homes.shown_identifier(name), "读取 record 失败")
+            report.add(homes.FAIL, homes.withhold_url(name), "读取 record 失败")
             continue
         if data is None:
             continue
@@ -136,7 +136,7 @@ def run(home):
         parts.append("未关闭 miss record %s 条" % ("?" if misses is None else misses))
         if entry.get("isPrivate"):
             parts.append("私有")
-        report.add(homes.NOTE, homes.shown_identifier(name), "；".join(parts))
+        report.add(homes.NOTE, homes.withhold_url(name), "；".join(parts))
     if not governed:
         report.add(homes.NOTE, "repositories", "没有找到 governed repository")
     return report

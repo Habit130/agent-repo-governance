@@ -237,13 +237,15 @@ def _identity_problems(home):
         except ValueError:
             pass
     if login != AGENT:
-        problems.append("gh 应以 agent account %s 操作，实际：%s" % (AGENT, homes.shown_identifier(login or "未知")))
+        problems.append("gh 应以 agent account %s 操作，实际：%s" % (AGENT, homes.withhold_url(login or "未知")))
     code, out, _ = home.run(["git", "config", "--global", "--get", "user.email"])
     email = out.strip() if code == 0 else ""
     expected = "%s+%s@users.noreply.github.com" % (user_id, AGENT) if user_id else None
     if not expected or email != expected:
+        shown_expected = homes.withhold_url(expected or "agent account 的 noreply 地址")
+        shown_email = homes.withhold_url(email or "未设置", email=True)
         problems.append("git 的全局 commit 身份应是 %s，实际：%s"
-                        % (homes.shown_identifier(expected or "agent account 的 noreply 地址"), homes.shown_identifier(email or "未设置")))
+                        % (shown_expected, shown_email))
     shell = home.env.get("SHELL") or "/bin/zsh"
     # An interactive login shell reads the ghm definition, an alias or a function (#19); the
     # shell names its kind without calling it. No history file and no macOS Terminal session

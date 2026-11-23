@@ -6,16 +6,21 @@ all into a throwaway home never touches the real one.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 
 PASS, FAIL, SKIP, NOTE = "通过", "失败", "跳过", "说明"
 
+_BARE_EMAIL = re.compile(r'(?:[^\s@:<>()\[\],;"\\]+|"(?:[^"\\\r\n]|\\.)*")@(?:[\w.-]+|\[[\w:.%-]+\])')
 
-def shown_identifier(value):
-    """A URL returned in place of a login, email, repository, commit or decision is opaque."""
+
+def withhold_url(value, *, email=False):
+    """Withhold URL-like fields. In a Git email, /, ? and # may belong to the local part."""
     text = str(value)
+    if email and _BARE_EMAIL.fullmatch(text) and not re.search(r'://|(?:^|[\s"])//', text):
+        return text
     if "//" in text or (("/" in text or ":" in text) and any(mark in text for mark in "@?#")):
         return "（已隐藏）"
     return text

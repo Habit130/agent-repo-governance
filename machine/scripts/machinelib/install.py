@@ -65,7 +65,7 @@ def _refuse_older(home, source, commit):
     if installed and installed["commit"] != commit and not skills.is_ancestor(source, installed["commit"], commit):
         raise MachineError(
             "本机已安装 %s，而源码树的 %s 不比它新（install 只向前移动）；install 未写入任何内容"
-            % (installed["commit"], homes.shown_identifier(commit))
+            % (installed["commit"], homes.withhold_url(commit))
         )
     return installed
 
@@ -191,7 +191,7 @@ def _upstream(home, report, source):
     code, out, _ = home.run(
         ["gh", "api", "repos/%s/compare/%s...HEAD" % (repository, commit), "--jq", "{ahead_by, status}"]
     )
-    shown_repository = homes.shown_identifier(repository)
+    shown_repository = homes.withhold_url(repository)
     if isinstance(commit, str) and re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", commit):
         shown_commit = commit[:12]
     else:
@@ -219,7 +219,7 @@ def run(source, home, codex=None):
     skill_set = skills.machine_skill_set(source)
     tools = skills.tracked(source, skills.MACHINE_SOURCE)
 
-    shown_commit = homes.shown_identifier(commit)
+    shown_commit = homes.withhold_url(commit)
     report = homes.Report("install %s" % shown_commit)
     written = _machine_skills(home, report, skill_set, installed)
     _lock_file(home, report, set(skill_set))

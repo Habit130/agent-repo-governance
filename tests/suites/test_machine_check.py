@@ -96,6 +96,14 @@ class CheckDiagnostics(CheckCase):
         result = ms.run_machine(["check"], env)
         ms.assert_diagnostic(self, result, 1, "[失败] identity：git 的全局 commit 身份应是 " + ms.NOREPLY)
 
+    def test_wrong_git_emails_keep_their_local_part(self):
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        for address in ("build/ci@example.invalid", "build//ci@example.invalid", "build/ci?foo#bar@example.invalid"):
+            with self.subTest(address=address):
+                support.write_tree(self.home, {".gitconfig": '[user]\n\temail = "%s"\n' % address})
+                result = ms.run_machine(["check"], env)
+                ms.assert_diagnostic(self, result, 1, "git 的全局 commit 身份应是 %s，实际：%s" % (ms.NOREPLY, address))
+
 
 class EveryItem(CheckCase):
     def test_a_ready_machine_passes_every_item(self):
