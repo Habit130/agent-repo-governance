@@ -23,13 +23,23 @@ def case_file(name):
 class PushAndOpenRecords:
     """The workflow entry, with gh responses served in-process for multi-thousand-commit pushes."""
 
-    def replay_event(self, event, api, expected, *, name="push", incomplete=None):
+    def replay_event(self, event, api, expected, *, name="push", incomplete=None, throttled=None,
+                     waits=(), refused=False):
         path = Path(self.path("event.json"))
         path.write_text(json.dumps(event), encoding="utf-8")
         posts = []
 
         def gh(args, **kwargs):
-            if args == ["gh", "api", "--method", "POST", PREFIX + "/issues", "--input", "-"]:
+            include = "--include" in args
+            args = [arg for arg in args if arg != "--include"]
+            key = "POST" if "--method" in args else args[-1]
+            if throttled and throttled.get(key):
+                status, headers = throttled[key].pop(0)
+                body = b'{"message":"API rate limit exceeded"}' if status in (403, 429) else b"request failed"
+                if include and status:
+                    body = f"HTTP/2.0 {status} Error\r\n{headers}\r\n\r\n".encode() + body
+                return subprocess.CompletedProcess(args, 1, body, b"gh: request failed")
+            if args == ["gh", "api", "--method", "POST", "--input", "-", PREFIX + "/issues"]:
                 posts.append(json.loads(kwargs["input"]))
                 value = {}
             else:
@@ -37,14 +47,20 @@ class PushAndOpenRecords:
             if value is None:
                 return subprocess.CompletedProcess(args, 1, b"", b"fixture read failure")
             data = value if isinstance(value, str) else json.dumps(value)
+            if include:
+                data = "HTTP/2.0 200 OK\r\nContent-Type: application/json\r\n\r\n" + data
             return subprocess.CompletedProcess(args, 0, data.encode(), b"")
 
         output = io.StringIO()
         with mock.patch.dict(os.environ, GITHUB_EVENT_NAME=name, GITHUB_EVENT_PATH=str(path)), \
-                mock.patch.object(subprocess, "run", gh), contextlib.redirect_stdout(output):
+                mock.patch.object(subprocess, "run", gh), contextlib.redirect_stdout(output), \
+                mock.patch("time.sleep") as sleep, mock.patch("time.time", return_value=1000):
             result = self.watch.main(["--post"])
-        self.assertEqual(result, int(incomplete is not None), output.getvalue()[:2000])
+        self.assertEqual(result, int(incomplete is not None or refused), output.getvalue()[:2000])
         self.assertEqual(posts, expected)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], list(waits))
+        if refused:
+            self.assertIn("FAIL opening the record", output.getvalue())
         if incomplete:
             self.assertIn("INCOMPLETE ", output.getvalue())
             self.assertIn(incomplete, output.getvalue())
@@ -63,6 +79,11 @@ class PushAndOpenRecords:
             (prior, []),
             (dict(prior, body="An example follows.\n\n" + prior["body"]), [red]),
             (dict(prior, state="closed"), [red]),
+            (dict(prior, body=prior["body"].replace(prior["body"].splitlines()[3], "Observed: placeholder")), [red]),
+            (dict(prior, body=prior["body"].replace("Habit130/tally/actions", "Habit130/another/actions")), [red]),
+            (dict(prior, body=prior["body"].replace("b" * 40, "b" * 7)), [red]),
+            (dict(prior, body=prior["body"].replace("concluded failure", "concluded success")), [red]),
+            (dict(prior, body=prior["body"].replace("Workflow ci concluded failure", "CI failed")), []),
             (dict(prior, title=red["title"]), [red]),
             (dict(prior, labels=[{"name": "bug"}]), [red]),
             (dict(prior, body=prior["body"].replace("Found by: Builder", "Found by: ")), [red]),
@@ -177,3 +198,30 @@ class PushAndOpenRecords:
         }
         self.replay_event(event, api, expected[:1] + expected[-1:],
                           incomplete=f"push range {before}..{after}")
+
+    def test_large_push_resumes_reads_and_issue_posts_after_rate_limits(self):
+        event, api, _, expected = self.push_range(2)
+        first = event["commits"][0]["id"]
+        throttled = {
+            f"{PREFIX}/commits/{first}/pulls?per_page=100&page=1": [
+                (403, "X-RateLimit-Remaining: 0\r\nX-RateLimit-Reset: 1010"),
+            ],
+            "POST": [(429, "Retry-After: 2")],
+        }
+        self.replay_event(event, api, expected, throttled=throttled, waits=(11, 2))
+
+    def test_unrecoverable_rate_limit_stops_after_preserving_prior_posts(self):
+        event, api, shas, expected = self.push_range(2)
+        later = f"{PREFIX}/commits/{shas[2]}/pulls?per_page=100&page=1"
+        self.replay_event(event, api, expected[:1], incomplete="GitHub still rate limited the audit at " + later,
+                          throttled={later: [(429, "Retry-After: 99999")]})
+
+    def test_secondary_rate_limit_without_a_header_uses_backoff(self):
+        event, api, _, expected = self.push_range(2)
+        self.replay_event(event, api, expected, throttled={"POST": [(429, ""), (429, "")]}, waits=(60, 120))
+
+    def test_ambiguous_post_failure_is_reported_without_a_duplicate_write(self):
+        event, api, _, expected = self.push_range(2)
+        for status in (None, 502):
+            with self.subTest(status=status):
+                self.replay_event(event, api, expected[1:], refused=True, throttled={"POST": [(status, "")]})

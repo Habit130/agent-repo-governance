@@ -8,7 +8,9 @@ and opens one miss record per miss, in the format `docs/agents/issue-tracker.md`
 
 On `push` to the default branch, a bounded event list is reconciled with the paginated
 comparison of its before and after SHAs. An incomplete range is reported with its refs;
-commits established by the event or recovered pages are still judged. For each pushed commit:
+commits established by the event or recovered pages are still judged. Push runs post confirmed
+misses as they go, honor GitHub's rate-limit delays and report where the audit stopped if its
+time or retry budget runs out. For each pushed commit:
 
 - the merged PR is the one whose squash commit it is. A commit that is only part of a merged
   PR's history is left to that PR's merge commit; a commit with no merged PR at all records a
@@ -111,6 +113,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 sys.dont_write_bytecode = True
 
@@ -208,7 +211,17 @@ RECORD_OPENING = re.compile(
 CONTINUING_RED = ("red-default-branch",)
 
 
-def _record_key(title, body):
+def _red_incident(observed, repository):
+    # The run URL identifies the workflow even for records written by a person.
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+    run_url = re.escape(server + "/" + repository + "/actions/runs/") + r"[1-9][0-9]*\b"
+    return (re.search(run_url, observed, re.I)
+            and re.search(r"\b[0-9a-f]{40}\b", observed, re.I)
+            and re.search(r"\b(?:fail(?:ed|ure)?|cancel(?:l?ed|lation)|timed[ _-]out|timeout|"
+                          r"startup[ _-]failure|red)\b", re.sub(r"https?://\S+", "", observed), re.I))
+
+
+def _record_key(title, body, repository):
     opening = RECORD_OPENING.match(body.replace("\r\n", "\n"))
     if not opening:
         return None
@@ -219,7 +232,7 @@ def _record_key(title, body):
     if title != expected or not observed.strip():
         return None
     if kind == "escape" and category == "red-default-branch":
-        return CONTINUING_RED
+        return CONTINUING_RED if _red_incident(observed, repository) else None
     return title, observed
 
 
@@ -235,7 +248,7 @@ def _open_records(read, repository, problems):
         ):
             continue
         if isinstance(issue.get("title"), str) and isinstance(issue.get("body"), str):
-            key = _record_key(issue["title"], issue["body"])
+            key = _record_key(issue["title"], issue["body"], repository)
             if key is not None:
                 keys.add(key)
         elif issue.get("body") is not None or not isinstance(issue.get("title"), str):
@@ -933,20 +946,78 @@ def _event_records(event_name, event, read, notes, problems):
     else:
         return
     for rec in records:
-        if _record_key(rec["title"], rec["body"]) not in open_records:
+        if _record_key(rec["title"], rec["body"], repository) not in open_records:
             yield rec
 
 
 # The entry the workflow runs.
 
+class PushIncomplete(Exception):
+    """The audit must stop issuing requests and report the unjudged part of the push."""
+
+
+def _rate_limit_delay(status, headers, body, attempt):
+    if status not in (b"403", b"429"):
+        return None
+    retry = headers.get(b"retry-after", b"")
+    remaining = headers.get(b"x-ratelimit-remaining")
+    if (status != b"429" and not retry.isdigit() and remaining != b"0"
+            and b"rate limit" not in body.lower()):
+        return None
+    reset = headers.get(b"x-ratelimit-reset", b"")
+    delays = []
+    if retry.isdigit():
+        delays.append(int(retry))
+    if remaining == b"0" and reset.isdigit():
+        delays.append(int(reset) - int(time.time()) + 1)
+    # GitHub asks for at least one minute without a supplied delay and increasing
+    # backoff for repeated secondary limits. A non-rate-limit failure is never retried.
+    if not delays or attempt:
+        delays.append(60 * 2**attempt)
+    return max(1, *delays)
+
+
 class GitHub(object):
     """`read` through `gh api`, every page of a list; each path that couldn't be read is kept in `unreadable`."""
 
-    def __init__(self):
+    def __init__(self, push=False):
         self.unreadable = []
+        # Allow the 360-minute job to report incomplete coverage before it times out.
+        self.deadline = time.monotonic() + 350 * 60 if push else None
+
+    def request(self, path, *options, data=None):
+        command = ["gh", "api"]
+        if self.deadline is not None:
+            command.append("--include")
+        command.extend((*options, path))
+        for attempt in range(8):
+            if self.deadline is not None and time.monotonic() >= self.deadline:
+                raise PushIncomplete("audit time budget exhausted at " + path)
+            result = subprocess.run(command, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if self.deadline is None or not result.stdout.startswith(b"HTTP/"):
+                return result
+            parts = re.split(rb"\r?\n\r?\n", result.stdout, maxsplit=1)
+            if len(parts) != 2:
+                return result
+            head, result.stdout = parts
+            if not result.returncode:
+                return result
+            status_line = head.splitlines()[0].split()
+            status = status_line[1] if len(status_line) >= 2 else b""
+            headers = {}
+            for line in head.splitlines()[1:]:
+                key, _, value = line.partition(b":")
+                headers[key.lower()] = value.strip()
+            delay = _rate_limit_delay(status, headers, result.stdout, attempt)
+            if delay is None:
+                return result
+            if attempt == 7 or time.monotonic() + delay >= self.deadline:
+                raise PushIncomplete("GitHub still rate limited the audit at " + path)
+            print("NOTE GitHub rate limit: waiting %d seconds before retrying." % delay, flush=True)
+            time.sleep(delay)
 
     def _json(self, path):
-        result = subprocess.run(["gh", "api", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = self.request(path)
         try:
             if result.returncode:
                 raise ValueError(" ".join(result.stderr.decode("utf-8", "replace").split()) or "gh failed")
@@ -978,8 +1049,7 @@ class GitHub(object):
 
     def _file(self, path):
         """A file's text at a ref, from the contents API's raw form; NotFound on GitHub's own answer that it isn't there."""
-        result = subprocess.run(["gh", "api", "-H", "Accept: application/vnd.github.raw", path],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = self.request(path, "-H", "Accept: application/vnd.github.raw")
         if result.returncode != 0 and _not_found(result.stdout):
             raise NotFound(path)
         try:
@@ -989,6 +1059,11 @@ class GitHub(object):
         except ValueError as error:
             self.unreadable.append("%s: %s" % (path, error))
             raise ReadError(path)
+
+    def post(self, repository, rec):
+        result = self.request("repos/%s/issues" % repository, "--method", "POST", "--input", "-",
+                              data=json.dumps(rec, sort_keys=True).encode("utf-8"))
+        return result.returncode == 0
 
 
 def _not_found(stdout):
@@ -1000,17 +1075,6 @@ def _not_found(stdout):
     return isinstance(data, dict) and data.get("status") == "404" and data.get("message") == "Not Found"
 
 
-def _post(repository, rec):
-    """Open the record as an issue; True when GitHub took it."""
-    posted = subprocess.run(
-        ["gh", "api", "--method", "POST", "repos/%s/issues" % repository, "--input", "-"],
-        input=json.dumps(rec, sort_keys=True).encode("utf-8"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    return posted.returncode == 0
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Merge watch's miss records for the event in GITHUB_EVENT_PATH.")
     parser.add_argument("--post", action="store_true", help="open each record as a `miss` issue")
@@ -1018,15 +1082,18 @@ def main(argv=None):
     with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as handle:
         event = json.load(handle)
     event_name = os.environ["GITHUB_EVENT_NAME"]
-    github = GitHub()
+    github = GitHub(push=event_name == "push")
     notes, problems = [], []
     found = failed = False
-    for rec in _event_records(event_name, event, github, notes, problems):
-        found = True
-        print("MISS %s. %s" % (rec["title"], _field(rec["body"], "Observed")), flush=True)
-        if args.post and not _post(event["repository"]["full_name"], rec):
-            print("FAIL opening the record %s" % rec["title"], flush=True)
-            failed = True
+    try:
+        for rec in _event_records(event_name, event, github, notes, problems):
+            found = True
+            print("MISS %s. %s" % (rec["title"], _field(rec["body"], "Observed")), flush=True)
+            if args.post and not github.post(event["repository"]["full_name"], rec):
+                print("FAIL opening the record %s" % rec["title"], flush=True)
+                failed = True
+    except PushIncomplete as error:
+        unresolved(problems, "push range %s..%s: %s" % (event.get("before"), event.get("after"), error))
     for line in github.unreadable:
         print("UNREADABLE " + line)
     for line in notes:

@@ -102,7 +102,9 @@ class RecordedMerge(VersionThreeRendered):
                 if "/check-runs?" in path:
                     value = {"check_runs": value, "total_count": len(value)}
                 output = json.dumps(value)
-            calls.append({"args": args, "stdout": self.errors.get(path, output),
+            args.insert(1, "--include")
+            status = "404 Not Found" if path in self.errors else "200 OK"
+            calls.append({"args": args, "stdout": "HTTP/2.0 " + status + "\r\n\r\n" + self.errors.get(path, output),
                           "exit": int(path in self.errors)})
         expected = []
         if missing:
@@ -120,8 +122,8 @@ class RecordedMerge(VersionThreeRendered):
                                       f"Observed: Commit {self.unassociated} was pushed to main with no merged PR.\n"
                                       "Found by: Merge watch\nBug issue: none\n")})
         for item in expected:
-            calls.append({"args": ["api", "--method", "POST", self.prefix + "/issues", "--input", "-"],
-                          "stdin": json.dumps(item, sort_keys=True), "stdout": "{}", "exit": 0})
+            calls.append({"args": ["api", "--include", "--method", "POST", "--input", "-", self.prefix + "/issues"],
+                          "stdin": json.dumps(item, sort_keys=True), "stdout": "HTTP/2.0 201 Created\r\n\r\n{}", "exit": 0})
         with tempfile.TemporaryDirectory(dir=self.tmp) as tmp:
             event, recording = Path(tmp, "event.json"), Path(tmp, "gh.json")
             target = repository or self.repo
