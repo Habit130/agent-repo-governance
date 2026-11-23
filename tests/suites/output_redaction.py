@@ -239,6 +239,7 @@ class Scope:
         self.node = node
         self.path = path
         self.parent = parent
+        self.definition_scope = definition_scope
         self.classes = classes if parent is None else parent.classes
         self.has_redactor = imports_govlib(node) if parent is None else parent.has_redactor
         self.path_functions = path_functions if parent is None else parent.path_functions
@@ -445,10 +446,13 @@ class Scope:
                 self.escapes.append(node.value)
         elif (isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.ctx, ast.Store)
               and not (isinstance(parent, ast.AnnAssign) and parent.value is None)):
-            self.invalidate(node.value, node)
+            site = parent if isinstance(parent, (ast.Assign, ast.AnnAssign, ast.AugAssign)) else node
+            self.invalidate(node.value, site)
             if isinstance(node, ast.Attribute):
                 value = parent.value if isinstance(parent, (ast.Assign, ast.AnnAssign)) else UNKNOWN
-                self.field_writes[node.attr].append((self, node.value, value, parent))
+                # For/with targets are set before their bodies. In particular a
+                # withitem has no location of its own, while its target does.
+                self.field_writes[node.attr].append((self, node.value, value, site))
                 if self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self":
                     self.fields.add(node.attr)
         elif isinstance(node, ast.Call):
@@ -620,6 +624,7 @@ class Scope:
         return True
 
     def member_values(self, owners, name, read, seen):
+        owners = {"os.path" if owner == "posixpath" else owner for owner in owners}
         values = {owner + "." + name for owner in owners}
         modules = owners & {"os", "os.path", "sys", "builtins", "json", "re", "io", "govlib",
                             "govlib.secrets", "govlib.storedform"}
@@ -628,20 +633,37 @@ class Scope:
                 for writer, receiver, value, site in self.field_writes.get(field, ()):
                     if site in seen:
                         continue
-                    if (writer is self and isinstance(self.node, ast.Module)
-                            and (site.end_lineno, site.end_col_offset) > (read.lineno, read.col_offset)
-                            and self.enclosing_loops(site).isdisjoint(self.enclosing_loops(read))):
-                        continue  # A later write cannot change an already captured module-level import.
-                    if modules & writer.origins(receiver, seen | {site}):
+                    if not self.can_precede_capture(writer, site, read):
+                        continue
+                    candidates = writer.origins(receiver, seen | {site})
+                    if "posixpath" in candidates:
+                        candidates = candidates | {"os.path"}
+                    if modules & candidates:
                         values.update(writer.origins(value, seen | {site}))
         return values
+
+    def can_precede_capture(self, writer, site, read):
+        # A later definition cannot have run before an earlier top-level import.
+        # A function or loop body that executes more than once can see prior writes.
+        if not isinstance(self.node, ast.Module):
+            return True
+        point = (site.end_lineno, site.end_col_offset)  # assignments and setattr evaluate the RHS first
+        while writer is not self and writer.definition_scope is not None:
+            site, writer = writer.node, writer.definition_scope
+            point = (site.lineno, site.col_offset)
+        if writer is not self or point <= (read.lineno, read.col_offset):
+            return True
+        return not self.enclosing_loops(site).isdisjoint(self.enclosing_loops(read))
 
     def enclosing_loops(self, node):
         loops = set()
         while node in self.parents:
-            node = self.parents[node]
-            if isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
-                loops.add(node)
+            parent = self.parents[node]
+            if isinstance(parent, (ast.For, ast.AsyncFor, ast.While)) and (
+                node in parent.body or node is getattr(parent, "target", None) or node is getattr(parent, "test", None)
+            ):
+                loops.add(parent)
+            node = parent
         return loops
 
     def column_origins(self, column, seen):
@@ -683,13 +705,15 @@ class Scope:
         instances = {self.classes.instance_for(name) for name in names}
         if instances and None not in instances:
             return instances
-        if names == {"builtins.getattr"} and len(call.args) >= 2:
+        if "builtins.getattr" in names and len(call.args) >= 2:
             owners = self.origins(call.args[0], seen)
             attrs = self.origins(call.args[1], seen)
             resolved = set().union(*(self.member_values(owners, attr[len(LITERAL):], call, seen)
                                      for attr in attrs if attr.startswith(LITERAL)))
             if len(call.args) == 3:
                 resolved.update(self.origins(call.args[2], seen))
+            if names != {"builtins.getattr"}:
+                resolved.add(UNKNOWN)
             if any(not attr.startswith(LITERAL) for attr in attrs):
                 resolved.add(UNKNOWN)
                 resolved.update(owner + ".write" for owner in owners if owner in STREAMS or owner == "os")

@@ -566,3 +566,58 @@ class OutputRedaction(unittest.TestCase):
                 os.path.join = lambda *parts: sys.stderr
         """)
         self.assertEqual(unredacted_writes("sample.py", repeated), [5])
+
+    def test_import_capture_uses_located_targets_and_the_posix_module_identity(self):
+        source = dedent("""\
+            import os, sys
+            with replacement() as os.path.join:
+                from os.path import join
+                print(raw, file=join(*()))
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [4])
+        alias = 'import posixpath, sys\nposixpath.join = lambda *items: sys.stderr\nfrom os.path import join\n'
+        self.assertEqual(unredacted_writes("sample.py", alias + "print(raw, file=join(*()))"), [4])
+
+    def test_other_module_attributes_do_not_hide_writes_or_change_a_captured_redactor(self):
+        source = dedent("""\
+            import builtins as configured
+            import builtins as standard
+            import sys
+            if condition:
+                configured.getattr = alternative
+            standard.getattr(sys.stderr, "write")(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [6])
+        source = dedent("""\
+            from govlib.secrets import redact
+            from govlib import secrets
+            def setup():
+                secrets.redact = lambda value: value
+            setup()
+            print(redact(message))
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [])
+
+    def test_loop_else_and_later_function_do_not_change_an_earlier_capture(self):
+        source = dedent("""\
+            import os, sys
+            for item in inputs:
+                from os.path import join
+                print(raw, file=join(*()))
+            else:
+                os.path.join = lambda *items: sys.stderr
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [])
+        before_store = "import os\nos.path.join = print(raw, file=os.path.join())\n"
+        self.assertEqual(unredacted_writes("sample.py", before_store), [])
+        before_setattr = 'import os\nsetattr(os.path, "join", print(raw, file=os.path.join()))\n'
+        self.assertEqual(unredacted_writes("sample.py", before_setattr), [])
+        source = dedent("""\
+            import os, sys
+            from os.path import join
+            def setup():
+                os.path.join = lambda *items: sys.stderr
+            setup()
+            print(raw, file=join(*()))
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [])
