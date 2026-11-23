@@ -5,8 +5,8 @@ comment or a code fence too, which is why no template comment line starts that w
 end at LF, and a CR before it is dropped, since bodies edited on GitHub arrive with CRLF.
 
 - The body holds exactly one `Risk: <low|medium|high> — <reason>` line, the separator an em
-  dash with one space each side, and a reason that isn't empty once spaces and tabs around
-  it are dropped.
+  dash with one space each side. The reason must contain a non-whitespace character.
+  The returned text omits surrounding ASCII spaces and tabs.
 - A `Reverts:` line is optional, and there is at most one: `Reverts: <full commit SHA>`, the
   SHA as 40 lowercase hexadecimal digits, then nothing but spaces or tabs.
 """
@@ -27,7 +27,7 @@ def _risk(lines):
         return "more than one"
     match = _RISK.fullmatch(lines[0])
     reason = match.group(2).strip(" \t") if match else ""
-    if not reason:
+    if not reason or reason.isspace():
         return "malformed"
     return {"tier": match.group(1), "reason": reason}
 

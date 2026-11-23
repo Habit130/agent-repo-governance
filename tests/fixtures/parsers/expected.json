@@ -743,6 +743,20 @@
         }
       }
     },
+    "unicode-whitespace-only-reason": {
+      "text": "Risk: medium — \u00a0\t\u3000\n",
+      "expected": {"risk": "malformed", "reverts": null},
+      "expected_before_v5": {"risk": {"tier": "medium", "reason": "\u00a0\t\u3000"}, "reverts": null}
+    },
+    "ascii-whitespace-only-reason": {
+      "text": "Risk: medium — \t\u000b\f \n",
+      "expected": {"risk": "malformed", "reverts": null},
+      "expected_before_v5": {"risk": {"tier": "medium", "reason": "\u000b\f"}, "reverts": null}
+    },
+    "substantive-unicode-reason": {
+      "text": "Risk: medium — \t\u3000更新审查规则\u00a0 \n",
+      "expected": {"risk": {"tier": "medium", "reason": "\u3000更新审查规则\u00a0"}, "reverts": null}
+    },
     "whitespace-only-reason": {
       "text": "Closes #12\n\nRisk: medium —    \n\n## Summary\n\n- Restores the report's old column order.\n\n## Merge Danger\n\n- **Door:** two-way.\n- **Blast radius:** the report command.\n- **Revert:** revert this PR.\n",
       "expected": {

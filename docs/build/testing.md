@@ -139,7 +139,8 @@ individual fixture.
   - `parse_body(body)` returns `{"risk": ..., "reverts": ...}` in that docstring's shapes.
   - `matches(pattern, path)` matches a sensitive-path pattern against a root-relative path.
   - `verdict(repo, author, owner, body, default_head, head)` is Seam 1. It returns
-    `{"passed", "failures", "pure_revert"}`, and each failure is one line led by its rule.
+    `passed`, `failures` and `pure_revert`. Each failure is one line led by its rule.
+    Version 5 also takes the `merged` callback and can return `revert_note`.
   - **Version 4's pure revert** also requires the governance record at its fixed path
     in the reverted commit's parent: a commit that landed on a default branch already
     governed. One from before, the commit that first added the record included, is
@@ -148,14 +149,20 @@ individual fixture.
     commit predates governance. It reads git objects only, with no GitHub API call. A commit
     pushed without a PR after the record arrived still confirms; that boundary is accepted.
     Versions 1 to 3 keep the rule without the record condition.
-  - **Version 5's pure revert** adds one condition, checked last, after every version 4 git
-    condition holds: GitHub shows a PR merged into the default branch whose squash commit
-    is the named one. `verdict` takes it as `merged(sha)`, returning `True`, `False` or
-    `None` (unreadable, an exception included). The entry builds it from
+  - **Version 5's pure revert** requires the historical record to be a regular file in the
+    parent tree. After the git checks, GitHub must show a PR merged into the default branch
+    whose squash commit is the named one. Merge watch uses the same match criteria.
+    The gate validates the association's fields, including its merge timestamp, to tell
+    an incomplete response from a definite negative. The `merged(sha)` callback passed to
+    `verdict` returns `True`, `False` or `None` (unreadable, an exception included). The entry reads
     `gh api "repos/<repository>/commits/<sha>/pulls?per_page=100"`, with the event's
     `repository.default_branch`, whose checkout judges, as the branch (never the PR's current
-    target, which a retargeted PR changes), testing as Merge watch's `_merged_pr` does.
-    `False` or `None` adds no failure line; a failing `Floors:` line carries the matching note.
+    target, which a retargeted PR changes). A positive association
+    confirms provenance even if another row is unreadable. With no match, a malformed
+    association or a full first page leaves provenance indeterminate. Both negative and
+    indeterminate lookups apply the ordinary floors. A failing floor includes the
+    explanation in its `Floors:` line. Otherwise `revert_note` supplies the explanation for the
+    posted summary, including when a different rule fails.
 - **Its template loads as it is**, since its one token sits in its first line, a comment:
   `PARSERS` in `tests/suites/parsers.py` loads it by path.
 - **The record**: `govlib/record.py`, whose docstring defines the format in full. A list key
@@ -172,7 +179,9 @@ individual fixture.
   also run the `record-v3/` fixtures in `expected-v3.json` for the confirmed `review_bots`
   format. Versions 1 and 2 predate that format and run the common cases. Add a fixture and
   its expectation to the corresponding family to exercise it across all applicable
-  parsers. Each adapter returns the shapes described in `tests/suites/parsers.py`. A record
+  parsers. For an inline PR-body case whose grammar changed in v5, set `expected` to the
+  current result and `expected_before_v5` to the released v1–v4 result. Each adapter
+  returns the shapes described in `tests/suites/parsers.py`. A record
   that doesn't parse expects only "doesn't parse".
 
 ### Reproducing the ref-pattern corpus
