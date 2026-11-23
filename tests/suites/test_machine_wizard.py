@@ -226,7 +226,9 @@ class Command(WizardCase):
         source = self.path("source")
         ms.build_source(source)
         bare = self.path("origin.git")
-        subprocess.run(["git", "clone", "-q", "--bare", source, bare], check=True, env=support.isolated_env())
+        # Use the Git transport because the source commit can still be repacking loose objects.
+        subprocess.run(["git", "clone", "-q", "--bare", "--no-local", source, bare],
+                       check=True, env=support.isolated_env())
         # The clone's URL goes to the local origin, through an include the home's own gitconfig
         # carries, so the wizard's global writes still land in the home.
         support.write_tree(self.home, {".gitconfig": "[include]\n\tpath = %s\n" % self.path("redirect")})
