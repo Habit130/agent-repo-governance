@@ -294,6 +294,8 @@ class OutputRedaction(unittest.TestCase):
                 getattr(sys.stderr, attr, sys.stderr.write)(raw)
         """)
         self.assertEqual(unredacted_writes("sample.py", source), [4, 6])
+        source = "if quiet:\n    print = lambda *items: None\n" + source
+        self.assertEqual(unredacted_writes("sample.py", source), [6, 8])
 
     def test_returned_and_stored_references_can_change_the_value_eventually_printed(self):
         source = dedent("""\
@@ -311,8 +313,16 @@ class OutputRedaction(unittest.TestCase):
             rows = redact(messages)
             handler.write(rows)
             print(rows)
+            nested = redact(messages)
+            holder.data = nested if enabled else []
+            holder.data.append(raw)
+            print(nested)
+            another = redact(messages)
+            (holder.data,) = (another,)
+            holder.data.append(raw)
+            print(another)
         """)
-        self.assertEqual(unredacted_writes("sample.py", source), [7, 11, 14])
+        self.assertEqual(unredacted_writes("sample.py", source), [7, 11, 14, 18, 22])
 
     def test_setting_a_destination_through_an_alias_revokes_the_file_proof(self):
         source = dedent("""\
@@ -334,5 +344,17 @@ class OutputRedaction(unittest.TestCase):
         installer = "machine/scripts/machinelib/install.py"
         sources[installer] = sources[installer].replace(
             b"tools = skills.tracked(source, skills.MACHINE_SOURCE)", b"tools = supplied"
+        )
+        self.assertFalse(relative_skill_inputs({path: ast.parse(source) for path, source in sources.items()}))
+
+    def test_rebinding_a_filename_producer_or_returning_before_a_refusal_revokes_its_proof(self):
+        sources = self.program_sources()
+        skills = "machine/scripts/machinelib/skills.py"
+        rebound = dict(sources)
+        rebound[skills] += b"\ntracked = another_producer\n"
+        self.assertEqual([path for path, _ in program_writes(rebound)], [skills])
+        stored = "generator/govern-repository/scripts/govlib/storedform.py"
+        sources[stored] = sources[stored].replace(
+            b'if segment in ("", ".", ".."):\n', b'if segment in ("", ".", ".."):\n            return other_names\n'
         )
         self.assertFalse(relative_skill_inputs({path: ast.parse(source) for path, source in sources.items()}))

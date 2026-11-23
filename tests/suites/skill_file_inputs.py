@@ -52,9 +52,9 @@ def syntax(node):
         return ("stderr separate from stdout",)
     if isinstance(node, ast.Raise):
         return ("Raise",)
-    if isinstance(node, ast.If) and node.body and isinstance(node.body[-1], ast.Raise):
+    if isinstance(node, ast.If) and len(node.body) == 1 and isinstance(node.body[0], ast.Raise):
         return ("IfRaises", syntax(node.test), syntax(node.orelse))
-    if isinstance(node, ast.ExceptHandler) and node.body and isinstance(node.body[-1], ast.Raise):
+    if isinstance(node, ast.ExceptHandler) and len(node.body) == 1 and isinstance(node.body[0], ast.Raise):
         return ("ExceptRaises", syntax(node.type))
     if isinstance(node, ast.AST):
         return (type(node).__name__, tuple((name, syntax(value)) for name, value in ast.iter_fields(node)

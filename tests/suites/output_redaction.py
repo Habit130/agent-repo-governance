@@ -10,7 +10,7 @@ from importlib.util import resolve_name
 import posixpath
 from typing import NamedTuple
 
-from skill_file_inputs import relative_skill_inputs
+from skill_file_inputs import FLOWS, relative_skill_inputs
 
 
 UNKNOWN = "<unknown>"
@@ -46,6 +46,10 @@ def _hide_private_uri(match):
 
 def matches(node, expression):
     return ast.dump(node) == ast.dump(ast.parse(expression, mode="eval").body)
+
+
+def function_name(path, name):
+    return path.rpartition("/scripts/")[2].removesuffix(".py").replace("/", ".") + "." + name
 
 
 def parameters(args):
@@ -109,6 +113,7 @@ class Scope:
         self.mutations = []
         self.calls = []
         self.returns = []
+        self.escapes = []
         self.children = []
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
             for arg in parameters(node.args):
@@ -133,15 +138,11 @@ class Scope:
         for ref, parent_node in self.parents.items():
             if not isinstance(ref, ast.Name) or not isinstance(ref.ctx, ast.Load):
                 continue
-            targets = parent_node.targets if isinstance(parent_node, ast.Assign) else []
-            if isinstance(parent_node, ast.AnnAssign):
-                targets = [parent_node.target]
-            stored_elsewhere = any(isinstance(t, (ast.Attribute, ast.Subscript)) for t in targets)
-            if (stored_elsewhere or isinstance(parent_node, (ast.List, ast.Tuple, ast.Dict, ast.Set))
+            if (isinstance(parent_node, (ast.List, ast.Tuple, ast.Dict, ast.Set))
                     or isinstance(parent_node, ast.Attribute) and parent_node.attr != "encode"):
                 if REDACTED in self.origins(ref):
                     self.invalidate(ref, parent_node)
-        for value in self.returns:
+        for value in [*self.returns, *self.escapes]:
             if value is not None:
                 for ref in ast.walk(value):
                     if isinstance(ref, ast.Name) and REDACTED in self.origins(ref):
@@ -200,8 +201,9 @@ class Scope:
                 return
             if hasattr(node, "name"):
                 symbol = UNKNOWN
-                if self.path == STORED_FORM and node.name == "check_target" and isinstance(self.node, ast.Module):
-                    symbol = CHECK_TARGET
+                if isinstance(self.node, ast.Module) and isinstance(node, ast.FunctionDef):
+                    if (self.path, node.name) in FLOWS or (self.path == STORED_FORM and node.name == "check_target"):
+                        symbol = function_name(self.path, node.name)
                 if node.name == "_hide_private_uri" and ast.dump(node) == ast.dump(URI_REPLACEMENT):
                     symbol = "<reviewed regex replacement>"
                 self.bindings[node.name].append((node, symbol, True))
@@ -251,6 +253,13 @@ class Scope:
             self.bindings[node.id].append((site, value, definite))
         elif isinstance(node, ast.ExceptHandler) and node.name:
             self.bindings[node.name].append((node, UNKNOWN, False))
+        elif isinstance(node, (ast.Assign, ast.AnnAssign, ast.NamedExpr)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            # Only a plain local copy is covered by the alias graph. A conditional
+            # reference or a store through another object can escape anywhere.
+            if (any(not isinstance(t, ast.Name) for t in targets)
+                    or isinstance(node.value, (ast.IfExp, ast.BoolOp, ast.Starred))):
+                self.escapes.append(node.value)
         elif isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.ctx, ast.Store):
             self.invalidate(node.value, node)
             if isinstance(node, ast.Attribute):
@@ -266,6 +275,8 @@ class Scope:
             self.invalidate(node.target, node)
         elif isinstance(node, ast.Return):
             self.returns.append(node.value)
+        elif isinstance(node, (ast.Yield, ast.YieldFrom)):
+            self.escapes.append(node.value)
         for child in ast.iter_child_nodes(node):
             self.collect(child, node, block)
 
@@ -277,9 +288,6 @@ class Scope:
 
     def values_at(self, name, read):
         bindings = self.bindings.get(name, ())
-        if isinstance(self.node, ast.Module) and name in ("open", "print") and read in self.blocks:
-            if all((s.end_lineno, s.end_col_offset) > (read.lineno, read.col_offset) for s, _, _ in bindings):
-                return ["builtins." + name]
         if len(bindings) > 1 and read in self.blocks:
             # A preceding assignment in this same statement list overwrites earlier values.
             # Keep all subsequent possibilities, including conditional assignments and mutations.
@@ -289,7 +297,16 @@ class Scope:
                         and (site.end_lineno, site.end_col_offset) <= use), default=None)
             if last is not None:
                 return [value for site, value, _ in bindings if last <= (site.end_lineno, site.end_col_offset) <= use]
-        return [value for _, value, _ in bindings]
+        values = [value for _, value, _ in bindings]
+        if isinstance(self.node, ast.Module) and name in ("open", "print"):
+            # A conditional module binding can leave the builtin visible, including
+            # to a nested function with an explicit global declaration.
+            top_level = id(self.node.body)
+            use = (read.lineno, read.col_offset)
+            if not any(definite and self.blocks.get(site) == top_level
+                       and (site.end_lineno, site.end_col_offset) <= use for site, _, definite in bindings):
+                values.append("builtins." + name)
+        return values
 
     def owner_of(self, name):
         scope = self
@@ -543,11 +560,43 @@ def verified_path_helper(module):
 def program_writes(sources):
     path_functions = set()
     trees = {path: ast.parse(source, filename=path) for path, source in sources.items()}
-    if relative_skill_inputs(trees):
-        path_functions.add("machinelib.skills.write_dir")
     field_writes = defaultdict(list)
     modules = {path: Scope(tree, path, path_functions=path_functions, field_writes=field_writes)
                for path, tree in trees.items()}
+    if relative_skill_inputs(trees) and bound_skill_inputs(modules, field_writes):
+        path_functions.add("machinelib.skills.write_dir")
     if STORED_FORM in modules and verified_path_helper(modules[STORED_FORM]):
         path_functions.add(CHECK_TARGET)
     return [(path, line) for path, scope in modules.items() for line in sorted(scope.problems())]
+
+
+def bound_skill_inputs(modules, field_writes):
+    """The reviewed functions must still be the bindings their callers invoke."""
+    if None in field_writes:
+        return False
+    callees = {name: function_name(path, name) for path, name in FLOWS if name != "run"}
+    imported = {
+        "skills": "machinelib.skills", "storedform": "govlib.storedform",
+        "subprocess": "subprocess", "os": "os",
+    }
+    for path, name in FLOWS:
+        module = modules[path]
+        bindings = module.bindings.get(name, ())
+        if (len(bindings) != 1 or not isinstance(bindings[0][0], ast.FunctionDef)
+                or name in module.external_writes or name in field_writes):
+            return False
+        function = next(child for child in module.children if child.node is bindings[0][0])
+        for ref in function.parents:
+            if isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load) and ref.id in imported:
+                if function.origins(ref) != {imported[ref.id]}:
+                    return False
+        for call in function.calls:
+            callee = call.func
+            called = callee.attr if isinstance(callee, ast.Attribute) else getattr(callee, "id", "")
+            # A bytes/text decode method is distinct from the stored-path decoder.
+            if called == "decode" and not (isinstance(callee, ast.Attribute)
+                                          and isinstance(callee.value, ast.Name) and callee.value.id == "storedform"):
+                continue
+            if called in callees and function.origins(callee) != {callees[called]}:
+                return False
+    return True
