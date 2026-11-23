@@ -7,6 +7,10 @@ the first recorded call whose arguments match exactly, and appends every call to
 JSON-lines log at STANDIN_LOG. A call outside the recording fails. It never runs, imports
 or reaches the real tool.
 
+For credential fixtures, STANDIN_REDACT_PLANTS=1 replaces synthetic markers in the
+request log with their fixture names. Requests still match the original arguments and
+stdin, and recorded responses still reach the program verbatim.
+
 A recording is {"tool": ..., "calls": [{"args": [...], "stdout": ..., "stderr": ...,
 "exit": ..., "stdin"?: ..., "once"?: true}]}. `${NAME}` in recorded arguments expands from
 the environment, so a recording can name paths inside a throwaway home. A call with a
@@ -54,6 +58,10 @@ def fail(tool, message):
 def log(entry):
     path = os.environ.get("STANDIN_LOG")
     if path:
+        if os.environ.get("STANDIN_REDACT_PLANTS") == "1":
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "suites"))
+            from credential_plants import mask_log_value
+            entry = mask_log_value(entry)
         with open(path, "a") as handle:
             handle.write(json.dumps(entry, sort_keys=True) + "\n")
 

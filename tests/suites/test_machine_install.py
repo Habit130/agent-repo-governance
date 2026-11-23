@@ -5,6 +5,7 @@ import os
 import subprocess
 import unittest
 
+import credential_plants as plants
 import machine_support as ms
 import support
 from standins import environment
@@ -83,14 +84,20 @@ class InstallDiagnostics(InstallCase):
     def test_credential_in_the_upstream_commit_is_not_abbreviated(self):
         relative = "skill-copies/provenance.json"
         provenance = json.loads(support.read_text(os.path.join(self.source, relative)))
-        provenance["license"]["commit"] = ms.AWS_KEY_ID
+        # Keep the original abbreviation regression at the start of this repository field.
+        provenance["license"]["commit"] = ms.AWS_KEY_ID + " " + plants.FIELD
         support.write_tree(self.source, {relative: json.dumps(provenance)})
         env = self.env()
-        # The offline stand-in rejects this unknown comparison. Its argv contains the plant.
-        env.pop("STANDIN_LOG")
+        # The offline stand-in rejects this unknown comparison and records the masked request.
+        env["STANDIN_REDACT_PLANTS"] = "1"
         result = ms.run_machine(["install", "--source", self.source, "--home", self.home], env)
+        calls = environment.read_log(self.scratch)
+        plants.assert_absent(self, json.dumps(calls), "install stand-in request log")
+        self.assertTrue(any(call["tool"] == "gh" and not call["recorded"] and
+                            any("/compare/<planted:aws-key>" in arg for arg in call["args"]) for call in calls),
+                        "missing rejected upstream comparison in request audit")
         self.assertFalse(any(ms.AWS_KEY_ID[:12] in stream for stream in result[1:]), "credential prefix in output")
-        ms.assert_diagnostic(self, result, 0, "[说明] upstream：无法比较 mattpocock/skills 与 <redacted AWS access key ID>")
+        ms.assert_diagnostic(self, result, 0, "[说明] upstream：无法比较 mattpocock/skills 与 <redacted ")
 
     def test_upstream_failure_stays_informational(self):
         gh = ms.write_gh_recording(self.path("gh.json"))

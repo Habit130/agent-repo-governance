@@ -50,6 +50,7 @@ import tempfile
 from urllib.parse import quote
 
 import machine_support as ms
+from credential_plants import PLANTED, SHAPE_PLANTS
 import materialized
 import owner_support as ow
 import support
@@ -73,26 +74,6 @@ HARNESS_PREFIXES = ("CLAUDE", "OPENCODE", "CODEX_", "DSH_", "AI_AGENT", "AGENT")
 RULESET_IDS = {"Gate": 7001, "Merge": 7002, "History": 7003}
 # GitHub's refusal of the rulesets and rules reads on a private repository without Pro (#17).
 PRO_REFUSAL = "Upgrade to GitHub Pro or make this repository public to enable this feature."
-
-# Credential shapes, assembled here so no committed file carries one GitHub's push protection
-# would block. They match the inspection's shapes and are no one's credential.
-PLANTED = {
-    "github-token": "gh" + "p_" + "Z" * 36,
-    "aws-key": "AK" + "IA" + "Z" * 16,
-    "slack-token": "xo" + "xb-" + "Z" * 24,
-    "anthropic-key": "sk-" + "ant-" + "Z" * 24,
-    "openai-key": "sk-" + "proj-" + "Z" * 24,
-    "google-key": "AI" + "za" + "Z" * 35,
-    "private-key": "-----BEGIN " + "RSA PRIVATE KEY-----",
-    "private-key-body": "MIIE" + "Q" * 60,
-    "private-key-end": "-----END " + "RSA PRIVATE KEY-----",
-}
-SHAPE_PLANTS = {
-    "GitHub token": "github-token", "AWS access key ID": "aws-key",
-    "Slack token": "slack-token", "private key": "private-key",
-    "Anthropic API key": "anthropic-key", "OpenAI API key": "openai-key",
-    "Google API key": "google-key",
-}
 
 _cache = {}
 
@@ -364,6 +345,7 @@ def recording(case, path):
 
 def case_env(case, home, scratch, gh_recording):
     env = ms.machine_env(home, scratch, gh_recording=gh_recording)
+    env["STANDIN_REDACT_PLANTS"] = "1"
     for variable in list(env):
         if variable.startswith(HARNESS_PREFIXES):
             del env[variable]
@@ -412,7 +394,8 @@ def run_case(root, case, entry=None):
         try:
             facts = json.loads(result.stdout)
         except ValueError:
-            raise AssertionError("%s printed no JSON (exit %d): %s %s" % (command, result.returncode, result.stdout, result.stderr))
+            # Neither stream has passed the non-disclosure check yet.
+            raise AssertionError("%s printed no JSON (exit %d)" % (command, result.returncode)) from None
         results[command] = (result.returncode, facts, result.stdout, result.stderr)
     after = (tree_snapshot(worktree), ms.snapshot(home))
     return {"results": results, "log": environment.read_log(scratch), "before": before, "after": after,

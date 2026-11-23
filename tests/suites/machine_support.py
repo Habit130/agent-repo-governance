@@ -15,6 +15,7 @@ import sys
 from contextlib import contextmanager
 from urllib.parse import quote
 
+import credential_plants as plants
 import support
 from standins import environment
 
@@ -231,14 +232,9 @@ def run_machine(args, env):
     return result.returncode, result.stdout, result.stderr
 
 
-# Nonfunctional values for the machine diagnostic regressions (miss #253).
-AWS_KEY_ID = "AKIA" + "Z" * 16
-DIAGNOSTIC_PLANTS = {
-    "aws": AWS_KEY_ID,
-    "password": "synthetic-" + "userinfo",
-    "query": "synthetic-" + "query",
-    "fragment": "synthetic-" + "fragment",
-}
+# Names taken by the diagnostic-remote-error fixture (miss #253).
+AWS_KEY_ID = plants.PLANTED["aws-key"]
+DIAGNOSTIC_PLANTS = {"aws": AWS_KEY_ID, **plants.URL_PARTS}
 
 
 def remote_error():
@@ -271,9 +267,7 @@ def replace_response(recording, prefix, code, stdout="", stderr=""):
 def assert_diagnostic(case, result, code, expected, stream="stdout"):
     """Check both streams before any assertion can quote their contents."""
     actual, stdout, stderr = result
-    for name, value in DIAGNOSTIC_PLANTS.items():
-        for channel, output in (("stdout", stdout), ("stderr", stderr)):
-            case.assertFalse(value in output, "diagnostic exposed %s on %s" % (name, channel))
+    plants.assert_no_values(case, stdout, stderr)
     case.assertEqual(actual, code)
     case.assertTrue(expected in (stdout if stream == "stdout" else stderr), "missing diagnostic: " + expected)
 

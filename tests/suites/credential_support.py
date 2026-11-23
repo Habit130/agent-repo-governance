@@ -15,6 +15,7 @@ import ast
 import json
 
 import generator_support as gs
+from credential_plants import assert_absent, assert_no_values
 
 
 MANIFEST_NAMES = ("package.json", "Makefile", "makefile", "GNUmakefile", "justfile", "Justfile")
@@ -63,15 +64,12 @@ def case():
     }}
 
 
-def assert_no_values(test, out, err):
-    # Never put a plant or captured output in a failure diagnostic.
-    for name, value in gs.PLANTED.items():
-        test.assertFalse(value in out or value in err, "plant disclosed: " + name)
-
-
 def assert_output(test, run):
     code, facts, out, err = run["results"]["inspect"]
     assert_no_values(test, out, err)
+    assert_absent(test, json.dumps(run["log"]), "generator stand-in request log")
+    test.assertTrue(any("<planted:github-token>" in arg for call in run["log"] for arg in call["args"]),
+                    "the credential-bearing request is missing from the audit")
     test.assertEqual(code, 0, "inspection refused")
     test.assertEqual(err, "", "inspection wrote stderr")
     expected = bundle(redacted=True)

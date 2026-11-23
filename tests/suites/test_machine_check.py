@@ -9,6 +9,7 @@ import json
 import os
 import unittest
 
+import credential_plants as plants
 import machine_support as ms
 import support
 
@@ -96,7 +97,8 @@ class CheckDiagnostics(CheckCase):
         identity = "[失败] identity：gh 应以 agent account Habit098 操作"
         rules = "[失败] Codex rules：`ghm pr merge 1`"
         cases = (
-            ("identity login", "gh", ["api", "user"], 0, json.dumps({"login": ms.AWS_KEY_ID}), "", identity),
+            ("identity login", "gh", ["api", "user"], 0, json.dumps({"login": plants.FIELD}), "",
+             identity + "，实际：<redacted "),
             ("URL in login", "gh", ["api", "user"], 0, json.dumps({"login": ms.remote_error()}), "", identity),
             ("identity stderr", "gh", ["api", "user"], 1, "", ms.remote_error(), identity),
             ("identity stdout", "gh", ["api", "user"], 0, ms.remote_error(), "", identity),
