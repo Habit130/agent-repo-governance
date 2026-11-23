@@ -160,6 +160,13 @@ class RepositoryDiagnostics(support.TempDirCase):
         result = ms.run_machine(["list", "--unexpected", ms.AWS_KEY_ID], support.isolated_env())
         ms.assert_diagnostic(self, result, 2, "unrecognized arguments: --unexpected <redacted AWS access key ID>", "stderr")
 
+    def test_argument_error_withholds_an_embedded_network_path(self):
+        for label, arg in (("bracket", "[//example.invalid/repo#%s]" % ms.DIAGNOSTIC_PLANTS["fragment"]),
+                           ("assignment", "--extra=//example.invalid/repo?ref=%s" % ms.DIAGNOSTIC_PLANTS["query"])):
+            with self.subTest(route=label):
+                result = ms.run_machine(["list", arg], support.isolated_env())
+                ms.assert_diagnostic(self, result, 2, "参数解析失败", "stderr")
+
     def test_url_in_a_login_keeps_the_list_outcome(self):
         login = ms.remote_error().splitlines()[-1].split(" ", 1)[1]
         home = ms.make_home(self.path("home"))
@@ -167,10 +174,18 @@ class RepositoryDiagnostics(support.TempDirCase):
         result = ms.run_machine(["list"], env)
         ms.assert_diagnostic(self, result, 1, "[失败] account：gh 应以 agent account Habit098 运行，实际：（已隐藏）；列表未生成")
 
+    def test_url_in_a_login_keeps_the_credential_type(self):
+        login = "https://%s:%s@example.invalid/" % (ms.AWS_KEY_ID, ms.DIAGNOSTIC_PLANTS["password"])
+        home = ms.make_home(self.path("home"))
+        env = ms.machine_env(home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json"), user=login))
+        result = ms.run_machine(["list"], env)
+        ms.assert_diagnostic(self, result, 1, "[失败] account：gh 应以 agent account Habit098 运行，实际：<redacted AWS access key ID>；列表未生成")
+
     def test_missing_redactor_refuses_without_echoing_install_paths(self):
         scripts = self.path(ms.AWS_KEY_ID, "machine", "scripts")
-        shutil.copytree(os.path.dirname(ms.ENTRY), scripts)
-        result = support.run_cli(os.path.join(scripts, "machine.py"), ["list"], env=support.isolated_env())
+        with ms.diagnostic_fixture():
+            shutil.copytree(os.path.dirname(ms.ENTRY), scripts)
+            result = support.run_cli(os.path.join(scripts, "machine.py"), ["list"], env=support.isolated_env())
         ms.assert_diagnostic(self, result, 2, "拒绝：找不到 generator 的 govlib")
 
     def test_any_report_entry_and_refusal_withhold_credentials(self):
@@ -184,7 +199,7 @@ class RepositoryDiagnostics(support.TempDirCase):
         report.add("失败", "key", "-----BEGIN " + "PRIVATE KEY-----\n" + key_body)
         report.add("说明", "last", "最后一项说明")
         expected_report = ("== fixture\n[通过] first：首项通过\n[说明] arbitrary：<redacted AWS access key ID>\n"
-                           "[说明] remote：读取 （已隐藏） 和 （已隐藏） 失败\n"
+                           "[说明] remote：读取 （已隐藏） 和 <redacted AWS access key ID> 失败\n"
                            "[失败] key：<redacted private key>\n[说明] last：最后一项说明\n")
         refusal = machine.MachineError("任意操作失败：%s file:/record#%s" % (ms.AWS_KEY_ID, ms.DIAGNOSTIC_PLANTS["fragment"]))
         for label, outcome, code, expected in (("report", [report], 1, expected_report),

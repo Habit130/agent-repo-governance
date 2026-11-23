@@ -58,20 +58,26 @@ class InstallDiagnostics(InstallCase):
     def test_url_in_a_tracked_skill_name_is_withheld_when_reported(self):
         name = "mailto:fixture?ref=" + ms.DIAGNOSTIC_PLANTS["query"]
         skill = "skill-copies/skills/%s/SKILL.md" % name
-        support.write_tree(self.source, {skill: "---\nname: fixture-extra\ndescription: Fixture.\n---\n"})
-        support.git(self.source, "add", "--", "skill-copies/skills")
-        self.write({".agents/skills/%s/old" % name: "original", ".local/state/skills/.skill-lock.json":
-                    json.dumps({"skills": {name: {}}})})
-        result = ms.run_machine(["install", "--source", self.source, "--home", self.home], self.env())
+        with ms.diagnostic_fixture():
+            support.write_tree(self.source, {skill: "---\nname: fixture-extra\ndescription: Fixture.\n---\n"})
+            support.git(self.source, "add", "--", "skill-copies/skills")
+            self.write({".agents/skills/%s/old" % name: "original", ".local/state/skills/.skill-lock.json":
+                        json.dumps({"skills": {name: {}}})})
+            result = ms.run_machine(["install", "--source", self.source, "--home", self.home], self.env())
         ms.assert_diagnostic(self, result, 0, "[通过] machine skills：4 个 machine skills 就位："
                              "alpha-check、beta-flow、govern-repository、（已隐藏）")
         self.assertTrue(os.path.isfile(self.h(".agents", "skills", name, "SKILL.md")), "installed skill name changed")
+        with ms.diagnostic_fixture():
+            os.rename(self.h(".agents", "skills", name), self.path("held-skill"))
+            checked = ms.run_machine(["check", "--home", self.home], self.env())
+        ms.assert_diagnostic(self, checked, 1, "[失败] managed skills：（已隐藏） 不在了")
 
     def test_url_in_a_tracked_path_is_withheld_on_decode_refusal(self):
         bad = "skill-copies/skills/alpha-check/file:/record#%s/AGENTS.md" % ms.DIAGNOSTIC_PLANTS["fragment"]
-        support.write_tree(self.source, {bad: "invalid stored name"})
-        support.git(self.source, "add", "--", "skill-copies/skills")
-        result = ms.run_machine(["install", "--source", self.source, "--home", self.home], self.env())
+        with ms.diagnostic_fixture():
+            support.write_tree(self.source, {bad: "invalid stored name"})
+            support.git(self.source, "add", "--", "skill-copies/skills")
+            result = ms.run_machine(["install", "--source", self.source, "--home", self.home], self.env())
         ms.assert_diagnostic(self, result, 2, "拒绝：skill copy alpha-check 无法解码")
 
     def test_credential_in_the_upstream_commit_is_not_abbreviated(self):
@@ -105,9 +111,11 @@ class InstallDiagnostics(InstallCase):
         ms.assert_diagnostic(self, result, 2, "不是可读的 git checkout：git rev-parse HEAD 失败")
 
     def test_unreadable_local_path_keeps_its_punctuation(self):
-        path = self.path("source#1?missing")
-        result = ms.run_machine(["install", "--source", path, "--home", self.home], self.env())
-        ms.assert_diagnostic(self, result, 2, "拒绝：源码树 %s 不是可读的 git checkout" % path)
+        for basename in ("source#1?missing", "source:archive#1?missing"):
+            with self.subTest(basename=basename):
+                path = self.path(basename)
+                result = ms.run_machine(["install", "--source", path, "--home", self.home], self.env())
+                ms.assert_diagnostic(self, result, 2, "拒绝：源码树 %s 不是可读的 git checkout" % path)
 
     def test_install_prints_the_check_and_list_failures(self):
         gh = ms.write_gh_recording(self.path("gh.json"))

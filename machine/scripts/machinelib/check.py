@@ -84,7 +84,7 @@ def codex_skills(home, machine_names):
 def _personal(home, skill):
     """How a personal skill is named in a report line: its root when that is ~/.codex/skills, and a link."""
     where = "" if skill.root == home.skills else "%s 里的 " % home.show(skill.root)
-    return "personal skill %s%s%s" % (where, skill.dir_name, "（链接）" if skill.linked else "")
+    return "personal skill %s%s%s" % (where, homes.withhold_url(skill.dir_name), "（链接）" if skill.linked else "")
 
 
 def budget_problems(home, codex, machine_names):
@@ -103,7 +103,7 @@ def budget_problems(home, codex, machine_names):
         if not skill.listed_by_codex or skill.policy == skills.UNCLEAR and not machine:
             continue
         omitted, shortened = found[machine]
-        name = skill.name if machine else _personal(home, skill)
+        name = homes.withhold_url(skill.name) if machine else _personal(home, skill)
         if skill.name not in listed:
             omitted.append(name)
             continue
@@ -132,7 +132,7 @@ def _key_problems(home, machine_names):
         else:
             problem = " 缺少 Codex user-only key"
         if machine:
-            failures.append("machine skill %s%s" % (skill.dir_name, problem))
+            failures.append("machine skill %s%s" % (homes.withhold_url(skill.dir_name), problem))
         else:
             notes.append("%s%s（只报告，不算失败）" % (_personal(home, skill), problem))
     return failures, notes
@@ -140,17 +140,22 @@ def _key_problems(home, machine_names):
 
 def _collision_problems(home, machine_names):
     problems = []
+
+    def report_collision(skill):
+        path = os.path.join(home.show(skill.root), homes.withhold_url(skill.dir_name))
+        problems.append("personal skill %s 与 machine skill %s 同名" % (path, homes.withhold_url(skill.name)))
+
     for skill in skills.skills_in(home.skills):
         if skill.dir_name not in machine_names and skill.name in machine_names:
-            problems.append("personal skill %s 与 machine skill %s 同名" % (home.show(skill.path), skill.name))
+            report_collision(skill)
     for root in home.personal_roots():
         for skill in skills.skills_in(root):
             if skill.name in machine_names or skill.dir_name in machine_names:
-                problems.append("personal skill %s 与 machine skill %s 同名" % (home.show(skill.path), skill.name))
+                report_collision(skill)
     codex_root = os.path.join(home.codex, "skills")
     for skill in skills.skills_in(codex_root):
         if skill.name in machine_names or skill.dir_name in machine_names:
-            problems.append("%s 里有 machine skill 的名称 %s，Codex 会列出两次" % (home.show(codex_root), skill.name))
+            problems.append("%s 里有 machine skill 的名称 %s，Codex 会列出两次" % (home.show(codex_root), homes.withhold_url(skill.name)))
     return problems
 
 
@@ -220,9 +225,9 @@ def _managed_problems(home):
     for name, expected in sorted(installed["skills"].items()):
         actual = skills.disk_hash(os.path.join(home.skills, name))
         if actual is None:
-            problems.append("%s 不在了" % name)
+            problems.append("%s 不在了" % homes.withhold_url(name))
         elif actual != expected:
-            problems.append("%s 与上次 install 写入的内容不同" % name)
+            problems.append("%s 与上次 install 写入的内容不同" % homes.withhold_url(name))
     return problems
 
 

@@ -24,7 +24,6 @@ import os
 import re
 import shutil
 
-from govlib import secrets
 from machinelib import MachineError, check, governed, home as homes, rules, skills, state as states
 
 PROVENANCE = "skill-copies/provenance.json"
@@ -197,8 +196,7 @@ def _upstream(home, report, source):
         shown_commit = commit[:12]
     else:
         # An invalid object ID has no useful abbreviation. Name only the credential types found.
-        kinds = secrets.kinds(str(commit))
-        shown_commit = "<redacted %s>" % ", ".join(kinds) if kinds else "（无效 commit）"
+        shown_commit = homes.withheld_value(str(commit), "（无效 commit）")
     try:
         facts = json.loads(out) if code == 0 else None
         ahead = facts["ahead_by"]

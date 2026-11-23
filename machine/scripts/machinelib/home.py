@@ -16,11 +16,19 @@ PASS, FAIL, SKIP, NOTE = "通过", "失败", "跳过", "说明"
 _BARE_EMAIL = re.compile(r'(?P<local>[^\s@:<>()\[\],;"\\]+|"(?:[^"\\\r\n]|\\.)*")@(?:[\w.-]+|\[[\w:.%-]+\])')
 
 
+def withheld_value(text, fallback="（已隐藏）"):
+    """Name only the credential types when a whole field must be withheld."""
+    from govlib import secrets
+
+    kinds = secrets.kinds(text)
+    return "<redacted %s>" % ", ".join(kinds) if kinds else fallback
+
+
 def withhold_url(value):
     """Withhold URL-like data returned in place of a named field."""
     text = str(value)
     has_url = "//" in text or "?" in text or "#" in text or (":" in text and "@" in text)
-    return "（已隐藏）" if has_url else text
+    return withheld_value(text) if has_url else text
 
 
 def shown_git_email(text):
@@ -32,7 +40,7 @@ def shown_git_email(text):
     has_url = re.match(r"//\S", local) or (
         ("//" in local or ":" in local) and any(mark in local for mark in "@?#")
     )
-    return "（已隐藏）" if has_url else text
+    return withheld_value(text) if has_url else text
 
 
 class Home(object):

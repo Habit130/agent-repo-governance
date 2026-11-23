@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+from contextlib import contextmanager
 from urllib.parse import quote
 
 import support
@@ -242,6 +243,15 @@ DIAGNOSTIC_PLANTS = {
 
 def remote_error():
     return support.read_text(os.path.join(RECORDINGS, "diagnostic-remote-error.txt")).format(**DIAGNOSTIC_PLANTS)
+
+
+@contextmanager
+def diagnostic_fixture():
+    """OS and git setup errors can include a planted pathname or argument."""
+    try:
+        yield
+    except (OSError, subprocess.SubprocessError, AssertionError):
+        raise AssertionError("could not prepare or launch the synthetic diagnostic fixture") from None
 
 
 def replace_response(recording, prefix, code, stdout="", stderr=""):

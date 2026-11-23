@@ -27,8 +27,11 @@ import machinelib  # noqa: E402
 # sit inside its authority, so its complete type marker belongs to the same URI.
 # Producers with a known field boundary withhold the field before joining it to
 # Chinese prose. For unstructured text, punctuation can be part of a URL secret.
+_SCHEME = r"[A-Za-z][A-Za-z0-9+.-]*:"
 _URI = re.compile(
-    r"""(?:(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*:|(?P<before>(?:^|[\s(（：，；])['"]?)//)"""
+    # An opaque scheme starts a separate token. An ordinary local basename can contain a colon.
+    rf"(?:(?<![A-Za-z0-9+.-]){_SCHEME}(?=/)|(?<![A-Za-z0-9+./-]){_SCHEME}|"
+    r"""(?P<before>(?:^|[\s(（：，；])['"]?)//)"""
     r'(?:<redacted [^>\n]+>|[^\s"<>])+'
 )
 
@@ -36,7 +39,8 @@ _URI = re.compile(
 def _hide_private_uri(match):
     uri = match[0]
     if any(part in uri for part in "@?#"):
-        return (match["before"] or "") + "（已隐藏）"
+        markers = [marker for marker in _TYPE_MARKERS if marker in uri]
+        return (match["before"] or "") + ("、".join(markers) or "（已隐藏）")
     return uri
 
 
@@ -49,7 +53,8 @@ def write_line(line, stream):
 
 try:
     machinelib.find_govlib()
-    from govlib.secrets import redact
+    from govlib.secrets import SHAPES, redact
+    _TYPE_MARKERS = tuple("<redacted %s>" % kind for kind, _ in SHAPES)
 except (machinelib.MachineError, ImportError) as error:
     redact = None
     write_line(str(error), sys.stdout)
@@ -59,6 +64,11 @@ from machinelib import MachineError, check, governed, home as homes, install, wi
 
 
 class MachineArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        # Argparse includes raw argv here, even inside brackets or after an equals sign.
+        shown = homes.withhold_url(message)
+        super().error(message if shown == message else "参数解析失败：%s" % shown)
+
     def _print_message(self, message, file=None):
         if message:
             write_line(message.removesuffix("\n"), file if file is not None else sys.stderr)
