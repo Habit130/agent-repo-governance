@@ -31,7 +31,8 @@ _SCHEME = r"[A-Za-z][A-Za-z0-9+.-]*:"
 _URI = re.compile(
     # An opaque scheme starts a separate token. An ordinary local basename can contain a colon.
     rf"(?:(?<![A-Za-z0-9+.-]){_SCHEME}(?=/)|(?<![A-Za-z0-9+./-]){_SCHEME}|"
-    r"""(?P<before>(?:^|[\s(（：，；])['"]?)//)"""
+    # The colon in :// still introduces an authority when the scheme is attached to other text.
+    r"""(?P<before>(?:^|[\s(（:：，；])['"]?)//)"""
     r'(?:<redacted [^>\n]+>|[^\s"<>])+'
 )
 

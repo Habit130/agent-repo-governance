@@ -67,6 +67,16 @@ class CheckCase(support.TempDirCase):
 class CheckDiagnostics(CheckCase):
     """Failed gh and Codex probes through the CLI (miss #253)."""
 
+    def test_missing_codex_path_withholds_a_private_uri_after_a_prefix(self):
+        uri = ms.remote_error().splitlines()[-1].removeprefix("remote: ")
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        for prefix in ("1", "-", "+", "."):
+            with self.subTest(prefix=prefix):
+                env["MACHINE_CODEX"] = prefix + uri
+                result = ms.run_machine(["check"], env)
+                for item in ("Codex rules", "Codex skill list"):
+                    ms.assert_diagnostic(self, result, 0, "[跳过] %s：没有找到 ChatGPT app 自带的 Codex CLI" % item)
+
     def test_local_skill_names_remain_distinguishable(self):
         state = self.h(".agents", "governance", "installed.json")
         installed = json.loads(support.read_text(state))
