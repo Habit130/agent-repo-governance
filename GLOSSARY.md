@@ -325,6 +325,13 @@ The issue labelled `miss` that records one miss.
 **Merge watch**:
 The fixed workflow that runs after every merge and, without blocking anything, records misses: a red default-branch CI run, a merged pure revert, and a review missing from the merged head.
 
+**Bug class**:
+The kind of defect a finding belongs to, named so that every instance of it gets fixed. A class retro counts bug classes across PRs.
+
+**Class retro**:
+A `retro` on the bug classes that repeat across merged PRs' confirmed Important-level findings, rather than on one miss record. This repository pilots it (`docs/retro.md`).
+_Avoid_: finding class retro
+
 ## Credentials
 
 **Credential**:
