@@ -123,7 +123,8 @@ class CheckDiagnostics(CheckCase):
     def test_wrong_git_emails_keep_their_local_part(self):
         env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
         for address in ("build/ci@example.invalid", "build//ci@example.invalid", "build/ci?foo#bar@example.invalid",
-                        "build//ci?foo#bar@example.invalid", '"build // ci"@example.invalid', '"QA: who?"@example.invalid'):
+                        "build//ci?foo#bar@example.invalid", '"build // ci"@example.invalid', '"QA: who?"@example.invalid',
+                        '"//review"@example.invalid'):
             with self.subTest(address=address):
                 support.write_tree(self.home, {".gitconfig": "[user]\n\temail = %s\n" % json.dumps(address)})
                 result = ms.run_machine(["check"], env)

@@ -40,7 +40,8 @@ def shown_git_email(text):
     address = _BARE_EMAIL.fullmatch(text)
     if not address:
         return withhold_url(text)
-    local = address["local"].strip('"')
+    # Only an unquoted leading // can use the address's final @ as URI userinfo.
+    local = address["local"]
     has_url = re.match(r"//\S", local) or _PRIVATE_URI.search(local)
     return withheld_value(text) if has_url else text
 

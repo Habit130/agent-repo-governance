@@ -160,6 +160,11 @@ class RepositoryDiagnostics(support.TempDirCase):
         result = ms.run_machine(["list", "--unexpected", ms.AWS_KEY_ID], support.isolated_env())
         ms.assert_diagnostic(self, result, 2, "unrecognized arguments: --unexpected <redacted AWS access key ID>", "stderr")
 
+    def test_separate_ordinary_arguments_remain_identifiable(self):
+        args = ["list", "--unexpected", "//example.invalid/repo", "ordinary@example.invalid"]
+        result = ms.run_machine(args, support.isolated_env())
+        ms.assert_diagnostic(self, result, 2, "unrecognized arguments: --unexpected //example.invalid/repo ordinary@example.invalid", "stderr")
+
     def test_argument_error_withholds_an_embedded_network_path(self):
         for label, arg in (("bracket", "[//example.invalid/repo#%s]" % ms.DIAGNOSTIC_PLANTS["fragment"]),
                            ("assignment", "--extra=//example.invalid/repo?ref=%s" % ms.DIAGNOSTIC_PLANTS["query"])):
