@@ -59,8 +59,8 @@ chooses.
    enforcement view, the evidence-binding result, each class's recurrence status, the
    candidates under Every retro here, and a new baseline giving each class's last
    occurrence, the fix in force and what the next class retro checks. Then give habit the
-   candidates in Chinese, by severity, and continue `planner.md`, Running retro, from
-   habit's pick.
+   candidates in Chinese, by severity. Follow step 3 of `planner.md`, Running retro, for
+   habit's picks. Record habit's decision on #226 and leave it open.
 
 ## The pilot's end
 
