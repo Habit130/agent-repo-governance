@@ -128,6 +128,30 @@ def device_hint(value):
             or posixpath.basename(part) in ("stdout", "stderr", "1", "2"))
 
 
+def joined_paths(operands):
+    if not operands:
+        return {UNKNOWN}
+    candidates, complete = fold_literals(operands, lambda parts: posixpath.join(*parts))
+    if complete:
+        return candidates
+    parts = [literal(values) for values in operands]
+    suffix = []
+    for part in reversed(parts):
+        if part is None:
+            break
+        suffix.insert(0, part)
+        if posixpath.isabs(part):
+            return {LITERAL + posixpath.join(*suffix)}
+    if suffix and ordinary_suffix(suffix[-1]):
+        return candidates | {PATH}
+    # A join produces a pathname. Check known device components, including
+    # alternatives in branches. General filesystem routing is outside this
+    # direct-output check, just as opening a literal log filename is.
+    if any(device_hint(value) for values in operands for value in values):
+        return candidates | {UNRESOLVED_PATH}
+    return candidates | {PATH}
+
+
 class ListColumn(NamedTuple):
     name: str
     index: int
@@ -165,7 +189,8 @@ class ClassHierarchy:
             assignments = [*field_writes.get(attribute, ()), *field_writes.get(None, ())]
             replaced = any(module in writer.origins(receiver) for writer, receiver, _ in assignments)
             if (len(bindings) == 1 and bindings[0][0] is node and not node.decorator_list
-                    and node.name not in scope.external_writes and not replaced):
+                    and node.name not in scope.external_writes
+                    and not scope.shared_bindings.get(node.name) and not replaced):
                 self.exported[name] = instance
         for child, (scope, bases) in self.bases.items():
             for base in bases:
@@ -277,11 +302,10 @@ class Scope:
                         outer.external_writes.update(outer.related_names(alias))
                 if alias in local_names:
                     self.bindings[alias].append((site, MUTATED, False))
-        for name, declaration in self.declarations.items():
+        for name in self.declarations:
             if name in self.bindings:
                 outer = self.owner_of(name)
                 if outer:
-                    outer.external_writes.update(outer.related_names(name))
                     outer.shared_bindings[name].extend((self, value) for _, value, _ in self.bindings[name])
         outer = parent if isinstance(node, ast.ClassDef) else self
         self.children = [Scope(child, path, outer, definition_scope=self) for child in self.children]
@@ -315,7 +339,7 @@ class Scope:
                 yield value
             return
         if isinstance(value, (ast.JoinedStr, ast.FormattedValue, ast.Constant, ast.Compare)):
-            return  # Formatting makes text; comparison makes a boolean.
+            return  # Formatting and comparison cannot retain the original container.
         if isinstance(value, ast.Call):
             targets = self.origins(value.func)
             if targets and targets <= IMMUTABLE_READERS:
@@ -377,6 +401,10 @@ class Scope:
             self.declarations.update(dict.fromkeys(node.names, declaration))
         elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
             site, value, definite = node, UNBOUND if isinstance(node.ctx, ast.Del) else UNKNOWN, False
+            if isinstance(parent, ast.AnnAssign) and parent.value is None:
+                if not isinstance(self.node, (ast.ClassDef, ast.Module)):
+                    self.bindings[node.id].append((node, UNBOUND, False))
+                return
             if isinstance(parent, (ast.Assign, ast.AnnAssign, ast.NamedExpr)) and parent.value is not None:
                 site = parent
                 value = parent.value
@@ -405,7 +433,8 @@ class Scope:
                     or isinstance(self.node, ast.ClassDef)
                     or isinstance(node.value, (ast.IfExp, ast.BoolOp, ast.Starred))):
                 self.escapes.append(node.value)
-        elif isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.ctx, ast.Store):
+        elif (isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.ctx, ast.Store)
+              and not (isinstance(parent, ast.AnnAssign) and parent.value is None)):
             self.invalidate(node.value, node)
             if isinstance(node, ast.Attribute):
                 value = parent.value if isinstance(parent, (ast.Assign, ast.AnnAssign)) else UNKNOWN
@@ -478,7 +507,7 @@ class Scope:
         if not scope.bindings.get(name.id):
             sources.append((scope, UNBOUND))
         if name.id in scope.external_writes:
-            sources.append((scope, UNKNOWN))
+            sources.append((scope, MUTATED))
         return scope, sources
 
     def origins(self, node, seen=frozenset()):
@@ -625,28 +654,7 @@ class Scope:
                 resolved.update(owner + ".write" for owner in owners if owner in STREAMS or owner == "os")
             return resolved
         if names == {"os.path.join"}:
-            operands = self.path_operands(call.args, seen)
-            if not operands:
-                return {UNKNOWN}
-            candidates, complete = fold_literals(operands, lambda parts: posixpath.join(*parts))
-            if complete:
-                return candidates
-            parts = [literal(values) for values in operands]
-            suffix = []
-            for part in reversed(parts):
-                if part is None:
-                    break
-                suffix.insert(0, part)
-                if posixpath.isabs(part):
-                    return {LITERAL + posixpath.join(*suffix)}
-            if suffix and ordinary_suffix(suffix[-1]):
-                return candidates | {PATH}
-            # A join produces a pathname. Check known device components, including
-            # alternatives in branches. General filesystem routing is outside this
-            # direct-output check, just as opening a literal log filename is.
-            if any(device_hint(value) for values in operands for value in values):
-                return candidates | {UNRESOLVED_PATH}
-            return candidates | {PATH}
+            return self.path_value(call.args, seen)
         if names == {CHECK_TARGET} and CHECK_TARGET in self.path_functions:
             return {PATH}
         if names == {"re.compile"}:
@@ -687,37 +695,33 @@ class Scope:
             return {"other fd"}
         return {UNKNOWN}
 
-    def path_operands(self, args, seen):
-        parts = []
-        for arg in args:
-            if isinstance(arg, ast.Starred):
-                parts.extend(self.unpacked_parts(arg.value, seen))
-            else:
-                parts.append(self.origins(arg, seen))
-        return parts
+    def path_value(self, args, seen):
+        operands = [self.unpacked_path(arg.value, seen) if isinstance(arg, ast.Starred)
+                    else self.origins(arg, seen) for arg in args]
+        return joined_paths(operands) if operands else {LITERAL}
 
-    def unpacked_parts(self, value, seen):
+    def unpacked_path(self, value, seen):
+        # Joining each entire sequence before merging alternatives preserves component
+        # order and correlations. An absolute component resets the prefix in either form.
         if isinstance(value, (ast.List, ast.Tuple)):
-            return self.path_operands(value.elts, seen)
+            return self.path_value(value.elts, seen)
+        if value == MUTATED:
+            return {UNRESOLVED_PATH}
         if isinstance(value, ast.Call) and isinstance(value.func, ast.Attribute) and value.func.attr == "split":
-            text = literal(self.origins(value.func.value, seen))
-            if text is not None and len(value.args) == 1 and not value.keywords:
-                sep = literal(self.origins(value.args[0], seen))
-                if sep:
-                    return [{LITERAL + part} for part in text.split(sep)]
-        variants = []
+            if len(value.args) == 1 and not value.keywords:
+                texts = self.origins(value.func.value, seen)
+                separators = self.origins(value.args[0], seen) - {LITERAL}
+                candidates, complete = fold_literals(
+                    (texts, separators), lambda pair: posixpath.join(*pair[0].split(pair[1]))
+                )
+                return candidates if complete else candidates | {UNKNOWN}
         if isinstance(value, ast.Name) and value not in seen:
             scope, sources = self.binding_sources(value)
-            if scope:
-                variants = [owner.unpacked_parts(v, seen | {value}) for owner, v in sources]
-        elif isinstance(value, ast.IfExp):
-            variants = [self.unpacked_parts(branch, seen) for branch in (value.body, value.orelse)]
-        if variants:
-            if all(len(parts) == len(variants[0]) for parts in variants):
-                return [set().union(*alternatives) for alternatives in zip(*variants)]
-            if any(device_hint(v) for parts in variants for part in parts for v in part):
-                return [{UNRESOLVED_PATH}]
-        return [{UNKNOWN}]
+            if scope and sources:
+                return set().union(*(owner.unpacked_path(v, seen | {value}) for owner, v in sources))
+        if isinstance(value, ast.IfExp):
+            return self.unpacked_path(value.body, seen) | self.unpacked_path(value.orelse, seen)
+        return {UNKNOWN}
 
     def safe(self, value, binary=False):
         allowed = {ENCODED} if binary else {REDACTED, ENCODED}
@@ -774,7 +778,8 @@ def unredacted_writes(path, source):
 
 def verified_path_helper(module):
     bindings = module.bindings.get("check_target", [])
-    if len(bindings) != 1 or bindings[0][1] != CHECK_TARGET or "check_target" in module.external_writes:
+    if (len(bindings) != 1 or bindings[0][1] != CHECK_TARGET or "check_target" in module.external_writes
+            or module.shared_bindings.get("check_target")):
         return False
     for field in ("check_target", None):
         for writer, receiver, _ in module.field_writes.get(field, []):

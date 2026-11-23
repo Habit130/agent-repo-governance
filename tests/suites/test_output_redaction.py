@@ -476,3 +476,34 @@ class OutputRedaction(unittest.TestCase):
         alias = original + "Alias = Target\n"
         child = 'from target import Alias\nclass Child(Alias):\n    def __init__(self): self.path = "/dev/stderr"\n'
         self.assertEqual(program_writes({"target.py": alias, "child.py": child}), [("target.py", 5)])
+
+    def test_field_annotations_are_not_assignments(self):
+        source = dedent("""\
+            class Report:
+                path: str
+                def __init__(self):
+                    self.path = "/tmp/report"
+                def save(self):
+                    self.path: str
+                    open(self.path, "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [])
+
+    def test_shared_tuple_alternatives_keep_their_components_together(self):
+        source = dedent("""\
+            import os
+            parts = ("/dev", "shm/report.txt")
+            def select():
+                global parts
+                parts = ("/tmp", "stderr")
+            select()
+            open(os.path.join(*parts), "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [])
+        identical = source.replace('("/tmp", "stderr")', '("/dev", "shm/report.txt")')
+        self.assertEqual(unredacted_writes("sample.py", identical), [])
+        mutated = 'import os\nparts = ["/tmp", "log"]\nparts[:] = ["/dev", "stderr"]\n'
+        self.assertEqual(unredacted_writes("sample.py", mutated + 'open(os.path.join(*parts), "w").write(raw)'), [4])
+        split = 'import os\npath = "/dev/stderr" if mode else "/tmp/log"\n'
+        emit = 'open(os.path.join("/", *path.split("/")), "w").write(raw)'
+        self.assertEqual(unredacted_writes("sample.py", split + emit), [3])
