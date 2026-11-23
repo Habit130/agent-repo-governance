@@ -44,18 +44,24 @@ def _misses(home, repository):
 
 
 def run(home):
-    from govlib import record, store as stores
+    from govlib import record, secrets, store as stores
 
     report = homes.Report("governed-repository list")
-    code, out, err = home.run(["gh", "api", "user"])
+    code, out, _ = home.run(["gh", "api", "user"])
     login = None
     if code == 0:
         try:
-            login = json.loads(out).get("login")
+            identity = json.loads(out)
         except ValueError:
-            pass
+            identity = None
+        if isinstance(identity, dict):
+            login = identity.get("login")
     if login != AGENT:
-        report.add(homes.FAIL, "account", "gh 应以 agent account %s 运行，实际：%s；列表未生成" % (AGENT, login or err.strip() or "未知"))
+        if isinstance(login, str) and login:
+            detail = "gh 应以 agent account %s 运行，实际：%s" % (AGENT, secrets.redact(login))
+        else:
+            detail = "无法确认 gh 是否以 agent account %s 运行" % AGENT
+        report.add(homes.FAIL, "account", detail + "；列表未生成")
         return report
 
     try:
