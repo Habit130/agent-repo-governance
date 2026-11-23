@@ -1,18 +1,16 @@
 """The machine and generator must redact text at the terminal boundary (#254)."""
 
+import ast
 import unittest
 from pathlib import Path
 from textwrap import dedent
 
 from output_redaction import program_writes, unredacted_writes
+from skill_file_inputs import relative_skill_inputs
 
 
 class OutputRedaction(unittest.TestCase):
-    def test_machine_and_generator_terminal_writes_are_redacted(self):
-        """write_line handles CLI diagnostics (and the fixed govlib bootstrap refusal).
-        govern.emit serializes generator facts. wizard.say prints account guidance.
-        Each writer's own payload must pass the same check as a new direct write.
-        """
+    def program_sources(self):
         root = Path(__file__).resolve().parents[2]
         sources = {}
         for directory in ("machine/scripts", "generator/govern-repository/scripts"):
@@ -21,8 +19,15 @@ class OutputRedaction(unittest.TestCase):
             for program in programs:
                 path = program.relative_to(root).as_posix()
                 sources[path] = program.read_bytes()
+        return sources
+
+    def test_machine_and_generator_terminal_writes_are_redacted(self):
+        """write_line handles CLI diagnostics (and the fixed govlib bootstrap refusal).
+        govern.emit serializes generator facts. wizard.say prints account guidance.
+        Each writer's own payload must pass the same check as a new direct write.
+        """
         try:
-            problems = ["%s:%d" % location for location in program_writes(sources)]
+            problems = ["%s:%d" % location for location in program_writes(self.program_sources())]
         except SyntaxError as error:
             raise self.failureException("Cannot parse %s:%d" % (error.filename, error.lineno or 1)) from None
         if problems:
@@ -278,3 +283,56 @@ class OutputRedaction(unittest.TestCase):
                 emit(raw)
         """)
         self.assertEqual(unredacted_writes("sample.py", source), [9, 14])
+
+    def test_builtin_fallbacks_and_getattr_defaults_can_write_to_the_terminal(self):
+        source = dedent("""\
+            import sys
+            def emit(raw):
+                global print
+                print(raw)
+                attr = "missing"
+                getattr(sys.stderr, attr, sys.stderr.write)(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [4, 6])
+
+    def test_returned_and_stored_references_can_change_the_value_eventually_printed(self):
+        source = dedent("""\
+            from govlib.secrets import redact
+            data = redact(messages)
+            def expose():
+                return data
+            external = expose()
+            external.append(raw)
+            print(data)
+            values = redact(messages)
+            holder.data = values
+            holder.data.append(raw)
+            print(values)
+            rows = redact(messages)
+            handler.write(rows)
+            print(rows)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [7, 11, 14])
+
+    def test_setting_a_destination_through_an_alias_revokes_the_file_proof(self):
+        source = dedent("""\
+            class Writer:
+                def run(self):
+                    self.path = "/tmp/report"
+                    alias = self
+                    setattr(alias, "path", "/dev/stderr")
+                    open(self.path, "w").write(raw)
+        """)
+        self.assertEqual(unredacted_writes("sample.py", source), [6])
+
+    def test_the_skill_file_destination_requires_relative_names_from_every_caller(self):
+        sources = self.program_sources()
+        sources["machine/scripts/extra.py"] = "from machinelib.skills import write_dir\nwrite_dir(root, supplied)\n"
+        expected = ["machine/scripts/machinelib/skills.py"]
+        self.assertEqual([path for path, _ in program_writes(sources)], expected)
+        del sources["machine/scripts/extra.py"]
+        installer = "machine/scripts/machinelib/install.py"
+        sources[installer] = sources[installer].replace(
+            b"tools = skills.tracked(source, skills.MACHINE_SOURCE)", b"tools = supplied"
+        )
+        self.assertFalse(relative_skill_inputs({path: ast.parse(source) for path, source in sources.items()}))

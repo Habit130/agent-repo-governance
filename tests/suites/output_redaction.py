@@ -10,6 +10,8 @@ from importlib.util import resolve_name
 import posixpath
 from typing import NamedTuple
 
+from skill_file_inputs import relative_skill_inputs
+
 
 UNKNOWN = "<unknown>"
 FILE = "<ordinary file>"
@@ -53,7 +55,10 @@ def parameters(args):
 def path_origin(value):
     if isinstance(value, bytes):
         value = value.decode("utf-8", "replace")
-    return "terminal fd" if posixpath.normpath(value) in TERMINAL_PATHS else PATH
+    normalized = posixpath.normpath(value)
+    if normalized.startswith("//"):
+        normalized = "/" + normalized.lstrip("/")
+    return "terminal fd" if normalized in TERMINAL_PATHS else PATH
 
 
 def literal(origins):
@@ -82,16 +87,17 @@ class ListColumn(NamedTuple):
 class Scope:
     """Consider every binding in this lexical scope when proving redaction."""
 
-    def __init__(self, node, path, parent=None, path_functions=None, definition_scope=None):
+    def __init__(self, node, path, parent=None, path_functions=None, definition_scope=None, field_writes=None):
         self.node = node
         self.path = path
         self.parent = parent
         self.path_functions = path_functions if parent is None else parent.path_functions
+        self.field_writes = field_writes if parent is None else parent.field_writes
         self.fields = None
         if definition_scope and isinstance(definition_scope.node, ast.ClassDef):
             self.fields = definition_scope.fields
         if isinstance(node, ast.ClassDef):
-            self.fields = defaultdict(list)
+            self.fields = set()
         self.external_writes = set()
         self.shared_bindings = defaultdict(list)
         self.declarations = {}
@@ -120,20 +126,35 @@ class Scope:
             body = node.body if isinstance(node.body, list) else [node.body]
         for child in body:
             self.collect(child, node)
+        if isinstance(node, ast.Lambda):
+            self.returns.append(node.body)
         self.nested_reads = {n.id for child in self.children for n in ast.walk(child) if isinstance(n, ast.Name)}
         # A helper can modify a redacted list or dictionary it receives.
         for ref, parent_node in self.parents.items():
             if not isinstance(ref, ast.Name) or not isinstance(ref.ctx, ast.Load):
                 continue
-            if isinstance(parent_node, (ast.List, ast.Tuple, ast.Dict, ast.Set)) or (
-                isinstance(parent_node, ast.Attribute) and parent_node.attr != "encode"
-            ):
+            targets = parent_node.targets if isinstance(parent_node, ast.Assign) else []
+            if isinstance(parent_node, ast.AnnAssign):
+                targets = [parent_node.target]
+            stored_elsewhere = any(isinstance(t, (ast.Attribute, ast.Subscript)) for t in targets)
+            if (stored_elsewhere or isinstance(parent_node, (ast.List, ast.Tuple, ast.Dict, ast.Set))
+                    or isinstance(parent_node, ast.Attribute) and parent_node.attr != "encode"):
                 if REDACTED in self.origins(ref):
                     self.invalidate(ref, parent_node)
+        for value in self.returns:
+            if value is not None:
+                for ref in ast.walk(value):
+                    if isinstance(ref, ast.Name) and REDACTED in self.origins(ref):
+                        self.invalidate(ref, value)
         for call in self.calls:
             targets = self.origins(call.func)
-            if all(target in ("builtins.print", SHARED, "json.dumps")
-                   or target.endswith((".write", ".writelines")) for target in targets):
+            if "builtins.setattr" in targets and len(call.args) == 3:
+                field = literal(self.origins(call.args[1]))
+                self.field_writes[field].append((self, call.args[2]))
+            if all(target in ("builtins.print", SHARED, "json.dumps") or (
+                target.startswith((*STREAM_PREFIXES, FILE + "."))
+                and target.endswith((".write", ".writelines"))
+            ) for target in targets):
                 continue
             for arg in [*call.args, *(kw.value for kw in call.keywords)]:
                 for ref in ast.walk(arg):
@@ -232,9 +253,11 @@ class Scope:
             self.bindings[node.name].append((node, UNKNOWN, False))
         elif isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(node.ctx, ast.Store):
             self.invalidate(node.value, node)
-            if self.fields is not None and isinstance(node, ast.Attribute):
+            if isinstance(node, ast.Attribute):
                 value = parent.value if isinstance(parent, (ast.Assign, ast.AnnAssign)) else UNKNOWN
-                self.fields[node.attr].append((self, value))
+                self.field_writes[node.attr].append((self, value))
+                if self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self":
+                    self.fields.add(node.attr)
         elif isinstance(node, ast.Call):
             self.calls.append(node)
             if isinstance(node.func, ast.Attribute) and node.func.attr in MUTATORS:
@@ -253,7 +276,7 @@ class Scope:
             self.mutations.append((target.id, site))
 
     def values_at(self, name, read):
-        bindings = self.bindings[name]
+        bindings = self.bindings.get(name, ())
         if isinstance(self.node, ast.Module) and name in ("open", "print") and read in self.blocks:
             if all((s.end_lineno, s.end_col_offset) > (read.lineno, read.col_offset) for s, _, _ in bindings):
                 return ["builtins." + name]
@@ -293,6 +316,8 @@ class Scope:
                 return {"builtins." + node.id}
             if node not in seen:
                 result = set().union(*(scope.origins(v, seen | {node}) for v in scope.values_at(node.id, node)))
+                if not scope.bindings.get(node.id):
+                    result.add("builtins." + node.id)
                 for writer, value in scope.shared_bindings.get(node.id, ()):
                     result.update(writer.origins(value, seen | {node}))
                 if node.id in scope.external_writes:
@@ -301,8 +326,9 @@ class Scope:
         if isinstance(node, ast.Attribute):
             if (self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self"
                     and node.attr in self.fields and node not in seen):
-                values = self.fields[node.attr]
-                if all(ordinary_paths(scope.origins(value, seen | {node})) for scope, value in values):
+                values = self.field_writes[node.attr]
+                if (None not in self.field_writes
+                        and all(ordinary_paths(scope.origins(value, seen | {node})) for scope, value in values)):
                     return {PATH}
             return {name + "." + node.attr for name in self.origins(node.value, seen)}
         if isinstance(node, ast.Constant):
@@ -367,19 +393,11 @@ class Scope:
         return values if initialized and values else {UNKNOWN}
 
     def joins_fresh_skill_directory(self, call):
-        """write_dir creates its target before opening any of the skill's relative files."""
-        if self.path != "machine/scripts/machinelib/skills.py" or getattr(self.node, "name", "") != "write_dir":
-            return False
-        body = [stmt for stmt in self.node.body if not (isinstance(stmt, ast.Expr)
-                and isinstance(stmt.value, ast.Constant) and isinstance(stmt.value.value, str))]
-        if len(body) < 2 or not isinstance(body[0], ast.Expr) or not isinstance(body[1], ast.For):
-            return False
-        create, loop = body[0].value, body[1]
-        return (matches(create, "os.makedirs(path)") and self.origins(create.func) == {"os.makedirs"}
-                and isinstance(loop.target, ast.Name) and loop.target.id == "rel"
-                and matches(loop.iter, "sorted(files)") and self.origins(loop.iter.func) == {"builtins.sorted"}
-                and len(self.bindings["path"]) == len(self.bindings["rel"]) == len(self.bindings["files"]) == 1
-                and matches(call, 'os.path.join(path, *rel.split("/"))') and call in ast.walk(loop))
+        """Only the checked relative-name maps can certify this otherwise opaque join."""
+        return ("machinelib.skills.write_dir" in self.path_functions
+                and self.path == "machine/scripts/machinelib/skills.py"
+                and getattr(self.node, "name", "") == "write_dir"
+                and matches(call, 'os.path.join(path, *rel.split("/"))'))
 
     def call_result(self, call, seen):
         names = self.origins(call.func, seen)
@@ -388,6 +406,8 @@ class Scope:
             attrs = self.origins(call.args[1], seen)
             resolved = {owner + "." + attr[len(LITERAL):] for owner in owners
                         for attr in attrs if attr.startswith(LITERAL)}
+            if len(call.args) == 3:
+                resolved.update(self.origins(call.args[2], seen))
             if any(not attr.startswith(LITERAL) for attr in attrs):
                 resolved.add(UNKNOWN)
                 resolved.update(owner + ".write" for owner in owners if owner in STREAMS or owner == "os")
@@ -522,8 +542,12 @@ def verified_path_helper(module):
 
 def program_writes(sources):
     path_functions = set()
-    modules = {path: Scope(ast.parse(source, filename=path), path, path_functions=path_functions)
-               for path, source in sources.items()}
+    trees = {path: ast.parse(source, filename=path) for path, source in sources.items()}
+    if relative_skill_inputs(trees):
+        path_functions.add("machinelib.skills.write_dir")
+    field_writes = defaultdict(list)
+    modules = {path: Scope(tree, path, path_functions=path_functions, field_writes=field_writes)
+               for path, tree in trees.items()}
     if STORED_FORM in modules and verified_path_helper(modules[STORED_FORM]):
         path_functions.add(CHECK_TARGET)
     return [(path, line) for path, scope in modules.items() for line in sorted(scope.problems())]
