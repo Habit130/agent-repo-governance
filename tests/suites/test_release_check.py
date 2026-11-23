@@ -13,6 +13,7 @@ CASES = sorted(glob.glob(os.path.join(support.FIXTURES, "release-check", "*.json
 RULES = ["frozen", "consecutive", "notes", "note-fields", "next-draft", "version-copy", "fixtures"]
 LINE = re.compile(r"^(PASS|FAIL) ([a-z-]+): .+$")
 RELEASE_AND_COPY = os.path.join(support.FIXTURES, "release-check", "release-and-copy.json")
+REPOSITORY_SECTION_BUDGET = 6351
 
 
 def edited(base, step):
@@ -45,6 +46,23 @@ def draft_transitions():
         head = edited(base, step)
         start = {"released-v1": initial, "empty": {}}[step.get("base", "released-v1")]
         yield step["name"], start, head, step["failures"]
+
+
+class RepositoryInstructions(unittest.TestCase):
+    def test_repository_section_fits_its_byte_budget(self):
+        with open(os.path.join(support.REPO, "AGENTS.md"), "rb") as instructions:
+            for line in instructions:
+                if line.rstrip(b"\r\n") == b"<!-- governance:end -->":
+                    break
+            else:
+                self.fail("AGENTS.md is missing its governance end marker")
+            size = len(instructions.read())
+
+        if size > REPOSITORY_SECTION_BUDGET:
+            self.fail(
+                f"AGENTS.md's repository section is {size} bytes, over its {REPOSITORY_SECTION_BUDGET}-byte budget: "
+                "delete as much as you add, or raise the budget in the same PR with habit's approval quoted in its body."
+            )
 
 
 class CIConfiguration(unittest.TestCase):

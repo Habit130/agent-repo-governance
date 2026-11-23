@@ -203,6 +203,8 @@ skill copies under `skill-copies/`.
   `.local/`, never committed (`.local/README.md`).
 - Harness memory is context, not authority: rules live in `AGENTS.md` and `docs/agents/`,
   and anything memory says that they contradict is wrong.
+- **Retros**: every `retro` here, on a miss record or on a repeated bug class, also
+  follows `docs/retro.md`.
 - `GLOSSARY.md` holds terms and meanings only. Purpose and non-goals belong in `README.md`;
   hard boundaries and ownership in `AGENTS.md`.
 

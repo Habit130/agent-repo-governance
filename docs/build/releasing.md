@@ -87,6 +87,14 @@ After the merge habit runs the install (README.md), which brings the released ve
 machine. Each repository adopts it by its own Upgrade. The cut's Merge summary names the
 version, its urgency, the install and the remaining verification gaps (#44 §8, Trigger).
 
+The cutting PR's after-merge report adds a Planner start request for the next class retro
+([Retros](../retro.md)), in this canonical form:
+
+```text
+habit invokes: retro #226.
+Role: Planner. Issue: #226.
+```
+
 ## Scenarios
 
 No PR runs a model scenario or a replacement for one, releases included. In
