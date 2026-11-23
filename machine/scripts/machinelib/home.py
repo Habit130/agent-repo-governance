@@ -13,17 +13,22 @@ import tempfile
 
 PASS, FAIL, SKIP, NOTE = "通过", "失败", "跳过", "说明"
 
-_BARE_EMAIL = re.compile(r'(?:[^\s@:<>()\[\],;"\\]+|"(?:[^"\\\r\n]|\\.)*")@(?:[\w.-]+|\[[\w:.%-]+\])')
+_BARE_EMAIL = re.compile(r'(?P<local>[^\s@:<>()\[\],;"\\]+|"(?:[^"\\\r\n]|\\.)*")@(?:[\w.-]+|\[[\w:.%-]+\])')
 
 
 def withhold_url(value, *, email=False):
     """Withhold URL-like fields. In a Git email, /, ? and # may belong to the local part."""
     text = str(value)
-    if email and _BARE_EMAIL.fullmatch(text) and not re.search(r'://|(?:^|[\s"])//', text):
-        return text
-    if "//" in text or (("/" in text or ":" in text) and any(mark in text for mark in "@?#")):
-        return "（已隐藏）"
-    return text
+    address = _BARE_EMAIL.fullmatch(text) if email else None
+    if address:
+        # The address's final @ is structural. The local part can itself contain a complete URL.
+        local = address["local"].strip('"')
+        has_url = re.match(r"//\S", local) or (
+            ("//" in local or ":" in local) and any(mark in local for mark in "@?#")
+        )
+    else:
+        has_url = "//" in text or "?" in text or "#" in text or (":" in text and "@" in text)
+    return "（已隐藏）" if has_url else text
 
 
 class Home(object):

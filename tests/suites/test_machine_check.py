@@ -91,16 +91,26 @@ class CheckDiagnostics(CheckCase):
 
     def test_url_returned_as_the_git_identity(self):
         remote = ms.remote_error().splitlines()[-1].split(" ", 1)[1]
-        support.write_tree(self.home, {".gitconfig": '[user]\n\temail = "%s"\n' % remote})
         env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
-        result = ms.run_machine(["check"], env)
-        ms.assert_diagnostic(self, result, 1, "[失败] identity：git 的全局 commit 身份应是 " + ms.NOREPLY)
+        network_path = remote.removeprefix("https:")
+        cases = (
+            ("remote", remote),
+            ("embedded authority", '"build(%s)"@example.invalid' % network_path),
+            ("embedded query", '"build(//example.invalid/project?ref=%s)"@example.invalid' % ms.DIAGNOSTIC_PLANTS["query"]),
+            ("embedded fragment", '"build(//example.invalid/project#%s)"@example.invalid' % ms.DIAGNOSTIC_PLANTS["fragment"]),
+        )
+        for label, address in cases:
+            with self.subTest(route=label):
+                support.write_tree(self.home, {".gitconfig": "[user]\n\temail = %s\n" % json.dumps(address)})
+                result = ms.run_machine(["check"], env)
+                ms.assert_diagnostic(self, result, 1, "[失败] identity：git 的全局 commit 身份应是 " + ms.NOREPLY)
 
     def test_wrong_git_emails_keep_their_local_part(self):
         env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
-        for address in ("build/ci@example.invalid", "build//ci@example.invalid", "build/ci?foo#bar@example.invalid"):
+        for address in ("build/ci@example.invalid", "build//ci@example.invalid", "build/ci?foo#bar@example.invalid",
+                        '"build // ci"@example.invalid'):
             with self.subTest(address=address):
-                support.write_tree(self.home, {".gitconfig": '[user]\n\temail = "%s"\n' % address})
+                support.write_tree(self.home, {".gitconfig": "[user]\n\temail = %s\n" % json.dumps(address)})
                 result = ms.run_machine(["check"], env)
                 ms.assert_diagnostic(self, result, 1, "git 的全局 commit 身份应是 %s，实际：%s" % (ms.NOREPLY, address))
 
