@@ -160,6 +160,13 @@ class RepositoryDiagnostics(support.TempDirCase):
         result = ms.run_machine(["list", "--unexpected", ms.AWS_KEY_ID], support.isolated_env())
         ms.assert_diagnostic(self, result, 2, "unrecognized arguments: --unexpected <redacted AWS access key ID>", "stderr")
 
+    def test_url_in_a_login_keeps_the_list_outcome(self):
+        login = ms.remote_error().splitlines()[-1].split(" ", 1)[1]
+        home = ms.make_home(self.path("home"))
+        env = ms.machine_env(home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json"), user=login))
+        result = ms.run_machine(["list"], env)
+        ms.assert_diagnostic(self, result, 1, "[失败] account：gh 应以 agent account Habit098 运行，实际：（已隐藏）；列表未生成")
+
     def test_missing_redactor_refuses_without_echoing_install_paths(self):
         scripts = self.path(ms.AWS_KEY_ID, "machine", "scripts")
         shutil.copytree(os.path.dirname(ms.ENTRY), scripts)
@@ -170,15 +177,18 @@ class RepositoryDiagnostics(support.TempDirCase):
         report = machine.homes.Report("fixture")
         report.add("通过", "first", "首项通过")
         report.add("说明", "arbitrary", ms.AWS_KEY_ID)
+        remote = "https://%s:%s@example.invalid/project" % (ms.AWS_KEY_ID, ms.DIAGNOSTIC_PLANTS["password"])
+        report.add("说明", "remote", "读取 mailto:fixture?ref=%s 和 %s 失败" % (ms.DIAGNOSTIC_PLANTS["query"], remote))
         # A key may span physical lines within one diagnostic, with no end marker.
         key_body = "synthetic-" + "key-body"
         report.add("失败", "key", "-----BEGIN " + "PRIVATE KEY-----\n" + key_body)
         report.add("说明", "last", "最后一项说明")
         expected_report = ("== fixture\n[通过] first：首项通过\n[说明] arbitrary：<redacted AWS access key ID>\n"
+                           "[说明] remote：读取 （已隐藏） 和 （已隐藏） 失败\n"
                            "[失败] key：<redacted private key>\n[说明] last：最后一项说明\n")
-        refusal = machine.MachineError("任意操作失败：" + ms.AWS_KEY_ID)
+        refusal = machine.MachineError("任意操作失败：%s file:/record#%s" % (ms.AWS_KEY_ID, ms.DIAGNOSTIC_PLANTS["fragment"]))
         for label, outcome, code, expected in (("report", [report], 1, expected_report),
-                                               ("refusal", refusal, 2, "拒绝：任意操作失败：<redacted AWS access key ID>\n")):
+                                               ("refusal", refusal, 2, "拒绝：任意操作失败：<redacted AWS access key ID> （已隐藏）\n")):
             with self.subTest(output=label):
                 stdout, stderr = io.StringIO(), io.StringIO()
                 with mock.patch.object(machine.governed, "run", side_effect=outcome):

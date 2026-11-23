@@ -81,10 +81,10 @@ def _machine_skills(home, report, skill_set, installed):
         current = None if linked else skills.disk_hash(target)
         if name in managed:
             if current != managed[name]:
-                report.add(homes.NOTE, "machine skills", "%s 在上次 install 后被改动或删除，已恢复" % name)
+                report.add(homes.NOTE, "machine skills", "%s 在上次 install 后被改动或删除，已恢复" % homes.withhold_url(name))
         elif os.path.lexists(target):
             if linked or current != new_hash:
-                report.add(homes.NOTE, "machine skills", "接管同名 skill %s：内容不同，已替换" % name)
+                report.add(homes.NOTE, "machine skills", "接管同名 skill %s：内容不同，已替换" % homes.withhold_url(name))
         if linked or current != new_hash:
             _replace_dir(home, target, files)
         written[name] = new_hash
@@ -94,8 +94,9 @@ def _machine_skills(home, report, skill_set, installed):
         if os.path.lexists(target):
             _remove(target)
         report.add(homes.NOTE, "machine skills", "%s 已不在 machine skill set 里，已移除%s"
-                   % (name, "（它在上次 install 后有本地改动）" if edited else ""))
-    report.add(homes.PASS, "machine skills", "%d 个 machine skills 就位：%s" % (len(written), "、".join(sorted(written))))
+                   % (homes.withhold_url(name), "（它在上次 install 后有本地改动）" if edited else ""))
+    shown_names = "、".join(homes.withhold_url(name) for name in sorted(written))
+    report.add(homes.PASS, "machine skills", "%d 个 machine skills 就位：%s" % (len(written), shown_names))
     return written
 
 
@@ -123,7 +124,7 @@ def _lock_file(home, report, names):
         ending = "\n" if handle.read().endswith(b"\n") else ""
     rules.write_text(path, json.dumps(lock, indent=2, ensure_ascii=False) + ending)
     report.add(homes.NOTE, "lock file", "已从 %s 移除被接管的条目：%s（备份 %s）"
-               % (home.show(path), "、".join(taken), home.show(backup)))
+               % (home.show(path), "、".join(homes.withhold_url(name) for name in taken), home.show(backup)))
 
 
 def _machine_rules(home, report, codex):

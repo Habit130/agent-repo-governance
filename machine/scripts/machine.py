@@ -15,6 +15,7 @@ run reaches a real Codex, and otherwise the one bundled in the ChatGPT app.
 
 import argparse
 import os
+import re
 import sys
 
 sys.dont_write_bytecode = True
@@ -22,11 +23,27 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import machinelib  # noqa: E402
 
+# Match an explicit URI embedded in diagnostic prose. A redacted credential may
+# sit inside its authority, so its complete type marker belongs to the same URI.
+# Producers with a known field boundary withhold the field before joining it to
+# Chinese prose. For unstructured text, punctuation can be part of a URL secret.
+_URI = re.compile(
+    r"""(?:(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*:|(?P<before>(?:^|[\s(（：，；])['"]?)//)"""
+    r'(?:<redacted [^>\n]+>|[^\s"<>])+'
+)
+
+
+def _hide_private_uri(match):
+    uri = match[0]
+    if any(part in uri for part in "@?#"):
+        return (match["before"] or "") + "（已隐藏）"
+    return uri
+
 
 def write_line(line, stream):
     """Redact one logical diagnostic, including any continuation lines it owns."""
     # If bootstrap failed, even govlib's search paths are unsafe to repeat.
-    safe = redact(line) if redact is not None else "拒绝：找不到 generator 的 govlib"
+    safe = _URI.sub(_hide_private_uri, redact(line)) if redact is not None else "拒绝：找不到 generator 的 govlib"
     stream.write(safe + "\n")
 
 

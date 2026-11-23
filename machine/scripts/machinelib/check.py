@@ -243,7 +243,7 @@ def _identity_problems(home):
     expected = "%s+%s@users.noreply.github.com" % (user_id, AGENT) if user_id else None
     if not expected or email != expected:
         shown_expected = homes.withhold_url(expected or "agent account 的 noreply 地址")
-        shown_email = homes.withhold_url(email or "未设置", email=True)
+        shown_email = homes.shown_git_email(email or "未设置")
         problems.append("git 的全局 commit 身份应是 %s，实际：%s"
                         % (shown_expected, shown_email))
     shell = home.env.get("SHELL") or "/bin/zsh"

@@ -16,18 +16,22 @@ PASS, FAIL, SKIP, NOTE = "通过", "失败", "跳过", "说明"
 _BARE_EMAIL = re.compile(r'(?P<local>[^\s@:<>()\[\],;"\\]+|"(?:[^"\\\r\n]|\\.)*")@(?:[\w.-]+|\[[\w:.%-]+\])')
 
 
-def withhold_url(value, *, email=False):
-    """Withhold URL-like fields. In a Git email, /, ? and # may belong to the local part."""
+def withhold_url(value):
+    """Withhold URL-like data returned in place of a named field."""
     text = str(value)
-    address = _BARE_EMAIL.fullmatch(text) if email else None
-    if address:
-        # The address's final @ is structural. The local part can itself contain a complete URL.
-        local = address["local"].strip('"')
-        has_url = re.match(r"//\S", local) or (
-            ("//" in local or ":" in local) and any(mark in local for mark in "@?#")
-        )
-    else:
-        has_url = "//" in text or "?" in text or "#" in text or (":" in text and "@" in text)
+    has_url = "//" in text or "?" in text or "#" in text or (":" in text and "@" in text)
+    return "（已隐藏）" if has_url else text
+
+
+def shown_git_email(text):
+    """The address's final @ is structural. Its local part may itself contain a URL."""
+    address = _BARE_EMAIL.fullmatch(text)
+    if not address:
+        return withhold_url(text)
+    local = address["local"].strip('"')
+    has_url = re.match(r"//\S", local) or (
+        ("//" in local or ":" in local) and any(mark in local for mark in "@?#")
+    )
     return "（已隐藏）" if has_url else text
 
 

@@ -12,6 +12,7 @@ import re
 import subprocess
 
 from machinelib import GENERATOR, MachineError
+from machinelib.home import withhold_url
 
 GENERATOR_SOURCE = "generator/govern-repository"
 COPIES_SOURCE = "skill-copies/skills"
@@ -115,8 +116,8 @@ def machine_skill_set(source):
         name, _, inner = rel.partition("/")
         try:
             copies.setdefault(name, {})[storedform.decode(inner)] = entry
-        except storedform.StoredFormError as error:
-            raise MachineError("skill copy %s 无法解码：%s" % (name, error))
+        except storedform.StoredFormError:
+            raise MachineError("skill copy %s 无法解码" % withhold_url(name))
     if GENERATOR in copies:
         raise MachineError("skill copy 不能叫 %s" % GENERATOR)
     skill_set.update(copies)
