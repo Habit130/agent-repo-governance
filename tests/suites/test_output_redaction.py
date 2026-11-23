@@ -407,8 +407,17 @@ class OutputRedaction(unittest.TestCase):
             open(os.path.join(f"/dev/{device}"), "w").write(raw)
             open(os.path.join("/tmp", *("dev", device)), "w").write(raw)
             open(f"/tmp/{device}", "w").write(raw)
+            base = "/dev/std" if condition else "/tmp/std"
+            open(f"{base}err", "w").write(raw)
+            branches = ("/tmp", "log")
+            def redirect():
+                global branches
+                branches = ("/dev", "stderr")
+            redirect()
+            open(os.path.join(root, *branches), "w").write(raw)
+            open(f"/dev/shm/report-{request_id}.txt", "w").write(raw)
         """)
-        self.assertEqual(unredacted_writes("sample.py", source), [4, 5, 6])
+        self.assertEqual(unredacted_writes("sample.py", source), [4, 5, 6, 10, 16])
 
     def test_global_deletion_restores_print_for_nested_and_module_reads(self):
         source = dedent("""\
@@ -441,3 +450,26 @@ class OutputRedaction(unittest.TestCase):
                     open(self.path, "w").write(raw)
         """)
         self.assertEqual(unredacted_writes("sample.py", source), [4])
+
+    def test_class_attribute_overrides_and_rebound_imports_do_not_hide_device_writes(self):
+        target = dedent("""\
+            class Target:
+                def __init__(self):
+                    self.path = "/tmp/report"
+                def emit(self, data):
+                    open(self.path, "w").write(data)
+            class Other: pass
+            Other = Target
+        """)
+        caller = 'from target import Other\nitem = Other()\nitem.path = "/dev/stderr"\nitem.emit(data)\n'
+        self.assertEqual(program_writes({"target.py": target, "caller.py": caller}), [("target.py", 5)])
+        original = target.replace("Other = Target\n", "")
+        redirect = "import target\ntarget.Other = target.Target\n"
+        self.assertEqual(program_writes({"target.py": original, "redirect.py": redirect, "caller.py": caller}),
+                         [("target.py", 5)])
+        subclass = dedent("""\
+            class Child(Target):
+                path = "/dev/stderr"
+                def __init__(self): pass
+        """)
+        self.assertEqual(unredacted_writes("target.py", target + subclass), [5])

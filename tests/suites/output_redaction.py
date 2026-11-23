@@ -9,6 +9,7 @@ import ast
 import builtins
 from collections import defaultdict
 from importlib.util import resolve_name
+from itertools import product
 import posixpath
 from typing import NamedTuple
 
@@ -96,6 +97,21 @@ def ordinary_paths(origins):
                                  path_origin(value[len(LITERAL):]) == PATH for value in origins)
 
 
+def fold_literals(operands, combine):
+    """Keep finite literal alternatives. A large product remains an unproven destination."""
+    choices, count, complete = [], 1, True
+    for origins in operands:
+        parts = [value[len(LITERAL):] for value in origins if value.startswith(LITERAL)]
+        if not parts:
+            return set(), False
+        complete &= len(parts) == len(origins)
+        count *= len(parts)
+        if count > 128:
+            return {UNRESOLVED_PATH}, False
+        choices.append(parts)
+    return {LITERAL + combine(parts) for parts in product(*choices)}, complete
+
+
 def ordinary_suffix(suffix):
     leaf = suffix.rsplit("/", 1)[-1] if suffix else ""
     return leaf not in ("", ".", "..") and not any(name.endswith(leaf) for name in ("stdout", "stderr", "1", "2"))
@@ -108,6 +124,7 @@ def device_hint(value):
         return False
     part = posixpath.normpath(value[len(LITERAL):])
     return (path_origin(part) == "terminal fd" or part in ("/dev", "/dev/fd", "/proc/self/fd")
+            or len(part) > 1 and part.startswith("/") and any(path.startswith(part) for path in TERMINAL_PATHS)
             or posixpath.basename(part) in ("stdout", "stderr", "1", "2"))
 
 
@@ -121,6 +138,7 @@ class ClassHierarchy:
 
     def __init__(self):
         self.bases = {}
+        self.declarations = {}
         self.exported = {}
         self.overlap = None
         self.uncertain = set()
@@ -131,22 +149,31 @@ class ClassHierarchy:
         self.bases[instance] = (scope, node.bases)
         if isinstance(scope.node, ast.Module):
             module = scope.path.rpartition("/scripts/")[2].removesuffix(".py").replace("/", ".")
-            self.exported[module.removesuffix(".__init__") + "." + node.name] = instance
+            name = module.removesuffix(".__init__") + "." + node.name
+            self.declarations[name] = (scope, node, instance)
         return CLASS + key
 
     def instance_for(self, name):
         return INSTANCE + name[len(CLASS):] if name.startswith(CLASS) else self.exported.get(name)
 
-    def resolve(self):
+    def resolve(self, field_writes):
         parents = defaultdict(set)
         unknown = set()
+        for name, (scope, node, instance) in self.declarations.items():
+            bindings = scope.bindings.get(node.name, ())
+            module, _, attribute = name.rpartition(".")
+            assignments = [*field_writes.get(attribute, ()), *field_writes.get(None, ())]
+            replaced = any(module in writer.origins(receiver) for writer, receiver, _ in assignments)
+            if (len(bindings) == 1 and bindings[0][0] is node and not node.decorator_list
+                    and node.name not in scope.external_writes and not replaced):
+                self.exported[name] = instance
         for child, (scope, bases) in self.bases.items():
             for base in bases:
                 for origin in scope.origins(base):
                     parent = self.instance_for(origin)
                     if parent is not None:
                         parents[child].add(parent)
-                    elif origin == UNKNOWN:
+                    elif origin == UNKNOWN or origin in self.declarations:
                         unknown.add(child)
         overlap = defaultdict(set)
         for child in self.bases:
@@ -216,6 +243,11 @@ class Scope:
             body = node.body if isinstance(node.body, list) else [node.body]
         for child in body:
             self.collect(child, node)
+        if isinstance(node, ast.ClassDef):
+            receiver = INSTANCE + class_id(path, node)
+            for name, bindings in self.bindings.items():
+                self.fields.add(name)
+                self.field_writes[name].extend((self, receiver, value) for _, value, _ in bindings)
         if isinstance(node, ast.Lambda):
             self.returns.append(node.body)
         self.nested_reads = {n.id for child in self.children for n in ast.walk(child) if isinstance(n, ast.Name)}
@@ -395,7 +427,7 @@ class Scope:
         if isinstance(target, ast.Name):
             self.mutations.append((target.id, site))
 
-    def values_at(self, name, read, seen):
+    def values_at(self, name, read):
         bindings = self.bindings.get(name, ())
         use = (read.lineno, read.col_offset)
         last = None
@@ -433,6 +465,18 @@ class Scope:
             scope = scope.parent
         return None
 
+    def binding_sources(self, name):
+        scope = self.owner_of(name.id)
+        if scope is None:
+            return None, []
+        sources = [(scope, value) for value in scope.values_at(name.id, name)]
+        sources.extend(scope.shared_bindings.get(name.id, ()))
+        if not scope.bindings.get(name.id):
+            sources.append((scope, UNBOUND))
+        if name.id in scope.external_writes:
+            sources.append((scope, UNKNOWN))
+        return scope, sources
+
     def origins(self, node, seen=frozenset()):
         """Imported names, output handles, or redacted values this expression can produce."""
         if isinstance(node, str):
@@ -440,15 +484,11 @@ class Scope:
         if isinstance(node, ListColumn) and node not in seen:
             return self.column_origins(node, seen | {node})
         if isinstance(node, ast.Name):
-            scope = self.owner_of(node.id)
+            scope, sources = self.binding_sources(node)
             if not scope:
                 return {"builtins." + node.id} if hasattr(builtins, node.id) else {UNKNOWN}
             if node not in seen:
-                result = set().union(*(scope.origins(v, seen | {node}) for v in scope.values_at(node.id, node, seen)))
-                if not scope.bindings.get(node.id):
-                    result.add(UNBOUND)
-                for writer, value in scope.shared_bindings.get(node.id, ()):
-                    result.update(writer.origins(value, seen | {node}))
+                result = set().union(*(owner.origins(value, seen | {node}) for owner, value in sources))
                 if UNBOUND in result:
                     result.discard(UNBOUND)
                     if isinstance(scope.node, ast.ClassDef):
@@ -461,8 +501,6 @@ class Scope:
                     # receiver remains an instance of the same class.
                     if not result or not all(value.startswith(INSTANCE) for value in result):
                         result.add(UNKNOWN)
-                if node.id in scope.external_writes:
-                    result.add(UNKNOWN)
                 return result or {UNKNOWN}
         if isinstance(node, ast.Attribute):
             if (self.fields is not None and isinstance(node.value, ast.Name) and node.value.id == "self"
@@ -485,20 +523,23 @@ class Scope:
             redacted_parts = True
             for part in node.values:
                 if isinstance(part, ast.Constant):
-                    parts.append(part.value)
+                    parts.append({LITERAL + part.value})
                     possible.add(LITERAL + part.value)
                     redacted_parts &= not part.value.strip()
                 else:
                     origins = self.origins(part.value, seen)
                     possible.update(origins)
                     simple = part.format_spec is None and part.conversion in (-1, ord("s"))
-                    parts.append(literal(origins) if simple else None)
+                    parts.append(origins if simple else {UNKNOWN})
                     redacted_parts &= simple and bool(origins) and origins <= {REDACTED, ENCODED}
-            if None not in parts:
-                return {LITERAL + "".join(parts)}
+            candidates, complete = fold_literals(parts, "".join)
+            if complete:
+                return candidates
             if redacted_parts:
                 return {REDACTED}
-            return {UNRESOLVED_PATH if any(device_hint(v) for v in possible) else PATH}
+            if node.values and isinstance(node.values[-1], ast.Constant) and ordinary_suffix(node.values[-1].value):
+                return candidates | {PATH}
+            return candidates | {UNRESOLVED_PATH if any(device_hint(v) for v in possible) else PATH}
         if isinstance(node, ast.IfExp):
             body = self.origins(node.body, seen)
             if self.machine_writer and body == {REDACTED} and isinstance(node.orelse, ast.Constant):
@@ -508,12 +549,14 @@ class Scope:
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
             if isinstance(node.right, ast.Constant) and node.right.value in ("\n", b"\n"):
                 return self.origins(node.left, seen)
-            left = literal(self.origins(node.left, seen))
-            right = literal(self.origins(node.right, seen))
-            if left is not None and right is not None:
-                return {LITERAL + left + right}
+            operands = (self.origins(node.left, seen), self.origins(node.right, seen))
+            candidates, complete = fold_literals(operands, "".join)
+            if complete:
+                return candidates
+            right = literal(operands[1])
             if right is not None:
-                return {PATH if ordinary_suffix(right) else UNRESOLVED_PATH}
+                return candidates | {PATH if ordinary_suffix(right) else UNRESOLVED_PATH}
+            return candidates | {UNKNOWN}
         if isinstance(node, ast.Call):
             return self.call_result(node, seen)
         return {UNKNOWN}
@@ -579,6 +622,11 @@ class Scope:
             return resolved
         if names == {"os.path.join"}:
             operands = self.path_operands(call.args, seen)
+            if not operands:
+                return {UNKNOWN}
+            candidates, complete = fold_literals(operands, lambda parts: posixpath.join(*parts))
+            if complete:
+                return candidates
             parts = [literal(values) for values in operands]
             suffix = []
             for part in reversed(parts):
@@ -587,16 +635,14 @@ class Scope:
                 suffix.insert(0, part)
                 if posixpath.isabs(part):
                     return {LITERAL + posixpath.join(*suffix)}
-            if suffix and len(suffix) == len(parts):
-                return {LITERAL + posixpath.join(*suffix)}
             if suffix and ordinary_suffix(suffix[-1]):
-                return {PATH}
+                return candidates | {PATH}
             # A join produces a pathname. Check known device components, including
             # alternatives in branches. General filesystem routing is outside this
             # direct-output check, just as opening a literal log filename is.
             if any(device_hint(value) for values in operands for value in values):
-                return {UNRESOLVED_PATH}
-            return {PATH}
+                return candidates | {UNRESOLVED_PATH}
+            return candidates | {PATH}
         if names == {CHECK_TARGET} and CHECK_TARGET in self.path_functions:
             return {PATH}
         if names == {"re.compile"}:
@@ -657,9 +703,9 @@ class Scope:
                     return [{LITERAL + part} for part in text.split(sep)]
         variants = []
         if isinstance(value, ast.Name) and value not in seen:
-            scope = self.owner_of(value.id)
+            scope, sources = self.binding_sources(value)
             if scope:
-                variants = [scope.unpacked_parts(v, seen | {value}) for v in scope.values_at(value.id, value, seen)]
+                variants = [owner.unpacked_parts(v, seen | {value}) for owner, v in sources]
         elif isinstance(value, ast.IfExp):
             variants = [self.unpacked_parts(branch, seen) for branch in (value.body, value.orelse)]
         if variants:
@@ -742,7 +788,7 @@ def program_writes(sources):
     classes = ClassHierarchy()
     modules = {path: Scope(tree, path, path_functions=path_functions, field_writes=field_writes, classes=classes)
                for path, tree in trees.items()}
-    classes.resolve()
+    classes.resolve(field_writes)
     if STORED_FORM in modules and verified_path_helper(modules[STORED_FORM]):
         path_functions.add(CHECK_TARGET)
     return [(path, line) for path, scope in modules.items() for line in sorted(scope.problems())]
