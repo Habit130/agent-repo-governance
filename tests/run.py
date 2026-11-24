@@ -51,6 +51,7 @@ SUITES = (
     ("release-check", "test_release_check", "linux"),
     ("skill-copies", "test_skill_copies", "linux"),
     ("suite-runner", "test_suite_runner", "linux"),
+    ("wait-on-pr", "test_wait_on_pr", "linux"),
     ("standins", "test_standins", "macos"),
     ("owner", "test_owner", "macos"),
     ("live-runner", "test_live_runner", "macos"),

@@ -1,0 +1,9 @@
+{
+  "source": "PR #268 on 2026-11-24. The final GitHub node IDs, head, review state and status are recorded. The tests reconstruct the open snapshots around the Nit at 02:24:55Z and its reply at 02:28:32Z.",
+  "head": "86ae51486991f604e1c6626ca493b22ca763d2f7",
+  "nit_review": {"id": "PRR_kwDOVQTTx88AAAABZ5QmnA", "state": "COMMENTED", "lastEditedAt": "2026-11-24T02:26:04Z"},
+  "thread": "PRRT_kwDOVQTTx867KhJW",
+  "nit": "PRRC_kwDOVQTTx88AAAABFqLX3Q",
+  "reply": "PRRC_kwDOVQTTx88AAAABFqNbRg",
+  "status": {"id": "SC_kwDOVQTTx88AAAAN573tuw", "context": "Reviewer", "state": "SUCCESS"}
+}

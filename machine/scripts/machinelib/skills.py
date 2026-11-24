@@ -1,9 +1,9 @@
 """Skills on a machine: the machine skill set, content hashes, front matter and Codex's user-only key.
 
 The machine skill set (#26) is the generator's skill directory, copied whole and kept in
-stored form (ADR 0023), plus every skill copy under `skill-copies/skills/`, decoded from
-stored form. A skill's content hash covers each file's path, mode and bytes, and leaves out
-what a run leaves behind without changing the skill: `__pycache__`, `*.pyc` and `.DS_Store`.
+stored form (ADR 0023), plus first-party machine skills and third-party skill copies,
+both decoded from stored form. A skill's content hash covers each file's path, mode and bytes, and leaves
+out what a run leaves behind without changing the skill: `__pycache__`, `*.pyc` and `.DS_Store`.
 """
 
 import hashlib
@@ -15,6 +15,7 @@ from machinelib import GENERATOR, MachineError
 from machinelib.home import withhold_url
 
 GENERATOR_SOURCE = "generator/govern-repository"
+FIRST_PARTY_SOURCE = "machine/skills"
 COPIES_SOURCE = "skill-copies/skills"
 MACHINE_SOURCE = "machine"
 SKILL_FILE = "SKILL.md"
@@ -105,22 +106,23 @@ def tracked(source, prefix):
 
 
 def machine_skill_set(source):
-    """{name: {relative path: (mode, bytes)}}: the generator whole, and each copy decoded from stored form."""
+    """Assemble the install from the three tracked sources, refusing ambiguous ownership."""
     from govlib import storedform
 
     skill_set = {GENERATOR: tracked(source, GENERATOR_SOURCE)}
     if not skill_set[GENERATOR]:
         raise MachineError("源码树里没有 %s" % GENERATOR_SOURCE)
-    copies = {}
-    for rel, entry in tracked(source, COPIES_SOURCE).items():
-        name, _, inner = rel.partition("/")
-        try:
-            copies.setdefault(name, {})[storedform.decode(inner)] = entry
-        except storedform.StoredFormError:
-            raise MachineError("skill copy %s 无法解码" % withhold_url(name))
-    if GENERATOR in copies:
-        raise MachineError("skill copy 不能叫 %s" % GENERATOR)
-    skill_set.update(copies)
+    for prefix, label in ((FIRST_PARTY_SOURCE, "machine skill"), (COPIES_SOURCE, "skill copy")):
+        group = {}
+        for rel, entry in tracked(source, prefix).items():
+            name, _, inner = rel.partition("/")
+            if name in skill_set:
+                raise MachineError("%s 不能叫 %s" % (label, withhold_url(name)))
+            try:
+                group.setdefault(name, {})[storedform.decode(inner)] = entry
+            except storedform.StoredFormError:
+                raise MachineError("%s %s 无法解码" % (label, withhold_url(name)))
+        skill_set.update(group)
     return skill_set
 
 

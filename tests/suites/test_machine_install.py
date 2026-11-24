@@ -239,6 +239,28 @@ class FreshMachine(InstallCase):
         self.assertEqual(self.check(out)["managed skills"], "通过", out)
         self.assertEqual([p for p in ms.snapshot(self.home) if "__pycache__" in p], [])
 
+    def test_first_party_wait_skill_joins_install_state_and_codex_check(self):
+        name = "wait-on-pr"
+        prefix = "machine/skills/" + name
+        source = os.path.join(support.REPO, prefix)
+        files = {prefix + "/" + rel: spec for rel, spec in ms._tree(source).items()}
+        support.write_tree(self.source, files)
+        support.git(self.source, "add", "--", prefix)
+        support.git(self.source, "commit", "-qm", "add first-party skill")
+        code, out = self.install()
+        self.assertEqual(code, 0, out)
+        state = json.loads(self.read(".agents", "governance", "installed.json"))
+        self.assertIn(name, state["skills"])
+        for rel in ("SKILL.md", "wait_on_pr.py"):
+            self.assertEqual(self.read(".agents", "skills", name, rel), support.read_text(os.path.join(source, rel)))
+        self.assertFalse(os.path.exists(self.h(".agents", "governance", "machine", "skills")))
+        # The older real Codex recording lists every original skill but omits the new one.
+        recording = ms.merge_codex_recordings(self.path("codex.json"), "codex-execpolicy.json", "codex-prompt-input-ready.json")
+        code, out, _ = ms.run_machine(["check", "--codex", ms.STANDIN_CODEX], self.env(codex_recording=recording))
+        self.assertEqual(code, 1, out)
+        self.assertIn("超出预算，被省略：wait-on-pr", out)
+        self.assertEqual(self.check(out)["managed skills"], "通过", out)
+
     def test_the_real_copies_install(self):
         real = self.path("real-source")
         support.init_repo(real)
