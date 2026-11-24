@@ -95,6 +95,31 @@ def build(root, case):
     return repo, default_head, head, shas
 
 
+def historical_record_reverts(root):
+    """Matched inverse trees with different historical governance record types."""
+    record = support.read_text(os.path.join(FIXTURES, "record.yml"))
+    path = "src/auth/notes.txt"
+    histories = {
+        "regular": {RECORD: record},
+        "executable": {RECORD: {"content": record, "mode": "100755"}},
+        "missing": {},
+        "directory": {RECORD + "/notes": "notes\n"},
+        "symlink": {"policy.yml": record},
+    }
+    for kind, files in histories.items():
+        repo = support.init_repo(tempfile.mkdtemp(dir=root))
+        if kind == "symlink":
+            os.makedirs(os.path.join(repo, os.path.dirname(RECORD)))
+            os.symlink("../../policy.yml", os.path.join(repo, RECORD))
+        apply(repo, {**files, path: "before\n"}, "historical policy")
+        original = apply(repo, {path: "after\n"}, "original change")
+        base = support.commit_tree(repo, {RECORD: record, path: "after\n"}, "current policy")
+        support.git(repo, "checkout", "-q", "-b", "pr")
+        head = apply(repo, {path: "before\n"}, "restore notes")
+        support.git(repo, "checkout", "-q", "main")
+        yield kind, repo, original, base, head
+
+
 def body_of(case, shas):
     body = case["body"]
     for name, sha in shas.items():
@@ -667,27 +692,8 @@ class EntryVersionFive(GateCase):
         self.passes("high-on-high-floor", "Passed: declared high")
 
     def test_only_a_regular_historical_record_confirms_a_governed_revert(self):
-        record = support.read_text(os.path.join(FIXTURES, "record.yml"))
-        path = "src/auth/notes.txt"
-        histories = {
-            "regular": {RECORD: record},
-            "executable": {RECORD: {"content": record, "mode": "100755"}},
-            "missing": {},
-            "directory": {RECORD + "/notes": "notes\n"},
-            "symlink": {"policy.yml": record},
-        }
-        for kind, files in histories.items():
+        for kind, repo, original, base, head in historical_record_reverts(self.tmp):
             with self.subTest(kind=kind):
-                repo = support.init_repo(tempfile.mkdtemp(dir=self.tmp))
-                if kind == "symlink":
-                    os.makedirs(os.path.join(repo, os.path.dirname(RECORD)))
-                    os.symlink("../../policy.yml", os.path.join(repo, RECORD))
-                apply(repo, {**files, path: "before\n"}, "historical policy")
-                original = apply(repo, {path: "after\n"}, "original change")
-                base = support.commit_tree(repo, {RECORD: record, path: "after\n"}, "current policy")
-                support.git(repo, "checkout", "-q", "-b", "pr")
-                head = apply(repo, {path: "before\n"}, "restore notes")
-                support.git(repo, "checkout", "-q", "main")
                 body = "Risk: high — restore the reviewed notes\nReverts: " + original
                 pull = self.github(head, {"body": body, "author": "Habit098"})
                 lookup_calls = []
@@ -864,6 +870,75 @@ class GeneratedGateStates(GateCase):
                         result = script.verdict(repo, case["author"], case["owner"], risk + declaration,
                                                 base, head, lookup(provenance))
                         self.assert_verdict(result, {"passed": not failures, "rules": failures, "pure_revert": pure})
+
+    def test_revert_provenance_reports_a_negative_or_an_unreadable_association(self):
+        case = load(os.path.join(V5_CASES, "merged-pr-squash-commit-low.json"))
+        repo, base, head, shas = build(self.tmp, case)
+        sha = shas["sensitive"]
+        repository = "FixtureOwner/tally"
+        args = ["api", f"repos/{repository}/commits/{sha}/pulls?per_page=100"]
+        negative = "GitHub shows no PR merged into the default branch whose squash commit it is."
+        unknown = "GitHub couldn't be read to confirm it is a merged PR's squash commit."
+        for version, script in self.scripts():
+            for rows, reason in (([merged_pull(sha)], None), ([merged_pull(sha, "topic")], negative),
+                                 ([merged_pull(head)], negative), ([], negative), ([{}], unknown), (None, unknown)):
+                # Only the association response changes within each tier; Git evidence stays identical.
+                scratch = tempfile.mkdtemp(dir=self.tmp)
+                recording = os.path.join(scratch, "association.json")
+                with open(recording, "w") as handle:
+                    json.dump({"tool": "gh", "calls": [{"args": args, "stdout": json.dumps(rows),
+                                                        "exit": int(rows is None)}]}, handle)
+                env = environment.environment(scratch, gh_recording=recording, base=support.isolated_env())
+                with mock.patch.dict(os.environ, env):
+                    for tier in script.TIERS:
+                        with self.subTest(version=version, tier=tier, association=rows):
+                            body = f"Risk: {tier} — restore the reviewed change\nReverts: {sha}"
+                            result = script.verdict(repo, case["author"], case["owner"], body, base, head,
+                                                    script._merged_lookup(repository, "main"))
+                            rules = ["Floors"] if reason and tier != "high" else []
+                            self.assert_verdict(result, {"passed": not rules, "rules": rules,
+                                                         "pure_revert": reason is None})
+                            if reason:
+                                note = f"`Reverts: {sha}` isn't confirmed as a pure revert: {reason}"
+                                if rules:
+                                    self.assertIn(note, result["failures"][0])
+                                else:
+                                    self.assertEqual(result.get("revert_note"), note)
+                self.assertEqual([call["recorded"] for call in environment.read_log(scratch)], [True] * len(script.TIERS))
+
+    def test_historical_record_type_at_each_tier(self):
+        for kind, repo, target, base, head in historical_record_reverts(self.tmp):
+            for version, script in self.scripts():
+                for tier in script.TIERS:
+                    with self.subTest(version=version, tier=tier, historical_record=kind):
+                        body = f"Risk: {tier} — restore notes\nReverts: {target}"
+                        result = script.verdict(repo, "FixtureOwner", "FixtureOwner", body, base, head, lookup("found"))
+                        pure = kind in ("regular", "executable")
+                        rules = [] if pure or tier == "high" else ["Floors"]
+                        self.assert_verdict(result, {"passed": not rules, "rules": rules, "pure_revert": pure})
+
+    def test_reverted_object_parent_count_at_each_tier(self):
+        case = load(os.path.join(V5_CASES, "merged-pr-squash-commit-low.json"))
+        repo, _, _, shas = build(self.tmp, case)
+        before, after = (support.git(repo, "rev-parse", shas[key] + "^{tree}").strip()
+                         for key in ("base", "sensitive"))
+
+        def commit(tree, *parents):
+            args = [argument for parent in parents for argument in ("-p", parent)]
+            return support.git(repo, "commit-tree", tree, *args, "-m", "review fixture").strip()
+
+        # Every candidate has the same tree and its PR restores the same original tree.
+        for parents in ((shas["base"],), (), (shas["base"], shas["later"])):
+            target = commit(after, *parents)
+            restored = commit(before, target)
+            for version, script in self.scripts():
+                for tier in script.TIERS:
+                    with self.subTest(version=version, tier=tier, parents=len(parents)):
+                        body = f"Risk: {tier} — restore notes\nReverts: {target}"
+                        result = script.verdict(repo, case["author"], case["owner"], body, target, restored, lookup("found"))
+                        pure = len(parents) == 1
+                        rules = [] if pure or tier == "high" else ["Floors"]
+                        self.assert_verdict(result, {"passed": not rules, "rules": rules, "pure_revert": pure})
 
     def test_record_key_evidence_from_its_grammar(self):
         # Use complete, independently specified values so a newly admitted key needs its own example.

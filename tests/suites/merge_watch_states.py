@@ -54,9 +54,9 @@ class ReviewCase:
     def waiver(self, item):
         return self.comment(self.owner, f"Waiver: {item} at {self.head} — fixture approval")
 
-    def codex(self, watch):
+    def codex(self):
         marker = json.dumps({"code_review": {"commit_sha": self.head, "status": "completed"}})
-        return self.comment(watch.CODEX_LOGIN, f"<!-- codex-review-state:v1 {marker} -->")
+        return self.comment("chatgpt-codex-connector[bot]", f"<!-- codex-review-state:v1 {marker} -->")
 
     def check(self, test, watch, missing=(), problems=()):
         diagnostics = []
@@ -94,6 +94,8 @@ class ReviewGrammarCases:
 
     def test_title_and_required_kinds(self):
         for version, watch in self.versions():
+            self.assertEqual(watch.KINDS, tuple(CLEAR))
+            self.assertEqual(set(watch.REQUIRED), set(MINIMUM))
             for tier, required in watch.REQUIRED.items():
                 with self.subTest(version=version, tier=tier):
                     self.assertEqual(required, MINIMUM[tier])
@@ -105,6 +107,7 @@ class ReviewGrammarCases:
                     other_tier = next(t for t in watch.REQUIRED if t != tier)
                     first, rest = correct.split("\n", 1)
                     for invalid in (first.replace(tier, other_tier), first.replace(case.head, case.head[:7]),
+                                    first.replace(case.head, case.head[:7] + "0" * 33),
                                     first.replace(case.head, "0" * 40), "preface\n" + first):
                         case.summary["body"] = invalid + "\n" + rest
                         case.check(self, watch, ("merge-summary",))
@@ -142,7 +145,7 @@ class ReviewGrammarCases:
                        "provider or none": (*watch.PROVIDERS, watch.NO_PROVIDER)}
             for tier in watch.REQUIRED:
                 case = ReviewCase(version, tier)
-                codex = case.codex(watch)
+                codex = case.codex()
                 waiver = case.waiver("bot-1")
                 for state, domain in watch.SLOT_STATES.items():
                     with self.subTest(version=version, tier=tier, state=state, domain=domain):
@@ -167,6 +170,10 @@ class ReviewGrammarCases:
                                             status = case.statuses.pop()
                                             case.check(self, watch, ("bot-1", "reviewer"))
                                             case.statuses.append(status)
+                                            saved = case.summary["body"]
+                                            case.summary["body"] = saved.replace(", reviewer=clear", "")
+                                            case.check(self, watch, ("bot-1",))
+                                            case.summary["body"] = saved
                                         else:
                                             witnesses = {"codex": (case.comments, codex),
                                                          "copilot": (case.reviews, case.reviews[0])}
@@ -215,9 +222,15 @@ class ReviewGrammarCases:
             row["user"]["login"] = author
             case.check(self, watch, (kind,))
         row["user"]["login"] = case.owner
+        verification = good.replace(kind + " at ", 'verification "fixture row" at ')
+        self.assertEqual(watch.WAIVER.fullmatch(verification).group(1), 'verification "fixture row"')
+        for item in ("bot-2", "checks", "risk", "merge-summary"):
+            row["body"] = good.replace(kind + " at ", item + " at ")
+            self.assertIsNone(watch.WAIVER.fullmatch(row["body"]))
+            case.check(self, watch, (kind,))
         for bad in (good.replace(case.head, case.head[:7]), good.replace(case.head, "f" * 40),
                     good.replace(case.head, case.head.upper()), "note\n" + good, good.split(" — ")[0] + " — ",
-                    good.replace(" — ", " - "), good.replace(kind + " at ", 'verification "fixture row" at ')):
+                    good.replace(" — ", " - "), verification):
             row["body"] = bad
             case.check(self, watch, (kind,))
         row["body"] = good
@@ -235,7 +248,7 @@ class ReviewGrammarCases:
                     case.order((provider,))
                     case.declare(items(watch, tier, {"bot-1": f"clear({provider})"}))
                     if provider == "codex":
-                        comment = case.codex(watch)
+                        comment = case.codex()
                         marker = comment["body"]
                         variants = [(comment, "body", text) for text in (
                             "review requested", marker.replace("completed", "pending"),
@@ -245,7 +258,26 @@ class ReviewGrammarCases:
                     elif provider == "copilot":
                         review, = case.reviews
                         check, = case.checks
+                        run = next(row for path, row in case.api.items() if "/actions/runs/" in path)
+                        job = next(row for path, row in case.api.items() if "/actions/jobs/" in path)
+                        for accepted in ("COMMENTED", "APPROVED", "CHANGES_REQUESTED"):
+                            review["state"] = accepted
+                            case.check(self, watch)
+                        review["state"] = "COMMENTED"
+                        for row, field, value, message in (
+                            (review, "state", None, "Copilot review: missing review state"),
+                            (review, "state", "DISMISSED", "Copilot review: state at merge before dismissal cannot be established"),
+                            (check, "details_url", None, "Copilot check: ambiguous producer: no matching Actions job and suite"),
+                            (job, "check_run_url", None, "Copilot check: ambiguous producer: linked Actions job does not corroborate this check"),
+                            (run, "check_suite_id", None, "Copilot check: ambiguous producer: linked Actions run cannot be corroborated"),
+                        ):
+                            original = row[field]
+                            row[field] = value
+                            case.check(self, watch, problems=(f"#{case.pr['number']} {message}",))
+                            row[field] = original
                         variants = [
+                            (review, "state", "UNRECOGNIZED"), (check["app"], "slug", "another-app"),
+                            (run, "path", ".github/workflows/ci.yml"), (run["actor"], "login", "OtherActor"),
                             (review["user"], "login", "OtherAccount"), (review, "is_copilot_code_review", False),
                             (review, "commit_id", "a" * 40), (review, "state", "PENDING"),
                             (review, "submitted_at", LATE), (check, "head_sha", "a" * 40),
@@ -388,9 +420,9 @@ class ReviewGrammarCases:
                 self.assertEqual(diagnostics, [])
                 return records
 
+            self.assertEqual(set(watch.RED), {"failure", "cancelled", "timed_out", "startup_failure"})
             for conclusion in watch.RED:
                 with self.subTest(version=version, conclusion=conclusion):
-                    self.assertIn(conclusion, ("failure", "cancelled", "timed_out", "startup_failure"))
                     run["conclusion"] = conclusion
                     observed = (f"Workflow ci concluded {conclusion} on its push-triggered run "
                                 f"{run['html_url']} at commit {run['head_sha']}.")
@@ -444,6 +476,14 @@ class ReviewGrammarCases:
                         self.assertEqual(watch.decide("push", case.event, "Checkout", read, notes, problems), [])
                         self.assertEqual(problems, expected)
                         self.assertEqual(bool(notes), error is watch.NotFound)
+                def neither_record(path):
+                    if path in (case.record_key, new_record):
+                        raise watch.NotFound(path)
+                    return case.api[path]
+
+                problems = []
+                self.assertEqual(watch.decide("push", case.event, "Checkout", neither_record, problems=problems), [])
+                self.assertEqual(problems, ["#54 policy: historical record could not be read"])
                 for raw, message in (("not a record", "invalid historical record"),
                                      (case.record.replace(f"version: {version}", "version: 999"),
                                       "unsupported historical version 999")):
@@ -489,18 +529,22 @@ class ReviewGrammarCases:
                 watch_path = parsers.TEMPLATES.template_path(version, watch.WORKFLOW)
                 with open(watch_path, encoding="utf-8") as handle:
                     audit = handle.read()
-                self.assertIn("\non:\n  pull_request_target:\n    types: [opened, edited, synchronize, reopened]\n"
-                              "    branches:\n      - @@default_branch@@\n", gate)
+                gate_events = gate.split("\non:\n", 1)[1].split("\n\n", 1)[0]
+                self.assertEqual(gate_events, "  pull_request_target:\n    types: [opened, edited, synchronize, reopened]\n"
+                                 "    branches:\n      - @@default_branch@@")
                 self.assertIn("group: governance-gate-${{ github.event.pull_request.number }}\n"
                               "  cancel-in-progress: true", gate)
                 self.assertIn("fetch-depth: 0", gate)
                 self.assertNotIn("ref:", gate.split("steps:", 1)[1])
+                self.assertEqual(gate.count("permissions:"), 1)
                 self.assertEqual(gate.split("\npermissions:\n")[1].split("\n\n")[0].splitlines(),
                                  ["  contents: read", "  pull-requests: read", "  checks: write"])
-                self.assertIn("\non:\n  push:\n    branches:\n      - @@default_branch@@\n  workflow_run:\n"
-                              "    types: [completed]\n    branches:\n      - @@default_branch@@\n    workflows:\n"
-                              '      - "**"\n      - "!merge-watch"\n', audit)
+                audit_events = audit.split("\non:\n", 1)[1].split("\n\n", 1)[0]
+                self.assertEqual(audit_events, "  push:\n    branches:\n      - @@default_branch@@\n  workflow_run:\n"
+                                 "    types: [completed]\n    branches:\n      - @@default_branch@@\n    workflows:\n"
+                                 '      - "**"\n      - "!merge-watch"')
                 self.assertNotIn("\nconcurrency:", audit)
+                self.assertEqual(audit.count("permissions:"), 1)
                 permissions = audit.split("\npermissions:\n")[1].split("\n\n")[0].splitlines()
                 self.assertEqual(set(permissions), {"  contents: read", "  pull-requests: read", "  issues: write",
                                                     "  checks: read", "  statuses: read", "  actions: read"})
