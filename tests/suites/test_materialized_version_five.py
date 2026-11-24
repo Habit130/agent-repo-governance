@@ -86,7 +86,16 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
         outputs = flat(level_two_section(self.text("docs/agents/reviewer.md"), "## Outputs", "reviewer.md"))
         self.assertIn("`failure` while an Important finding is open, `success` otherwise", outputs)
         self.assertIn("[Checks first](review.md#checks-first) before publishing the Merge summary", outputs)
+        self.assertIn("[The merge handoff](review.md#the-merge-handoff)", outputs)
         self.assertNotIn("**When clear**", outputs)
+
+    def test_reviewer_start_leaves_publication_timing_to_outputs(self):
+        start = flat(level_two_section(self.text("docs/agents/reviewer.md"), "## Start", "reviewer.md"))
+        instruction_end = "Reviewer status and, when clear, the Merge summary.`"
+        self.assertIn(instruction_end, start)
+        guidance = start.split(instruction_end, 1)[1]
+        self.assertIn("[Outputs](#outputs)", guidance)
+        self.assertNotIn("when clear", guidance)
 
     def test_checks_first_verifies_the_effective_rules_as_the_agent(self):
         import owner_support as ow

@@ -14,10 +14,10 @@ with, with
 `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
 Reviewer status and, when clear, the Merge summary.`
 
-These writes are what habit's start asks for: the Comment review, the `Reviewer` status and,
-when clear, the Merge summary (Outputs), whatever policy the default branch holds. A Reviewer
-that cannot make them, under a read-only instruction or a denied permission, stops and tells
-habit instead of posting a summary alone.
+habit's start instruction requests the Comment review, the `Reviewer` status and the
+Merge summary, whatever policy the default branch holds. Follow [Outputs](#outputs) for
+when to post each one. A Reviewer that cannot make these writes, under a read-only
+instruction or a denied permission, stops and tells habit instead of posting a summary alone.
 
 Read `AGENTS.md`, this file and `review.md`. Before reading the diff, check the PR's
 declared tier and evidence comment as step 1 says. After that check, read its diff, ticket
@@ -76,8 +76,9 @@ On the exact head, as the agent account:
   `gh api repos/{owner}/{repo}/statuses/<sha> -f context=Reviewer -f state=<state>`:
   `failure` while an Important finding is open, `success` otherwise.
 - **Final handoff.** Follow [Checks first](review.md#checks-first) before publishing the
-  Merge summary (the high-risk report at high) and giving habit the pinned merge command
-  (`handoff.md`).
+  Merge summary (the high-risk report at high). Then follow
+  [The merge handoff](review.md#the-merge-handoff) to give habit the pinned command and
+  the accompanying instructions.
 
 The review speaks in the Reviewer's voice only: it states findings and never commits the
 Builder to changes. Repairs are the Builder's: the Reviewer never pushes, and leaves the
