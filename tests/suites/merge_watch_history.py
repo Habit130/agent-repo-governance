@@ -19,6 +19,11 @@ EARLY = "2026-11-10T09:44:00Z"
 LATE = "2026-11-10T09:46:00Z"
 
 
+def ordinary_change(base, squash):
+    return {"base_commit": {"sha": base}, "total_commits": 1, "commits": [{"sha": squash}],
+            "files": [{"filename": "README.md", "status": "modified"}]}
+
+
 def supply_historical_fields(case):
     """Give a copy of the trimmed v4 recording pre-merge dates, a parent and linked Actions identity.
 
@@ -30,6 +35,7 @@ def supply_historical_fields(case):
     prefix = "repos/" + repo
     squash = event["after"]
     github[f"{prefix}/git/commits/{squash}"] = {"sha": squash, "parents": [{"sha": event["before"]}]}
+    github[f"{prefix}/compare/{event['before']}...{squash}"] = ordinary_change(event["before"], squash)
     for path, rows in list(github.items()):
         if path.endswith("/comments"):
             for row in rows:
@@ -74,6 +80,9 @@ class RecordedMerge(VersionThreeRendered):
         self.prefix = "repos/" + self.repo
         self.parent = self.event["before"]
         self.squash = self.event["after"]
+        # Existing declaration cases concern repository-owned changes.
+        self.change_path = f"{self.prefix}/compare/{self.parent}...{self.squash}"
+        self.api[self.change_path] = ordinary_change(self.parent, self.squash)
         self.pr = self.api[f"{self.prefix}/commits/{self.squash}/pulls"][0]
         self.head = self.pr["head"]["sha"]
         self.record_path = f"{self.prefix}/contents/.github/governance/record.yml?ref={self.parent}"
@@ -87,7 +96,7 @@ class RecordedMerge(VersionThreeRendered):
         self.errors = {}
         self.unassociated = None
 
-    def replay(self, missing=(), incomplete=None, notes=(), repository=None, observation=None):
+    def replay(self, missing=(), incomplete=None, notes=(), repository=None, observation=None, rate_limit=None):
         """Serve the actual gh API shapes, then compare the posted records and workflow exit."""
         calls = []
         for path, value in self.api.items():
@@ -104,8 +113,10 @@ class RecordedMerge(VersionThreeRendered):
                 output = json.dumps(value)
             args.insert(1, "--include")
             status = "404 Not Found" if path in self.errors else "200 OK"
+            if path == rate_limit:
+                status = "429 Too Many Requests\r\nRetry-After: 99999"
             calls.append({"args": args, "stdout": "HTTP/2.0 " + status + "\r\n\r\n" + self.errors.get(path, output),
-                          "exit": int(path in self.errors)})
+                          "exit": int(path in self.errors or path == rate_limit)})
         expected = []
         if missing:
             title = "Miss: process miss, missing-review in #54"
@@ -150,6 +161,11 @@ class RecordedMerge(VersionThreeRendered):
                          expected, output)
         self.assertTrue(all(call["recorded"] for call in log), log)
         return [call["args"] for call in log]
+
+    def declare(self, tier, *reviews):
+        self.pr["body"] = f"Risk: {tier} — sandbox control"
+        self.summary["body"] = (f"## Merge summary: {tier} at {self.head}\nRequired reviews: "
+                                + ", ".join(("self-verification=clear", *reviews)))
 
     def waiver(self, kind):
         return {"user": {"login": "Habit130"}, "created_at": EARLY, "updated_at": EARLY,

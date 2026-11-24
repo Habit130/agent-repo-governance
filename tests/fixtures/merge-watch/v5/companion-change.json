@@ -1,0 +1,9 @@
+{
+  "source": "Synthetic squash comparison for #262, finding E on #256. Pair with the qualified Copilot recording from #131.",
+  "comparison": {
+    "base_commit": {"sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+    "total_commits": 1,
+    "commits": [{"sha": "dddddddddddddddddddddddddddddddddddddddd"}],
+    "files": [{"filename": "docs/agents/review.md", "status": "modified"}]
+  }
+}
