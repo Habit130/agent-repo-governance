@@ -882,37 +882,42 @@ def _companion_change(pull):
 
 
 def _companion_missing(pull, bots, summary, agent):
-    """Judge the v5 medium companion independently of the declared bot slot and any waiver."""
+    """Yield each proven absence before a subsequent historical read can exhaust the budget."""
     if not bots or "copilot" not in bots:
-        return ()
+        return
     # A clear declaration already required the historical status in _declared_missing.
     if isinstance(summary, dict) and summary.get("reviewer") == ("clear", None):
-        return ()
-    facts = pull.conditional_evidence()
-    others = any_evidence(PROVIDERS[bot](facts) for bot in bots if bot != "copilot")
+        return
+    problems = []
+
+    def evaluate(reader):
+        facts = pull.conditional_evidence()
+        result = reader(facts)
+        if result is UNKNOWN:
+            problems.extend(facts.problems)
+        return result
+
+    others = evaluate(lambda facts: any_evidence(PROVIDERS[bot](facts) for bot in bots if bot != "copilot"))
     if others is True:
-        return ()
-    change = _companion_change(facts)
-    if change is False:
-        return ()
-    copilot = _copilot(facts)
+        return
+    copilot = evaluate(_copilot)
     if copilot is False:
-        return ()
-    for message in facts.problems:
-        unresolved(pull.problems, message)
-    pull.notes.extend(note for note in facts.notes if note not in pull.notes)
+        return
+    change = evaluate(_companion_change)
+    if change is False:
+        return
     if UNKNOWN in (others, change, copilot):
-        return ()
-    missing = []
+        for message in problems:
+            unresolved(pull.problems, message)
+        return
     if summary is not UNKNOWN:
-        missing.append(MERGE_SUMMARY)
+        yield MERGE_SUMMARY
     if _reviewer(pull, agent) is False:
-        missing.append("reviewer")
-    return missing
+        yield "reviewer"
 
 
 def missing_reviews(pull, agent_account, owner, tier, bots, version):
-    """List only established absences. Pull retains the reasons for unresolved evidence."""
+    """Establish ordinary misses first and defer any additional companion reads."""
     lines = _summary_lines(pull, agent_account, tier, version)
     summary = _summary_reviews(lines, tier, version)
     waivers = waived(pull, owner)
@@ -938,9 +943,8 @@ def missing_reviews(pull, agent_account, owner, tier, bots, version):
     if "reviewer" in minimum and waivers["reviewer"] is not True:
         if any_evidence((_reviewer(pull, agent_account), waivers["reviewer"])) is False:
             missing.add("reviewer")
-    if version == 5 and tier == "medium":
-        missing.update(_companion_missing(pull, bots, summary, agent_account))
-    return [kind for kind in KINDS + (MERGE_SUMMARY,) if kind in missing]
+    companion = _companion_missing(pull, bots, summary, agent_account) if version == 5 and tier == "medium" else ()
+    return missing, companion
 
 
 def _judge_pull(read, repository, matches, squash, notes, problems):
@@ -968,23 +972,33 @@ def _judge_pull(read, repository, matches, squash, notes, problems):
     first_pull, _ = candidates[0]
     policy = first_pull.policy()  # All candidate revisions share this squash parent.
     if policy is UNKNOWN:
-        return records
+        yield from records
+        return
     version, agent = policy["version"], policy["agent_account"]
+    bots = policy["confirmed"].get("review_bots")
     owner = repository.split("/", 1)[0]
     if version < REVIEW_BOTS_VERSION:
         notes.append("#%d merged onto a base whose record is at version %d; its review bots follow that version's "
                      "rules, which this script doesn't judge." % (number, version))
-    common = set(KINDS + (MERGE_SUMMARY,))
+    judgments = []
     for facts, risks in candidates:
         tiers = possible_tiers(risks)
         for tier in REQUIRED:
             if tier not in tiers:
                 continue
             if version < REVIEW_BOTS_VERSION:
-                missing = earlier_version_missing(facts, agent, owner, tier, version)
+                judgments.append((set(earlier_version_missing(facts, agent, owner, tier, version)), ()))
             else:
-                missing = missing_reviews(facts, agent, owner, tier, policy["confirmed"].get("review_bots"), version)
-            common.intersection_update(missing)
+                judgments.append(missing_reviews(facts, agent, owner, tier, bots, version))
+    # A terminal quota stop ends the push after this PR's proved record has been
+    # offered for posting. Unvisited alternatives keep their ordinary misses.
+    interruption = None
+    try:
+        for missing, companion in judgments:
+            missing.update(companion)
+    except PushIncomplete as error:
+        interruption = error
+    common = set.intersection(*(missing for missing, _ in judgments))
     if common:
         heads = sorted({head for head, _ in revisions})
         subject = ("Merged head %s" % heads[0] if len(heads) == 1 else
@@ -992,7 +1006,9 @@ def _judge_pull(read, repository, matches, squash, notes, problems):
         kinds = [kind for kind in KINDS + (MERGE_SUMMARY,) if kind in common]
         records.append(record(number, "process miss", "missing-review",
                               "%s, %s, lacks: %s." % (subject, declared, ", ".join(kinds))))
-    return records
+    yield from records
+    if interruption is not None:
+        raise interruption
 
 
 PUSH_COMMIT_LIMIT = 2048

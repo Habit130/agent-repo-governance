@@ -143,3 +143,21 @@ class CompanionReviewer(RecordedMerge):
         self.declare("medium", "bot-1=waived(copilot)")
         self.comments.append(self.waiver("bot-1"))
         self.replay()
+
+    def test_optional_provider_is_complete_despite_an_uncertain_sibling(self):
+        self.declare("medium", "bot-1=waived(copilot)")
+        self.comments.append(self.waiver("bot-1"))
+        malformed = dict(self.review)
+        del malformed["submitted_at"]
+        self.api[f"{self.prefix}/pulls/54/reviews"].append(malformed)
+        self.replay(missing=("merge-summary",))
+
+    def test_quota_stop_preserves_already_established_misses_on_this_merge(self):
+        self.declare("medium", "bot-1=clear(copilot)")
+        self.summary["body"] = self.summary["body"].replace("self-verification=clear", "self-verification=waived")
+        self.comments.append({"user": {"login": "chatgpt-codex-connector[bot]"}, "created_at": EARLY,
+                              "updated_at": LATE, "body": "edited after merge"})
+        self.replay(missing=("self-verification",), rate_limit=self.change_path, incomplete="rate limited")
+        self.comments.pop()
+        self.replay(missing=("self-verification", "merge-summary"),
+                    rate_limit=f"{self.prefix}/commits/{self.head}/statuses", incomplete="rate limited")

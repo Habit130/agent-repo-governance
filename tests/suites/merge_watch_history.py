@@ -96,7 +96,7 @@ class RecordedMerge(VersionThreeRendered):
         self.errors = {}
         self.unassociated = None
 
-    def replay(self, missing=(), incomplete=None, notes=(), repository=None, observation=None):
+    def replay(self, missing=(), incomplete=None, notes=(), repository=None, observation=None, rate_limit=None):
         """Serve the actual gh API shapes, then compare the posted records and workflow exit."""
         calls = []
         for path, value in self.api.items():
@@ -113,8 +113,10 @@ class RecordedMerge(VersionThreeRendered):
                 output = json.dumps(value)
             args.insert(1, "--include")
             status = "404 Not Found" if path in self.errors else "200 OK"
+            if path == rate_limit:
+                status = "429 Too Many Requests\r\nRetry-After: 99999"
             calls.append({"args": args, "stdout": "HTTP/2.0 " + status + "\r\n\r\n" + self.errors.get(path, output),
-                          "exit": int(path in self.errors)})
+                          "exit": int(path in self.errors or path == rate_limit)})
         expected = []
         if missing:
             title = "Miss: process miss, missing-review in #54"

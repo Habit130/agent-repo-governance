@@ -71,11 +71,13 @@ commit's parent. At Initialize it reads the introduced record after a confirmed 
 It compares comments, Reviewer statuses, Copilot submissions and check completions with
 the PR's merge time. The `actions: read` permission lets it identify the linked Copilot
 workflow by its job, run, head and check suite. The public sandbox recording on #131
-supplies the positive producer control. On a v5 medium merge, replay the squash change
-with that recording to check the compulsory Reviewer when Copilot alone completed a bot
-review on fixed content or an instruction file. Check the posted record for an omitted
-summary entry, a missing successful status by merge time, or both. For a draft v5 render,
-pass `--version 5` to
+supplies the positive producer control. Run `python3 tests/run.py suites merge-watch`
+for the offline Copilot replay. It checks the compulsory Reviewer on a v5 medium merge
+when Copilot alone completed a bot review on fixed content or an instruction file. It
+asserts the posted record for an omitted summary entry, a missing successful status by
+merge time, or both.
+
+For the hosted check of a draft v5 render, pass `--version 5` to
 `prepare` with the public sandbox's `merge-watch-v4-high`, `merge-watch-v4-medium` and
 `merge-watch-v4-miss` probes. These probes exercise Codex. The prepared version selects
 the summary format for the probe PRs. Read back all 40 head digits on each v5 probe and
