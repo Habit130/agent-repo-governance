@@ -395,8 +395,10 @@ conclusion the summary's first line gives:
 1. **The pinned merge command**, for habit to run:
    `ghm pr merge <n> --admin --squash --match-head-commit <sha>`, with the full head SHA.
    It is the only governed merge path.
-2. **At high**: say merged in the Builder's terminal, so the Builder runs its after-merge
-   steps.
+2. **At high**, use the original Builder's wait state (`builder.md`, After merge).
+   A waiting Builder needs no reply. If it stopped under the wait fallback, habit may say
+   “继续” in that chat for the same checks. If its state is unknown, give both instructions
+   conditionally.
 3. **Misses**, only when any is open: the count of open miss records,
    `gh issue list --label miss --state open`, and a start request for a Planner session in
    which habit invokes `retro` on the oldest.

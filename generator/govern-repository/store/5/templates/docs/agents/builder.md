@@ -130,8 +130,8 @@ A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
   `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
   Reviewer status and, when clear, the Merge summary.`
 
-It is a final handoff (`handoff.md`): the session stays open, waiting on the PR, and says
-the words habit uses on return.
+It is a final handoff (`handoff.md`). Tell habit whether this Builder is waiting on the
+PR or has stopped, and give the applicable return instruction (After merge).
 
 ## Syncing and waiting
 
@@ -147,9 +147,10 @@ the words habit uses on return.
   repair and escalation rules and `review.md`, Rerun-only passes. This sequence applies to
   PR-body edits, not ordinary issue or evidence comments; step 7's evidence and review
   prerequisites still apply. Other actors' concurrent edits can still cause cancellations.
-- **Wait** on the PR, before and after the merge, in your harness when it can wait, for
-  example through a background command or a poll. Otherwise stop and say what you wait for,
-  and habit says "continue".
+- **Wait** on the PR within the harness limits in `AGENTS.md`, How to start, using a
+  background command or a poll. For the high Builder waiting for merge, follow After merge.
+  For other waits the harness cannot perform, stop and say what you wait for.
+  habit says "continue" to resume.
 
 ## Escalations
 
@@ -184,16 +185,28 @@ Secrets).
 This section applies to PR delivery.
 
 - `Closes` closes the ticket, and the merge is the completion record.
-- At medium and high, keep waiting on the PR until it merges; at high, habit says "merged"
-  in this terminal. Then remove your worktree. A Builder that can't wait leaves its
-  worktree, and nobody nudges it.
+- At medium and high, wait for the PR to merge. At medium, a Builder that cannot wait
+  leaves its worktree, and nobody nudges it.
+- At high, when its permitted in-session wait returns, the original Builder must read the
+  intended repository and PR number on GitHub. Confirm that habit merged it into the
+  intended default branch, the full PR head SHA at merge matches the reviewed head pinned
+  for habit, and GitHub identifies the resulting squash commit. Only then begin verification
+  without another message from habit. If the PR is open, keep waiting where supported.
+  For a PR closed without merge, an unrelated event or a mismatched identity, report the
+  discrepancy and stop.
+- If that wait is unsupported or interrupted, or the GitHub read is inconclusive,
+  say what evidence is pending, keep your worktree and stop. To resume verification,
+  habit may say “继续” (continue) in the original Builder chat. On return, repeat the
+  same GitHub checks. Other sessions leave that chat and its worktree alone. Never ask
+  habit to return just for cleanup.
 - The after-merge report is a final handoff (`handoff.md`). It reports this delivery only;
   what is dispatched next is the Planner's dispatch plan. When actual difficulty differed
   from that plan, say so in one sentence; say nothing otherwise.
 - Before any after-merge report, reread from GitHub, for the PR's exact head at merge: each
   required review's result, the Comment review and `Reviewer` status when a Reviewer ran,
-  and the Merge summary. The report states only what that reading shows.
-- **Product smoke** verifies the exact merged commit. When default-branch product build or
+  and the Merge summary. Report only what that reading shows. If required evidence is
+  missing, report the gap and escalate.
+- **Product smoke** verifies the resulting squash commit. When default-branch product build or
   test CI exists, confirm its run for that commit passes. Otherwise state its absence; a
   high-risk ticket must have predetermined an executable local smoke, which runs on that
   exact commit. Also run any additional smoke the ticket requires.
@@ -201,6 +214,7 @@ This section applies to PR delivery.
   smoke. A failing or unavailable required smoke leaves delivery incomplete: record the
   result and escalate. A red default-branch run also gets a miss record (`issue-tracker.md`),
   then a ticket or a revert.
+- After the confirmed merge, remove your worktree once any local smoke that needs it is done.
 - At high, after product smoke passes, ask habit's
   go-ahead for each one-way-door step, one at a time, saying what it does and whether it can
   be undone.
