@@ -224,6 +224,7 @@ class ReviewGrammarCases:
         row["user"]["login"] = case.owner
         verification = good.replace(kind + " at ", 'verification "fixture row" at ')
         self.assertEqual(watch.WAIVER.fullmatch(verification).group(1), 'verification "fixture row"')
+        self.assertIsNone(watch.WAIVER.fullmatch(verification.replace('"fixture row"', '""')))
         for item in ("bot-2", "checks", "risk", "merge-summary"):
             row["body"] = good.replace(kind + " at ", item + " at ")
             self.assertIsNone(watch.WAIVER.fullmatch(row["body"]))
@@ -521,6 +522,14 @@ class ReviewGrammarCases:
             self.assertEqual(problems, [])
 
     def test_versions_workflow_filters(self):
+        def section(text, key):
+            # Blank and comment lines can occur anywhere inside a YAML mapping.
+            lines = [line.rstrip() for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+            self.assertEqual(lines.count(key + ":"), 1)
+            start = lines.index(key + ":") + 1
+            fields = itertools.takewhile(lambda line: line.startswith(" "), lines[start:])
+            return "\n".join(fields)
+
         for version, watch in self.versions():
             with self.subTest(version=version):
                 gate_path = parsers.TEMPLATES.template_path(version, ".github/workflows/governance-gate.yml")
@@ -529,7 +538,7 @@ class ReviewGrammarCases:
                 watch_path = parsers.TEMPLATES.template_path(version, watch.WORKFLOW)
                 with open(watch_path, encoding="utf-8") as handle:
                     audit = handle.read()
-                gate_events = gate.split("\non:\n", 1)[1].split("\n\n", 1)[0]
+                gate_events = section(gate, "on")
                 self.assertEqual(gate_events, "  pull_request_target:\n    types: [opened, edited, synchronize, reopened]\n"
                                  "    branches:\n      - @@default_branch@@")
                 self.assertIn("group: governance-gate-${{ github.event.pull_request.number }}\n"
@@ -537,14 +546,14 @@ class ReviewGrammarCases:
                 self.assertIn("fetch-depth: 0", gate)
                 self.assertNotIn("ref:", gate.split("steps:", 1)[1])
                 self.assertEqual(gate.count("permissions:"), 1)
-                self.assertEqual(gate.split("\npermissions:\n")[1].split("\n\n")[0].splitlines(),
+                self.assertEqual(section(gate, "permissions").splitlines(),
                                  ["  contents: read", "  pull-requests: read", "  checks: write"])
-                audit_events = audit.split("\non:\n", 1)[1].split("\n\n", 1)[0]
+                audit_events = section(audit, "on")
                 self.assertEqual(audit_events, "  push:\n    branches:\n      - @@default_branch@@\n  workflow_run:\n"
                                  "    types: [completed]\n    branches:\n      - @@default_branch@@\n    workflows:\n"
                                  '      - "**"\n      - "!merge-watch"')
                 self.assertNotIn("\nconcurrency:", audit)
                 self.assertEqual(audit.count("permissions:"), 1)
-                permissions = audit.split("\npermissions:\n")[1].split("\n\n")[0].splitlines()
-                self.assertEqual(set(permissions), {"  contents: read", "  pull-requests: read", "  issues: write",
-                                                    "  checks: read", "  statuses: read", "  actions: read"})
+                permissions = section(audit, "permissions").splitlines()
+                self.assertCountEqual(permissions, ["  contents: read", "  pull-requests: read", "  issues: write",
+                                                    "  checks: read", "  statuses: read", "  actions: read"])

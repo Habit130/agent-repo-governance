@@ -889,7 +889,7 @@ class GeneratedGateStates(GateCase):
                     json.dump({"tool": "gh", "calls": [{"args": args, "stdout": json.dumps(rows),
                                                         "exit": int(rows is None)}]}, handle)
                 env = environment.environment(scratch, gh_recording=recording, base=support.isolated_env())
-                with mock.patch.dict(os.environ, env):
+                with mock.patch.dict(os.environ, env, clear=True):
                     for tier in script.TIERS:
                         with self.subTest(version=version, tier=tier, association=rows):
                             body = f"Risk: {tier} — restore the reviewed change\nReverts: {sha}"
