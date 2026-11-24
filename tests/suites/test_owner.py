@@ -1,6 +1,6 @@
 """The owner script (#44 §7, #41 §7): Seam D, against the stand-in GitHub only.
 
-Each case under `tests/fixtures/owner/cases/` renders version 1 into the tally sample with the
+Each case under `tests/fixtures/owner/cases/` renders its version (default 1) into the tally sample with the
 case's record, serves the case's GitHub state through the stand-in `gh`, runs the rendered
 `.github/governance/owner.sh` the way the owner-script command does, and checks the exit code, every
 write with its exact body, and every report line (`owner_support.py` gives the case format).
@@ -55,44 +55,30 @@ class SeamD(OwnerCase):
     """Filled below: one test per case file."""
 
 
-def _add_case(name):
+def _add_case(name, case):
     def test(self):
-        case = ow.load_case(name)
         result = self.run_case(case)
         self.assert_safe(result)
         expected = [(write[0], write[1]) for write in case.get("writes", [])]
         self.assertEqual(ow.writes(result["log"]), expected, result["out"])
         self.assertEqual([list(line) for line in ow.report_lines(result["out"])], case["report"], result["out"])
         self.assertEqual(result["code"], case["exit"], result["out"])
+        if "accepted" in case:
+            with open(os.path.join(os.path.dirname(result["scratch"]), "gh.json")) as handle:
+                calls = json.load(handle)["calls"]
+            accepted = [entry for entry in result["log"] if calls[entry["call"]]["exit"] == 0]
+            self.assertEqual(ow.writes(accepted), [tuple(w) for w in case["accepted"]])
+            self.assertIn(case["total"], result["out"].splitlines()[-1])
+            for status, subject, detail in case["items"]:
+                line, = (s for s in result["out"].splitlines() if s.startswith("[%s] %s：" % (status, subject)))
+                self.assertIn(detail, line)
 
     test.__doc__ = "owner case %s" % name
     setattr(SeamD, "test_" + re.sub(r"[^A-Za-z0-9]+", "_", name), test)
 
 
-for _file in sorted(os.listdir(ow.CASES)):
-    _add_case(_file[: -len(".json")])
-
-
-class AcceptedWrites(OwnerCase):
-    def test_v5_counts_accepted_items_and_reports_each_postcondition(self):
-        with open(os.path.join(support.FIXTURES, "owner", "v5-accepted-writes.json")) as handle:
-            cases = json.load(handle)["cases"]
-        for row in cases:
-            with self.subTest(case=row["name"]):
-                case = dict(ow.load_case(row.get("base", "rerun-at-target")), version=5, **row["setup"])
-                result = self.run_case(case)
-                self.assert_safe(result)
-                self.assertEqual(ow.writes(result["log"]), [tuple(w[:2]) for w in case["writes"]])
-                with open(os.path.join(os.path.dirname(result["scratch"]), "gh.json")) as handle:
-                    calls = json.load(handle)["calls"]
-                accepted = [call for call in result["log"] if calls[call["call"]]["exit"] == 0]
-                self.assertEqual(ow.writes(accepted), [tuple(w) for w in row["accepted"]])
-                self.assertEqual(result["code"], row["exit"], result["out"])
-                self.assertIn(row["total"], result["out"].splitlines()[-1])
-                for status, subject, detail in row["items"]:
-                    lines = [line for line in result["out"].splitlines() if line.startswith("[%s] %s：" % (status, subject))]
-                    self.assertEqual(len(lines), 1, result["out"])
-                    self.assertIn(detail, lines[0])
+for _name, _case in ow.cases():
+    _add_case(_name, _case)
 
 
 class Report(OwnerCase):

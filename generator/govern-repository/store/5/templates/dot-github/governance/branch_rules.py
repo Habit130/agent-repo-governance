@@ -7,6 +7,8 @@ import sys
 from urllib.parse import quote
 
 PRO_REFUSAL = "Upgrade to GitHub Pro or make this repository public to enable this feature."
+GATE_CONTEXT = "governance-gate"
+ACTIONS_APP = 15368
 GATE_TYPES = ("deletion", "non_fast_forward", "pull_request", "required_status_checks")
 
 
@@ -30,13 +32,50 @@ def read(path, pages=False, private=False):
     raise ValueError("%s unreadable response; retry" % path)
 
 
-def check_ruleset(name, types, listed, effective):
-    matches = [item for item in listed if item.get("name") == name and item.get("target") == "branch"]
+def report_scope(path, label, private):
+    try:
+        detail = read(path, private=private)
+        conditions = detail.get("conditions")
+        scope = conditions.get("ref_name") if isinstance(conditions, dict) else None
+        if (not isinstance(scope, dict) or not isinstance(scope.get("include"), list)
+                or not isinstance(scope.get("exclude"), list)):
+            raise ValueError("%s scope unreadable; check agent access and retry" % label)
+        print("%s scope %s; if it excludes the default branch, correct its scope or rename it before rerunning the owner script"
+              % (label, json.dumps(scope, sort_keys=True)))
+    except (ValueError, OSError) as error:
+        print(error)
+
+
+def check_publisher(rules, label):
+    publishers = []
+    for rule in rules:
+        if rule.get("type") == "required_status_checks":
+            params = rule.get("parameters")
+            checks = params.get("required_status_checks") if isinstance(params, dict) else None
+            if not isinstance(checks, list) or not all(isinstance(check, dict) for check in checks):
+                print("%s: required check details unreadable; retry" % label)
+                return False
+            publishers.extend(check.get("integration_id") for check in checks if check.get("context") == GATE_CONTEXT)
+    observed = ", ".join("%s@%s" % (GATE_CONTEXT, p if p is not None else "unspecified") for p in publishers)
+    pinned = bool(publishers) and all(type(p) is int and p == ACTIONS_APP for p in publishers)
+    evidence = observed or GATE_CONTEXT + " absent"
+    if not pinned:
+        evidence += "; expected %s@%d" % (GATE_CONTEXT, ACTIONS_APP)
+    print("%s: %s" % (label, evidence))
+    return pinned
+
+
+def check_ruleset(name, types, listed, effective, path, private):
+    matches = [item for item in listed if item.get("name") == name]
     if len(matches) != 1 or type(matches[0].get("id")) is not int:
-        print("%s: missing or ambiguous branch ruleset ID" % name)
+        print("%s: missing or ambiguous ruleset ID" % name)
         return False
     ruleset = matches[0]
     label = "%s #%d" % (name, ruleset["id"])
+    if ruleset.get("target") != "branch":
+        print("%s: target %s (expected branch); check the target and rename a conflicting ruleset before rerunning the owner script"
+              % (label, ruleset.get("target", "unknown")))
+        return False
     if ruleset.get("enforcement") != "active":
         print("%s: enforcement %s (expected active)" % (label, ruleset.get("enforcement", "unknown")))
         return False
@@ -46,21 +85,12 @@ def check_ruleset(name, types, listed, effective):
     print("%s active: %s" % (label, ", ".join(present) or "no effective rules"))
     if missing:
         print("%s missing %s" % (label, ", ".join(missing)))
+    if not rules:
+        report_scope("%s/rulesets/%d" % (path, ruleset["id"]), label, private)
     if name == "Merge" or "required_status_checks" not in present:
         return not missing
 
-    publishers = []
-    for rule in rules:
-        if rule.get("type") == "required_status_checks":
-            params = rule.get("parameters")
-            checks = params.get("required_status_checks") if isinstance(params, dict) else None
-            if not isinstance(checks, list) or not all(isinstance(check, dict) for check in checks):
-                print("%s: required check details unreadable; retry" % label)
-                return False
-            publishers.extend(check.get("integration_id") for check in checks if check.get("context") == "governance-gate")
-    observed = ", ".join("governance-gate@%s" % (p if p is not None else "unspecified") for p in publishers)
-    pinned = bool(publishers) and all(p == 15368 for p in publishers)
-    print("%s: %s%s" % (label, observed or "governance-gate absent", "" if pinned else "; expected governance-gate@15368"))
+    pinned = check_publisher(rules, label)
     return not missing and pinned
 
 
@@ -76,8 +106,8 @@ def main():
     private = visibility == "private"
     listed = read(path + "/rulesets?includes_parents=false", pages=True, private=private)
     effective = read(path + "/rules/branches/" + quote(branch, safe=""), pages=True, private=private)
-    gate = check_ruleset("Gate", GATE_TYPES, listed, effective)
-    merge = check_ruleset("Merge", ("update",), listed, effective)
+    gate = check_ruleset("Gate", GATE_TYPES, listed, effective, path, private)
+    merge = check_ruleset("Merge", ("update",), listed, effective, path, private)
     if gate and merge:
         print("Protection verified")
         return 0

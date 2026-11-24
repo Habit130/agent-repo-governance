@@ -99,8 +99,12 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
                         ow.ok(["api", "repos/{owner}/{repo}"],
                               {"full_name": "Habit130/tally", "visibility": visibility.lower(), "default_branch": branch}),
                         ow.ok(["api", "--paginate", "--slurp", "repos/Habit130/tally/rulesets?includes_parents=false"],
-                              [listed[:1], listed[1:]]),
+                              [[dict(listed[0], target=row.get("gate_target", "branch"))], listed[1:]]),
                         response,
+                        ow.ok(ow.api("/rulesets/41"), {"conditions": {"ref_name": {
+                            "include": row.get("gate_scope", ["~DEFAULT_BRANCH"]), "exclude": []}}}),
+                        ow.ok(ow.api("/rulesets/42"), {"conditions": {"ref_name": {
+                            "include": ["~DEFAULT_BRANCH"], "exclude": []}}}),
                     ]
                     root = tempfile.mkdtemp(dir=self.tmp)
                     recording = os.path.join(root, "gh.json")

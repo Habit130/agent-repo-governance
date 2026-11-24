@@ -495,7 +495,7 @@ def read_rulesets(repository):
 
 
 def verified_response(written, target, normalize):
-    """Compare an accepted write response using the same GitHub defaults as an at-target read."""
+    """Verify the declared target from a GitHub object, including GitHub's omitted false flags."""
     # Empty exclusions and bypass lists are part of the target. An omitted list
     # gives no evidence that it is empty.
     if "bypass_actors" in target and not isinstance(_at(written, ("bypass_actors",)), list):
@@ -503,8 +503,21 @@ def verified_response(written, target, normalize):
     for condition, filters in target["conditions"].items():
         if not all(isinstance(_at(written, ("conditions", condition, key)), list) for key in filters):
             return False
+    rules = _at(written, ("rules",))
+    expected = {rule["type"]: rule.get("parameters", {}) for rule in target["rules"]}
+    if not isinstance(rules, list) or len(rules) != len(expected):
+        return False
     try:
-        return json.dumps(normalize(written), sort_keys=True) == json.dumps(normalize(target), sort_keys=True)
+        for rule in rules:
+            params = rule.get("parameters", {})
+            if not isinstance(params, dict):
+                return False
+            for key, value in expected[rule["type"]].items():
+                # GitHub omits false flags, including all parameters of a bare update.
+                observed = params.get(key, False if value is False else None)
+                if type(observed) is not type(value):
+                    return False
+        return normalize(written) == normalize(target)
     except (KeyError, AttributeError, TypeError):
         return False  # Incomplete or malformed nested rules cannot confirm the target.
 
@@ -531,7 +544,7 @@ def apply_rulesets(report, facts):
             report.line("未通过", "%s 规则集" % name, "规则集 %s 已占用这个名字，但不是确定作用于默认分支 %s 的分支规则集，未改动它；"
                         "请把它改名后重跑" % (describe_ruleset(taken[name]), branch))
             continue
-        if current is not None and declared(current) == declared(body):
+        if current is not None and verified_response(current, body, declared):
             report.line("已就位", "%s 规则集" % name, summary)
             continue
         try:
@@ -751,18 +764,24 @@ def apply_event_policy(report, facts):
         report.line("已跳过", EVENT_POLICY_SUBJECT, "私有仓库：GitHub 默认拦截 pull_request_target 的策略只作用于公开仓库，按目标状态跳过")
         return
     try:
-        listed = gh_api("repos/%s/actions/policies?has_parents=false&per_page=100" % repository) or {}
-        policies = [
-            gh_api("repos/%s/actions/policies/%s" % (repository, item["id"]))
-            for item in listed.get("policies") or []
-            if item.get("source_type", "Repository") == "Repository"
-        ]
+        listed = gh_api("repos/%s/actions/policies?has_parents=false&per_page=100" % repository)
+        if not isinstance(listed, dict) or not isinstance(listed.get("policies"), list):
+            raise GitHubError(None, "事件策略列表格式无效")
+        policies = []
+        for item in listed["policies"]:
+            if not isinstance(item, dict) or type(item.get("id")) is not int:
+                raise GitHubError(None, "事件策略列表缺少有效 ID")
+            if item.get("source_type", "Repository") == "Repository":
+                policy = gh_api("repos/%s/actions/policies/%d" % (repository, item["id"]))
+                if (not isinstance(policy, dict) or policy.get("id") != item["id"]
+                        or not isinstance(policy.get("name"), str)):
+                    raise GitHubError(None, "事件策略详情缺少名称或匹配的 ID")
+                policies.append(policy)
     except GitHubError as error:
         report.line("缺失", EVENT_POLICY_SUBJECT, "GitHub 的 API 读不到此仓库的事件策略（%s）；%s" % (error.message, EVENT_POLICY_MISSING))
         return
-    wanted = declared_policy(EVENT_POLICY)
     ours = [policy for policy in policies if policy.get("name") == EVENT_POLICY["name"]]
-    matching = [policy for policy in policies if declared_policy(policy) == wanted]
+    matching = [policy for policy in policies if verified_response(policy, EVENT_POLICY, declared_policy)]
     for policy in policies:
         if policy not in matching and policy not in ours:
             report.line("已保留", "事件策略“%s”（id %s）" % (policy.get("name"), policy.get("id")), "不是本脚本声明的策略，保留不动")
