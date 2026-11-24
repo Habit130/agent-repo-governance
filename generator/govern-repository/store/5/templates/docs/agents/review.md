@@ -289,13 +289,22 @@ and link each cause's open issue in the summary. Then check:
    `Reviewer` status. A waiver supports only a waived declaration. Before using it,
    confirm that the review was required and eligible for a waiver on this PR and that
    habit's exact-head comment names the item.
-2. For public and private repositories, run `python3 .github/governance/branch_rules.py`
+2. At high, match each finding on the reviewed head, including Nits, to the Builder's
+   answer on GitHub. Read the answer itself. A successful `Reviewer` status, a resolved
+   thread or a mention in the report cannot supply it. On the same head, a reasoned answer
+   to keep the current behavior can settle a Nit without a repair push.
+   If any answer is missing, hold both the high-risk report and the pinned merge command.
+   Wait as the harness permits, then reread the PR and check the answers again
+   ([harness limits](../../AGENTS.md#how-to-start)). If the head changed, follow Rounds.
+   Once all answers are present and the other merge requirements pass, publish the report
+   and link each disposition to the Builder's answer.
+3. For public and private repositories, run `python3 .github/governance/branch_rules.py`
    from the repository root as the agent account. Cite the current default branch, the
    active Gate and Merge IDs and the effective rule types belonging to each. Gate must
    supply deletion, non-fast-forward, pull request and required status checks, including
    `governance-gate` from GitHub Actions (integration ID 15368). Merge must supply the
    update restriction. Product checks retain their configured publishers.
-3. Report each missing, mismatched or unreadable fact to habit in Chinese. For a disabled
+4. Report each missing, mismatched or unreadable fact to habit in Chinese. For a disabled
    ruleset, have habit re-enable it. If its name is taken by a tag or push ruleset, have
    habit rename that ruleset. If its reported scope excludes the default branch, have
    habit correct the scope or rename the ruleset before rerunning the owner script. For an

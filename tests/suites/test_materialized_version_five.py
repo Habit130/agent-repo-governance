@@ -67,6 +67,36 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
         self.assertIn("required and eligible for a waiver on this PR", checks)
         self.assertIn("At low, omit an unused optional slot.", flat(self.on_the_pr()))
 
+    def test_high_report_waits_for_the_builders_answer_to_each_finding(self):
+        checks = flat(level_three_section(self.text("docs/agents/review.md"), "### Checks first"))
+        for requirement in (
+            "At high, match each finding on the reviewed head, including Nits, to the Builder's answer on GitHub",
+            "A successful `Reviewer` status, a resolved thread or a mention in the report cannot supply it",
+            "If any answer is missing, hold both the high-risk report and the pinned merge command",
+            "Wait as the harness permits, then reread the PR",
+            "If the head changed, follow Rounds",
+            "a reasoned answer to keep the current behavior can settle a Nit without a repair push",
+            "Once all answers are present and the other merge requirements pass, publish the report",
+            "link each disposition to the Builder's answer",
+        ):
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, checks)
+
+    def test_reviewer_outputs_route_publication_to_the_merge_summary_checks(self):
+        outputs = flat(level_two_section(self.text("docs/agents/reviewer.md"), "## Outputs", "reviewer.md"))
+        self.assertIn("`failure` while an Important finding is open, `success` otherwise", outputs)
+        self.assertIn("[Checks first](review.md#checks-first) before publishing the Merge summary", outputs)
+        self.assertIn("[The merge handoff](review.md#the-merge-handoff)", outputs)
+        self.assertNotIn("**When clear**", outputs)
+
+    def test_reviewer_start_leaves_publication_timing_to_outputs(self):
+        start = flat(level_two_section(self.text("docs/agents/reviewer.md"), "## Start", "reviewer.md"))
+        instruction_end = "Reviewer status and, when clear, the Merge summary.`"
+        self.assertIn(instruction_end, start)
+        guidance = start.split(instruction_end, 1)[1]
+        self.assertIn("[Outputs](#outputs)", guidance)
+        self.assertNotIn("when clear", guidance)
+
     def test_checks_first_verifies_the_effective_rules_as_the_agent(self):
         import owner_support as ow
         import support
