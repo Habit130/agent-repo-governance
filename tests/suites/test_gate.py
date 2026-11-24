@@ -28,6 +28,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from itertools import permutations
 from unittest import mock
 
 import materialized
@@ -791,6 +792,197 @@ class RiskReasonConsumer(unittest.TestCase):
         self.assertIn("declared no readable tier (its `Risk:` line is malformed), judged at high", record["body"])
         self.assertIn("reviewer", record["body"])
         self.assertIn("lacks: bot-1, reviewer, merge-summary.", record["body"])
+
+
+class GeneratedGateStates(GateCase):
+    """Exercise each stored grammar from v5 against the policy's independent examples."""
+
+    def scripts(self):
+        for version in parsers.TEMPLATES.versions():
+            if version >= 5:
+                yield version, parsers.load_gate(version)
+
+    def test_risk_declaration_at_each_tier(self):
+        reasons = {"low": "copy edit", "medium": "CLI behavior", "high": "发布"}
+        for version, script in self.scripts():
+            for tier in script.TIERS:
+                with self.subTest(version=version, tier=tier):
+                    self.assertIn(tier, reasons, "no evidence example for risk tier " + tier)
+                    reason = reasons[tier]
+                    line = f"Risk: {tier} — {reason}"
+                    self.assertEqual(script.parse_body(line)["risk"], {"tier": tier, "reason": reason})
+                    self.assertEqual(script.parse_body(line.replace(reason, ""))["risk"], "malformed")
+
+    def test_body_syntax_and_author(self):
+        case = load(os.path.join(CASES, "low-on-plain-path.json"))
+        repo, base, head, _ = build(self.tmp, case)
+        for version, script in self.scripts():
+            for tier in script.TIERS:
+                line = f"Risk: {tier} — 改动"
+                with self.subTest(version=version, tier=tier):
+                    self.assertIsNotNone(script._RISK.fullmatch(line))
+                    for body, state in (
+                        (line, {"tier": tier, "reason": "改动"}),
+                        ("Details\r\n" + line + "\r\n", {"tier": tier, "reason": "改动"}),
+                        (" " + line, "missing"), ("", "missing"),
+                        (line + "\n" + line, "more than one"),
+                        (line.replace("—", "-"), "malformed"),
+                        (line.replace("改动", "\u2003"), "malformed"),
+                    ):
+                        with self.subTest(body=body):
+                            self.assertEqual(script.parse_body(body), {"risk": state, "reverts": None})
+                            result = script.verdict(repo, case["author"], case["owner"], body, base, head, lookup("none"))
+                            valid = isinstance(state, dict)
+                            self.assert_verdict(result, {"passed": valid, "rules": [] if valid else ["Risk line"],
+                                                         "pure_revert": False})
+                    for author, expected in ((case["owner"].swapcase(), []), (case["author"].swapcase(), []),
+                                             ("outside-account", ["Author"])):
+                        result = script.verdict(repo, author, case["owner"], line, base, head, lookup("none"))
+                        self.assert_verdict(result, {"passed": not expected, "rules": expected, "pure_revert": False})
+
+    def test_reverts_object_and_provenance_at_each_tier(self):
+        case = load(os.path.join(V5_CASES, "merged-pr-squash-commit-low.json"))
+        repo, base, head, shas = build(self.tmp, case)
+        squash = shas["sensitive"]
+        support.git(repo, "tag", "-a", "reviewed", "-m", "Reviewed change", squash)
+        tag = support.git(repo, "rev-parse", "refs/tags/reviewed").strip()
+        tree = support.git(repo, "rev-parse", squash + "^{tree}").strip()
+        for version, script in self.scripts():
+            for tier in script.TIERS:
+                risk = f"Risk: {tier} — restore the reviewed change\n"
+                floors = [] if tier == "high" else ["Floors"]
+                line = "Reverts: " + squash
+                self.assertIsNotNone(script._REVERTS.fullmatch(line))
+                for declaration, provenance, pure, failures in (
+                    (line, "found", True, []), (line, "none", False, floors),
+                    (line, "unreadable", False, floors), ("", "found", False, floors),
+                    *(("Reverts: " + oid, "found", False, ["Pure revert"] + floors)
+                      for oid in (tree, tag, "0" * 40, head, squash[:7])),
+                    (line + "\n" + line, "found", False, ["Pure revert"] + floors),
+                ):
+                    with self.subTest(version=version, tier=tier, declaration=declaration, provenance=provenance):
+                        result = script.verdict(repo, case["author"], case["owner"], risk + declaration,
+                                                base, head, lookup(provenance))
+                        self.assert_verdict(result, {"passed": not failures, "rules": failures, "pure_revert": pure})
+
+    def test_record_key_evidence_from_its_grammar(self):
+        # Use complete, independently specified values so a newly admitted key needs its own example.
+        for version, script in self.scripts():
+            top = {"version": f"version: {version}", "agent_account": "agent_account: FixtureAgent",
+                   "sensitive_paths": 'sensitive_paths:\n  - pattern: "src/**"\n    floor: high',
+                   "confirmed": "confirmed:\n  sensitive_paths:\n  required_checks:\n  review_bots:"}
+            confirmed = {"sensitive_paths": "  sensitive_paths:", "required_checks": "  required_checks:",
+                         "review_bots": "  review_bots:"}
+            path = {"pattern": '  - pattern: "src/**"', "floor": "    floor: high"}
+            record = "\n".join(top.values()) + "\n"
+            with self.subTest(version=version):
+                self.assertEqual(script.parse_record(record.encode()), {
+                    "version": version, "agent_account": "FixtureAgent",
+                    "sensitive_paths": [{"pattern": "src/**", "floor": "high"}],
+                    "confirmed": {"sensitive_paths": [], "required_checks": [], "review_bots": []},
+                })
+                for keys, examples in ((script.RECORD_KEYS, top), (script.CONFIRMED_KEYS, confirmed),
+                                       (script.CONFIRMED_KEYS_V3, confirmed), (script.PATH_KEYS, path)):
+                    for key in keys:
+                        with self.subTest(keys=keys, key=key):
+                            self.assertIn(key, examples)
+                            field = examples[key]
+                            # Match complete lines (two levels both contain sensitive_paths).
+                            needle = "\n" + field + "\n"
+                            padded = "\n" + record
+                            self.assertEqual(padded.count(needle), 1)
+                            for replacement in (field + "\n" + field, field.replace(key + ":", "unknown:", 1)):
+                                with self.assertRaises(script.RecordError):
+                                    script.parse_record(padded.replace(needle, "\n" + replacement + "\n").encode())
+                            omitted = padded.replace(needle, "\n").encode()
+                            if key == "review_bots":
+                                self.assertNotIn(key, script.parse_record(omitted)["confirmed"])
+                            else:
+                                with self.assertRaises(script.RecordError):
+                                    script.parse_record(omitted)
+
+                for original, invalid in (
+                    (f"version: {version}", 'version: "5"'), (f"version: {version}", "version: 0"),
+                    ("agent_account: FixtureAgent", 'agent_account: ""'),
+                    ('pattern: "src/**"', 'pattern: ""'), ("floor: high", "floor: low"),
+                    ("  required_checks:", "  required_checks: scalar"),
+                    ("  review_bots:", "  review_bots: no"),
+                    (top["version"] + "\n" + top["agent_account"], top["agent_account"] + "\n" + top["version"]),
+                    (confirmed["required_checks"] + "\n" + confirmed["review_bots"],
+                     confirmed["review_bots"] + "\n" + confirmed["required_checks"]),
+                ):
+                    with self.subTest(invalid=invalid), self.assertRaises(script.RecordError):
+                        script.parse_record(record.replace(original, invalid).encode())
+
+    def test_enabled_lists_and_floors(self):
+        floor_paths = {"medium": "src/billing/invoice.ts", "high": "src/auth/login.ts"}
+        for version, script in self.scripts():
+            record = f"version: {version}\nagent_account: FixtureAgent\nsensitive_paths:\nconfirmed:\n"
+            record += "  sensitive_paths:\n  required_checks:\n  review_bots:\n"
+            for count in range(len(script.REVIEW_BOTS) + 1):
+                for order in permutations(script.REVIEW_BOTS, count):
+                    with self.subTest(version=version, order=order):
+                        value = record + "".join('    - "' + bot + '"\n' for bot in order)
+                        self.assertEqual(script.parse_record(value.encode())["confirmed"]["review_bots"], list(order))
+                        for extra in ("unknown", *order):
+                            with self.assertRaises(script.RecordError):
+                                script.parse_record((value + '    - "' + extra + '"\n').encode())
+            for floor in script.FLOORS:
+                with self.subTest(version=version, floor=floor):
+                    self.assertIn(floor, floor_paths)
+                    case = load(os.path.join(CASES, "low-on-plain-path.json"))
+                    case["head"][0]["files"] = {floor_paths[floor]: "changed text"}
+                    repo, base, head, _ = build(self.tmp, case)
+                    enough = {"medium": {"medium", "high"}, "high": {"high"}}[floor]
+                    for tier in script.TIERS:
+                        with self.subTest(tier=tier):
+                            body = f"Risk: {tier} — edit a sensitive file"
+                            result = script.verdict(repo, case["author"], case["owner"], body, base, head, lookup("none"))
+                            self.assert_verdict(result, {"passed": tier in enough, "pure_revert": False,
+                                                         "rules": [] if tier in enough else ["Floors"]})
+
+    def test_revert_history_at_each_tier(self):
+        histories = (
+            (CASES, "pure-revert-of-older-commit", True),
+            (CASES, "revert-with-resolved-conflict", False),
+            (CASES, "revert-with-extra-change", False),
+            (V4_CASES, "revert-before-governance-low", False),
+            (V4_CASES, "revert-of-the-governing-commit", False),
+        )
+        for directory, name, qualifies in histories:
+            case = load(os.path.join(directory, name + ".json"))
+            repo, base, head, shas = build(self.tmp, case)
+            declaration = body_of(case, shas).split("Reverts: ")[1].strip()
+            for version, script in self.scripts():
+                for tier in script.TIERS:
+                    with self.subTest(version=version, tier=tier, history=name):
+                        body = f"Risk: {tier} — reviewed change\nReverts: {declaration}"
+                        result = script.verdict(repo, case["author"], case["owner"], body, base, head, lookup("found"))
+                        at_floor = tier == "high" or (tier == "medium" and name == "revert-of-the-governing-commit")
+                        rules = [] if qualifies or at_floor else ["Floors"]
+                        self.assert_verdict(result, {"passed": not rules, "rules": rules, "pure_revert": qualifies})
+
+    def test_floor_uses_both_sides_of_changes_and_highest_match(self):
+        cases = {
+            "add": {"src/auth/new": "text"},
+            "delete": {"src/auth/token.ts": None},
+            "rename from": {"src/auth/token.ts": None, "src/token.ts": "token\n"},
+            "rename to": {"docs/guide.md": None, "src/auth/guide.md": "guide\n"},
+            "overlap": {"src/auth/AGENTS.md": "updated"},
+            "case sensitive": {"src/BILLING/new": "text"},
+            "root relative": {"other/src/auth/new": "text"},
+        }
+        for label, files in cases.items():
+            case = load(os.path.join(CASES, "low-on-plain-path.json"))
+            case["head"][0]["files"] = files
+            repo, base, head, _ = build(self.tmp, case)
+            for version, script in self.scripts():
+                for tier in script.TIERS:
+                    with self.subTest(version=version, tier=tier, change=label):
+                        body = f"Risk: {tier} — change a path"
+                        result = script.verdict(repo, case["author"], case["owner"], body, base, head, lookup("none"))
+                        rules = [] if tier == "high" or label in ("case sensitive", "root relative") else ["Floors"]
+                        self.assert_verdict(result, {"passed": not rules, "rules": rules, "pure_revert": False})
 
 
 if __name__ == "__main__":
