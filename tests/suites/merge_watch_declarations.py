@@ -4,11 +4,6 @@ from merge_watch_history import RecordedMerge
 
 
 class SummaryDeclarations(RecordedMerge):
-    def declare(self, tier, *reviews):
-        self.pr["body"] = f"Risk: {tier} — sandbox control"
-        self.summary["body"] = (f"## Merge summary: {tier} at {self.head}\nRequired reviews: "
-                                + ", ".join(("self-verification=clear", *reviews)))
-
     def test_optional_reviews_need_their_own_evidence_only_when_declared(self):
         reviewer, = self.statuses
         for tier in ("low", "medium"):

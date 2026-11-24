@@ -29,6 +29,7 @@ import materialized
 from merge_watch_history import EARLY, HistoricalEvidence, load_v4_case_for_v5  # noqa: F401
 from merge_watch_push import PushAndOpenRecords
 from merge_watch_declarations import SummaryDeclarations  # noqa: F401
+from merge_watch_companion import CompanionReviewer  # noqa: F401
 import support
 from standins import environment
 from target_state import target_ruleset

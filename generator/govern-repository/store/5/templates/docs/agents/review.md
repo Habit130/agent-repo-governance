@@ -164,6 +164,11 @@ Everything specific to one provider sits in its subsection.
   be waived. At high the required Reviewer judges it, and its waiver keeps this condition
   (Waivers). A PR touching a sensitive path
   whose only completed bot review is Copilot's says so in its Merge summary.
+  On a v5 medium merge, Merge watch checks the merged change and completed reviews
+  to establish whether that companion was required. It checks the summary for
+  `reviewer=clear` and the historical agent account's successful `Reviewer` status on the
+  head by merge time. A missing declaration is a summary miss. A missing status is a
+  Reviewer miss. Unresolved evidence leaves the assessment incomplete.
 
 ## Review state
 
@@ -344,7 +349,8 @@ Security review applies: <yes|no>
   Security review applies: yes
   ```
 
-  and at medium, after the first enabled bot was unavailable:
+  and at medium on a repository-owned change outside the instruction files, after
+  the first enabled bot was unavailable:
 
   ```text
   ## Merge summary: medium at 1a954628a960aaef81d7b2d4521929579f3541e6

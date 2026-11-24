@@ -48,7 +48,10 @@ time or retry budget runs out. For each pushed commit:
     waiver. With a known bot policy, either state at low or high records a missing bot.
     A low summary may omit the optional slot. `PROVIDERS` holds one reader per provider.
     Only enabled providers are read or reported.
-  - **`reviewer`**: the agent account's newest `Reviewer` status on the head is `success`;
+  - **`reviewer`**: the agent account's newest `Reviewer` status on the head by merge time
+    is `success`. On a v5 medium merge changing fixed content or either instruction file,
+    if Copilot alone completed an enabled bot review, require that status and a matching
+    `reviewer=clear` entry. An owner waiver cannot supply either witness;
   - **`self-verification`** and **`security`**: the writer attests to completion. At high,
     v5 requires the writer's security applicability decision on the third line. An
     applicable review needs a `security` declaration;
@@ -63,9 +66,8 @@ time or retry budget runs out. For each pushed commit:
     waiver to satisfy the required slot independently of its state.
 
   The repository owner is the owner in the repository's full name, a user account, as the
-  generator requires. It doesn't check a condition a review bot's subsection in `review.md`
-  puts on a Reviewer waiver, such as Copilot never judging fixed content alone; the Merge
-  summary's writer does. A body with no readable `Risk:` line is judged at high.
+  generator requires. The Merge summary's writer checks waiver eligibility before merge.
+  A body with no readable `Risk:` line is judged at high.
 
   A merge whose base record is below version 4, such as an Upgrade's own PR, follows that
   version's review rules. This script judges what every version requires: the Reviewer's
@@ -437,10 +439,11 @@ def timestamp(value):
 class Pull:
     """The historical policy and evidence for one PR. Every lookup is scoped to its merge."""
 
-    def __init__(self, read, repository, number, head, cutoff, problems, notes, cache=None):
+    def __init__(self, read, repository, number, head, cutoff, problems, notes, cache=None, squash=None):
         self.read, self.repository, self.number, self.head = read, repository, number, head
         self.prefix = "repos/" + repository
         self.cutoff = cutoff
+        self.squash = squash
         self.problems, self.notes = problems, notes
         self._cache = {} if cache is None else cache
 
@@ -507,23 +510,34 @@ class Pull:
             else:
                 yield row["body"]
 
-    def policy(self, squash):
-        """Only the absence of the record at a verified parent permits the Initialize fallback."""
-        commit = self.object_at("/git/commits/" + squash)
-        parents = commit.get("parents") if commit.get("sha") == squash else None
+    def squash_parent(self):
+        commit = self.object_at("/git/commits/" + self.squash)
+        parents = commit.get("parents") if commit.get("sha") == self.squash else None
         if not isinstance(parents, list) or len(parents) != 1 or not isinstance(parents[0], dict):
             return self.unknown("policy", "could not establish the squash commit's parent")
         base = parents[0].get("sha")
         if not is_sha(base):
             return self.unknown("policy", "invalid squash parent")
-        path = self.prefix + "/contents/" + RECORD + "?ref="
+        return base
+
+    def record_at(self, ref):
+        path = self.prefix + "/contents/" + RECORD + "?ref=" + ref
+        if path not in self._cache:
+            self._cache[path] = self.read(path)
+        return self._cache[path]
+
+    def policy(self):
+        """Only the absence of the record at a verified parent permits the Initialize fallback."""
+        base = self.squash_parent()
+        if base is UNKNOWN:
+            return UNKNOWN
         try:
             try:
-                raw = self.read(path + base)
+                raw = self.record_at(base)
             except NotFound:
                 self.notes.append("#%d merged onto a base with no governance record, so the record it adds names the enabled "
                                   "review bots." % self.number)
-                raw = self.read(path + squash)
+                raw = self.record_at(self.squash)
         except ReadError:
             return self.unknown("policy", "historical record could not be read")
         if not isinstance(raw, str):
@@ -780,6 +794,99 @@ def _high_security_missing(lines, summary, waiver):
     return ("security", MERGE_SUMMARY) if waiver is False else (MERGE_SUMMARY,)
 
 
+# The whole fixed files and the two instruction files in the v5 manifest. Even
+# the repository-owned part of an instruction file requires the companion.
+V5_COMPANION_PATHS = {
+    "AGENTS.md", ".claude/CLAUDE.md", ".github/PULL_REQUEST_TEMPLATE.md",
+    ".github/governance/branch_rules.py", ".github/governance/gate.py",
+    ".github/governance/merge_watch.py", ".github/governance/owner.sh",
+    ".github/workflows/governance-gate.yml", ".github/workflows/merge-watch.yml",
+    "docs/agents/builder.md", "docs/agents/domain.md", "docs/agents/handoff.md",
+    "docs/agents/issue-tracker.md", "docs/agents/planner.md", "docs/agents/review.md",
+    "docs/agents/reviewer.md", "docs/agents/triage-labels.md",
+}
+
+
+def _fixed_record_changed(pull, base):
+    try:
+        before, after = pull.record_at(base), pull.record_at(pull.squash)
+    except ReadError:
+        return pull.unknown("merged change", "could not read both historical records")
+    if not isinstance(before, str) or not isinstance(after, str):
+        return pull.unknown("merged change", "invalid historical record content")
+    old, new = before.split("\n"), after.split("\n")
+    if old.count("confirmed:") != 1:
+        return pull.unknown("merged change", "could not identify the fixed record at " + base)
+    boundary = old.index("confirmed:") + 1
+    if old[:boundary] != new[:boundary]:
+        return True
+    if any(line.strip() and not line.startswith((" ", "#")) for line in new[boundary:]):
+        return pull.unknown("merged change", "unexpected top-level content after confirmed")
+    return False
+
+
+def _companion_change(pull):
+    """Compare the squash to its verified parent. PR file lists can describe a different change."""
+    base = pull.squash_parent()
+    change = pull.object_at("/compare/%s...%s" % (base, pull.squash))
+    files, commits, reported_base = change.get("files"), change.get("commits"), change.get("base_commit")
+    if (not isinstance(reported_base, dict) or reported_base.get("sha") != base
+            or type(change.get("total_commits")) is not int or change["total_commits"] != 1
+            or not isinstance(commits, list) or len(commits) != 1
+            or not isinstance(commits[0], dict) or commits[0].get("sha") != pull.squash
+            or not isinstance(files, list)):
+        return pull.unknown("merged change", "could not establish the squash comparison")
+
+    # GitHub's compare endpoint returns at most 300 files across all pages. A
+    # witness still counts at the limit, but absence needs a complete list.
+    complete = len(files) < 300
+    modified_record = False
+    for row in files:
+        if not isinstance(row, dict):
+            complete = False
+            continue
+        status = row.get("status")
+        if status not in ("added", "removed", "modified", "changed", "renamed", "copied"):
+            complete = False
+            continue
+        paths = [row.get("filename")]
+        if status == "renamed":
+            paths.append(row.get("previous_filename"))
+        for path in paths:
+            if not isinstance(path, str) or not path:
+                complete = False
+            elif path in V5_COMPANION_PATHS:
+                return True
+            elif path == RECORD:
+                if status not in ("modified", "changed"):
+                    return True
+                modified_record = True
+    if modified_record:
+        fixed = _fixed_record_changed(pull, base)
+        if fixed is not False:
+            return fixed
+    if not complete:
+        return pull.unknown("merged change", "changed file list is incomplete")
+    return False
+
+
+def _companion_missing(pull, bots, summary, agent):
+    """Judge the v5 medium companion independently of the declared bot slot and any waiver."""
+    if not bots or "copilot" not in bots:
+        return ()
+    others = any_evidence(PROVIDERS[bot](pull) for bot in bots if bot != "copilot")
+    if others is not False or _copilot(pull) is not True:
+        return ()
+    if _companion_change(pull) is not True:
+        return ()
+    missing = []
+    if summary is not UNKNOWN and (summary or {}).get("reviewer") != ("clear", None):
+        missing.append(MERGE_SUMMARY)
+    if _reviewer(pull, agent) is False:
+        missing.append("reviewer")
+    return missing
+
+
 def missing_reviews(pull, agent_account, owner, tier, bots, version):
     """List only established absences. Pull retains the reasons for unresolved evidence."""
     lines = _summary_lines(pull, agent_account, tier, version)
@@ -787,6 +894,8 @@ def missing_reviews(pull, agent_account, owner, tier, bots, version):
     waivers = waived(pull, owner)
     minimum = REQUIRED[tier]
     missing = set()
+    if version == 5 and tier == "medium":
+        missing.update(_companion_missing(pull, bots, summary, agent_account))
     if version == 5 and isinstance(summary, dict):
         missing.update(_declared_missing(pull, summary, bots, tier, agent_account, waivers))
         minimum = set(minimum).difference(summary)
@@ -830,10 +939,10 @@ def _judge_pull(read, repository, matches, squash, notes, problems):
     # A missing body leaves all tiers possible. A readable sibling for the same
     # revision bounds them. Establish only absences common to every supported reading.
     cache = {}
-    candidates = [(Pull(read, repository, number, head, cutoff, problems, notes, cache), risks)
+    candidates = [(Pull(read, repository, number, head, cutoff, problems, notes, cache, squash), risks)
                   for (head, cutoff), risks in revisions.items()]
     first_pull, _ = candidates[0]
-    policy = first_pull.policy(squash)  # All candidate revisions share this squash parent.
+    policy = first_pull.policy()  # All candidate revisions share this squash parent.
     if policy is UNKNOWN:
         return records
     version, agent = policy["version"], policy["agent_account"]
