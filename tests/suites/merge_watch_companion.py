@@ -151,6 +151,12 @@ class CompanionReviewer(RecordedMerge):
         del malformed["submitted_at"]
         self.api[f"{self.prefix}/pulls/54/reviews"].append(malformed)
         self.replay(missing=("merge-summary",))
+        # Once the qualified check has proved completion, another job lookup is unnecessary.
+        checks = next(rows for path, rows in self.api.items() if "/check-runs?" in path)
+        checks.append(dict(self.check, id=91, details_url=f"https://github.com/{self.repo}/actions/runs/90/job/91"))
+        job = f"{self.prefix}/actions/jobs/91"
+        self.api[job] = {"id": 91}
+        self.replay(missing=("merge-summary",), rate_limit=job)
 
     def test_quota_stop_preserves_already_established_misses_on_this_merge(self):
         self.declare("medium", "bot-1=clear(copilot)")

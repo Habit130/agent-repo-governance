@@ -643,13 +643,18 @@ def _copilot_check(pull, check):
     return producer
 
 
-def _copilot(pull):
-    # Inspect every relevant row so a valid witness and an unresolved sibling both survive.
-    reviewed = any_evidence([_copilot_review(pull, row) for row in pull.rows("/pulls/%d/reviews" % pull.number)])
+def _copilot(pull, *, presence_only=False):
+    def witness(endpoint, qualifies):
+        matches = (qualifies(pull, row) for row in pull.rows(endpoint))
+        # A declared review reports unresolved siblings too. The companion needs
+        # only one positive witness, which can avoid further Actions job reads.
+        return any_evidence(matches if presence_only else list(matches))
+
+    reviewed = witness("/pulls/%d/reviews" % pull.number, _copilot_review)
     if reviewed is False:
         return False
     endpoint = "/commits/%s/check-runs?check_name=%s&filter=all" % (pull.head, COPILOT_CHECK)
-    checked = any_evidence([_copilot_check(pull, row) for row in pull.rows(endpoint)])
+    checked = witness(endpoint, _copilot_check)
     return reviewed if checked is True else checked
 
 
@@ -900,7 +905,7 @@ def _companion_missing(pull, bots, summary, agent):
     others = evaluate(lambda facts: any_evidence(PROVIDERS[bot](facts) for bot in bots if bot != "copilot"))
     if others is True:
         return
-    copilot = evaluate(_copilot)
+    copilot = evaluate(lambda facts: _copilot(facts, presence_only=True))
     if copilot is False:
         return
     change = evaluate(_companion_change)
