@@ -30,8 +30,10 @@ report lines it expects:
 - `writes`: every write in order, `[method, path under repos/<repository>/, body]`, where a
   body is JSON, `{"ruleset": "<name>"}` or `{"event_policy": "target"}` for the target body,
   or absent. A write answers as GitHub would, unless `answers` maps `"<method> <path>"` to
-  the HTTP error GitHub gives instead.
+  an HTTP error (status and message) or a successful response body (response).
 - `exit`, and `report`: every `[status, subject]` the report prints, in order.
+- A group of `cases` can share a named `base` case and version. Each row overrides its
+  base and can check accepted requests, the final total and details of individual items.
 """
 
 import copy
@@ -274,6 +276,8 @@ def write_call(state, case, write):
     stdin = body(sent) if sent is not None else None
     answer = case.get("answers", {}).get("%s %s" % (method, path))
     if answer is not None:
+        if "response" in answer:
+            return ok(args, answer["response"], stdin=stdin)
         return http_error(args, answer["status"], answer["message"], stdin=stdin)
     if method == "DELETE":
         return call(args, "", stdin=stdin)
@@ -316,6 +320,9 @@ def event_policy_calls(state):
     path = api("/actions/policies?has_parents=false&per_page=100")
     if state.private:
         return []
+    github = state.case.get("github", {})
+    if "event_policy_list_response" in github:
+        return [ok(path, github["event_policy_list_response"])]
     if state.event_policy == "unreadable":
         return [http_error(path, 404, "Not Found")]
     if state.event_policy == "none":
@@ -341,6 +348,18 @@ def event_policy_write(state, args, path, method, sent, stdin):
 def load_case(name):
     with open(os.path.join(CASES, name + ".json"), encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def cases():
+    for filename in sorted(os.listdir(CASES)):
+        name = filename[:-len(".json")]
+        fixture = load_case(name)
+        if "cases" not in fixture:
+            yield name, fixture
+            continue
+        for row in fixture["cases"]:
+            base = load_case(row.get("base", fixture["base"]))
+            yield name + "_" + row["name"], dict(base, version=fixture["version"], **row)
 
 
 def prepare(root, case):

@@ -1,0 +1,21 @@
+{
+  "miss": "https://github.com/Habit130/agent-repo-governance/issues/259",
+  "gate_recording": "agent-view-gate-ruleset.json",
+  "branch": "release/current",
+  "cases": [
+    {"name": "verified", "exit": 0, "evidence": ["Gate #41", "deletion", "non_fast_forward", "pull_request", "required_status_checks", "governance-gate@15368", "Merge #42", "update", "Protection verified"]},
+    {"name": "active Gate elsewhere, same rules from another ruleset", "gate_rule_id": 51, "gate_scope": ["refs/heads/elsewhere"], "exit": 1, "evidence": ["Gate #41", "missing", "deletion", "required_status_checks", "refs/heads/elsewhere", "correct its scope"]},
+    {"name": "update from another ruleset", "merge_rule_id": 51, "exit": 1, "evidence": ["Merge #42", "missing update"]},
+    {"name": "Gate absent", "gate_name": "Old gate", "exit": 1, "evidence": ["Gate ruleset missing", "Merge #42"]},
+    {"name": "disabled Gate scoped elsewhere", "gate_enforcement": "disabled", "gate_rule_id": 51, "gate_scope": ["refs/heads/maintenance"], "exit": 1, "evidence": ["Gate #41", "enforcement disabled", "re-enable", "refs/heads/maintenance", "correct its scope"]},
+    {"name": "second same-name Gate alone governs the branch", "other_name": "Gate", "gate_rule_id": 51, "exit": 0, "evidence": ["Gate #51", "governance-gate@15368", "Merge #42", "Protection verified"]},
+    {"name": "two effective same-name Gates split the expected rules", "other_name": "Gate", "checks_rule_id": 51, "exit": 1, "evidence": ["ambiguous", "Gate #41", "Gate #51", "missing required_status_checks", "missing deletion"]},
+    {"name": "Gate name held by a tag ruleset", "gate_rule_id": 51, "gate_target": "tag", "exit": 1, "evidence": ["Gate #41", "target tag", "rename"]},
+    {"name": "only unrelated checks", "checks": [{"context": "test", "integration_id": 15368}], "exit": 1, "evidence": ["Gate #41", "governance-gate absent"]},
+    {"name": "wrong publisher alongside a product check from Actions", "checks": [{"context": "governance-gate", "integration_id": 42}, {"context": "test", "integration_id": 15368}], "exit": 1, "evidence": ["governance-gate@42", "expected governance-gate@15368"]},
+    {"name": "unspecified publisher", "checks": [{"context": "governance-gate"}], "exit": 1, "evidence": ["governance-gate@unspecified", "expected governance-gate@15368"]},
+    {"name": "unreadable effective rules", "http_error": 503, "exit": 1, "evidence": ["rules/branches/release%2Fcurrent", "unreadable", "retry"]},
+    {"name": "private plan refusal", "visibility": "PRIVATE", "http_error": 403, "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.", "exit": 1, "evidence": ["renew", "public"]},
+    {"name": "unrelated private 403", "visibility": "PRIVATE", "http_error": 403, "message": "Resource not accessible", "exit": 1, "evidence": ["unreadable", "retry"]}
+  ]
+}

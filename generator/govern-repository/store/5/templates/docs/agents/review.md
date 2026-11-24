@@ -284,19 +284,22 @@ and link each cause's open issue in the summary. Then check:
    `Reviewer` status. A waiver supports only a waived declaration. Before using it,
    confirm that the review was required and eligible for a waiver on this PR and that
    habit's exact-head comment names the item.
-2. The Gate and Merge rules are in effect on the default branch. Read, as the agent
-   account, `gh repo view --json visibility,defaultBranchRef`, then:
-   - **public**: `gh api repos/{owner}/{repo}/rulesets` lists the Gate and Merge rulesets,
-     each with `enforcement` `active`;
-   - **private**: `gh api repos/{owner}/{repo}/rules/branches/<default branch>` answers 200
-     and lists the rule types `deletion`, `non_fast_forward`, `pull_request`,
-     `required_status_checks` and `update`. A 403 or a missing type means the rules are not
-     in effect. `gh api repos/{owner}/{repo}/branches/<default branch>` showing
-     `protected: true` corroborates.
-
-   If the rules aren't in effect, tell habit in Chinese and give the remedy: re-enable a
-   disabled ruleset, or, for a lapsed private repository, renew the student verification or
-   make the repository public. Still hand over the merge command; nothing else blocks it.
+2. For public and private repositories, run `python3 .github/governance/branch_rules.py`
+   from the repository root as the agent account. Cite the current default branch, the
+   active Gate and Merge IDs and the effective rule types belonging to each. Gate must
+   supply deletion, non-fast-forward, pull request and required status checks, including
+   `governance-gate` from GitHub Actions (integration ID 15368). Merge must supply the
+   update restriction. Product checks retain their configured publishers.
+3. Report each missing, mismatched or unreadable fact to habit in Chinese. For a disabled
+   ruleset, have habit re-enable it. If its name is taken by a tag or push ruleset, have
+   habit rename that ruleset. If its reported scope excludes the default branch, have
+   habit correct the scope or rename the ruleset before rerunning the owner script. For an
+   absent ruleset, missing rule or wrong gate publisher, have habit rerun the owner
+   script. For an unreadable response, check agent access and retry. When GitHub
+   specifically refuses private rules for lack of Pro, renew student verification or make
+   the repository public. On Initialize, state that the owner script follows merge and the
+   gate check applies from the next PR. Hand over the pinned merge command when the
+   remaining merge requirements pass.
 
 ### On the PR
 
