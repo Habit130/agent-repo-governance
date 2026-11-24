@@ -75,8 +75,9 @@ On the exact head, as the agent account:
 - **A `Reviewer` commit status**, through
   `gh api repos/{owner}/{repo}/statuses/<sha> -f context=Reviewer -f state=<state>`:
   `failure` while an Important finding is open, `success` otherwise.
-- **When clear**, the Merge summary, at high the high-risk report, and the merge handoff
-  (`review.md`, Merge summary), the Reviewer's final handoff (`handoff.md`).
+- **Final handoff.** Follow [Checks first](review.md#checks-first) before publishing the
+  Merge summary (the high-risk report at high) and giving habit the pinned merge command
+  (`handoff.md`).
 
 The review speaks in the Reviewer's voice only: it states findings and never commits the
 Builder to changes. Repairs are the Builder's: the Reviewer never pushes, and leaves the
