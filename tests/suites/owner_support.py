@@ -30,7 +30,7 @@ report lines it expects:
 - `writes`: every write in order, `[method, path under repos/<repository>/, body]`, where a
   body is JSON, `{"ruleset": "<name>"}` or `{"event_policy": "target"}` for the target body,
   or absent. A write answers as GitHub would, unless `answers` maps `"<method> <path>"` to
-  the HTTP error GitHub gives instead.
+  an HTTP error (status and message) or a successful response body (response).
 - `exit`, and `report`: every `[status, subject]` the report prints, in order.
 """
 
@@ -274,6 +274,8 @@ def write_call(state, case, write):
     stdin = body(sent) if sent is not None else None
     answer = case.get("answers", {}).get("%s %s" % (method, path))
     if answer is not None:
+        if "response" in answer:
+            return ok(args, answer["response"], stdin=stdin)
         return http_error(args, answer["status"], answer["message"], stdin=stdin)
     if method == "DELETE":
         return call(args, "", stdin=stdin)

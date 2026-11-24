@@ -73,6 +73,28 @@ for _file in sorted(os.listdir(ow.CASES)):
     _add_case(_file[: -len(".json")])
 
 
+class AcceptedWrites(OwnerCase):
+    def test_v5_counts_accepted_items_and_reports_each_postcondition(self):
+        with open(os.path.join(support.FIXTURES, "owner", "v5-accepted-writes.json")) as handle:
+            cases = json.load(handle)["cases"]
+        for row in cases:
+            with self.subTest(case=row["name"]):
+                case = dict(ow.load_case(row.get("base", "rerun-at-target")), version=5, **row["setup"])
+                result = self.run_case(case)
+                self.assert_safe(result)
+                self.assertEqual(ow.writes(result["log"]), [tuple(w[:2]) for w in case["writes"]])
+                with open(os.path.join(os.path.dirname(result["scratch"]), "gh.json")) as handle:
+                    calls = json.load(handle)["calls"]
+                accepted = [call for call in result["log"] if calls[call["call"]]["exit"] == 0]
+                self.assertEqual(ow.writes(accepted), [tuple(w) for w in row["accepted"]])
+                self.assertEqual(result["code"], row["exit"], result["out"])
+                self.assertIn(row["total"], result["out"].splitlines()[-1])
+                for status, subject, detail in row["items"]:
+                    lines = [line for line in result["out"].splitlines() if line.startswith("[%s] %s：" % (status, subject))]
+                    self.assertEqual(len(lines), 1, result["out"])
+                    self.assertIn(detail, lines[0])
+
+
 class Report(OwnerCase):
     def test_a_rerun_at_target_state_says_it_wrote_nothing(self):
         result = self.run_case(ow.load_case("rerun-at-target"))

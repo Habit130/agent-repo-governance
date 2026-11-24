@@ -1,0 +1,118 @@
+{
+  "miss": "https://github.com/Habit130/agent-repo-governance/issues/258",
+  "cases": [
+    {
+      "name": "accepted creation with incomplete object followed by a fatal read",
+      "setup": {
+        "github": {"rulesets": [{"as_target": "Merge"}, {"as_target": "History"}], "failing_reads": {"actions/permissions/workflow": 500}},
+        "writes": [["POST", "rulesets", {"ruleset": "Gate"}]],
+        "answers": {"POST rulesets": {"response": {}}}
+      },
+      "accepted": [["POST", "rulesets"]], "exit": 1, "total": "本次已写入 1 项",
+      "items": [["未通过", "Gate 规则集", "已接受写入"]]
+    },
+    {
+      "name": "accepted Gate update returns an incomplete nested rule",
+      "setup": {
+        "github": {"rulesets": [{"as_target": "Gate", "checks": ["old"]}, {"as_target": "Merge"}, {"as_target": "History"}]},
+        "writes": [["PUT", "rulesets/9001", {"ruleset": "Gate"}]],
+        "answers": {"PUT rulesets/9001": {"response": {"bypass_actors": [], "rules": [{}]}}}
+      },
+      "accepted": [["PUT", "rulesets/9001"]], "exit": 1, "total": "写入 1 项；1 项未通过或缺失",
+      "items": [["未通过", "Gate 规则集", "已接受写入"]]
+    },
+    {
+      "name": "one settings PATCH with three changed fields in two items",
+      "setup": {
+        "github": {"settings": {"allow_merge_commit": true, "allow_rebase_merge": true, "delete_branch_on_merge": false}},
+        "writes": [["PATCH", "", {"allow_merge_commit": false, "allow_rebase_merge": false, "delete_branch_on_merge": true}]],
+        "answers": {"PATCH ": {"response": {"delete_branch_on_merge": true, "allow_merge_commit": true}}}
+      },
+      "accepted": [["PATCH", ""]], "exit": 1, "total": "写入 2 项；1 项未通过或缺失",
+      "items": [["未通过", "仅 squash 合并", "已接受写入"], ["已设置", "合并后删除 head 分支", "已改为目标值"], ["已就位", "auto-merge 关闭", "已是目标值"]]
+    },
+    {
+      "name": "accepted settings PATCH returns a number for a boolean",
+      "setup": {
+        "github": {"settings": {"allow_auto_merge": true}}, "writes": [["PATCH", "", {"allow_auto_merge": false}]],
+        "answers": {"PATCH ": {"response": {"allow_auto_merge": 0}}}
+      },
+      "accepted": [["PATCH", ""]], "exit": 1, "total": "写入 1 项；1 项未通过或缺失",
+      "items": [["未通过", "auto-merge 关闭", "已接受写入"]]
+    },
+    {
+      "name": "first accepted settings PATCH has an empty response before a fatal read",
+      "setup": {
+        "github": {"settings": {"allow_auto_merge": true}, "failing_reads": {"actions/permissions/workflow": 503}},
+        "writes": [["PATCH", "", {"allow_auto_merge": false}]], "answers": {"PATCH ": {"response": null}}
+      },
+      "accepted": [["PATCH", ""]], "exit": 1, "total": "本次已写入 1 项",
+      "items": [["未通过", "auto-merge 关闭", "已接受写入"]]
+    },
+    {
+      "name": "accepted public policy creation has no verifiable state",
+      "setup": {
+        "github": {"event_policy": "none"}, "writes": [["POST", "actions/policies", {"event_policy": "target"}]],
+        "answers": {"POST actions/policies": {"response": null}}
+      },
+      "accepted": [["POST", "actions/policies"]], "exit": 1, "total": "写入 1 项；1 项未通过或缺失",
+      "items": [["未通过", "pull_request_target 事件策略", "已接受写入"]]
+    },
+    {
+      "name": "accepted policy has the required event but does not report its workflow exclusions",
+      "setup": {
+        "github": {"event_policy": "none"}, "writes": [["POST", "actions/policies", {"event_policy": "target"}]],
+        "answers": {"POST actions/policies": {"response": {
+          "name": "governance-gate", "enforcement": "active",
+          "conditions": {"workflow_path": {"include": [".github/workflows/governance-gate.yml"]}},
+          "rules": [{"type": "restrict_action_events", "parameters": {"allowed_events": ["pull_request_target"]}}]
+        }}}
+      },
+      "accepted": [["POST", "actions/policies"]], "exit": 1, "total": "写入 1 项；1 项未通过或缺失",
+      "items": [["未通过", "pull_request_target 事件策略", "已接受写入"]]
+    },
+    {
+      "name": "accepted policy update still reports disabled enforcement",
+      "setup": {
+        "github": {"event_policy": [{"id": 7001, "enforcement": "disabled"}]},
+        "writes": [["PUT", "actions/policies/7001", {"event_policy": "target"}]],
+        "answers": {"PUT actions/policies/7001": {"response": {"enforcement": "disabled"}}}
+      },
+      "accepted": [["PUT", "actions/policies/7001"]], "exit": 1, "total": "写入 1 项；1 项未通过或缺失",
+      "items": [["未通过", "pull_request_target 事件策略", "已接受写入"]]
+    },
+    {
+      "name": "rejected PATCH contributes zero",
+      "setup": {
+        "github": {"settings": {"allow_auto_merge": true}}, "writes": [["PATCH", "", {"allow_auto_merge": false}]],
+        "answers": {"PATCH ": {"status": 422, "message": "Rejected"}}
+      },
+      "accepted": [], "exit": 1, "total": "写入 0 项；1 项未通过或缺失",
+      "items": [["未通过", "auto-merge 关闭", "拒绝了写入"]]
+    },
+    {
+      "name": "fatal read before any write",
+      "setup": {"github": {"failing_reads": {"actions/permissions/workflow": 500}}},
+      "accepted": [], "exit": 2, "total": "未写入任何内容",
+      "items": [["未通过", "设置", "Server Error"]]
+    },
+    {
+      "name": "verified settings change",
+      "setup": {"github": {"settings": {"allow_auto_merge": true}}, "writes": [["PATCH", "", {"allow_auto_merge": false}]]},
+      "accepted": [["PATCH", ""]], "exit": 0, "total": "写入 1 项；全部就位",
+      "items": [["已设置", "auto-merge 关闭", "已改为目标值"]]
+    },
+    {
+      "name": "all public targets verified from GitHub responses",
+      "base": "public-from-nothing", "setup": {},
+      "accepted": [["POST", "rulesets"], ["POST", "rulesets"], ["POST", "rulesets"], ["PATCH", ""], ["PATCH", ""], ["POST", "actions/policies"]],
+      "exit": 0, "total": "写入 8 项；全部就位",
+      "items": [["已设置", "Gate 规则集", "已创建"], ["已设置", "pull_request_target 事件策略", "已创建"]]
+    },
+    {
+      "name": "verified at-target rerun",
+      "setup": {}, "accepted": [], "exit": 0, "total": "写入 0 项；全部已就位，本次未改动 GitHub",
+      "items": [["已就位", "Gate 规则集", "默认分支"], ["已就位", "pull_request_target 事件策略", "只允许"]]
+    }
+  ]
+}

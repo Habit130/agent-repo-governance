@@ -31,8 +31,9 @@ exec /usr/bin/python3 -I - "$here" "$@" <<'PY'
    skips both, and the report says why.
 
 Each item compares GitHub's state with what the target declares and writes only what
-differs. A write that answers with the written object is confirmed from it; a DELETE, and
-the Actions setting's PUT, answer with no content and count on success. Exit codes: 0 when
+differs. Each affected item counts once when GitHub accepts the write, including items
+sharing a PATCH. Verify each target from the returned object, or by observing the Actions
+setting after its PUT. DELETE counts on success. Exit codes: 0 when
 every item is in place, 1 when an item failed or is missing, or GitHub failed after a
 write; 2 when the run stopped before any write.
 """
@@ -110,6 +111,8 @@ def gh_api(path, method="GET", body=None, timeout=None):
     try:
         return json.loads(out)
     except ValueError:
+        if method != "GET":
+            return None  # gh accepted the write, but returned no usable object.
         raise GitHubError(None, "gh 的输出不是 JSON")
 
 
@@ -491,6 +494,21 @@ def read_rulesets(repository):
         raise Stop("读不到 %s 的某个规则集：%s" % (repository, error.message))
 
 
+def verified_response(written, target, normalize):
+    """Compare an accepted write response using the same GitHub defaults as an at-target read."""
+    # Empty exclusions and bypass lists are part of the target. An omitted list
+    # gives no evidence that it is empty.
+    if "bypass_actors" in target and not isinstance(_at(written, ("bypass_actors",)), list):
+        return False
+    for condition, filters in target["conditions"].items():
+        if not all(isinstance(_at(written, ("conditions", condition, key)), list) for key in filters):
+            return False
+    try:
+        return json.dumps(normalize(written), sort_keys=True) == json.dumps(normalize(target), sort_keys=True)
+    except (KeyError, AttributeError, TypeError):
+        return False  # Incomplete or malformed nested rules cannot confirm the target.
+
+
 def apply_rulesets(report, facts):
     report.section("规则集")
     repository, branch = facts["repository"], facts["branch"]
@@ -525,9 +543,9 @@ def apply_rulesets(report, facts):
             ours_in_place = False
             report.line("未通过", "%s 规则集" % name, "GitHub 拒绝了写入：%s" % error.message)
             continue
-        if declared(written or {}) != declared(body):
+        if not verified_response(written, body, declared):
             ours_in_place = False
-            report.line("未通过", "%s 规则集" % name, "GitHub 的回应与目标不一致")
+            report.wrote("未通过", "%s 规则集" % name, "GitHub 已接受写入，回应未能确认目标状态；请核查后重跑")
             continue
         report.wrote("已设置", "%s 规则集" % name, ("已创建：" if current is None else "已更新：") + summary)
 
@@ -596,6 +614,11 @@ def _at(data, path):
     return data
 
 
+def field_matches(data, path, target):
+    value = _at(data, path)
+    return type(value) is type(target) and value == target  # JSON booleans are distinct from 0 and 1.
+
+
 def _nested(pairs):
     body = {}
     for path, value in pairs:
@@ -608,7 +631,7 @@ def _nested(pairs):
 
 def patch_repository(report, facts, items, in_place, done):
     """Write the items' differing fields in one PATCH and report each item from GitHub's answer."""
-    differing = [(path, value) for _, values in items for path, value in values.items() if _at(facts["repo"], path) != value]
+    differing = [(path, value) for _, values in items for path, value in values.items() if not field_matches(facts["repo"], path, value)]
     written, failure = None, None
     if differing:
         try:
@@ -621,10 +644,10 @@ def patch_repository(report, facts, items, in_place, done):
             report.line("已就位", subject, in_place)
         elif failure is not None:
             report.line("未通过", subject, "GitHub 拒绝了写入：%s" % failure)
-        elif all(_at(written, path) == value for path, value in values.items()):
+        elif all(field_matches(written, path, value) for path, value in values.items()):
             report.wrote("已设置", subject, done)
         else:
-            report.line("未通过", subject, "GitHub 的回应仍不是目标值")
+            report.wrote("未通过", subject, "GitHub 已接受写入，回应未能确认目标值；请核查后重跑")
 
 
 def apply_settings(report, facts):
@@ -755,8 +778,8 @@ def apply_event_policy(report, facts):
     except GitHubError as error:
         report.line("缺失", EVENT_POLICY_SUBJECT, "GitHub 的 API 没能写入（%s）；%s" % (error.message, EVENT_POLICY_MISSING))
         return
-    if declared_policy(written or {}) != wanted:
-        report.line("缺失", EVENT_POLICY_SUBJECT, "GitHub 的回应与目标不一致；%s" % EVENT_POLICY_MISSING)
+    if not verified_response(written, EVENT_POLICY, declared_policy):
+        report.wrote("未通过", EVENT_POLICY_SUBJECT, "GitHub 已接受写入，回应未能确认目标策略；请核查后重跑")
         return
     report.wrote("已设置", EVENT_POLICY_SUBJECT, ("已更新" if ours else "已创建") + "：策略“%s”只允许 %s 由 pull_request_target 触发" % (EVENT_POLICY["name"], GATE_WORKFLOW))
 
