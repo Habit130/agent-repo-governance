@@ -1,0 +1,15 @@
+{
+  "description": "V5 Reverts must name the commit object itself, both with a missing Risk line and with a valid Risk at the sensitive path's floor. Regression for https://github.com/Habit130/agent-repo-governance/issues/282.",
+  "expected_rules": {
+    "commit": ["Risk line"],
+    "tree": ["Risk line", "Pure revert"],
+    "tag": ["Risk line", "Pure revert"]
+  },
+  "valid_risk": {
+    "body": "Risk: high — restore the reviewed change\nReverts: {target}\n",
+    "expected": {
+      "commit": {"passed": true, "rules": [], "pure_revert": true},
+      "tag": {"passed": false, "rules": ["Pure revert"], "pure_revert": false}
+    }
+  }
+}

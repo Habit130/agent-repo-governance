@@ -117,6 +117,11 @@ class GateCase(support.TempDirCase):
             args += (lookup(case.get("merged", "found")),)
         return case, script.verdict(*args)
 
+    def assert_verdict(self, result, expected):
+        rules = [line.split(":", 1)[0] for line in result["failures"]]
+        observed = {"passed": result["passed"], "rules": rules, "pure_revert": result["pure_revert"]}
+        self.assertEqual(observed, expected, result["failures"])
+
 
 class SeamOne(GateCase):
     """Filled below: one test per case file and gate script that judges it."""
@@ -125,9 +130,7 @@ class SeamOne(GateCase):
 def _add_case(name, label, script, cases):
     def test(self):
         case, result = self.judge(name, script, cases)
-        rules = [line.split(":", 1)[0] for line in result["failures"]]
-        got = {"passed": result["passed"], "rules": rules, "pure_revert": result["pure_revert"]}
-        self.assertEqual(got, case["expected"], result["failures"])
+        self.assert_verdict(result, case["expected"])
 
     test.__doc__ = "gate case %s, judged by version %s" % (name, label[1:])
     setattr(SeamOne, "test_%s_%s" % (label, re.sub(r"[^A-Za-z0-9]+", "_", name)), test)
@@ -168,6 +171,48 @@ class FailureLines(GateCase):
             line = self.failures(name)[0]
             self.assertTrue(line.startswith("Pure revert: "), line)
             self.assertIn("name the squash commit or delete the line", line)
+
+    def test_v5_reverts_requires_the_commit_objects_own_id(self):
+        case = load(os.path.join(CASES, "risk-missing.json"))
+        expected = load(os.path.join(FIXTURES, "reverts-object-identity.json"))["expected_rules"]
+        repo, default_head, head, shas = build(self.tmp, case)
+        root = shas["base"]
+        support.git(repo, "tag", "-a", "root-tag", "-m", "Tag the root commit", root)
+        objects = {
+            "commit": root,
+            "tree": support.git(repo, "rev-parse", root + "^{tree}").strip(),
+            "tag": support.git(repo, "rev-parse", "refs/tags/root-tag").strip(),
+        }
+        for kind, sha in objects.items():
+            with self.subTest(kind=kind):
+                body = case["body"] + "Reverts: " + sha
+                result = gate_v5.verdict(
+                    repo, case["author"], case["owner"], body, default_head, head, lookup("found")
+                )
+                self.assertFalse(result["passed"])
+                self.assertFalse(result["pure_revert"])
+                self.assertEqual([line.split(":", 1)[0] for line in result["failures"]], expected[kind])
+                if kind != "commit":
+                    self.assertEqual(
+                        result["failures"][1],
+                        "Pure revert: `Reverts: %s` names no commit on the default branch. "
+                        "Fix: name the squash commit or delete the line." % sha,
+                    )
+
+    def test_v5_valid_risk_confirms_the_squash_commit_and_rejects_its_annotated_tag(self):
+        case = load(os.path.join(V5_CASES, "merged-pr-squash-commit-low.json"))
+        fixture = load(os.path.join(FIXTURES, "reverts-object-identity.json"))["valid_risk"]
+        repo, default_head, head, shas = build(self.tmp, case)
+        squash = shas["sensitive"]
+        support.git(repo, "tag", "-a", "reviewed", "-m", "Reviewed change", squash)
+        tag = support.git(repo, "rev-parse", "refs/tags/reviewed").strip()
+        for kind, target in (("commit", squash), ("tag", tag)):
+            with self.subTest(kind=kind):
+                result = gate_v5.verdict(
+                    repo, case["author"], case["owner"], fixture["body"].format(target=target),
+                    default_head, head, lambda sha: sha == squash,
+                )
+                self.assert_verdict(result, fixture["expected"][kind])
 
     def test_the_floor_line_names_the_floor_the_path_and_the_tier_to_declare(self):
         (line,) = self.failures("rename-out-of-sensitive-path")
