@@ -169,6 +169,33 @@ class FailureLines(GateCase):
             self.assertTrue(line.startswith("Pure revert: "), line)
             self.assertIn("name the squash commit or delete the line", line)
 
+    def test_v5_reverts_requires_the_commit_objects_own_id(self):
+        case = load(os.path.join(CASES, "risk-missing.json"))
+        expected = load(os.path.join(FIXTURES, "reverts-object-identity.json"))["expected_rules"]
+        repo, default_head, head, shas = build(self.tmp, case)
+        root = shas["base"]
+        support.git(repo, "tag", "-a", "root-tag", "-m", "Tag the root commit", root)
+        objects = {
+            "commit": root,
+            "tree": support.git(repo, "rev-parse", root + "^{tree}").strip(),
+            "tag": support.git(repo, "rev-parse", "refs/tags/root-tag").strip(),
+        }
+        for kind, sha in objects.items():
+            with self.subTest(kind=kind):
+                body = case["body"] + "Reverts: " + sha
+                result = gate_v5.verdict(
+                    repo, case["author"], case["owner"], body, default_head, head, lookup("found")
+                )
+                self.assertFalse(result["passed"])
+                self.assertFalse(result["pure_revert"])
+                self.assertEqual([line.split(":", 1)[0] for line in result["failures"]], expected[kind])
+                if kind != "commit":
+                    self.assertEqual(
+                        result["failures"][1],
+                        "Pure revert: `Reverts: %s` names no commit on the default branch. "
+                        "Fix: name the squash commit or delete the line." % sha,
+                    )
+
     def test_the_floor_line_names_the_floor_the_path_and_the_tier_to_declare(self):
         (line,) = self.failures("rename-out-of-sensitive-path")
         self.assertIn('"src/auth/token.ts"', line)

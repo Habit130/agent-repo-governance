@@ -500,7 +500,9 @@ def _revert_rule(repo, reverts, default_head, base, head, merged):
         problem = "more than one `Reverts:` line" if reverts == "more than one" else "a malformed `Reverts:` line"
         return "Pure revert: the body has %s; it takes one full commit SHA. %s" % (problem, fix), False, None
     sha = reverts["sha"]
-    on_default = _is_commit(repo, sha) and _git(
+    # The declaration names the commit itself. A tag may resolve to it but has its own ID.
+    code, object_type = _git(repo, ["cat-file", "-t", sha], codes=(0, 1, 128))
+    on_default = code == 0 and object_type == b"commit\n" and _git(
         repo, ["merge-base", "--is-ancestor", sha, default_head], codes=(0, 1)
     )[0] == 0
     if not on_default:

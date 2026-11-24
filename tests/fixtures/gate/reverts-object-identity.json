@@ -1,0 +1,8 @@
+{
+  "description": "V5 Reverts declaration with a missing Risk line. The tree and annotated tag belong to the same root commit. Regression for https://github.com/Habit130/agent-repo-governance/issues/282.",
+  "expected_rules": {
+    "commit": ["Risk line"],
+    "tree": ["Risk line", "Pure revert"],
+    "tag": ["Risk line", "Pure revert"]
+  }
+}
