@@ -45,14 +45,17 @@ chat. Keep the current settings, sandbox and approval mode.
 /usr/bin/python3 -I "$HOME/.agents/skills/wait-on-pr/wait_on_pr.py" arm OWNER/REPO NUMBER KIND
 ```
 
-The helper registers the wait, takes its baseline, and makes GitHub reads without model
-calls. It retries failed reads at the next interval. If the first read fails, the first
-successful read establishes the baseline. Check the returned terminal output for `Armed`; if startup is still in progress,
-read the same terminal until it registers or exits. End the turn once armed. A queue exit
-only records an attempt. Never resend after an ambiguous result. If no notice arrives,
-habit can say “continue” in this chat. The helper keeps the nonce, event, read failures
+The helper prints `Armed` once it has a GitHub baseline. Until then, read the same
+terminal with bounded polls. A failed read retries at the next interval. If GitHub stays
+unavailable during startup, stop this registration and report the missing baseline. If startup
+reports `Recheck GitHub`, reread the PR after `Armed` and before ending the turn:
+activity during the failed reads is already in that baseline. Stop the waiter before
+handling anything actionable. Otherwise end the turn and leave the terminal running.
+The helper makes no model calls. A queue exit only records an attempt. Never resend after
+an ambiguous result. If no notice arrives, habit can say “continue” in this chat. The helper keeps the nonce, event, read failures
 and queue outcome in private local temporary storage outside the worktree.
 
-If the thread identity, bundled queue command or one-time approval is unavailable, use
-the current Codex wait: polls of at most five minutes, or stop and tell habit what the
+If startup cannot use the machine's ordinary agent-account login and installed GitHub
+CLI, report the reason. If the helper, thread identity, bundled queue command or one-time
+approval is unavailable, use the current Codex wait: polls of at most five minutes, or stop and tell habit what the
 role waits for. A denied arming command ends that attempt.

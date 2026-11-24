@@ -25,6 +25,10 @@ class ReadFailure(Exception):
     """A fixed diagnostic safe to include in a notice."""
 
 
+class Replaced(Exception):
+    """The original wait lost its registration during a paginated read."""
+
+
 PAGE = "pageInfo { hasNextPage endCursor } nodes"
 COMMENT = "id lastEditedAt"
 REVIEW = "id state lastEditedAt"
@@ -41,9 +45,14 @@ query($owner: String!, $repo: String!, $number: Int!) {
 }""" % (PAGE, REVIEW, PAGE, THREAD, PAGE, COMMENT)
 
 
-def snapshot(fetch, repository, number):
+def snapshot(fetch, repository, number, active=lambda: True):
+    def request(query, variables):
+        if not active():
+            raise Replaced()
+        return fetch(query, variables)
+
     owner, repo = repository.split("/")
-    pr = fetch(QUERY, {"owner": owner, "repo": repo, "number": number})["repository"]["pullRequest"]
+    pr = request(QUERY, {"owner": owner, "repo": repo, "number": number})["repository"]["pullRequest"]
     state = pr["state"]
     if state in ("MERGED", "CLOSED"):
         return {"state": state}
@@ -65,7 +74,7 @@ def snapshot(fetch, repository, number):
             query = """query($id: ID!, $after: String!) {
               node(id: $id) { ... on %s { %s(first: 100, after: $after) { %s { %s } } } }
             }""" % (typename, field, PAGE, selection)
-            result = fetch(query, {"id": parent["id"], "after": cursor})["node"][field]
+            result = request(query, {"id": parent["id"], "after": cursor})["node"][field]
 
     def comments(parent, typename):
         return {c["id"]: c["lastEditedAt"] for c in nodes(parent, typename, "comments", COMMENT)}
@@ -170,12 +179,14 @@ class Slot:
 
 def watch(slot, kind, read, send, clock=time.monotonic, sleep=time.sleep):
     nonce = slot.start()
-    print("Armed %s for %s in thread %s, nonce %s" % (slot.pr, kind, slot.thread, nonce), flush=True)
     next_read = clock()
     deadline = next_read + DURATIONS[kind]
     failures = Counter()
     baseline = None
-    while slot.current() == nonce:
+    def active():
+        return slot.current() == nonce
+
+    while active():
         now = clock()
         if now >= deadline:
             slot.deliver(nonce, kind, "deadline", failures, send)
@@ -185,10 +196,20 @@ def watch(slot, kind, read, send, clock=time.monotonic, sleep=time.sleep):
             continue
         next_read = now + 60
         try:
-            current = read(deadline)
+            current = read(deadline, active)
+        except Replaced:
+            break
         except ReadFailure as error:
             failures[str(error)] += 1
+            if baseline is None:
+                print("Baseline unavailable (%s); retrying at the next interval." % error, flush=True)
             continue
+        if clock() >= deadline or not active():
+            continue
+        if baseline is None:
+            if failures:
+                print("Recheck GitHub for activity during baseline recovery.", flush=True)
+            print("Armed %s for %s in thread %s, nonce %s" % (slot.pr, kind, slot.thread, nonce), flush=True)
         reason = event(baseline, current)
         if reason:
             slot.deliver(nonce, kind, reason, failures, send)
@@ -198,14 +219,24 @@ def watch(slot, kind, read, send, clock=time.monotonic, sleep=time.sleep):
     return nonce
 
 
-def github_read(repo, number, deadline):
+def github_cli(env):
+    config = Path(env.get("XDG_CONFIG_HOME") or Path(env["HOME"]) / ".config") / "gh"
+    override = env.get("GH_CONFIG_DIR")
+    token_names = {"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN"}
+    if token_names.intersection(env) or (override and Path(override).resolve() != config.resolve()):
+        raise ValueError("use the machine agent account without authentication overrides")
+    # The approved process runs an installed executable outside the worktree.
+    gh = shutil.which("gh", path=os.defpath + ":/opt/homebrew/bin:/usr/local/bin")
+    if gh is None:
+        raise ValueError("gh unavailable in the system or Homebrew bin directories")
+    return gh
+
+
+def github_read(gh, repo, number, deadline, active=lambda: True):
     def fetch(query, variables):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ReadFailure("GitHub timeout")
-        gh = shutil.which("gh", path=os.defpath + ":/opt/homebrew/bin:/usr/local/bin")
-        if gh is None:
-            raise ReadFailure("gh unavailable")
         try:
             response = subprocess.run(
                 [gh, "api", "--hostname", "github.com", "graphql", "--input", "-"],
@@ -223,7 +254,7 @@ def github_read(repo, number, deadline):
         return payload["data"]
 
     try:
-        return snapshot(fetch, repo, number)
+        return snapshot(fetch, repo, number, active)
     except (ValueError, KeyError, TypeError, AttributeError):
         raise ReadFailure("incomplete GitHub response")
 
@@ -254,7 +285,7 @@ def main():
         parser.error("expected OWNER/REPO and a positive PR number")
 
     if args.action == "read":
-        facts = github_read(args.repo, args.number, time.monotonic() + 60)
+        facts = github_read(github_cli(os.environ), args.repo, args.number, time.monotonic() + 60)
         print("%s#%d %s" % (args.repo, args.number, facts["state"].lower()))
         return
 
@@ -267,6 +298,7 @@ def main():
         print(slot.stop(str(args.notice) if args.notice else None))
         return
 
+    gh = github_cli(os.environ)
     help_text = subprocess.run([CODEX, "queue", "--help"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                text=True, timeout=10)
     if help_text.returncode or not all(flag in help_text.stdout for flag in ("--thread", "--message", "--resume")):
@@ -279,7 +311,10 @@ def main():
             return "queue exit %d; delivery unknown" % result.returncode
         return "queue exited 0; resume unconfirmed"
 
-    watch(slot, args.kind, lambda deadline: github_read(args.repo, args.number, deadline), send)
+    def read(deadline, active):
+        return github_read(gh, args.repo, args.number, deadline, active)
+
+    watch(slot, args.kind, read, send)
 
 
 if __name__ == "__main__":
@@ -287,5 +322,7 @@ if __name__ == "__main__":
         main()
     except ReadFailure as error:
         sys.exit(str(error))
-    except (ValueError, OSError, subprocess.TimeoutExpired):
+    except ValueError as error:
+        sys.exit(str(error))
+    except (OSError, subprocess.TimeoutExpired):
         sys.exit("Local waiter unavailable; use the current Codex wait.")

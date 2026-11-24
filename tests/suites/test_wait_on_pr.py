@@ -1,11 +1,14 @@
 """Offline replays at the GitHub read, local registration and queue boundaries of wait-on-pr."""
 
+from contextlib import redirect_stdout
+from io import StringIO
 import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "machine" / "skills" / "wait-on-pr"))
@@ -80,6 +83,29 @@ class Changes(unittest.TestCase):
         self.assertEqual(wait.snapshot(fetch, "owner/repo", 268), snapshot(github(nit=True, reply=True)))
 
 
+class GitHubReads(unittest.TestCase):
+    def test_replacement_stops_pagination_before_the_next_request(self):
+        raw = github(nit=True)
+        raw["reviews"]["pageInfo"] = {"hasNextPage": True, "endCursor": "next"}
+        requests = []
+        def fetch(query, variables):
+            requests.append(variables)
+            return {"repository": {"pullRequest": raw}}
+        with self.assertRaises(wait.Replaced):
+            wait.snapshot(fetch, "owner/repo", 268, active=lambda: not requests)
+        self.assertEqual(len(requests), 1)
+
+    def test_account_overrides_refused_before_github_runs(self):
+        env = {"HOME": "/fixture-home", "XDG_CONFIG_HOME": "/fixture-config"}
+        for name in ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN", "GH_CONFIG_DIR"):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "agent account"):
+                    wait.github_cli(dict(env, **{name: "/fixture-other"}))
+        with mock.patch("shutil.which", return_value=None):
+            with self.assertRaisesRegex(ValueError, "gh unavailable"):
+                wait.github_cli(dict(env, GH_CONFIG_DIR="/fixture-config/gh"))
+
+
 class WaitLifecycle(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -93,7 +119,7 @@ class WaitLifecycle(unittest.TestCase):
         self.time += seconds
 
     def replay(self, observations, kind="copilot", send=None, sleep=None):
-        def read(deadline):
+        def read(deadline, active):
             self.reads.append(self.time)
             observation = observations[min(len(self.reads) - 1, len(observations) - 1)]
             if isinstance(observation, Exception):
@@ -114,6 +140,33 @@ class WaitLifecycle(unittest.TestCase):
         self.assertEqual(self.slot.stop(nonce), "change")
         self.assertEqual(self.slot.stop(nonce), "late or duplicate")
 
+    def test_arming_waits_for_a_baseline_and_reports_the_startup_gap(self):
+        output = StringIO()
+        observed = []
+        def read(deadline, active):
+            self.reads.append(self.time)
+            observed.append(output.getvalue())
+            if len(self.reads) == 1:
+                raise wait.ReadFailure("GitHub timeout")
+            return snapshot(github(nit=True, reply=len(self.reads) > 2))
+        with redirect_stdout(output):
+            wait.watch(self.slot, "role", read, self.sent.append, clock=lambda: self.time, sleep=self.sleep)
+        self.assertEqual(self.reads, [0, 60, 120])
+        self.assertNotIn("Armed", observed[0] + observed[1])
+        self.assertIn("Armed", observed[2])
+        self.assertIn("Recheck GitHub", observed[2])
+        self.assertEqual(len(self.sent), 1)
+
+    def test_deadline_wins_when_a_successful_read_crosses_it(self):
+        def read(deadline, active):
+            if self.time < 840:
+                return snapshot(github())
+            self.time = 901
+            return snapshot(github(nit=True))
+        wait.watch(self.slot, "copilot", read, self.sent.append, clock=lambda: self.time, sleep=self.sleep)
+        self.assertEqual(len(self.sent), 1)
+        self.assertIn("event=deadline", self.sent[0])
+
     def test_deadline_after_failed_baseline_no_retry_of_an_ambiguous_delivery(self):
         self.assertEqual(wait.DURATIONS, {"codex": 1800, "copilot": 900, "role": 86400, "merge": 86400})
         def ambiguous(message):
@@ -131,7 +184,7 @@ class WaitLifecycle(unittest.TestCase):
 
     def test_replacing_a_waiter_during_a_read_fences_its_delivery(self):
         replacement = []
-        def read(deadline):
+        def read(deadline, active):
             replacement.append(self.slot.start())
             return {"state": "MERGED"}
         old = wait.watch(self.slot, "merge", read, self.sent.append)
