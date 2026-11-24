@@ -18,11 +18,16 @@ import uuid
 
 
 DURATIONS = {"codex": 30 * 60, "copilot": 15 * 60, "role": 24 * 3600, "merge": 24 * 3600}
+MACHINE_ACCOUNT = "Habit098"
 CODEX = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
 
 
 class ReadFailure(Exception):
     """A fixed diagnostic safe to include in a notice."""
+
+
+class WrongAccount(ReadFailure):
+    """The active GitHub login differs from the machine's agent account."""
 
 
 class Replaced(Exception):
@@ -200,6 +205,8 @@ def watch(slot, kind, read, send, clock=time.monotonic, sleep=time.sleep):
         except Replaced:
             break
         except ReadFailure as error:
+            if baseline is None and isinstance(error, WrongAccount):
+                raise
             failures[str(error)] += 1
             if baseline is None:
                 print("Baseline unavailable (%s); retrying at the next interval." % error, flush=True)
@@ -233,14 +240,15 @@ def github_cli(env):
 
 
 def github_read(gh, repo, number, deadline, active=lambda: True):
-    def fetch(query, variables):
+    def api(arguments, data=None):
+        if not active():
+            raise Replaced()
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ReadFailure("GitHub timeout")
         try:
             response = subprocess.run(
-                [gh, "api", "--hostname", "github.com", "graphql", "--input", "-"],
-                input=json.dumps({"query": query, "variables": variables}), text=True,
+                [gh, "api", "--hostname", "github.com"] + arguments, input=data, text=True,
                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, cwd="/", timeout=min(30, remaining))
         except subprocess.TimeoutExpired:
             raise ReadFailure("GitHub timeout")
@@ -248,7 +256,13 @@ def github_read(gh, repo, number, deadline, active=lambda: True):
             raise ReadFailure("gh unavailable")
         if response.returncode:
             raise ReadFailure("gh exit %d" % response.returncode)
-        payload = json.loads(response.stdout)
+        return response.stdout
+
+    if api(["user", "--jq", ".login"]).strip().casefold() != MACHINE_ACCOUNT.casefold():
+        raise WrongAccount("GitHub is not using the machine agent account")
+
+    def fetch(query, variables):
+        payload = json.loads(api(["graphql", "--input", "-"], json.dumps({"query": query, "variables": variables})))
         if payload.get("errors"):
             raise ReadFailure("GitHub query failed")
         return payload["data"]

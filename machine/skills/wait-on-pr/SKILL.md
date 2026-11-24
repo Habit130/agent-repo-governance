@@ -49,13 +49,16 @@ The helper prints `Armed` once it has a GitHub baseline. Until then, read the sa
 terminal with bounded polls. A failed read retries at the next interval. If GitHub stays
 unavailable during startup, stop this registration and report the missing baseline. If startup
 reports `Recheck GitHub`, reread the PR after `Armed` and before ending the turn:
-activity during the failed reads is already in that baseline. Stop the waiter before
-handling anything actionable. Otherwise end the turn and leave the terminal running.
+activity during the failed reads is already in that baseline. If that recheck fails,
+stop the registration and report the failed recheck using the current Codex wait below.
+After a successful recheck, stop the waiter before handling anything actionable.
+End the turn with the terminal running when the role has confirmed it still needs to wait.
 The helper makes no model calls. A queue exit only records an attempt. Never resend after
 an ambiguous result. If no notice arrives, habit can say “continue” in this chat. The helper keeps the nonce, event, read failures
 and queue outcome in private local temporary storage outside the worktree.
 
-If startup cannot use the machine's ordinary agent-account login and installed GitHub
-CLI, report the reason. If the helper, thread identity, bundled queue command or one-time
-approval is unavailable, use the current Codex wait: polls of at most five minutes, or stop and tell habit what the
-role waits for. A denied arming command ends that attempt.
+Use the current Codex wait if the helper cannot start. This includes an unavailable
+system/Homebrew `gh`, a different active GitHub login, a missing thread identity or
+bundled queue command, or a denied one-time approval. Report the cause. Poll at most
+five minutes at a time, or stop and tell habit what the role waits for. A denied arming
+command ends that attempt.

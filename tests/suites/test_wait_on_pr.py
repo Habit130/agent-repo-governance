@@ -11,7 +11,9 @@ import unittest
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "machine" / "scripts"))
 sys.path.insert(0, str(ROOT / "machine" / "skills" / "wait-on-pr"))
+from machinelib import AGENT
 import wait_on_pr as wait
 
 RECORD = json.loads((ROOT / "tests/fixtures/wait-on-pr/pr-268.json").read_text())
@@ -94,6 +96,23 @@ class GitHubReads(unittest.TestCase):
         with self.assertRaises(wait.Replaced):
             wait.snapshot(fetch, "owner/repo", 268, active=lambda: not requests)
         self.assertEqual(len(requests), 1)
+
+    def test_wrong_default_account_cannot_read_the_pr(self):
+        result = subprocess.CompletedProcess([], 0, "another-login\n")
+        with mock.patch.object(subprocess, "run", return_value=result) as run:
+            with self.assertRaisesRegex(wait.ReadFailure, "agent account"):
+                wait.github_read("gh", "owner/repo", 268, float("inf"))
+        self.assertEqual(run.call_count, 1)
+        self.assertEqual(run.call_args.args[0][-3:], ["user", "--jq", ".login"])
+
+    def test_normal_login_and_pr_read_use_the_same_gh(self):
+        result = {"data": {"repository": {"pullRequest": {"state": "MERGED"}}}}
+        outputs = [subprocess.CompletedProcess([], 0, AGENT + "\n"),
+                   subprocess.CompletedProcess([], 0, json.dumps(result))]
+        with mock.patch.object(subprocess, "run", side_effect=outputs) as run:
+            self.assertEqual(wait.github_read("/installed/gh", "owner/repo", 268, float("inf")), {"state": "MERGED"})
+        self.assertEqual([call.args[0][:5] for call in run.call_args_list],
+                         [["/installed/gh", "api", "--hostname", "github.com", route] for route in ("user", "graphql")])
 
     def test_account_overrides_refused_before_github_runs(self):
         env = {"HOME": "/fixture-home", "XDG_CONFIG_HOME": "/fixture-config"}
