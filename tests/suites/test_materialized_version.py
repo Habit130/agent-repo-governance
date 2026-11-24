@@ -29,6 +29,7 @@ from test_materialized_version_four import (
     VersionFourPureUpgrade,
 )
 from test_materialized_version_five import (
+    VersionFiveBuilderMergeWait,
     VersionFiveInitializeChecks,
     VersionFivePureRevert,
 )

@@ -191,6 +191,69 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
         self.assertNotIn("没有共享文件或资源", handoff)
 
 
+class VersionFiveBuilderMergeWait(VersionThreeRendered):
+    """#269: the original high Builder's merge evidence and handoffs."""
+
+    VERSION = 5
+
+    def after_merge(self):
+        return flat(level_two_section(self.text("docs/agents/builder.md"), "## After merge", "builder.md"))
+
+    def test_returned_wait_requires_the_intended_merge_before_verification(self):
+        rule = self.after_merge()
+        for condition in (
+            "At high, when its permitted in-session wait returns, the original Builder",
+            "read the intended repository and PR number on GitHub",
+            "habit merged it into the intended default branch",
+            "the full PR head SHA at merge matches the reviewed head pinned for habit",
+            "GitHub identifies the resulting squash commit",
+            "Only then begin verification without another message from habit",
+            "If the PR is open, keep waiting where supported",
+            "closed without merge, an unrelated event or a mismatched identity, report the discrepancy and stop",
+        ):
+            with self.subTest(condition=condition):
+                self.assertIn(condition, rule)
+        self.assertNotIn('habit says "merged"', rule)
+
+    def test_stopped_builder_keeps_its_worktree_and_rechecks_on_manual_continuation(self):
+        rule = self.after_merge()
+        self.assertIn("unsupported or interrupted, or the GitHub read is inconclusive", rule)
+        self.assertIn("say what evidence is pending, keep your worktree and stop", rule)
+        self.assertIn('habit may say “继续” (continue) in the original Builder chat', rule)
+        self.assertIn("repeat the same GitHub checks", rule)
+        self.assertIn("Other sessions leave that chat and its worktree alone", rule)
+        self.assertIn("Never ask habit to return just for cleanup", rule)
+        wait = level_two_section(self.text("docs/agents/builder.md"), "## Syncing and waiting", "builder.md")
+        self.assertIn("For the high Builder waiting for merge, follow After merge", flat(wait))
+
+    def test_review_and_smoke_use_their_own_commits_before_any_one_way_door(self):
+        rule = self.after_merge()
+        self.assertIn("for the PR's exact head at merge: each required review's result, the Comment "
+                      "review and `Reviewer` status when a Reviewer ran, and the Merge summary", rule)
+        self.assertIn("If required evidence is missing, report the gap and escalate", rule)
+        self.assertIn("**Product smoke** verifies the resulting squash commit", rule)
+        self.assertIn("default-branch product build or test CI exists, confirm its run for that commit passes", rule)
+        self.assertIn("predetermined an executable local smoke, which runs on that exact commit", rule)
+        self.assertIn("Also run any additional smoke the ticket requires", rule)
+        self.assertIn("A failing or unavailable required smoke leaves delivery incomplete", rule)
+        self.assertIn("after product smoke passes, ask habit's go-ahead for each one-way-door step, one at a time", rule)
+
+    def test_high_handoffs_give_habit_the_action_for_the_original_builders_wait(self):
+        merge = flat(level_three_section(self.text("docs/agents/review.md"), "### The merge handoff"))
+        self.assertIn("--squash --match-head-commit <sha>`, with the full head SHA", merge)
+        self.assertIn("original Builder's wait state (`builder.md`, After merge)", merge)
+        self.assertIn("A waiting Builder needs no reply", merge)
+        self.assertIn("If it stopped under the wait fallback, habit may say “继续” in that chat for the same checks", merge)
+        self.assertNotIn("say merged in the Builder's terminal", merge)
+
+        examples = self.text("docs/agents/handoff.md").split("A Builder's final handoff to a Reviewer, at high.", 1)[1]
+        high = examples.split("A substituting Reviewer's final handoff", 1)[0]
+        self.assertIn("核实 GitHub 合并记录后开始验证，无需回复", high)
+        self.assertIn("worktree 已保留", high)
+        self.assertIn("回到本 chat 说“继续”，Builder 会重新核对 GitHub", high)
+        self.assertNotIn("说“merged”", high)
+
+
 class VersionFivePureRevert(VersionThreeRendered):
     """#206: the pure-revert rule in version 5's builder.md."""
 

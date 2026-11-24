@@ -65,8 +65,10 @@ describes one review bot slot and habit confirms the enabled list during Initial
    is unavailable. Use the Builder's request instructions. Start the Reviewer with exactly the start
    instruction the Builder gives (#149). At version 3 its model vendor differs from the
    Builder's. From version 4 it differs from every Builder session that pushed to the PR.
-   Read the high-risk report, run the pinned merge, say merged in the Builder's terminal and
-   run the owner-script command to restore Gate.
+   Read the high-risk report and run the pinned merge. Through version 4, say merged in the
+   Initialize Builder's terminal. From version 5, follow that Builder's handoff for its
+   current wait state. After product smoke passes, run the owner-script command when the
+   Builder hands it to habit to restore Gate.
 4. **The outcomes.** The cutting PR's Builder posts each step's outcome on the cutting PR,
    naming the head. The issue's `generator_identity` equals `end-to-end.json`'s identity; the
    evidence includes habit's confirmation, the record at the version cut with the confirmed

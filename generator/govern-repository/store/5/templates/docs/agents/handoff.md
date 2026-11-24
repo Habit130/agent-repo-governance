@@ -140,7 +140,13 @@ Role: Reviewer. PR: #58. Skills: code-review. Post on the PR: the Comment review
 ```
 
 ```text
-本 session 保持打开，自行等待 PR merge；merge 后在本 session 说“merged”，以便完成 after-merge 报告。
+本 chat 正在等待 PR #58。Builder 核实 GitHub 合并记录后开始验证，无需回复。
+```
+
+If that Builder had to stop waiting, use this closing line instead:
+
+```text
+PR #58 的合并情况还需核实。等待已停止，worktree 已保留。habit 可以回到本 chat 说“继续”，Builder 会重新核对 GitHub。
 ```
 
 A substituting Reviewer's final handoff, at medium:
