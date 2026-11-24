@@ -88,18 +88,23 @@ class VersionFiveInitializeChecks(VersionThreeRendered):
             for visibility in [row["visibility"]] if "visibility" in row else ["PUBLIC", "PRIVATE"]:
                 with self.subTest(case=row["name"], visibility=visibility):
                     rules = [dict(rule, ruleset_id=row.get("gate_rule_id", 41)) for rule in gate["rules"]]
+                    check_rule = next(rule for rule in rules if rule["type"] == "required_status_checks")
+                    if "checks_rule_id" in row:
+                        check_rule["ruleset_id"] = row["checks_rule_id"]
                     if "checks" in row:
-                        check_rule = next(rule for rule in rules if rule["type"] == "required_status_checks")
                         check_rule["parameters"] = {"required_status_checks": row["checks"]}
                     rules.append({"type": "update", "ruleset_id": row.get("merge_rule_id", 42)})
                     branch_read = ["api", "--paginate", "--slurp", "repos/Habit130/tally/rules/branches/release%2Fcurrent"]
                     response = (ow.http_error(branch_read, row["http_error"], row.get("message", "Unavailable"))
                                 if "http_error" in row else ow.ok(branch_read, [rules[:2], rules[2:]]))
+                    gate_meta = dict(listed[0], name=row.get("gate_name", "Gate"), target=row.get("gate_target", "branch"),
+                                     enforcement=row.get("gate_enforcement", "active"))
+                    other_meta = dict(listed[2], name=row.get("other_name", "Other"))
                     calls = [
                         ow.ok(["api", "repos/{owner}/{repo}"],
                               {"full_name": "Habit130/tally", "visibility": visibility.lower(), "default_branch": branch}),
                         ow.ok(["api", "--paginate", "--slurp", "repos/Habit130/tally/rulesets?includes_parents=false"],
-                              [[dict(listed[0], target=row.get("gate_target", "branch"))], listed[1:]]),
+                              [[gate_meta], [listed[1], other_meta]]),
                         response,
                         ow.ok(ow.api("/rulesets/41"), {"conditions": {"ref_name": {
                             "include": row.get("gate_scope", ["~DEFAULT_BRANCH"]), "exclude": []}}}),

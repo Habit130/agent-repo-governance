@@ -65,33 +65,53 @@ def check_publisher(rules, label):
     return pinned
 
 
-def check_ruleset(name, types, listed, effective, path, private):
-    matches = [item for item in listed if item.get("name") == name]
-    if len(matches) != 1 or type(matches[0].get("id")) is not int:
-        print("%s: missing or ambiguous ruleset ID" % name)
+def check_candidate(ruleset, types, effective, path, private):
+    name = ruleset["name"]
+    if type(ruleset.get("id")) is not int:
+        print("%s ruleset ID unreadable; check agent access and retry" % name)
         return False
-    ruleset = matches[0]
     label = "%s #%d" % (name, ruleset["id"])
+    detail_path = "%s/rulesets/%d" % (path, ruleset["id"])
     if ruleset.get("target") != "branch":
         print("%s: target %s (expected branch); check the target and rename a conflicting ruleset before rerunning the owner script"
               % (label, ruleset.get("target", "unknown")))
         return False
     if ruleset.get("enforcement") != "active":
-        print("%s: enforcement %s (expected active)" % (label, ruleset.get("enforcement", "unknown")))
+        enforcement = ruleset.get("enforcement", "unknown")
+        print("%s: enforcement %s (expected active); verify enforcement and re-enable a disabled ruleset" % (label, enforcement))
+        report_scope(detail_path, label, private)
         return False
-    rules = [rule for rule in effective if rule.get("ruleset_id") == ruleset["id"]]
+    rules = [rule for rule in effective if type(rule.get("ruleset_id")) is int and rule["ruleset_id"] == ruleset["id"]]
     present = [kind for kind in types if any(rule.get("type") == kind for rule in rules)]
     missing = [kind for kind in types if kind not in present]
     print("%s active: %s" % (label, ", ".join(present) or "no effective rules"))
     if missing:
         print("%s missing %s" % (label, ", ".join(missing)))
     if not rules:
-        report_scope("%s/rulesets/%d" % (path, ruleset["id"]), label, private)
+        report_scope(detail_path, label, private)
     if name == "Merge" or "required_status_checks" not in present:
         return not missing
 
     pinned = check_publisher(rules, label)
     return not missing and pinned
+
+
+def check_ruleset(name, types, listed, effective, path, private):
+    named = [item for item in listed if item.get("name") == name]
+    if not named:
+        print("%s ruleset missing; rerun the owner script" % name)
+        return False
+    effective_ids = {r["ruleset_id"] for r in effective if type(r.get("ruleset_id")) is int}
+    applying = [item for item in named if item.get("target") == "branch" and item.get("enforcement") == "active"
+                and type(item.get("id")) is int and item["id"] in effective_ids]
+    if len(applying) == 1:
+        return check_candidate(applying[0], types, effective, path, private)
+    if len(applying) > 1:
+        print("%s attribution ambiguous across effective IDs %s; inspect each ruleset before restoring the target"
+              % (name, ", ".join(str(item["id"]) for item in applying)))
+    for candidate in applying or named:
+        check_candidate(candidate, types, effective, path, private)
+    return False
 
 
 def main():
