@@ -1,0 +1,8 @@
+{
+  "source": "https://github.com/Habit130/agent-repo-governance/issues/287",
+  "open_pr": "If the PR is open, check the current head for findings awaiting a required Builder answer. Include Nits even when the `Reviewer` status is successful.",
+  "cases": {
+    "same-head Nit awaiting a Builder answer": "For each missing answer, follow [Answering findings](review.md#answering-findings). After a repair push, follow [Rounds](review.md#rounds) on the new head.",
+    "same-head Nit already answered by the Builder": "When every required answer is present on the current head, resume the merge wait where supported without replying again."
+  }
+}

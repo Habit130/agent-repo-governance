@@ -188,17 +188,23 @@ This section applies to PR delivery.
 - At medium and high, wait for the PR to merge. At medium, a Builder that cannot wait
   leaves its worktree, and nobody nudges it.
 - At high, when its permitted in-session wait returns, the original Builder must read the
-  intended repository and PR number on GitHub. Confirm that habit merged it into the
-  intended default branch, the full PR head SHA at merge matches the reviewed head pinned
-  for habit, and GitHub identifies the resulting squash commit. Only then begin verification
-  without another message from habit. If the PR is open, keep waiting where supported.
-  For a PR closed without merge, an unrelated event or a mismatched identity, report the
-  discrepancy and stop.
+  intended repository and PR number on GitHub. For a PR closed without merge, an unrelated
+  event or a mismatched identity, report the discrepancy and stop.
+  - If the PR is open, check the current head for findings awaiting a required Builder
+    answer. Include Nits even when the `Reviewer` status is successful.
+    - For each missing answer, follow [Answering findings](review.md#answering-findings).
+      After a repair push, follow [Rounds](review.md#rounds) on the new head.
+    - When every required answer is present on the current head, resume the merge wait
+      where supported without replying again.
+  - If GitHub shows a merge, confirm that habit merged it into the intended default
+    branch, the full PR head SHA at merge matches the reviewed head pinned for habit,
+    and GitHub identifies the resulting squash commit. Only then begin verification
+    without another message from habit.
 - If that wait is unsupported or interrupted, or the GitHub read is inconclusive,
-  say what evidence is pending, keep your worktree and stop. To resume verification,
+  say what evidence is pending, keep your worktree and stop. To resume,
   habit may say “继续” (continue) in the original Builder chat. On return, repeat the
-  same GitHub checks. Other sessions leave that chat and its worktree alone. Never ask
-  habit to return just for cleanup.
+  same GitHub checks, including the open-PR branch. Other sessions leave that chat and
+  its worktree alone. Never ask habit to return just for cleanup.
 - The after-merge report is a final handoff (`handoff.md`). It reports this delivery only;
   what is dispatched next is the Planner's dispatch plan. When actual difficulty differed
   from that plan, say so in one sentence; say nothing otherwise.
