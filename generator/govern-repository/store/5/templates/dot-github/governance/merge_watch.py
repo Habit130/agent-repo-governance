@@ -109,6 +109,7 @@ imported from beside this file. Python 3's standard library at the 3.9 level, pl
 """
 
 import argparse
+from copy import copy
 from datetime import datetime
 import json
 import os
@@ -449,6 +450,16 @@ class Pull:
 
     def unknown(self, source, reason):
         return unresolved(self.problems, "#%d %s: %s" % (self.number, source, reason))
+
+    def conditional_evidence(self):
+        """Collect tentative reads separately until the condition needs them for a verdict."""
+        facts = copy(self)
+        facts.problems, facts.notes = [], []
+        facts._cache = self._cache.copy()
+        if isinstance(self.read, GitHub):
+            facts.read = copy(self.read)  # Same transport and push deadline.
+            facts.read.unreadable = facts.problems
+        return facts
 
     def rows(self, endpoint):
         if endpoint not in self._cache:
@@ -874,13 +885,26 @@ def _companion_missing(pull, bots, summary, agent):
     """Judge the v5 medium companion independently of the declared bot slot and any waiver."""
     if not bots or "copilot" not in bots:
         return ()
-    others = any_evidence(PROVIDERS[bot](pull) for bot in bots if bot != "copilot")
-    if others is not False or _copilot(pull) is not True:
+    # A clear declaration already required the historical status in _declared_missing.
+    if isinstance(summary, dict) and summary.get("reviewer") == ("clear", None):
         return ()
-    if _companion_change(pull) is not True:
+    facts = pull.conditional_evidence()
+    others = any_evidence(PROVIDERS[bot](facts) for bot in bots if bot != "copilot")
+    if others is True:
+        return ()
+    change = _companion_change(facts)
+    if change is False:
+        return ()
+    copilot = _copilot(facts)
+    if copilot is False:
+        return ()
+    for message in facts.problems:
+        unresolved(pull.problems, message)
+    pull.notes.extend(note for note in facts.notes if note not in pull.notes)
+    if UNKNOWN in (others, change, copilot):
         return ()
     missing = []
-    if summary is not UNKNOWN and (summary or {}).get("reviewer") != ("clear", None):
+    if summary is not UNKNOWN:
         missing.append(MERGE_SUMMARY)
     if _reviewer(pull, agent) is False:
         missing.append("reviewer")
@@ -894,8 +918,6 @@ def missing_reviews(pull, agent_account, owner, tier, bots, version):
     waivers = waived(pull, owner)
     minimum = REQUIRED[tier]
     missing = set()
-    if version == 5 and tier == "medium":
-        missing.update(_companion_missing(pull, bots, summary, agent_account))
     if version == 5 and isinstance(summary, dict):
         missing.update(_declared_missing(pull, summary, bots, tier, agent_account, waivers))
         minimum = set(minimum).difference(summary)
@@ -916,6 +938,8 @@ def missing_reviews(pull, agent_account, owner, tier, bots, version):
     if "reviewer" in minimum and waivers["reviewer"] is not True:
         if any_evidence((_reviewer(pull, agent_account), waivers["reviewer"])) is False:
             missing.add("reviewer")
+    if version == 5 and tier == "medium":
+        missing.update(_companion_missing(pull, bots, summary, agent_account))
     return [kind for kind in KINDS + (MERGE_SUMMARY,) if kind in missing]
 
 

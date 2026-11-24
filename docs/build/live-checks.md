@@ -44,7 +44,7 @@ in short:
   `contents` path with the file's text.
 
 **Version 4** keeps the same event and record boundary, with its script under
-`generator/govern-repository/store/4/templates/`. For a base at version 4 or later, every
+`generator/govern-repository/store/4/templates/`. For a version 4 base, every
 tier requires `self-verification` and `merge-summary`; medium and high require `bot-1`,
 and only high requires `reviewer`. At medium, Merge watch accepts substitution after it
 successfully reads and parses the bot policy. A readable summary with `reviewer=clear`
@@ -71,7 +71,11 @@ commit's parent. At Initialize it reads the introduced record after a confirmed 
 It compares comments, Reviewer statuses, Copilot submissions and check completions with
 the PR's merge time. The `actions: read` permission lets it identify the linked Copilot
 workflow by its job, run, head and check suite. The public sandbox recording on #131
-supplies the positive producer control. For a draft v5 render, pass `--version 5` to
+supplies the positive producer control. On a v5 medium merge, replay the squash change
+with that recording to check the compulsory Reviewer when Copilot alone completed a bot
+review on fixed content or an instruction file. Check the posted record for an omitted
+summary entry, a missing successful status by merge time, or both. For a draft v5 render,
+pass `--version 5` to
 `prepare` with the public sandbox's `merge-watch-v4-high`, `merge-watch-v4-medium` and
 `merge-watch-v4-miss` probes. These probes exercise Codex. The prepared version selects
 the summary format for the probe PRs. Read back all 40 head digits on each v5 probe and

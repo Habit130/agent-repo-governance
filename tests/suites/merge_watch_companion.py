@@ -120,4 +120,26 @@ class CompanionReviewer(RecordedMerge):
         self.comments.append(codex)
         self.declare("medium", "bot-1=clear(copilot)", "reviewer=clear")
         self.statuses.clear()
-        self.replay(missing=("reviewer",), incomplete="pre-edit content")
+        self.replay(missing=("reviewer",))
+        self.declare("medium", "bot-1=clear(copilot)")
+        self.summary["body"] = self.summary["body"].replace("self-verification=clear", "self-verification=waived")
+        self.replay(missing=("self-verification",), incomplete="pre-edit content")
+
+    def test_known_nonqualifying_change_supersedes_uncertain_optional_bot(self):
+        self.change["files"] = [{"filename": "README.md", "status": "modified"}]
+        self.comments.append({"user": {"login": "chatgpt-codex-connector[bot]"}, "created_at": EARLY,
+                              "updated_at": LATE, "body": "edited after merge"})
+        self.replay()
+        self.change["files"][0]["filename"] = "AGENTS.md"
+        self.review["state"] = "PENDING"
+        self.declare("medium", "bot-1=no-provider(none)", "reviewer=clear")
+        self.replay()
+
+    def test_unknown_change_does_not_affect_proven_substitution(self):
+        self.declare("medium", "bot-1=no-provider(none)", "reviewer=clear")
+        self.errors[self.change_path] = '{"message":"comparison unavailable"}'
+        self.review["state"] = "PENDING"
+        self.replay()
+        self.declare("medium", "bot-1=waived(copilot)")
+        self.comments.append(self.waiver("bot-1"))
+        self.replay()
