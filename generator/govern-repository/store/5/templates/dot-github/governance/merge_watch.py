@@ -6,7 +6,11 @@ checkout. It is never a required check. It reads the event, then GitHub through 
 and opens one miss record per miss, in the format `docs/agents/issue-tracker.md` gives
 (Miss records), labelled `miss`.
 
-On `push` to the default branch, for each pushed commit:
+On `push` to the default branch, a bounded event list is reconciled with the paginated
+comparison of its before and after SHAs. An incomplete range is reported with its refs;
+commits established by the event or recovered pages are still judged. Push runs post confirmed
+misses as they go, honor GitHub's rate-limit delays and report where the audit stopped if its
+time or retry budget runs out. For each pushed commit:
 
 - the merged PR is the one whose squash commit it is. A commit that is only part of a merged
   PR's history is left to that PR's merge commit; a commit with no merged PR at all records a
@@ -91,8 +95,9 @@ agent identity for both the summary and the Reviewer status. Edited comment cont
 cannot be reconstructed, missing timestamps and ambiguous Copilot check attribution are
 reported as INCOMPLETE. The workflow posts independently supported misses and exits 1.
 Copilot requires a submitted review and a successful check tied to its dynamic Actions
-workflow, same head, job and check suite. A record whose title and `Observed:`
-line an open record already has isn't opened again, so a rerun adds nothing. Two runs at once
+workflow, same head, job and check suite. A matching open miss issue must identify the miss in its
+title and six opening fields. Exact observations deduplicate a rerun. A genuine open
+red-default-branch record covers a continuing red branch. Two runs at once
 can each read no open record, so two workflows failing together may open two
 `red-default-branch` records: a concurrency group would cancel a pending run and lose its
 record instead.
@@ -108,6 +113,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 sys.dont_write_bytecode = True
 
@@ -196,17 +202,107 @@ def _field(body, name):
     return None
 
 
+# The tracker permits free detail after a blank line following these six opening fields.
+RECORD_OPENING = re.compile(
+    r"Merged PR: (none|#[1-9][0-9]*)\nKind: (escape|process miss)\nCategory: ([a-z-]+)\n"
+    r"Observed: ([^\n]+)\nFound by: (?:Merge watch|Planner|Builder|Reviewer|habit)\n"
+    r"Bug issue: none(?=\n\n|\n?\Z)"
+)
+RED = ("failure", "cancelled", "timed_out", "startup_failure")
+
+
+def _red_push(run, default_branch):
+    path = run.get("path") or ""
+    return (run.get("event") == "push" and run.get("conclusion") in RED
+            and run.get("head_branch") == default_branch
+            and isinstance(path, str) and path.partition("@")[0] != WORKFLOW)
+
+
+def _red_incident(observed, repository, default_branch, read, problems):
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+    prefix = re.escape(server + "/" + repository + "/actions/runs/")
+    url = prefix + r"([1-9][0-9]*)"
+    # A written non-red verdict cannot describe the open red incident.
+    verdict = re.match(r"Workflow .+? concluded ([a-z_]+) on its push-triggered run ", observed)
+    if verdict and verdict[1] not in RED:
+        return False
+    # The six fields identify an incident through its run and commit, however the
+    # writer phrases the observation. Validate those facts for every author.
+    pattern = r"(?:^|[\s(<])" + url + r"(?:/attempts/([1-9][0-9]*))?/?(?=$|[\s)>.,?#])"
+    links = set(re.findall(pattern, observed, re.I))
+    shas = set(re.findall(r"\b[0-9a-f]{40}\b", observed.lower()))
+    if len(links) != 1 or len(shas) != 1:
+        return False
+    run_id, attempt = links.pop()
+    sha = shas.pop()
+    path = "repos/%s/actions/runs/%s" % (repository, run_id)
+
+    def read_run(suffix=""):
+        try:
+            run = read(path + suffix)
+        except ReadError:
+            run = None
+        if (not isinstance(run, dict) or str(run.get("id")) != run_id or not is_sha(run.get("head_sha"))
+                or not all(isinstance(run.get(key), str) and run[key] for key in ("event", "head_branch", "path"))
+                or "conclusion" not in run):
+            unresolved(problems, path + suffix + ": could not verify the open red record's run")
+            return {}
+        return run
+
+    run = read_run("/attempts/" + attempt if attempt else "")
+    if run.get("head_sha") != sha:
+        return False
+    if attempt and str(run.get("run_attempt")) != attempt:
+        return False
+    if _red_push(run, default_branch):
+        return True
+    if attempt:
+        return False
+    # A bare run URL follows its latest attempt. A successful rerun does not close
+    # the tracker record covering the earlier failed default-branch push.
+    latest = run.get("run_attempt")
+    if type(latest) is not int or latest < 1:
+        unresolved(problems, path + ": could not establish the run attempt")
+        return False
+    for number in range(latest - 1, 0, -1):
+        earlier = read_run("/attempts/%d" % number)
+        if (earlier.get("run_attempt") == number and earlier.get("head_sha") == sha
+                and _red_push(earlier, default_branch)):
+            return True
+    return False
+
+
+def _record_key(title, body):
+    opening = RECORD_OPENING.match(body.replace("\r\n", "\n"))
+    if not opening:
+        return None
+    merged, kind, category, observed = opening.groups()
+    expected = "Miss: %s, %s" % (kind, category)
+    if merged != "none":
+        expected += " in " + merged
+    if title != expected or not observed.strip():
+        return None
+    return kind, category, merged, observed
+
+
 def _open_records(read, repository, problems):
     issues = read_rows(read, "repos/%s/issues?labels=%s&state=open" % (repository, LABEL), problems)
-    records = []
+    keys = set()
     for issue in issues:
-        if issue is UNKNOWN or "pull_request" in issue:
+        if issue is UNKNOWN or "pull_request" in issue or issue.get("state", "open") != "open":
+            continue
+        labels = issue.get("labels", [])
+        if not isinstance(labels, list) or not any(
+            label == LABEL or isinstance(label, dict) and label.get("name") == LABEL for label in labels
+        ):
             continue
         if isinstance(issue.get("title"), str) and isinstance(issue.get("body"), str):
-            records.append(issue)
+            key = _record_key(issue["title"], issue["body"])
+            if key is not None:
+                keys.add(key)
         elif issue.get("body") is not None or not isinstance(issue.get("title"), str):
             unresolved(problems, "open miss records: malformed issue")
-    return records
+    return keys
 
 
 def is_sha(value):
@@ -766,34 +862,99 @@ def _judge_pull(read, repository, matches, squash, notes, problems):
     return records
 
 
+PUSH_COMMIT_LIMIT = 2048
+PER_PAGE = 100
+
+
+def _push_commits(event, read, repository, problems):
+    before, after = event.get("before"), event.get("after")
+    commits = event.get("commits")
+    listed = {}
+    if isinstance(commits, list):
+        for commit in commits:
+            sha = commit.get("id") if isinstance(commit, dict) else None
+            if is_sha(sha):
+                listed[sha] = None
+            else:
+                unresolved(problems, "push commits: malformed list member")
+        if (is_sha(before) and is_sha(after) and len(commits) < PUSH_COMMIT_LIMIT
+                and len(listed) == event.get("size", len(commits))
+                and (after in listed or event.get("forced") or event.get("deleted") or before == after)):
+            yield from listed
+            return
+
+    # A non-forced update to a different tip introduces that commit even when the
+    # webhook omits it. A forced rewind can point at an already-reachable commit.
+    if (event.get("forced") is False and not event.get("deleted") and before != after
+            and is_sha(after) and after != "0" * 40):
+        listed[after] = None
+    location = "push range %s..%s" % (before, after)
+    # Judge each witness before requesting another page. Even a quota stop on that
+    # page cannot discard the events or comparison rows already accounted for.
+    yield from listed
+    if not is_sha(before) or not is_sha(after) or "0" * 40 in (before, after):
+        unresolved(problems, location + ": no comparable before and after commits")
+        return
+    recovered = set()
+    total = None
+    path = "repos/%s/compare/%s...%s" % (repository, before, after)
+    page = 1
+    while True:
+        try:
+            comparison = read("%s?per_page=%d&page=%d" % (path, PER_PAGE, page))
+        except ReadError:
+            unresolved(problems, "%s: could not read comparison page %d" % (location, page))
+            break
+        base = comparison.get("base_commit") if isinstance(comparison, dict) else None
+        if not isinstance(base, dict) or base.get("sha") != before:
+            unresolved(problems, "%s: comparison page %d has no matching base" % (location, page))
+            break
+        count, rows = comparison.get("total_commits"), comparison.get("commits")
+        if not isinstance(rows, list):
+            unresolved(problems, "%s: missing comparison commits on page %d" % (location, page))
+            break
+        for row in rows:
+            sha = row.get("sha") if isinstance(row, dict) else None
+            if not is_sha(sha) or sha == before or sha in recovered:
+                unresolved(problems, "%s: invalid or repeated commit on page %d" % (location, page))
+            else:
+                recovered.add(sha)
+                if sha not in listed:
+                    yield sha
+        if type(count) is not int or count < 0 or total not in (None, count):
+            unresolved(problems, "%s: invalid comparison total on page %d" % (location, page))
+            break
+        total = count
+        if len(rows) < PER_PAGE or page * PER_PAGE >= total:
+            break
+        page += 1
+
+    if (total is None or len(recovered) != total or not listed.keys() <= recovered
+            or (total and after not in recovered) or event.get("size", total) != total):
+        unresolved(problems, "%s: incomplete commit coverage; identified %d commits (comparison total: %s)"
+                   % (location, len(recovered | listed.keys()), total if total is not None else "unknown"))
+
+
 def _on_push(event, read, repository, default_branch, notes, problems):
-    records = []
-    for commit in event.get("commits") or []:
-        sha = commit.get("id") if isinstance(commit, dict) else None
-        if not is_sha(sha):
-            unresolved(problems, "push commits: malformed list member")
-            continue
+    for sha in _push_commits(event, read, repository, problems):
         matches, in_history = _merged_pr(read, repository, default_branch, sha, problems)
         if matches:
-            records.extend(_judge_pull(read, repository, matches, sha, notes, problems))
+            yield from _judge_pull(read, repository, matches, sha, notes, problems)
         elif not in_history:
-            records.append(record(
+            yield record(
                 None, "process miss", "push-without-pr",
                 "Commit %s was pushed to %s with no merged PR." % (sha, default_branch),
-            ))
-    return records
+            )
 
 
 def _on_workflow_run(event, read, repository, default_branch, open_records, problems):
     run = event["workflow_run"]
-    if (
-        run.get("event") != "push"
-        or run.get("conclusion") not in ("failure", "cancelled", "timed_out", "startup_failure")
-        or run.get("head_branch") != default_branch
-        or (run.get("path") or "").split("@")[0] == WORKFLOW
-    ):
+    if not _red_push(run, default_branch):
         return []
-    if any(_field(issue.get("body"), "Category") == "red-default-branch" for issue in open_records):
+    incidents = [_red_incident(observed, repository, default_branch, read, problems)
+                 for kind, category, _, observed in open_records
+                 if (kind, category) == ("escape", "red-default-branch")]
+    if any(incidents):
         return []
     sha = run["head_sha"]
     matches, _ = _merged_pr(read, repository, default_branch, sha, problems)
@@ -808,13 +969,18 @@ def decide(event_name, event, agent_account, read, notes=None, problems=None):
     """The miss records to open for one event.
 
     `read(path)` returns the JSON list GitHub gives for a REST path, every page joined (a
-    check-runs answer's `check_runs`), a Git commit or Actions run object, or record text.
+    check-runs answer's `check_runs`), a Git commit, comparison page or Actions object, or record text.
     Reads may raise ReadError. The legacy agent_account argument is ignored: each merge's
     historical record supplies its account. Return {title, body, labels} records, add
     observations to notes, and incomplete assessments to problems (or notes when omitted).
     """
     notes = [] if notes is None else notes
     problems = notes if problems is None else problems
+    return list(_event_records(event_name, event, read, notes, problems))
+
+
+def _event_records(event_name, event, read, notes, problems):
+    """Yield each known miss so a large push can post it before reading the next commit."""
     repository = event["repository"]["full_name"]
     default_branch = event["repository"]["default_branch"]
     if event_name == "push" and event.get("ref") == "refs/heads/" + default_branch:
@@ -824,24 +990,80 @@ def decide(event_name, event, agent_account, read, notes=None, problems=None):
         open_records = _open_records(read, repository, problems)
         records = _on_workflow_run(event, read, repository, default_branch, open_records, problems)
     else:
-        return []
-    seen = set((issue.get("title"), _field(issue.get("body"), "Observed")) for issue in open_records)
-    return [rec for rec in records if (rec["title"], _field(rec["body"], "Observed")) not in seen]
+        return
+    for rec in records:
+        if _record_key(rec["title"], rec["body"]) not in open_records:
+            yield rec
 
 
 # The entry the workflow runs.
 
-PER_PAGE = 100
+class PushIncomplete(Exception):
+    """The audit must stop issuing requests and report the unjudged part of the push."""
+
+
+def _rate_limit_delay(status, headers, body, attempt):
+    if status not in (b"403", b"429"):
+        return None
+    retry = headers.get(b"retry-after", b"")
+    remaining = headers.get(b"x-ratelimit-remaining")
+    if (status != b"429" and not retry.isdigit() and remaining != b"0"
+            and b"rate limit" not in body.lower()):
+        return None
+    reset = headers.get(b"x-ratelimit-reset", b"")
+    delays = []
+    if retry.isdigit():
+        delays.append(int(retry))
+    if remaining == b"0" and reset.isdigit():
+        delays.append(int(reset) - int(time.time()) + 1)
+    # GitHub asks for at least one minute without a supplied delay and increasing
+    # backoff for repeated secondary limits. A non-rate-limit failure is never retried.
+    if not delays or attempt:
+        delays.append(60 * 2**attempt)
+    return max(1, *delays)
 
 
 class GitHub(object):
     """`read` through `gh api`, every page of a list; each path that couldn't be read is kept in `unreadable`."""
 
-    def __init__(self):
+    def __init__(self, push=False):
         self.unreadable = []
+        # Allow the 360-minute job to report incomplete coverage before it times out.
+        self.deadline = time.monotonic() + 350 * 60 if push else None
+
+    def request(self, path, *options, data=None):
+        command = ["gh", "api"]
+        if self.deadline is not None:
+            command.append("--include")
+        command.extend((*options, path))
+        for attempt in range(8):
+            if self.deadline is not None and time.monotonic() >= self.deadline:
+                raise PushIncomplete("audit time budget exhausted at " + path)
+            result = subprocess.run(command, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if self.deadline is None or not result.stdout.startswith(b"HTTP/"):
+                return result
+            parts = re.split(rb"\r?\n\r?\n", result.stdout, maxsplit=1)
+            if len(parts) != 2:
+                return result
+            head, result.stdout = parts
+            if not result.returncode:
+                return result
+            status_line = head.splitlines()[0].split()
+            status = status_line[1] if len(status_line) >= 2 else b""
+            headers = {}
+            for line in head.splitlines()[1:]:
+                key, _, value = line.partition(b":")
+                headers[key.lower()] = value.strip()
+            delay = _rate_limit_delay(status, headers, result.stdout, attempt)
+            if delay is None:
+                return result
+            if attempt == 7 or time.monotonic() + delay >= self.deadline:
+                raise PushIncomplete("GitHub still rate limited the audit at " + path)
+            print("NOTE GitHub rate limit: waiting %d seconds before retrying." % delay, flush=True)
+            time.sleep(delay)
 
     def _json(self, path):
-        result = subprocess.run(["gh", "api", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = self.request(path)
         try:
             if result.returncode:
                 raise ValueError(" ".join(result.stderr.decode("utf-8", "replace").split()) or "gh failed")
@@ -855,7 +1077,7 @@ class GitHub(object):
         endpoint = path.split("/", 3)[3]
         if endpoint.startswith("contents/"):
             return self._file(path)
-        if endpoint.startswith(("git/commits/", "actions/jobs/", "actions/runs/")):
+        if endpoint.startswith(("git/commits/", "actions/jobs/", "actions/runs/", "compare/")):
             return self._json(path)
         items, page = [], 1
         while True:
@@ -873,8 +1095,7 @@ class GitHub(object):
 
     def _file(self, path):
         """A file's text at a ref, from the contents API's raw form; NotFound on GitHub's own answer that it isn't there."""
-        result = subprocess.run(["gh", "api", "-H", "Accept: application/vnd.github.raw", path],
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = self.request(path, "-H", "Accept: application/vnd.github.raw")
         if result.returncode != 0 and _not_found(result.stdout):
             raise NotFound(path)
         try:
@@ -884,6 +1105,11 @@ class GitHub(object):
         except ValueError as error:
             self.unreadable.append("%s: %s" % (path, error))
             raise ReadError(path)
+
+    def post(self, repository, rec):
+        result = self.request("repos/%s/issues" % repository, "--method", "POST", "--input", "-",
+                              data=json.dumps(rec, sort_keys=True).encode("utf-8"))
+        return result.returncode == 0
 
 
 def _not_found(stdout):
@@ -895,17 +1121,6 @@ def _not_found(stdout):
     return isinstance(data, dict) and data.get("status") == "404" and data.get("message") == "Not Found"
 
 
-def _post(repository, rec):
-    """Open the record as an issue; True when GitHub took it."""
-    posted = subprocess.run(
-        ["gh", "api", "--method", "POST", "repos/%s/issues" % repository, "--input", "-"],
-        input=json.dumps(rec, sort_keys=True).encode("utf-8"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    return posted.returncode == 0
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Merge watch's miss records for the event in GITHUB_EVENT_PATH.")
     parser.add_argument("--post", action="store_true", help="open each record as a `miss` issue")
@@ -913,22 +1128,26 @@ def main(argv=None):
     with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as handle:
         event = json.load(handle)
     event_name = os.environ["GITHUB_EVENT_NAME"]
-    github = GitHub()
+    github = GitHub(push=event_name == "push")
     notes, problems = [], []
-    records = decide(event_name, event, None, github, notes, problems)
-    failed = bool(github.unreadable or problems)
+    found = failed = False
+    try:
+        for rec in _event_records(event_name, event, github, notes, problems):
+            found = True
+            print("MISS %s. %s" % (rec["title"], _field(rec["body"], "Observed")), flush=True)
+            if args.post and not github.post(event["repository"]["full_name"], rec):
+                print("FAIL opening the record %s" % rec["title"], flush=True)
+                failed = True
+    except PushIncomplete as error:
+        unresolved(problems, "push range %s..%s: %s" % (event.get("before"), event.get("after"), error))
     for line in github.unreadable:
         print("UNREADABLE " + line)
     for line in notes:
         print("NOTE " + line)
     for line in problems:
         print("INCOMPLETE " + line)
-    for rec in records:
-        print("MISS %s. %s" % (rec["title"], _field(rec["body"], "Observed")))
-        if args.post and not _post(event["repository"]["full_name"], rec):
-            print("FAIL opening the record %s" % rec["title"])
-            failed = True
-    if not records and not failed:
+    failed = failed or bool(github.unreadable or problems)
+    if not found and not failed:
         print("No miss in this %s event." % event_name)
     return 1 if failed else 0
 

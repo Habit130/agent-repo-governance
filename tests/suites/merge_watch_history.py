@@ -94,7 +94,7 @@ class RecordedMerge(VersionThreeRendered):
             if "/contents/" in path:
                 args = ["api", "-H", "Accept: application/vnd.github.raw", path]
                 output = value
-            elif "/git/commits/" in path or "/actions/" in path:
+            elif "/git/commits/" in path or "/actions/" in path or "/compare/" in path:
                 args, output = ["api", path], json.dumps(value)
             else:
                 paged = path + ("&" if "?" in path else "?") + "per_page=100&page=1"
@@ -102,7 +102,9 @@ class RecordedMerge(VersionThreeRendered):
                 if "/check-runs?" in path:
                     value = {"check_runs": value, "total_count": len(value)}
                 output = json.dumps(value)
-            calls.append({"args": args, "stdout": self.errors.get(path, output),
+            args.insert(1, "--include")
+            status = "404 Not Found" if path in self.errors else "200 OK"
+            calls.append({"args": args, "stdout": "HTTP/2.0 " + status + "\r\n\r\n" + self.errors.get(path, output),
                           "exit": int(path in self.errors)})
         expected = []
         if missing:
@@ -120,8 +122,8 @@ class RecordedMerge(VersionThreeRendered):
                                       f"Observed: Commit {self.unassociated} was pushed to main with no merged PR.\n"
                                       "Found by: Merge watch\nBug issue: none\n")})
         for item in expected:
-            calls.append({"args": ["api", "--method", "POST", self.prefix + "/issues", "--input", "-"],
-                          "stdin": json.dumps(item, sort_keys=True), "stdout": "{}", "exit": 0})
+            calls.append({"args": ["api", "--include", "--method", "POST", "--input", "-", self.prefix + "/issues"],
+                          "stdin": json.dumps(item, sort_keys=True), "stdout": "HTTP/2.0 201 Created\r\n\r\n{}", "exit": 0})
         with tempfile.TemporaryDirectory(dir=self.tmp) as tmp:
             event, recording = Path(tmp, "event.json"), Path(tmp, "gh.json")
             target = repository or self.repo
@@ -344,6 +346,9 @@ class HistoricalEvidence(RecordedMerge):
         self.replay(incomplete="merged_at")
         self.pr["merged_at"] = "2026-11-10T09:45:00Z"
         self.event["commits"].insert(0, None)
+        comparison = f"{self.prefix}/compare/{self.parent}...{self.unassociated}?per_page=100&page=1"
+        self.api[comparison] = {"base_commit": {"sha": self.parent}, "total_commits": 2,
+                                "commits": [{"sha": self.squash}, {"sha": self.unassociated}]}
         self.replay(incomplete="malformed")
 
     def test_malformed_open_issue_does_not_hide_an_independent_miss(self):

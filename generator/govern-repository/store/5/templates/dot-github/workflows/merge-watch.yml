@@ -31,7 +31,8 @@ jobs:
   merge-watch:
     name: merge-watch
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # A push may span several GitHub API quota windows.
+    timeout-minutes: ${{ github.event_name == 'push' && 360 || 10 }}
     steps:
       - name: Check out the default branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
