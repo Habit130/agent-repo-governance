@@ -216,7 +216,8 @@ def run(source, home, codex=None):
     commit = skills.source_commit(source)
     installed = _refuse_older(home, source, commit)
     skill_set = skills.machine_skill_set(source)
-    tools = skills.tracked(source, skills.MACHINE_SOURCE)
+    tools = {rel: entry for rel, entry in skills.tracked(source, skills.MACHINE_SOURCE).items()
+             if not rel.startswith("skills/")}
 
     shown_commit = homes.withhold_url(commit)
     report = homes.Report("install %s" % shown_commit)

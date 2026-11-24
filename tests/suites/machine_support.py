@@ -70,6 +70,9 @@ def source_files(copies=None):
     files = {}
     for prefix, root in (("machine", MACHINE), ("generator/govern-repository", GENERATOR)):
         for rel, spec in _tree(root).items():
+            # Keep the skill inventory of the originally recorded synthetic home.
+            if prefix == "machine" and rel.startswith("skills/"):
+                continue
             files["%s/%s" % (prefix, rel)] = spec
     for name, skill in copies.items():
         for rel, content in skill.items():
