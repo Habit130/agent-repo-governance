@@ -150,9 +150,12 @@ Everything specific to one provider sits in its subsection.
   and again after each push. A request from the agent account is silently dropped, so no
   agent makes one.
 - **Wait**: 15 minutes.
-- **Completed on the head**: a review with `is_copilot_code_review` true whose `commit_id` is
-  the head, beside a completed `copilot-pull-request-reviewer` check run on the head. A
-  review for an older head, or a comment by Copilot without a review object, is none.
+- **Completed on the head**: apply [Merge watch's Copilot evidence rules](../../.github/governance/merge_watch.py)
+  to both records. Copilot's submitted review must have `is_copilot_code_review` true,
+  `commit_id` equal to the head, and state `COMMENTED`, `APPROVED` or `CHANGES_REQUESTED`.
+  Require a completed `copilot-pull-request-reviewer` check run whose `conclusion` is `success`.
+  Verify the check came from Copilot's dynamic Actions workflow by matching the head, linked job
+  and check suite.
 - **Findings** carry no severity. One Copilot labels by the Code Review Rules' categories
   takes that category; an unlabelled one is Important until answered.
 - **Conditions**, which nothing enforces: the repository setting that lets Copilot reviews

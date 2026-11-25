@@ -18,8 +18,9 @@ least medium.
 ## CI
 
 <!-- Replace with each workflow that runs on PRs or on the default branch: its jobs,
-     triggers and path filters, and which jobs are required checks. With no CI, say so: the
-     governance gate is then the only required check, and there is no smoke check. -->
+     triggers and path filters, and which jobs are required checks. With no CI, record that
+     the governance gate is the only required check. For smoke without default-branch product
+     CI, follow `builder.md`, After merge. -->
 
 ## Actions secrets
 

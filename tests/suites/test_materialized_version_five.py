@@ -9,6 +9,29 @@ import tempfile
 from textwrap import dedent
 
 from materialized_version_support import VersionThreeRendered, flat, level_three_section, level_two_section
+from merge_watch_history import RecordedMerge
+
+
+class VersionFiveCopilotCompletion(RecordedMerge):
+    def test_copilot_completion_requires_success_from_its_own_workflow(self):
+        self.replay()
+        self.check["conclusion"] = "failure"
+        self.replay(missing=("bot-1",))
+        self.check["conclusion"] = "success"
+        self.run["path"] = ".github/workflows/other.yml"
+        self.replay(missing=("bot-1",))
+
+        copilot = level_three_section(self.text("docs/agents/review.md"), "### Copilot code review")
+        completion = flat(copilot.split("- **Completed on the head**:", 1)[1].split("\n- ", 1)[0])
+        self.assertIn("apply [Merge watch's Copilot evidence rules](../../.github/governance/merge_watch.py) "
+                      "to both records.", completion)
+        self.assertIn("Copilot's submitted review must have `is_copilot_code_review` true, `commit_id` "
+                      "equal to the head, and state `COMMENTED`, `APPROVED` or `CHANGES_REQUESTED`.", completion)
+        self.assertIn("Require a completed `copilot-pull-request-reviewer` check run whose "
+                      "`conclusion` is `success`.", completion)
+        self.assertIn("Verify the check came from Copilot's dynamic Actions workflow by matching "
+                      "the head, linked job and check suite.", completion)
+        self.assertNotIn("beside a completed `copilot-pull-request-reviewer` check run on the head", completion)
 
 
 class VersionFiveCodexPRWait(VersionThreeRendered):
@@ -261,6 +284,16 @@ class VersionFiveBuilderMergeWait(VersionThreeRendered):
     def after_merge(self):
         return flat(level_two_section(self.text("docs/agents/builder.md"), "## After merge", "builder.md"))
 
+    def test_build_skeleton_routes_smoke_without_default_branch_product_ci(self):
+        self.assertIn("Otherwise state its absence; a high-risk ticket must have predetermined an "
+                      "executable local smoke, which runs on that exact commit.", self.after_merge())
+        tickets = level_two_section(self.text("docs/agents/planner.md"), "## Tickets", "planner.md")
+        self.assertIn("At high, identify actual default-branch product verification; when none "
+                      "exists, predetermine an executable local smoke on the exact merged commit", flat(tickets))
+        ci = flat(level_two_section(self.text("docs/agents/build.md"), "## CI", "build.md"))
+        self.assertIn("For smoke without default-branch product CI, follow `builder.md`, After merge.", ci)
+        self.assertNotIn("there is no smoke check", ci)
+
     def test_returned_wait_requires_the_intended_merge_before_verification(self):
         rule = self.after_merge()
         self.assertIn("At high, when its permitted in-session wait returns, the original Builder", rule)
@@ -331,6 +364,21 @@ class VersionFiveBuilderMergeWait(VersionThreeRendered):
         self.assertIn("worktree 已保留", high)
         self.assertIn("回到本 chat 说“继续”，Builder 会重新核对 GitHub", high)
         self.assertNotIn("说“merged”", high)
+
+    def test_builder_gives_the_merge_handoff_whenever_it_writes_the_summary(self):
+        review = self.text("docs/agents/review.md")
+        waivers = flat(level_two_section(review, "## Waivers", "review.md"))
+        self.assertIn("**A waived Reviewer session** leaves the Merge summary to the Builder: "
+                      "it runs the checks, writes the summary, at high as the high-risk report, "
+                      "and gives the merge handoff.", waivers)
+        merge = flat(level_three_section(review, "### The merge handoff"))
+        self.assertIn("after the summary, as its writer's final handoff", merge)
+        handoff = level_two_section(self.text("docs/agents/handoff.md"), "## A final handoff", "handoff.md")
+        builder = flat(handoff.split("- **Builder**:", 1)[1].split("\n- ", 1)[0])
+        self.assertIn("when handing to the Reviewer, when giving the merge handoff after writing "
+                      "the Merge summary at any tier (`review.md`, The merge handoff), or when "
+                      "giving the after-merge report", builder)
+        self.assertNotIn("at low and medium, after its Merge summary", builder)
 
 
 class VersionFivePureRevert(VersionThreeRendered):
