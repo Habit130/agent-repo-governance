@@ -26,6 +26,7 @@ import unittest
 from unittest import mock
 
 import materialized
+from merge_watch_states import ReviewGrammarCases
 from merge_watch_history import EARLY, HistoricalEvidence, load_v4_case_for_v5  # noqa: F401
 from merge_watch_push import PushAndOpenRecords
 from merge_watch_declarations import SummaryDeclarations  # noqa: F401
@@ -596,6 +597,10 @@ class DeclaredWaivers(unittest.TestCase):
                 waiver = {"user": {"login": owner}, "body": f"Waiver: {kind} at {head} — approved for this head",
                           "created_at": EARLY, "updated_at": EARLY}
                 self.assertEqual(decide({**github, comments_path: comments + [waiver]}), [])
+
+
+class GeneratedReviewStates(ReviewGrammarCases, unittest.TestCase):
+    load_watch = staticmethod(_load_watch)
 
 
 class VersionFour(unittest.TestCase):
