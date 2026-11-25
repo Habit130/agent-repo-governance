@@ -11,6 +11,38 @@ from textwrap import dedent
 from materialized_version_support import VersionThreeRendered, flat, level_three_section, level_two_section
 
 
+class VersionFiveCodexPRWait(VersionThreeRendered):
+    """#286: rendered wait routing, not the installed skill's operations or model behavior."""
+
+    VERSION = 5
+
+    def test_desktop_local_pr_waits_choose_the_available_skill_or_the_existing_fallback(self):
+        agents = self.text("AGENTS.md")
+        start = flat(level_two_section(agents, "## How to start", "AGENTS.md"))
+        codex = start.split("**Codex harness**:", 1)[1]
+        self.assertIn(
+            "For a Codex Desktop Local Builder or Reviewer waiting on a PR, use the installed "
+            "`wait-on-pr` skill when available; if unavailable, poll within that limit or stop "
+            "and say what the session is waiting for.", codex)
+        self.assertIn("Each poll waits at most 5 minutes.", codex)
+        self.assertEqual(agents.count("`wait-on-pr`"), 1)
+
+    def test_cli_and_other_harness_instructions_preserve_the_released_policy(self):
+        import support
+
+        prior = self.path("version-four")
+        code, facts = support.govern([
+            "render", "--version", "4", "--dest", prior,
+            "--repository", "Habit130/tally", "--default-branch", "main",
+            "--confirmed", self.path("confirmed.json"),
+        ])
+        self.assertEqual(code, 0, facts)
+        previous = support.read_text(os.path.join(prior, "AGENTS.md"))
+        previous_start = flat(level_two_section(previous, "## How to start", "AGENTS.md"))
+        start = flat(level_two_section(self.text("AGENTS.md"), "## How to start", "AGENTS.md"))
+        self.assertEqual(start.split(" For a Codex Desktop Local ", 1)[0], previous_start)
+
+
 class VersionFiveInitializeChecks(VersionThreeRendered):
     """Initialize requirements, Merge summary policy, and Planner dispatch in version 5."""
 

@@ -30,6 +30,7 @@ from test_materialized_version_four import (
 )
 from test_materialized_version_five import (
     VersionFiveBuilderMergeWait,
+    VersionFiveCodexPRWait,
     VersionFiveInitializeChecks,
     VersionFivePureRevert,
 )
