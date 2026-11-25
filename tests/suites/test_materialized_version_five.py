@@ -231,26 +231,43 @@ class VersionFiveBuilderMergeWait(VersionThreeRendered):
 
     def test_returned_wait_requires_the_intended_merge_before_verification(self):
         rule = self.after_merge()
+        self.assertIn("At high, when its permitted in-session wait returns, the original Builder", rule)
+        self.assertIn("closed without merge, an unrelated event or a mismatched identity, "
+                      "report the discrepancy and stop", rule)
+        self.assertNotIn('habit says "merged"', rule)
+        merged_pr = rule.partition("- If GitHub shows a merge,")[2].split(" - ", 1)[0]
         for condition in (
-            "At high, when its permitted in-session wait returns, the original Builder",
-            "read the intended repository and PR number on GitHub",
             "habit merged it into the intended default branch",
             "the full PR head SHA at merge matches the reviewed head pinned for habit",
             "GitHub identifies the resulting squash commit",
             "Only then begin verification without another message from habit",
-            "If the PR is open, keep waiting where supported",
-            "closed without merge, an unrelated event or a mismatched identity, report the discrepancy and stop",
         ):
             with self.subTest(condition=condition):
-                self.assertIn(condition, rule)
-        self.assertNotIn('habit says "merged"', rule)
+                self.assertIn(condition, merged_pr)
+
+    def test_open_pr_distinguishes_an_unanswered_nit_from_its_answered_control(self):
+        import support
+
+        with open(os.path.join(support.FIXTURES, "generator", "v5-builder-open-pr.json")) as handle:
+            fixture = json.load(handle)
+        section = level_two_section(self.text("docs/agents/builder.md"), "## After merge", "builder.md")
+        high = next(bullet for bullet in section.split("\n- ") if bullet.startswith("At high, when"))
+        branches = high.split("\n  - ")
+        self.assertIn("read the intended repository and PR number on GitHub", flat(branches[0]))
+        open_pr = next((branch for branch in branches[1:] if branch.startswith("If the PR is open,")), "")
+        condition, *actions = map(flat, open_pr.split("\n    - "))
+        self.assertEqual(condition, fixture["open_pr"])
+        for case, action in fixture["cases"].items():
+            with self.subTest(case=case):
+                self.assertIn(action, actions)
+        self.assertEqual(len(actions), len(fixture["cases"]))
 
     def test_stopped_builder_keeps_its_worktree_and_rechecks_on_manual_continuation(self):
         rule = self.after_merge()
         self.assertIn("unsupported or interrupted, or the GitHub read is inconclusive", rule)
         self.assertIn("say what evidence is pending, keep your worktree and stop", rule)
         self.assertIn('habit may say “继续” (continue) in the original Builder chat', rule)
-        self.assertIn("repeat the same GitHub checks", rule)
+        self.assertIn("repeat the same GitHub checks, including the open-PR branch", rule)
         self.assertIn("Other sessions leave that chat and its worktree alone", rule)
         self.assertIn("Never ask habit to return just for cleanup", rule)
         wait = level_two_section(self.text("docs/agents/builder.md"), "## Syncing and waiting", "builder.md")
