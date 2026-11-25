@@ -27,9 +27,9 @@ session. Typing it is habit's reply; no other words are needed.
 It comes only at these moments:
 
 - **Planner**: tickets are approved and can be dispatched, or the planning round is over.
-- **Builder**: handing to the Reviewer; at low and medium, after its Merge summary; the after-merge
-  report; for a results-comment ticket, its completion summary, the counterpart of the
-  after-merge report.
+- **Builder**: when handing to the Reviewer, after writing the Merge summary at any tier
+  (`review.md`, The merge handoff), or when giving the after-merge report. For a results-comment
+  ticket, its completion summary is the counterpart of the after-merge report.
 - **Reviewer**: after the Merge summary, with the merge command.
 - **Any role**: the session cannot continue and another must take over.
 
