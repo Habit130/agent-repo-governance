@@ -1,8 +1,8 @@
 urgency: urgent
 must-act: yes
 
-版本 5 修复了两条会让审查失效的路径。旧 gate 重跑时可能采用已被修改的 PR 正文，旧
-Merge watch 也可能把合并后补上的证据算进合并时的审查。建议受影响的仓库在下一次
+版本 5 修复了两条会让审查失效的路径。PR 正文修改后重跑旧 gate，旧 gate 可能仍按原事件中
+修改前的 Risk 或 Reverts 声明判断。旧 Merge watch 也可能把合并后补上的证据算进合并时的审查。建议受影响的仓库在下一次
 delivery 前 Upgrade。发布以本说明合入默认分支为准，版本 6 同时成为下一版草稿。
 
 **habit 需要做的事**
@@ -33,12 +33,15 @@ delivery 前 Upgrade。发布以本说明合入默认分支为准，版本 6 同
   Reviewer。High 的 summary 第三行声明是否适用 security review；认证、隐私或凭据
   处理按实际改动判断。合并前仍由 session 核对所需审查和豁免。（#244、#255、#274、#293）
 - Merge watch 检查默认分支 push 的整个提交区间。遇到部分证据不可读，会先记录已经
-  证实的 miss，再报告未完成的审计。重复事件按同一 miss 的真实记录去重。合并前还会
-  检查默认分支实际生效的 Gate、Merge、各自的规则及 gate check 来源。（#266、#268）
+  证实的 miss，再报告未完成的审计。重复事件按同一 miss 的真实记录去重。
+  Merge summary 撰写者在交付合并指令前运行 `branch_rules.py`，核对默认分支上实际
+  生效的 Gate 和 Merge、各自的规则及 gate check 来源。（#266、#268）
 - High 的每个 finding 都需要 Builder 在 GitHub 答复，包括 Nit。Reviewer 在答案齐全后
   才交付 high-risk report 和 pinned merge 命令。原 Builder 等待时会检查仍打开的 PR
   是否有待答复的 finding；合并后核对仓库、PR、合并者、目标分支、审查过的 head 和
-  squash commit，再验证该提交的 product smoke。等待中的 Builder 无需 habit 另行通知。
+  squash commit，再验证该提交的 product smoke。high 交付所在仓库若没有默认分支
+  product CI，Builder 须在实际 squash commit 上运行工单预先指定的本地 smoke。
+  等待中的 Builder 无需 habit 另行通知。
   等待不受支持、中断或 GitHub 证据不足时，habit 可在原 Builder 对话说“继续”。
   后续每项不可逆操作仍由 habit 单独批准。（#273、#284、#289）
 - Codex Desktop Local 的 Builder 和 Reviewer 等待 PR 时优先使用已安装的
