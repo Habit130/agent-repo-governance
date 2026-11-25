@@ -23,9 +23,9 @@ time or retry budget runs out. For each pushed commit:
   `self-verification` and `merge-summary` at every tier, `bot-1` from medium,
   and `reviewer` at high:
   - **the Merge summary**: the historical agent account's newest comment titled
-    `## Merge summary: <tier> at <sha>` for the declared tier and head. V5 uses all 40 hex
+    `## Merge summary: <tier> at <sha>` for the declared tier and head. From v5, use all 40 hex
     digits. Known v1–v4 bases use the first seven, including a v4-to-v5 Upgrade.
-    The second line lists the reviews. V5 checks each listed bot and Reviewer as well
+    The second line lists the reviews. From v5, check each listed bot and Reviewer as well
     as the tier minimum. A missing required declaration is a `merge-summary` miss;
   - **a bot slot** is filled by a completed review on the head from a provider enabled in the
     record at the merge's base, the commit before the squash commit. A PR can't lower its own
@@ -43,20 +43,20 @@ time or retry budget runs out. For each pushed commit:
     the last enabled bot in the base record's ordered list. An earlier unavailable provider
     or any other unfilled slot state stays missing. `no-provider(none)` declares exhaustion
     of an initially empty list or of all enabled bots; it does not prove requests occurred.
-    Sessions verify actual requests and unavailability evidence. In v5 a declared
+    Sessions verify actual requests and unavailability evidence. From v5 a declared
     `unavailable` or `no-provider` slot needs that medium substitution even with a slot
     waiver. With a known bot policy, either state at low or high records a missing bot.
     A low summary may omit the optional slot. `PROVIDERS` holds one reader per provider.
     Only enabled providers are read or reported.
   - **`reviewer`**: the agent account's newest `Reviewer` status on the head by merge time
-    is `success`. On a v5 medium merge changing fixed content or either instruction file,
+    is `success`. From v5, on a medium merge changing fixed content or either instruction file,
     if Copilot alone completed an enabled bot review, require that status and a matching
     `reviewer=clear` entry. An owner waiver cannot supply either witness;
   - **`self-verification`** and **`security`**: the writer attests to completion. At high,
-    v5 requires the writer's security applicability decision on the third line. An
-    applicable review needs a `security` declaration;
+    summaries from v5 give the writer's security applicability decision on the third line.
+    An applicable review needs a `security` declaration;
   - **a waiver** requires the repository owner's PR comment for one required item on
-    the exact head, in the fixed form `WAIVER` reads. In v5, only a `waived` declaration
+    the exact head, in the fixed form `WAIVER` reads. From v5, only a `waived` declaration
     can use it. The writer checks that the review was required and eligible for a waiver
     on this PR. A named bot must be enabled. At high, `security=waived` with
     `Security review applies: no` records a missing security review even with an
@@ -150,6 +150,8 @@ NO_PROVIDER = "none"
 # review kind, or a row of the repository's verification table, which Merge watch doesn't judge.
 WAIVER = re.compile("Waiver: (%s|verification \"[^\"\n]+\") at ([0-9a-f]{40}) \u2014 (\\S.*)" % "|".join(KINDS))
 
+# A script can audit historical records up to its own rendered model version.
+MODEL_VERSION = int("@@version@@")
 # Version 4's ladder applies only when the merge's base has adopted it.
 REVIEW_BOTS_VERSION = 4
 
@@ -557,7 +559,7 @@ class Pull:
             policy = gate.parse_record(raw.encode("utf-8"))
         except (gate.RecordError, UnicodeError):
             return self.unknown("policy", "invalid historical record")
-        if policy["version"] not in (1, 2, 3, 4, 5):
+        if policy["version"] > MODEL_VERSION:
             return self.unknown("policy", "unsupported historical version %d" % policy["version"])
         if policy["version"] >= REVIEW_BOTS_VERSION and "review_bots" not in policy["confirmed"]:
             self.unknown("policy", "historical record omits review_bots")
@@ -714,7 +716,7 @@ def parse_reviews(line, tier, *, require_minimum=True):
 
 def _summary_lines(pull, agent_account, tier, version):
     """The lines of the agent account's newest Merge summary titled for the tier and the head, or None."""
-    head = pull.head if version == 5 else pull.head[:7]
+    head = pull.head if version >= 5 else pull.head[:7]
     title = f"## Merge summary: {tier} at {head}"
     for body in pull.comment_bodies(agent_account, newest_first=True):
         if body is UNKNOWN:
@@ -928,7 +930,7 @@ def missing_reviews(pull, agent_account, owner, tier, bots, version):
     waivers = waived(pull, owner)
     minimum = REQUIRED[tier]
     missing = set()
-    if version == 5 and isinstance(summary, dict):
+    if version >= 5 and isinstance(summary, dict):
         missing.update(_declared_missing(pull, summary, bots, tier, agent_account, waivers))
         minimum = set(minimum).difference(summary)
         if minimum:
@@ -948,7 +950,7 @@ def missing_reviews(pull, agent_account, owner, tier, bots, version):
     if "reviewer" in minimum and waivers["reviewer"] is not True:
         if any_evidence((_reviewer(pull, agent_account), waivers["reviewer"])) is False:
             missing.add("reviewer")
-    companion = _companion_missing(pull, bots, summary, agent_account) if version == 5 and tier == "medium" else ()
+    companion = _companion_missing(pull, bots, summary, agent_account) if version >= 5 and tier == "medium" else ()
     return missing, companion
 
 

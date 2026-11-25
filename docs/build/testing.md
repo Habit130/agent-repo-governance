@@ -48,7 +48,8 @@ with CI's base/head contract.
 The render suite checks released-only defaults, no-write draft refusals and explicit opt-in
 against the real store. Machine-install verifies that copying draft bytes leaves the
 installed version unchanged. The live runner selects the released version for a cut and
-tests the two-slot v3 and one-slot v4 Initialize instructions offline. The policy-text checks
+tests the two-slot v3 and single-slot v4/v5 Initialize instructions offline, including the
+v5 Builder wait and manual continuation. The policy-text checks
 cover version 4's session marks and skill-invocation wording.
 
 ### Suite index
