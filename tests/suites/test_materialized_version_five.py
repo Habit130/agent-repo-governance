@@ -23,9 +23,12 @@ class VersionFiveCopilotCompletion(RecordedMerge):
 
         copilot = level_three_section(self.text("docs/agents/review.md"), "### Copilot code review")
         completion = flat(copilot.split("- **Completed on the head**:", 1)[1].split("\n- ", 1)[0])
-        self.assertIn("count Copilot's submitted review (`is_copilot_code_review` true, `commit_id` "
-                      "equal to the head) only with a completed `copilot-pull-request-reviewer` "
-                      "check run whose `conclusion` is `success`", completion)
+        self.assertIn("apply [Merge watch's Copilot evidence rules](../../.github/governance/merge_watch.py) "
+                      "to both records.", completion)
+        self.assertIn("Copilot's submitted review must have `is_copilot_code_review` true, `commit_id` "
+                      "equal to the head, and state `COMMENTED`, `APPROVED` or `CHANGES_REQUESTED`.", completion)
+        self.assertIn("Require a completed `copilot-pull-request-reviewer` check run whose "
+                      "`conclusion` is `success`.", completion)
         self.assertIn("Verify the check came from Copilot's dynamic Actions workflow by matching "
                       "the head, linked job and check suite.", completion)
         self.assertNotIn("beside a completed `copilot-pull-request-reviewer` check run on the head", completion)
@@ -372,7 +375,9 @@ class VersionFiveBuilderMergeWait(VersionThreeRendered):
         self.assertIn("after the summary, as its writer's final handoff", merge)
         handoff = level_two_section(self.text("docs/agents/handoff.md"), "## A final handoff", "handoff.md")
         builder = flat(handoff.split("- **Builder**:", 1)[1].split("\n- ", 1)[0])
-        self.assertIn("after writing the Merge summary at any tier (`review.md`, The merge handoff)", builder)
+        self.assertIn("when handing to the Reviewer, when giving the merge handoff after writing "
+                      "the Merge summary at any tier (`review.md`, The merge handoff), or when "
+                      "giving the after-merge report", builder)
         self.assertNotIn("at low and medium, after its Merge summary", builder)
 
 
