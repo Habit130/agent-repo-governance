@@ -84,7 +84,7 @@ describes one review bot slot and habit confirms the enabled list during Initial
    `INCOMPLETE` line. Record the after-merge report and the rulesets after the owner-script
    run. Run the version's live checks on the same cutting head through `prepare` and `probe`.
 
-The cutting PR follows this repository's adopted version, version 4: one bot slot and a
+The cutting PR follows this repository's adopted version, version 5: one bot slot and a
 Reviewer whose vendor differs from every Builder session that pushed to the PR.
 After the merge, verify the squash commit's push CI on Linux and macOS and link its
 Merge watch result. Once push CI passes, habit runs the install (README.md) and confirms
