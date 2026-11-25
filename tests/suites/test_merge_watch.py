@@ -22,16 +22,18 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
 import materialized
 from merge_watch_states import ReviewGrammarCases
-from merge_watch_history import EARLY, HistoricalEvidence, load_v4_case_for_v5  # noqa: F401
+from merge_watch_history import EARLY, HistoricalEvidence, RecordedMerge, load_v4_case_for_v5  # noqa: F401
 from merge_watch_push import PushAndOpenRecords
 from merge_watch_declarations import SummaryDeclarations  # noqa: F401
 from merge_watch_companion import CompanionReviewer  # noqa: F401
 import support
+from govlib import render, store
 from standins import environment
 from target_state import target_ruleset
 
@@ -45,8 +47,8 @@ V3_CASES = os.path.join(FIXTURES, "v3")
 GOVERNANCE_V3 = os.path.join(support.REAL_STORE, "3", "templates", "dot-github", "governance")
 
 
-def _load_module(version, name):
-    path = os.path.join(support.REAL_STORE, str(version), "templates", "dot-github", "governance", name + ".py")
+def _load_module(directory, version, name):
+    path = os.path.join(directory, name + ".py")
     spec = importlib.util.spec_from_file_location(f"{name}_v{version}", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -54,9 +56,15 @@ def _load_module(version, name):
 
 
 def _load_watch(version):
-    # Each Merge watch imports its own adjacent gate under the same name.
-    with mock.patch.dict(sys.modules, {"gate": _load_module(version, "gate")}):
-        return _load_module(version, "merge_watch")
+    # Load the version-bound script and its adjacent gate exactly as shipped.
+    fixture = materialized.tally_fixture()
+    confirmed = dict(fixture["confirmed"], review_bots=["codex", "copilot"])
+    with tempfile.TemporaryDirectory() as worktree:
+        render.render(store.Store(support.REAL_STORE), worktree, fixture["repository"],
+                      fixture["default_branch"], confirmed, version, allow_unreleased=True)
+        directory = os.path.join(worktree, ".github", "governance")
+        with mock.patch.dict(sys.modules, {"gate": _load_module(directory, version, "gate")}):
+            return _load_module(directory, version, "merge_watch")
 
 
 watch_v3 = _load_watch(3)
@@ -762,6 +770,21 @@ class VersionFive(unittest.TestCase):
                         summary = watch._summary(pull, agent, "low")
                     self.assertEqual(summary is not None, reads, watch.__name__)
                     self.assertEqual(watch.earlier_version_missing(pull, agent, "Habit130", "low", 3), earlier, watch.__name__)
+
+
+class VersionSixHistoricalPolicy(RecordedMerge):
+    VERSION = 6
+
+    def test_inherited_evidence_on_v5_and_v6_bases_and_unknown_future_base(self):
+        for version in (5, 6):
+            with self.subTest(version=version):
+                self.api[self.record_path] = self.record.replace("version: 5", f"version: {version}")
+                self.replay()
+                status = self.statuses.pop()
+                self.replay(missing=("reviewer",))
+                self.statuses.append(status)
+        self.api[self.record_path] = self.record.replace("version: 5", "version: 7")
+        self.replay(incomplete="unsupported historical version 7")
 
 
 class VersionFivePush(PushAndOpenRecords, support.TempDirCase):

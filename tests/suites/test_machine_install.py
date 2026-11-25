@@ -158,7 +158,7 @@ class FreshMachine(InstallCase):
         self.assertIn("最高紧急度 urgent；版本说明要求 habit 操作：无", found["Habit130/at-three"])
 
     def test_copied_draft_does_not_advance_installed_governance_version(self):
-        # The source carries the real store's draft, version 5.
+        # The source carries the real store's draft, version 6.
         source_store = os.path.join(self.source, "generator", "govern-repository", "store")
         env = self.env()
         code, out = self.install(env)
@@ -169,7 +169,7 @@ class FreshMachine(InstallCase):
         self.assertEqual((code, err), (0, ""), out)
         facts = json.loads(out)
         self.assertEqual((facts["versions"], facts["released"], facts["installed_version"]),
-                         ([1, 2, 3, 4, 5], [1, 2, 3, 4], 4))
+                         ([1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5], 5))
 
     def test_installs_every_step_and_passes_the_check(self):
         recording = ms.merge_codex_recordings(self.path("codex.json"), "codex-execpolicy.json", "codex-prompt-input-ready.json")

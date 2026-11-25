@@ -66,28 +66,30 @@ describes one review bot slot and habit confirms the enabled list during Initial
    instruction the Builder gives (#149). At version 3 its model vendor differs from the
    Builder's. From version 4 it differs from every Builder session that pushed to the PR.
    Read the high-risk report and run the pinned merge. Through version 4, say merged in the
-   Initialize Builder's terminal. From version 5, follow that Builder's handoff for its
-   current wait state. After product smoke passes, run the owner-script command when the
-   Builder hands it to habit to restore Gate.
+   Initialize Builder's terminal. From version 5, a waiting original Builder needs no reply.
+   If it stopped because waiting was unsupported or interrupted, or GitHub's evidence was
+   inconclusive, habit may say “继续” (continue) in that original Builder chat. After product
+   smoke passes, run the owner-script command when the Builder hands it to habit to restore Gate.
 4. **The outcomes.** The cutting PR's Builder posts each step's outcome on the cutting PR,
    naming the head. The issue's `generator_identity` equals `end-to-end.json`'s identity; the
    evidence includes habit's confirmation, the record at the version cut with the confirmed
    bot order, and the exact comparison. On the Initialize PR's head, verify self-verification,
    the Reviewer's Comment review and successful `Reviewer` status, and the Merge summary and
    high-risk report. For v3, record the completed review or valid owner waiver on that head
-   for each bot slot. For a v4 Initialize, record the completed review filling the one slot,
+   for each bot slot. From v4, record the completed review filling the one slot,
    any fallback, and which Builder and Reviewer session marks establish the vendor check.
    Record habit's squash merge and Merge watch's push run on it. From version 3 the run must
    report that it read the bots from the record the merge adds, say `No miss in this push event.`
-   and have no `UNREADABLE` line. Record the run's
-   after-merge report and the rulesets after the owner-script run. The version's live checks
-   then run on the same cutting head through `prepare` and `probe`.
+   and have no `UNREADABLE` line. From v5 also require a successful push audit with no
+   `INCOMPLETE` line. Record the after-merge report and the rulesets after the owner-script
+   run. Run the version's live checks on the same cutting head through `prepare` and `probe`.
 
 The cutting PR follows this repository's adopted version, version 4: one bot slot and a
 Reviewer whose vendor differs from every Builder session that pushed to the PR.
-After the merge habit runs the install (README.md), which brings the released version to the
-machine. Each repository adopts it by its own Upgrade. The cut's Merge summary names the
-version, its urgency, the install and the remaining verification gaps (#44 §8, Trigger).
+After the merge, verify the squash commit's push CI on Linux and macOS and link its
+Merge watch result. Once push CI passes, habit runs the install (README.md) and confirms
+the installed version. Each repository adopts it by its own Upgrade. The cut's Merge summary
+names the version, its urgency, the install and the remaining verification gaps (#44 §8, Trigger).
 
 The cutting PR's after-merge report adds a Planner start request for the next class retro
 ([Retros](../retro.md)), in this canonical form:

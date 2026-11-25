@@ -1905,8 +1905,8 @@ class EndToEndCommands(support.TempDirCase):
         self.assertIn("--head", created[0]["args"])
         self.assertEqual(created[0]["args"][created[0]["args"].index("--head") + 1], name)
         self.assertIn("\nRisk: high — ", created[0]["body"])
-        self.assertIn("so that version 4's end-to-end run starts an Initialize", created[0]["body"])
-        self.assertIn("Version 4's cut uses one review bot slot. habit confirms the enabled list during Initialize.", out)
+        self.assertIn("so that version 5's end-to-end run starts an Initialize", created[0]["body"])
+        self.assertIn("Version 5's cut uses one review bot slot. habit confirms the enabled list during Initialize.", out)
         self.assertNotIn("whose review bots are", out)
         self.assertNotIn("Bugbot", out + created[0]["body"])
         self.assertIn("ghm pr merge 31 --repo %s --admin --squash --match-head-commit %s" % (PUBLIC, head), out)
@@ -1967,8 +1967,8 @@ class EndToEndCommands(support.TempDirCase):
         self.assertEqual(support.git(state["checkout"], "remote", "get-url", "origin").strip(), self.remote)
         self.assertIn(live.start_command(state["checkout"], state["plugin"]), out)
         self.assertIn("Type /cut:govern-repository, never the bare /govern-repository", out)
-        self.assertEqual((state["version"], state["review_bots"]), (4, ["codex", "copilot"]))
-        self.assertIn("the run is version 4's Initialize", out)
+        self.assertEqual((state["version"], state["review_bots"]), (5, ["codex", "copilot"]))
+        self.assertIn("the run is version 5's Initialize", out)
         self.assertIn("one completed review bot slot on the head", out)
         self.assertIn("request the first bot in the order you confirmed", out)
         self.assertIn("try the next enabled bot only if the Builder says the current bot is unavailable", out)
@@ -1976,6 +1976,22 @@ class EndToEndCommands(support.TempDirCase):
         self.assertNotIn("a Codex review bot request", out)
         self.assertNotIn("a Copilot request", out)
         self.assertNotIn("Bugbot", out)
+        self.assertIn("If the original Initialize Builder is waiting, no reply is needed", out)
+        self.assertIn("unsupported or interrupted, or the GitHub evidence was inconclusive", out)
+        self.assertIn('say “继续” (continue) in that original Builder chat', out)
+        self.assertNotIn("saying merged", out)
+        self.assertIn("After product smoke passes", out)
+
+    def test_end_to_end_keeps_the_merged_reply_for_v4(self):
+        commit = self.head_repository(draft=5)
+        self.sandbox(self.seed_files())
+        self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
+        code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
+        self.assertEqual(code, 0, out)
+        self.assertIn("the run is version 4's Initialize", out)
+        self.assertIn("one completed review bot slot", out)
+        self.assertIn("saying merged", out)
+        self.assertNotIn("no reply is needed", out)
 
     def test_end_to_end_prints_both_review_bot_slots_for_v3(self):
         commit = self.head_repository(draft=4)
@@ -1988,6 +2004,8 @@ class EndToEndCommands(support.TempDirCase):
                       "the Lite effort;\n", out)
         self.assertIn("a Reviewer in another vendor's harness started with exactly the start instruction the run prints, "
                       "nothing added", out)
+        self.assertIn("saying merged", out)
+        self.assertNotIn("no reply is needed", out)
         self.assertNotIn("Bugbot", out)
 
     def test_end_to_end_refuses_a_head_whose_highest_released_version_names_no_review_bots(self):
@@ -2002,11 +2020,12 @@ class EndToEndCommands(support.TempDirCase):
     def test_the_cut_reads_the_highest_released_version_and_its_review_bots(self):
         store = self.path("store")
         shutil.copytree(support.REAL_STORE, store)
-        self.assertEqual(live.cut_of(store), (4, ["codex", "copilot"]))
+        self.assertEqual(live.cut_of(store), (5, ["codex", "copilot"]))
         self.assertEqual(live.review_bot_names(["copilot"]), "Copilot code review")
         os.remove(os.path.join(store, "3", "change-note.md"))
-        shutil.rmtree(os.path.join(store, "4"))
-        shutil.rmtree(os.path.join(store, "5"))
+        for version in os.listdir(store):
+            if int(version) > 3:
+                shutil.rmtree(os.path.join(store, version))
         with self.assertRaises(live.RunnerError):
             live.cut_of(store)
 

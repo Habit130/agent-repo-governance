@@ -1,4 +1,4 @@
-"""Governance model version five, the unpublished draft: rendered policy-text checks."""
+"""Governance model version five: rendered policy-text checks."""
 
 import json
 import os

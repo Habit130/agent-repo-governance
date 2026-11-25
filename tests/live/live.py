@@ -570,7 +570,13 @@ def cmd_end_to_end(args):
         for bot in state["review_bots"]:
             print("   - %s;" % REVIEW_BOT_REQUESTS[bot])
         print("   - a Reviewer in another vendor's harness started with exactly the start instruction the run prints, nothing added;")
-    print("   - the high-risk report, the pinned merge, saying merged in its terminal, and the owner-script command it hands over.")
+    print("   - read the high-risk report and run the pinned merge.")
+    if state["version"] >= 5:
+        print("   - If the original Initialize Builder is waiting, no reply is needed. If it stopped because waiting was "
+              "unsupported or interrupted, or the GitHub evidence was inconclusive, you may say “继续” (continue) in that original Builder chat.")
+    else:
+        print("   - confirm the merge by saying merged in the original Initialize Builder's terminal.")
+    print("   - After product smoke passes, run the owner-script command the Builder hands over to restore Gate.")
     return 0
 
 
