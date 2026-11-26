@@ -883,6 +883,7 @@ class VersionSixHistoricalPolicy(RecordedMerge):
         methods = (ast.FunctionDef, ast.AsyncFunctionDef)
         public_methods = [node for node in accessor.body if isinstance(node, methods) and not node.name.startswith("_")]
         self.assertCountEqual([node.name for node in public_methods], ["at_merge", *context_calls])
+        private_methods = {node.name for node in accessor.body if isinstance(node, methods) and node.name.startswith("_")}
         # The constructor stores identity, diagnostics and the private transport.
         # Only the tentative copy can replace its diagnostic buffers and transport.
         stores = {
@@ -891,15 +892,38 @@ class VersionSixHistoricalPolicy(RecordedMerge):
             "conditional_evidence": ["facts.problems", "facts.notes", "facts._cache",
                                      "facts._read", "facts._read.unreadable"],
         }
+        transport_routes = {
+            "__init__": ["(self._read, self.repository)", "(read, repository)"],
+            "for_merge": ["MergeFacts(self._read, self.repository, self.problems, self.notes, merge, head, cutoff, self._cache)"],
+            "conditional_evidence": ["isinstance(self._read, GitHub)", "facts._read = copy(self._read)",
+                                     "copy(self._read)", "facts._read.unreadable"],
+            "_rows": ["read_rows(self._read, self.prefix + endpoint, self.problems)"],
+            "_object_at": ["self._read(self.prefix + endpoint)"],
+            "_record_at": ["self._read(path)"],
+        }
         for node in accessor.body:
             if not isinstance(node, methods):
                 bindings = [name.id for name in ast.walk(node) if isinstance(name, ast.Name)
-                            and isinstance(name.ctx, ast.Store) and not name.id.startswith("_")]
+                            and isinstance(name.ctx, ast.Store)]
                 self.assertEqual(bindings, [], "Class assignments must not expose or replace fact readers")
                 continue
             stored = [ast.unparse(expr) for expr in ast.walk(node)
                       if isinstance(expr, ast.Attribute) and isinstance(expr.ctx, ast.Store)]
             self.assertCountEqual(stored, stores.get(node.name, []), node.name)
+            uses = [ast.unparse(expr) for expr in ast.walk(node) if any(
+                (isinstance(ref, ast.Name) and ref.id == "read")
+                or (isinstance(ref, ast.Attribute) and ref.attr == "_read")
+                for ref in ast.iter_child_nodes(expr))]
+            self.assertCountEqual(uses, transport_routes.get(node.name, []), node.name)
+            if node.name == "__init__":
+                self.assertFalse(any(isinstance(expr, ast.Call) for expr in ast.walk(node)),
+                                 "Construction binds the reader and context without issuing reads")
+            if node.name != "at_merge":
+                for expr in ast.walk(node):
+                    for ref in ast.iter_child_nodes(expr):
+                        if isinstance(ref, ast.Attribute) and ref.attr in private_methods:
+                            self.assertTrue(isinstance(expr, ast.Call) and expr.func is ref,
+                                            "A private reader escapes its call site: " + ast.unparse(expr))
         public = {node.name: node for node in public_methods}
         for name, expected in context_calls.items():
             calls = [ast.unparse(expr.func) for expr in ast.walk(public[name]) if isinstance(expr, ast.Call)]
@@ -925,8 +949,7 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                      "_event_records(event_name, event, github, notes, problems)",
                      "github.post", "github.unreadable", "github.unreadable"],
         }
-        private_readers = {"_read", "_cache"} | {node.name for node in accessor.body if isinstance(node, methods)
-                                      and node.name.startswith("_") and node.name != "__init__"}
+        private_readers = {"_read", "_cache"} | (private_methods - {"__init__"})
         for node in tree.body:
             if node is accessor:
                 continue
@@ -960,8 +983,12 @@ class VersionSixHistoricalPolicy(RecordedMerge):
             (None, "def read_description(self, merge): return self._pull_snapshot(merge.number)"),
             (None, "read_description = _pull_snapshot"),
             (None, "unknown = _pull_snapshot"),
+            (None, "_snapshot = _pull_snapshot"),
             ("__init__", "self.read_description = self._pull_snapshot"),
+            ("__init__", "setattr(self, 'read_description', self._pull_snapshot)"),
             ("for_merge", "self._pull_snapshot(merge.number)"),
+            ("unknown", "return self._read"),
+            ("unknown", "return unresolved(self.problems, reason, transport=self._read)"),
         ):
             with self.subTest(method=method, extra=extra):
                 tree = ast.parse(self.text(SCRIPT))
