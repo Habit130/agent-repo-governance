@@ -881,10 +881,26 @@ class VersionSixHistoricalPolicy(RecordedMerge):
             "unknown": ["unresolved"],
         }
         methods = (ast.FunctionDef, ast.AsyncFunctionDef)
-        public = {node.name: node for node in accessor.body if isinstance(node, methods) and not node.name.startswith("_")}
-        bound_names = {name.id for node in accessor.body if not isinstance(node, methods) for name in ast.walk(node)
-                       if isinstance(name, ast.Name) and isinstance(name.ctx, ast.Store) and not name.id.startswith("_")}
-        self.assertEqual(set(public) | bound_names, {"at_merge", *context_calls})
+        public_methods = [node for node in accessor.body if isinstance(node, methods) and not node.name.startswith("_")]
+        self.assertCountEqual([node.name for node in public_methods], ["at_merge", *context_calls])
+        # The constructor stores identity, diagnostics and the private transport.
+        # Only the tentative copy can replace its diagnostic buffers and transport.
+        stores = {
+            "__init__": ["self." + field for field in (
+                "number", "squash", "head", "cutoff", "_read", "repository", "prefix", "problems", "notes", "_cache")],
+            "conditional_evidence": ["facts.problems", "facts.notes", "facts._cache",
+                                     "facts._read", "facts._read.unreadable"],
+        }
+        for node in accessor.body:
+            if not isinstance(node, methods):
+                bindings = [name.id for name in ast.walk(node) if isinstance(name, ast.Name)
+                            and isinstance(name.ctx, ast.Store) and not name.id.startswith("_")]
+                self.assertEqual(bindings, [], "Class assignments must not expose or replace fact readers")
+                continue
+            stored = [ast.unparse(expr) for expr in ast.walk(node)
+                      if isinstance(expr, ast.Attribute) and isinstance(expr.ctx, ast.Store)]
+            self.assertCountEqual(stored, stores.get(node.name, []), node.name)
+        public = {node.name: node for node in public_methods}
         for name, expected in context_calls.items():
             calls = [ast.unparse(expr.func) for expr in ast.walk(public[name]) if isinstance(expr, ast.Call)]
             self.assertCountEqual(calls, expected, name)
@@ -909,7 +925,7 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                      "_event_records(event_name, event, github, notes, problems)",
                      "github.post", "github.unreadable", "github.unreadable"],
         }
-        private_readers = {"_read"} | {node.name for node in accessor.body if isinstance(node, ast.FunctionDef)
+        private_readers = {"_read", "_cache"} | {node.name for node in accessor.body if isinstance(node, methods)
                                       and node.name.startswith("_") and node.name != "__init__"}
         for node in tree.body:
             if node is accessor:
@@ -940,12 +956,18 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                 with self.assertRaises(AssertionError):
                     self.assert_reader_boundary(tree, definitions["MergeFacts"])
 
-        for extra in ("def read_description(self, merge): return self._pull_snapshot(merge.number)",
-                      "read_description = _pull_snapshot"):
-            with self.subTest(extra=extra):
+        for method, extra in (
+            (None, "def read_description(self, merge): return self._pull_snapshot(merge.number)"),
+            (None, "read_description = _pull_snapshot"),
+            (None, "unknown = _pull_snapshot"),
+            ("__init__", "self.read_description = self._pull_snapshot"),
+            ("for_merge", "self._pull_snapshot(merge.number)"),
+        ):
+            with self.subTest(method=method, extra=extra):
                 tree = ast.parse(self.text(SCRIPT))
                 accessor = next(node for node in tree.body if getattr(node, "name", None) == "MergeFacts")
-                accessor.body.extend(ast.parse(extra).body)
+                target = accessor if method is None else next(node for node in accessor.body if getattr(node, "name", None) == method)
+                target.body.extend(ast.parse(extra).body)
                 with self.assertRaises(AssertionError):
                     self.assert_reader_boundary(tree, accessor)
 
