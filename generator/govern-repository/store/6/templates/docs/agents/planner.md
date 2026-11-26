@@ -88,9 +88,12 @@ Planner after each merge.
   together if they share no files or resources. When unsure, schedule one after the other.
 - If a ticket in the plan names a release in its Risk notes, place a class retro last,
   after that release merges. A repository without releases runs one only when habit chooses.
-  The Planner who places the class retro opens one issue for that run, linking the previous
-  class retro's issue when there is one. Title a release's issue `Class retro after <release>`.
-  The issue needs no new label. Use a Planner start request for `retro #<issue>`.
+- For each class retro, use the issue already open for that run. Otherwise, the Planner
+  who places it in the plan or runs it standalone opens one issue. If there was a previous
+  class retro, link its issue from this run's issue. When the run follows a release, title
+  its issue `Class retro after <release>`.
+  The issue needs no new label. Use a Planner start request for `retro #<issue>` in the
+  plan. Close the issue once habit's picks are ticketed.
 - The Planner also writes the plan in English, using the canonical form from `AGENTS.md`,
   How to start, as a comment on the effort's parent issue. Only a Planner updates it, such
   as when a Builder or a Reviewer reports something the plan didn't foresee.
@@ -158,7 +161,7 @@ Every retro applies these disciplines.
 
 A retro reports events, never rates.
 
-For a miss record:
+Use steps 1 to 4 for a miss record. Step 3 also applies to a class retro.
 
 1. Read the record, the merged PR with its review threads, its evidence comment and Merge
    summary, and its ticket. Read session logs only when habit names them.
@@ -175,7 +178,8 @@ For a miss record:
      a medium ticket here.
 
    The first three are fixed content. Each such pick becomes an incoming issue in
-   `Habit130/agent-repo-governance`, quoting habit's decision and linking the record.
+   `Habit130/agent-repo-governance`, quoting habit's decision. For a retro on a miss record,
+   link that record. For a class retro, link its class retro issue.
 4. Close the record, quoting habit's decision.
 
 ## Escalations

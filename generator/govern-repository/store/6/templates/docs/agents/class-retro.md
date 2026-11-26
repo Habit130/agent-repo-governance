@@ -4,6 +4,8 @@
 
 A class retro looks for bug classes that repeat across PRs, before one escapes. Follow the
 disciplines in [Planner → Running retro](planner.md#running-retro).
+Before step 1, follow [Planner → Tickets](planner.md#tickets), The dispatch plan,
+to establish this run's issue.
 
 1. **Window.** Take every PR merged after the last one the previous class retro covered.
    For the first class retro, take every PR merged since the repository's Initialize.
@@ -34,5 +36,5 @@ disciplines in [Planner → Running retro](planner.md#running-retro).
    baseline, the first if this is the first class retro. Give each class's last
    occurrence, the fix in force and what the next class retro checks. Then give habit
    the candidates in Chinese, by severity. Follow step 3 of `planner.md`, Running
-   retro, for habit's picks. Record habit's decision on the issue. Close the issue once
-   habit's picks are ticketed.
+   retro, for habit's picks. Record habit's decision on the issue and follow The dispatch plan
+   to close it.
