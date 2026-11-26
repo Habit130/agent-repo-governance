@@ -47,7 +47,7 @@ WATCH_PARSER = AuditSection(WATCH, (
     "def parse_reviews(line, tier, *, require_minimum=True):", "def _summary_lines(",
 ))
 WATCH_REVIEW_MISSES = AuditSection(WATCH, (
-    "- every review missing from the merged PR's head by its declared tier records one process",
+    "  - **the Merge summary**: the historical agent account's newest comment titled",
     "  - **a bot slot**",
 ))
 
@@ -150,8 +150,8 @@ ROWS = (
                 "parentheses, the kinds in their order and none twice, and it lists every kind the tier requires.",
             ),)),
             ("v5 onward, missing required kind with surviving declarations", (Clause(
-                WATCH_REVIEW_MISSES, "From v5, check each listed bot and Reviewer as well as the tier minimum. "
-                "A missing required declaration is a `merge-summary` miss;",
+                WATCH_REVIEW_MISSES, "From v5, a missing required declaration yields `merge-summary`; "
+                "see `parse_reviews` for incomplete lines and `_declared_missing` for the declarations they still carry",
             ),)),
         ),
     ),

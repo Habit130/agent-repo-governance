@@ -3,7 +3,7 @@
 import itertools
 import json
 
-from merge_watch_history import EARLY, FIXTURE, LATE, ordinary_change
+from merge_watch_history import EARLY, FIXTURE, LATE, merged_pr_snapshot, ordinary_change, saved_pr_head
 import parsers
 
 
@@ -33,6 +33,15 @@ class ReviewCase:
         self.change = ordinary_change(base, squash)
         self.api[f"{prefix}/compare/{base}...{squash}"] = self.change
 
+    def read(self, path):
+        prefix = "repos/" + self.repo
+        number = self.pr["number"]
+        if path == f"{prefix}/pulls/{number}/merge-description":
+            return merged_pr_snapshot(self.pr)
+        if path == f"{prefix}/git/ref/pull/{number}/head":
+            return saved_pr_head(self.pr)
+        return self.api[path]
+
     def order(self, bots):
         record = self.record.split("  review_bots:")[0]
         if bots is not None:
@@ -60,7 +69,7 @@ class ReviewCase:
 
     def check(self, test, watch, missing=(), problems=()):
         diagnostics = []
-        result = watch.decide("push", self.event, "CheckoutAccount", self.api.__getitem__, problems=diagnostics)
+        result = watch.decide("push", self.event, "CheckoutAccount", self.read, problems=diagnostics)
         expected = []
         if missing:
             number = self.pr["number"]
@@ -416,7 +425,7 @@ class ReviewGrammarCases:
 
             def outcome():
                 diagnostics = []
-                records = watch.decide("workflow_run", event, "CheckoutAccount", case.api.__getitem__,
+                records = watch.decide("workflow_run", event, "CheckoutAccount", case.read,
                                        problems=diagnostics)
                 self.assertEqual(diagnostics, [])
                 return records
@@ -472,7 +481,7 @@ class ReviewGrammarCases:
                         def read(path):
                             if path == case.record_key:
                                 raise error(path)
-                            return case.api[path]
+                            return case.read(path)
                         notes, problems = [], []
                         self.assertEqual(watch.decide("push", case.event, "Checkout", read, notes, problems), [])
                         self.assertEqual(problems, expected)
@@ -480,7 +489,7 @@ class ReviewGrammarCases:
                 def neither_record(path):
                     if path in (case.record_key, new_record):
                         raise watch.NotFound(path)
-                    return case.api[path]
+                    return case.read(path)
 
                 problems = []
                 self.assertEqual(watch.decide("push", case.event, "Checkout", neither_record, problems=problems), [])
@@ -499,7 +508,7 @@ class ReviewGrammarCases:
             case.check(self, watch)
             case.summary["body"] = ""
             case.check(self, watch, ("merge-summary",))
-            records = watch.decide("push", case.event, "Checkout", case.api.__getitem__)
+            records = watch.decide("push", case.event, "Checkout", case.read)
             issues = case.api["repos/" + case.repo + "/issues?labels=miss&state=open"]
             issues.extend(dict(record, state="open") for record in records)
             case.check(self, watch)
@@ -517,7 +526,7 @@ class ReviewGrammarCases:
                         "body": "Merged PR: none\nKind: process miss\nCategory: push-without-pr\n"
                                 f"Observed: Commit {squash} was pushed to main with no merged PR.\n"
                                 "Found by: Merge watch\nBug issue: none\n"}
-            self.assertEqual(watch.decide("push", case.event, "Checkout", case.api.__getitem__, problems=problems),
+            self.assertEqual(watch.decide("push", case.event, "Checkout", case.read, problems=problems),
                              [expected])
             self.assertEqual(problems, [])
 
