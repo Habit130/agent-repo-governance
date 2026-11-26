@@ -40,6 +40,7 @@ from standins import environment
 gate = parsers.gate
 gate_v4 = parsers.load_gate(4)
 gate_v5 = parsers.load_gate(5)
+gate_v6 = parsers.load_gate(6)
 FIXTURES = os.path.join(support.FIXTURES, "gate")
 CASES = os.path.join(FIXTURES, "cases")
 V4_CASES = os.path.join(CASES, "v4")
@@ -175,6 +176,35 @@ for _name in _case_names(V4_CASES):
     _add_case(_name, "v5", gate_v5, V4_CASES)
 for _name in _case_names(V5_CASES):
     _add_case(_name, "v5", gate_v5, V5_CASES)
+
+
+class RenderedVersionSixRecord(GateCase):
+    """The v6 record as rendered into a repository: Antigravity's files carry a medium floor (#325)."""
+
+    def judge_rendered(self, path, body):
+        rendered = self.path("rendered")
+        confirmed = dict(materialized.tally_fixture()["confirmed"], review_bots=["codex"])
+        render.render(parsers.TEMPLATES, rendered, "Habit130/tally", "main", confirmed,
+                      version=6, allow_unreleased=True)
+        record = support.read_text(os.path.join(rendered, RECORD))
+        repo = support.init_repo(tempfile.mkdtemp(prefix="repo-", dir=self.tmp))
+        default_head = apply(repo, {RECORD: record, "README.md": "readme\n"}, "base")
+        support.git(repo, "checkout", "-q", "-b", "pr")
+        head = apply(repo, {path: "changed\n"}, "change")
+        support.git(repo, "checkout", "-q", "main")
+        return gate_v6.verdict(repo, "Habit098", "Habit130", body, default_head, head, lookup("none"))
+
+    def test_each_path_fails_low_and_passes_medium(self):
+        for path in ("GEMINI.md", "docs/GEMINI.md", ".agent/rules/style.md", ".agent/workflows/w.md", "AGENTS.md"):
+            with self.subTest(path=path):
+                low = self.judge_rendered(path, "Risk: low \u2014 x\n")
+                self.assertFalse(low["passed"], low)
+                self.assertEqual([line.split(":", 1)[0] for line in low["failures"]], ["Floors"])
+                medium = self.judge_rendered(path, "Risk: medium \u2014 x\n")
+                self.assertTrue(medium["passed"], medium)
+
+    def test_a_plain_path_still_passes_low(self):
+        self.assertTrue(self.judge_rendered("src/plain.txt", "Risk: low \u2014 x\n")["passed"])
 
 
 class FailureLines(GateCase):

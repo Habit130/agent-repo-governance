@@ -8,6 +8,8 @@ sensitive_paths:
     floor: medium
   - pattern: "**/CLAUDE.md"
     floor: medium
+  - pattern: "**/GEMINI.md"
+    floor: medium
   - pattern: "docs/agents/**"
     floor: medium
   - pattern: ".claude/**"
@@ -19,6 +21,8 @@ sensitive_paths:
   - pattern: ".dsh/**"
     floor: medium
   - pattern: ".agents/**"
+    floor: medium
+  - pattern: ".agent/**"
     floor: medium
   - pattern: ".codex/**"
     floor: medium

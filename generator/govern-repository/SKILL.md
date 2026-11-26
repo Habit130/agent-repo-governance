@@ -74,7 +74,7 @@ At Initialize, or a rebuilt record, make every entry below; each ends up in the 
 in the confirmation as its items allow. At Upgrade, sort only the rules in
 repository-owned content, to find what conflicts with the new fixed rules, and run no
 commands: confirmed values and repository-owned content stay as they are, apart from a
-conflict habit confirms. At Repair, make none of them.
+conflict habit confirms. At Repair, make none of them; Antigravity's files are only listed.
 
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
@@ -85,8 +85,18 @@ conflict habit confirms. At Repair, make none of them.
   - `conflicting`: it conflicts with the model or loosens it, so it is dropped and listed
     separately. Keeping it would be a model change, never a per-repository exception;
   - `removed`: an earlier decision removes it: a root `CLAUDE.md` once carried, any
-    `AGENTS.override.md`, `.codex/`, committed harness permission settings and agent
+    `AGENTS.override.md`, any `GEMINI.md`, `.codex/`, committed harness permission settings and agent
     definitions, issue templates of a replaced process, an older Bugbot rule file.
+
+  Antigravity's own files follow the `removed` rule too, so its sessions read `AGENTS.md`'s
+  policy. Sort the rules of every `GEMINI.md`, every `.agents/` `AGENTS.md`, `GEMINI.md`,
+  `rules/` and `rules.json` file, and every `.agent/` rule as a root `CLAUDE.md`'s, then
+  class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP servers
+  (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for habit
+  and propose removing them, as `.codex/`. List workspace skills under `.agents/skills/` for
+  habit and keep them, since other harnesses may read them. At Upgrade to version 6 or
+  later, each file of the first two groups conflicts with the new fixed rule: sort its rules
+  and propose its removal. At Repair, list each for habit and change nothing.
 
   Each rule's text is quoted with its file. Sort other files the model never writes, such as
   hooks, CODEOWNERS or a Bugbot config, the same way, and propose keeping or removing each.
@@ -136,7 +146,8 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   bots when its manifest lists `review_bots` and the record holds none; each generated file
   the new version's manifest `retired`, which rendering removes, with any step that leaves
   to habit, such as disconnecting the Cursor GitHub App once its rule file is gone;
-  repository-owned content that conflicts with the new fixed rules; any ruleset or
+  repository-owned content that conflicts with the new fixed rules, Antigravity's files
+  included; any ruleset or
   required-check change, applied after merge; the selected product smoke; and anything
   unverified. The Upgrade's own PR is reviewed under the policy on the default branch, the
   old version's; the new version's rules bind from the first PR after it merges. The new
@@ -145,7 +156,7 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   owner/exact-head `reviewer` waiver leaves that check to the Builder. Versions 1 and 2 still
   require the Reviewer status.
 - **Repair with drift** holds only the drift found, how it is restored, the selected product
-  smoke, and anything unverified.
+  smoke, any Antigravity file found (listed, left as it is), and anything unverified.
 
 Each list is closed. Not asked: the wording of fixed content, the build and test commands
 and their results, and the substitutions. Nothing outside a list's items becomes a question

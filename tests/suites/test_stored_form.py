@@ -15,6 +15,8 @@ class EncodingRoundTrip(unittest.TestCase):
         ("src/nested/AGENTS.override.md", "src/nested/AGENTS.override.md.stored"),
         (".claude/CLAUDE.md", "dot-claude/CLAUDE.md.stored"),
         ("CLAUDE.local.md", "CLAUDE.local.md.stored"),
+        ("GEMINI.md", "GEMINI.md.stored"),
+        (".agents/rules/GEMINI.md", "dot-agents/rules/GEMINI.md.stored"),
         ("opencode.json", "opencode.json.stored"),
         (".opencode/opencode.jsonc", "dot-opencode/opencode.jsonc.stored"),
         (".gitignore", "dot-gitignore"),
@@ -55,6 +57,9 @@ class EncodingRoundTrip(unittest.TestCase):
         self.assertEqual(storedform.problems("tests/fixtures/dot-github/ci.yml"), [])
         self.assertTrue(storedform.problems("tests/fixtures/.github/ci.yml"))
         self.assertTrue(storedform.problems("tests/fixtures/repo/AGENTS.md"))
+        for name in ("GEMINI.md", "gemini.md", "Gemini.MD"):
+            self.assertTrue(storedform.problems("tests/fixtures/repo/" + name), name)
+        self.assertEqual(storedform.problems("tests/fixtures/repo/GEMINI.md.stored"), [])
         self.assertTrue(storedform.problems("tests/fixtures/repo/notes.md.stored"))
 
 

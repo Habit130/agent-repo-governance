@@ -23,6 +23,7 @@ LOADED_NAMES = (
     "AGENTS.override.md",
     "CLAUDE.md",
     "CLAUDE.local.md",
+    "GEMINI.md",
     "opencode.json",
     "opencode.jsonc",
 )

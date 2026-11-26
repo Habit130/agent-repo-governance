@@ -3,10 +3,10 @@
 - GitHub: owner, visibility, default branch, the agent account's permission, labels,
   rulesets, branch protection, the readable settings, and open PRs with their authors.
 - The record, if any.
-- Instructions and process files, from the tracked tree: `AGENTS.md`, `AGENTS.override.md`
-  and `CLAUDE.md` in any directory, with `CLAUDE.local.md`; `docs/agents/`; contributing and
+- Instructions and process files, from the tracked tree: `AGENTS.md`, `AGENTS.override.md`,
+  `CLAUDE.md` and `GEMINI.md` in any directory, with `CLAUDE.local.md`; `docs/agents/`; contributing and
   process documents; `.github/` templates and CODEOWNERS; review-bot rule files.
-- Harness files under `.claude/`, `.opencode/`, `.dsh/`, `.agents/` and `.codex/`, and
+- Harness files under `.claude/`, `.opencode/`, `.dsh/`, `.agents/`, the legacy `.agent/` and `.codex/`, and
   `opencode.json`; the repository's own skills, by name against the machine skill set.
 - CI: every workflow's triggers, jobs and path filters, whether each job runs or reports on
   every PR with uncertain cases flagged, and the Actions secrets each references
@@ -25,7 +25,7 @@ import re
 from govlib import GovernError, checkout, github, harness, secrets, workflows
 from govlib.preconditions import installed_skills
 
-INSTRUCTION_NAMES = ("AGENTS.md", "AGENTS.override.md", "CLAUDE.md", "CLAUDE.local.md")
+INSTRUCTION_NAMES = ("AGENTS.md", "AGENTS.override.md", "CLAUDE.md", "CLAUDE.local.md", "GEMINI.md")
 PROCESS_STEMS = ("contributing", "code_of_conduct", "security", "support", "governance", "maintainers",
                  "releasing", "release", "development", "hacking")
 PROCESS_DIRS = ("", "docs", ".github")
@@ -40,7 +40,7 @@ REVIEW_BOT_FILES = (
     re.compile(r"^\.greptile/|^greptile\.json$"),
     re.compile(r"^\.sourcery\.ya?ml$"),
 )
-HARNESS_DIRS = (".claude", ".opencode", ".dsh", ".agents", ".codex")
+HARNESS_DIRS = (".claude", ".opencode", ".dsh", ".agents", ".agent", ".codex")
 HARNESS_FILES = ("opencode.json", "opencode.jsonc")
 SKILL = re.compile(r"^(\.agents|\.claude|\.opencode|\.codex|\.dsh)/skills/([^/]+)/SKILL\.md$")
 WORKFLOW = re.compile(r"^\.github/workflows/[^/]+\.ya?ml$")

@@ -120,6 +120,11 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     `tests/fixtures/generator/handover.json` holds its table.
   - **`accept-invitation`** accepts the agent account's pending invitation to the
     repository, the one write before habit's answer.
+  - **Antigravity's project scope.** `inspect` reads `GEMINI.md` and the files under `.agents/`
+    and the legacy `.agent/` (rules, hooks, MCP servers, plugins, custom subagents, workflows,
+    skills). The public documentation, read on 2026-11-26, says the app keeps project
+    permissions in its settings UI (Settings > Projects) and names no storage location for
+    them, so no repository location gets the same treatment.
   - **No credential value is printed** (#41 §10). `inspect` names each credential shape it
     finds by type and location, and the entry passes every JSON it prints through
     `govlib/secrets.py`'s `redact`, which replaces each shape with its type, so a command's
