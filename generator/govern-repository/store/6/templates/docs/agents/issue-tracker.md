@@ -41,8 +41,9 @@ GitHub shares one number space between issues and PRs: resolve a bare `#42` with
 - **Claim**: `gh issue edit <n> --repo @@repository@@ --add-assignee @me`. It is the Builder's
   first write, and it posts no comment. An assigned ticket is claimed. A Builder on a
   whole-spec delivery claims the spec and each of its tickets (`builder.md`).
-- **A published ticket is frozen** (`planner.md`, Tickets). It carries no digests or contract
-  versions, since GitHub keeps the body's edit history. Evidence and records go in comments.
+- **Ticket changes.** For changes to a published ticket, see `builder.md`, Escalations,
+  The ticket must change. A ticket carries no digests or contract versions, since GitHub
+  keeps the body's edit history. Evidence and records go in comments.
 - **Closing**: results-comment tickets follow `builder.md`, Results-comment tickets.
   For PR delivery, a PR's `Closes #<n>` lines close those issues when habit merges it
   (`.github/PULL_REQUEST_TEMPLATE.md`).

@@ -11,6 +11,7 @@
     {"path": ".github/governance/merge_watch.py", "class": "fixed", "mode": "100644"},
     {"path": ".github/workflows/merge-watch.yml", "class": "fixed", "mode": "100644"},
     {"path": "docs/agents/planner.md", "class": "fixed", "mode": "100644"},
+    {"path": "docs/agents/class-retro.md", "class": "fixed", "mode": "100644"},
     {"path": "docs/agents/builder.md", "class": "fixed", "mode": "100644"},
     {"path": "docs/agents/reviewer.md", "class": "fixed", "mode": "100644"},
     {"path": "docs/agents/review.md", "class": "fixed", "mode": "100644"},

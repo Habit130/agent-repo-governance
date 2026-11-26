@@ -10,9 +10,10 @@ from policy_rows_312 import ROWS as ROWS_312
 from policy_rows_317 import ROWS as ROWS_317
 from policy_rows_318 import MERGE, SANDBOXES, sandbox_names
 from policy_rows_318 import ROWS as ROWS_318
+from policy_rows_319 import ROWS as ROWS_319
 
 
-ROWS = (*ROWS_312, *ROWS_317, *ROWS_318)
+ROWS = (*ROWS_312, *ROWS_317, *ROWS_318, *ROWS_319)
 
 
 class VersionSixPolicy(VersionThreeRendered):

@@ -39,7 +39,7 @@ leave the ticket open and stop under Escalations for habit's decision.
 On completion, post one English results comment answering each acceptance criterion, naming the
 verification run and its result, and stating what was not done. The Secrets rules and the
 ticket's limits on what may leave the machine bind that comment. Then close the ticket as
-completed; if it is its spec's last open sub-issue, also close the spec. Give habit a Chinese
+completed and see Closing a spec for its parent. Give habit a Chinese
 summary in the terminal, as a final handoff (`handoff.md`). When actual difficulty differed
 from the dispatch plan, say so in one sentence in the completion summary; say nothing otherwise.
 
@@ -48,12 +48,7 @@ This is Builder execution work, separate from the Planner's wayfinder tickets.
 ## Whole-spec delivery
 
 A spec habit approved for whole-spec delivery (`planner.md`, Delivery shape) is one
-delivery, with this canonical start form (`AGENTS.md`, How to start):
-
-```text
-habit invokes: implement-spec.
-Role: Builder. Spec: #<n>. Skills: tdd.
-```
+delivery. Use the canonical whole-spec start instruction in `AGENTS.md`, How to start.
 
 The Steps below apply to it as to a ticket, with these differences:
 
@@ -157,8 +152,8 @@ Stop the affected work, put the full question and the options in the terminal, a
 one "Waiting on habit: …" line on the PR or ticket (`handoff.md`, Three kinds of
 message).
 
-- **The ticket must change.** Propose the change on the ticket, and edit it only after
-  habit's agreement is recorded there.
+- **The ticket must change.** A published ticket is frozen. Propose the change on the
+  ticket, and edit it only after habit's agreement is recorded there.
 - **An unforeseen high**: the change turns out high, and the ticket's Risk notes didn't
   foresee it.
 - **The round cap**, or no enabled bot left: follow the tier's substitute or escalation
@@ -225,10 +220,15 @@ This section applies to PR delivery.
 
 ## Closing a spec
 
-Results-comment tickets close their spec as described above. For PR delivery, a
-whole-spec PR closes the spec and its tickets (Whole-spec delivery). Otherwise, when
-your ticket is the spec's last open sub-issue, add `Closes #<spec>`. There is no spec-level
-acceptance.
+- After closing a results-comment ticket, close its spec if that ticket was its last
+  open sub-issue.
+- A whole-spec PR closes the spec and its tickets (Whole-spec delivery).
+- For an individual ticket PR, add `Closes #<spec>` only if the ticket is its spec's
+  last open sub-issue.
+- If a spec remains open once all its tickets are done, the Planner closes it
+  (`issue-tracker.md`, Sub-issues and blocking).
+
+There is no spec-level acceptance.
 
 ## Takeover
 

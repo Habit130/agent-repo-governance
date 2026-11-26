@@ -66,7 +66,7 @@ ROWS = (
             Clause(RESULTS, "A Builder cannot choose this delivery: adding the line to a frozen ticket requires habit's recorded agreement"),
             Clause(RESULTS, "Completion requires passing Verification and every acceptance criterion met."),
             Clause(RESULTS, "On completion, post one English results comment answering each acceptance criterion"),
-            Clause(RESULTS, "Then close the ticket as completed; if it is its spec's last open sub-issue, also close the spec."),
+            Clause(RESULTS, "Then close the ticket as completed"),
             Clause(RESULTS, "The work changes no tracked repository file, creates no branch and pushes nothing."),
         ),
         pointers=(

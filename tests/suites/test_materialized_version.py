@@ -38,6 +38,7 @@ from test_materialized_version_five import (
 
 from test_materialized_version_six import VersionSixPolicy
 from test_materialized_version_six_checks import VersionSixProtectionAudit
+from test_materialized_version_six_retro import VersionSixPlannerPolicy
 
 
 if __name__ == "__main__":
