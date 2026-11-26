@@ -802,7 +802,10 @@ class VersionSixHistoricalPolicy(RecordedMerge):
     def pair_merged_head(self, pair):
         self.assertEqual(self.head, pair["at_merge"])
         self.replay()
+        self.description_response = self.snapshot()
         self.pr["head"]["sha"] = pair["after_merge"]
+        self.replay()
+        self.description_response["data"]["repository"]["pullRequest"]["headRefOid"] = pair["after_merge"]
         self.replay(incomplete="could not establish merged head")
 
     def pair_merge_time(self, pair):
@@ -877,17 +880,26 @@ class VersionSixHistoricalPolicy(RecordedMerge):
         }
         private_readers = {node.name for node in accessor.body if isinstance(node, ast.FunctionDef)
                            and node.name.startswith("_") and node.name != "__init__"}
+        forwards_reader_to = {"MergeFacts", "_event_records", "_push_commits", "_open_records",
+                              "_red_incident", "_on_push", "_on_workflow_run", "read_rows"}
         for node in tree.body:
             if node is accessor:
                 continue
             direct_reads = []
-            for call in ast.walk(node):
-                if not isinstance(call, ast.Call):
-                    continue
-                if isinstance(call.func, ast.Name) and call.func.id in {"read", "read_rows", "github"}:
-                    direct_reads.append(ast.unparse(call))
-                if isinstance(call.func, ast.Attribute):
-                    self.assertNotIn(call.func.attr, private_readers | {"_read"}, ast.unparse(call))
+            for expr in ast.walk(node):
+                if isinstance(expr, ast.Attribute):
+                    self.assertNotIn(expr.attr, private_readers | {"_read"}, ast.unparse(expr))
+                for ref in ast.iter_child_nodes(expr):
+                    if not (isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load)
+                            and ref.id in {"read", "read_rows", "github"}):
+                        continue
+                    if isinstance(expr, ast.Call) and expr.func is ref:
+                        direct_reads.append(ast.unparse(expr))
+                    elif isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
+                        self.assertIn(expr.func.id, forwards_reader_to, ast.unparse(expr))
+                    else:
+                        self.assertTrue(ref.id == "github" and isinstance(expr, ast.Attribute)
+                                        and expr.attr in {"post", "unreadable"}, ast.unparse(expr))
             self.assertEqual(direct_reads, live_reads.get(getattr(node, "name", None), []))
 
     def test_unreadable_association_is_not_evidence_of_a_direct_push(self):
@@ -943,6 +955,8 @@ class VersionSixHistoricalPolicy(RecordedMerge):
         }]
         self.replay(incomplete="could not establish merged head", extra_records=records)
         self.replay(rate_limit=f"{self.prefix}/git/ref/pull/54/head",
+                    incomplete="rate limited", extra_records=records)
+        self.replay(rate_limit=f"{self.prefix}/commits/{reverted}/pulls",
                     incomplete="rate limited", extra_records=records)
 
     def test_description_edit_time_must_precede_the_merge(self):

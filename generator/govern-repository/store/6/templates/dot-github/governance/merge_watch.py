@@ -1018,11 +1018,18 @@ def _judge_pull(facts, merge):
         declared = "declared no readable tier (its `Risk:` line is %s), judged at high" % risk
     reverts = facts.at_merge("reverts", merge)
     if isinstance(reverts, dict):
-        reverted, _ = facts.at_merge("association", merge.base_ref, reverts["sha"])
+        interruption = None
+        try:
+            reverted, _ = facts.at_merge("association", merge.base_ref, reverts["sha"])
+        except PushIncomplete as error:
+            # Attribution is optional once the revert itself is established.
+            reverted, interruption = [], error
         yield record(
             reverted[0].number if reverted else None, "escape", "revert",
             "#%d, merged as %s, reverted %s, and its body had a `Reverts:` line." % (number, squash, reverts["sha"]),
         )
+        if interruption is not None:
+            raise interruption
     elif reverts is not None and reverts is not UNKNOWN:
         yield record(
             None, "escape", "revert",

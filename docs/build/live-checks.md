@@ -94,9 +94,11 @@ tier and the missing `reviewer, merge-summary` in the squash commit's push run. 
 workflow token's read of the merge-time PR description. An `INCOMPLETE` line identifies
 the evidence the workflow could not establish and appears in the probe result.
 
-- **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
-  answers a REST path with GitHub's list, every page joined, or raises `ReadError`
-  (version 3: `NotFound`, its subclass, for a file GitHub says isn't there). Its
+- **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`. The reader
+  returns paginated REST lists with the pages joined, individual objects, or record text.
+  Version 6 also reads the saved head as a Git ref object and maps
+  `/pulls/{number}/merge-description` to the GraphQL PR snapshot. A failed read raises
+  `ReadError` (from version 3, `NotFound` for a file GitHub confirms absent). Its
   output is the records to open. A new case joins `tests/fixtures/merge-watch/cases/` and is
   never renamed; the suite's docstring gives a case's shape. Version 3 cases live separately
   under `tests/fixtures/merge-watch/v3/`, preserving version 1's expected wording; the
