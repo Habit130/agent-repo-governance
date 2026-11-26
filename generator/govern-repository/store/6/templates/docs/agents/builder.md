@@ -8,9 +8,8 @@ replace the published `implement` skill's.
 
 ## A direct request
 
-habit's explicit request for a change, with no ticket, makes the session a Builder
-(`AGENTS.md`, How to start). The direct request carries no difficulty: its session is
-already running.
+For a direct change request with no ticket, apply `AGENTS.md`, How to start. The direct request carries
+no difficulty: its session is already running.
 
 - Clarify a vague request with `grilling`.
 - Open an issue quoting habit's request and every clarifying question and answer verbatim,
@@ -40,8 +39,7 @@ On completion, post one English results comment answering each acceptance criter
 verification run and its result, and stating what was not done. The Secrets rules and the
 ticket's limits on what may leave the machine bind that comment. Then close the ticket as
 completed; if it is its spec's last open sub-issue, also close the spec. Give habit a Chinese
-summary in the terminal, as a final handoff (`handoff.md`). When actual difficulty differed
-from the dispatch plan, say so in one sentence in the completion summary; say nothing otherwise.
+summary in the terminal, as a final handoff (`handoff.md`). Apply the completion-difficulty rule in After merge.
 
 This is Builder execution work, separate from the Planner's wayfinder tickets.
 
@@ -57,7 +55,7 @@ Role: Builder. Spec: #<n>. Skills: tdd.
 
 The Steps below apply to it as to a ticket, with these differences:
 
-- **Claim** the spec and each of its tickets.
+- **Claim** under `issue-tracker.md`, Tickets.
 - **Build** with `implement-spec`: subagents build the tickets, each in its own worktree, in
   the Builder's role, which its task names. Their work merges onto one integration branch,
   the Builder's own branch from step 3, and only that branch is pushed.
@@ -75,8 +73,7 @@ The Steps below apply to it as to a ticket, with these differences:
 
 1. **Read** `AGENTS.md`, this file, `review.md`, the ticket and its spec, and
    `docs/agents/build.md`.
-2. **Claim**: assign the ticket to yourself (`issue-tracker.md`). It is your first write,
-   and it posts no comment.
+2. **Claim** under `issue-tracker.md`, Tickets.
    For a results-comment ticket, continue with Results-comment tickets above and stop
    these steps here. The remaining steps are for PR delivery.
 3. **Worktree**: your own, on a new branch from the latest `origin` default branch:
@@ -85,28 +82,23 @@ The Steps below apply to it as to a ticket, with these differences:
 4. **Implement** with `tdd` and the skills the ticket names; for a bug, `diagnosing-bugs`.
 5. **Commit**: run the ticket's Verification, then commit in English Conventional Commits.
 6. **Self-verify**: run the Verification again on the committed head, then start a subagent
-   with no conversation context (`review.md`, Subagents with no conversation context). Its
-   task: run `code-review` on the committed diff against its merge-base with the default
-   branch, with the ticket as the spec (for a whole-spec delivery, the spec and every
-   ticket) and `AGENTS.md`'s Code Review Rules as the standards, and classify the tier on
-   its own. Deal with its findings before the PR opens,
-   and take its tier when it is higher.
+   under `review.md`, Subagents with no conversation context. Its task: run `code-review`
+   on the committed diff against its merge-base with the default branch, with the ticket
+   as the spec (for a whole-spec delivery, the spec and every ticket) and `AGENTS.md`'s
+   Code Review Rules as the standards, and classify the tier on its own. Deal with its
+   findings before the PR opens, and take its tier when it is higher.
 7. **Open the PR**: push, then fill `.github/PULL_REQUEST_TEMPLATE.md`, which wins over
    `pr`'s shape, writing Summary and Merge Danger with `pr`, and the `Risk:` line
-   (`review.md`, The tier). Post the evidence comment (`review.md`, Evidence comment), and
-   update it on every new head before requesting its reviews, keeping every Builder's
-   session mark (`review.md`, Session marks). For pushes to an existing PR, follow Syncing
-   and waiting below.
+   (`review.md`, The tier). Post the evidence comment under `review.md`, Evidence comment.
+   For pushes to an existing PR, follow `review.md`, Rounds, and Syncing and waiting below.
 8. **Review**: from medium, get the bot slot's review on every head that needs one, through
    habit's requests (`review.md`, Review bots); answer findings and run rounds (`review.md`).
 9. **Hand over**: For the cause issue and merge condition, see `review.md`, Rerun-only passes.
    If you need to file the issue, open it as `needs-triage` and name the check, the failed run
    and how it ended. Record the pass and its issue in the evidence comment. Then, at high
    or at medium when a Reviewer is required (`review.md`, Review bots),
-   hand habit the Reviewer handoff below and wait on the PR. At low, the Builder writes
-   the Merge summary. At medium, a Reviewer who ran writes it. When no Reviewer is
-   required at medium and none ran, the Builder writes it. When habit waived the Reviewer
-   session at high, write the high-risk report (`review.md`, Waivers).
+   hand habit the Reviewer handoff below and wait on the PR. Use the writer selected in
+   `review.md`, Merge summary.
 
 ## The Reviewer handoff
 
@@ -114,8 +106,8 @@ A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
 
 - **"给 habit"** names the harness and repeats the ticket's difficulty from the dispatch plan
   with its reason. For whole-spec delivery, use the spec's dispatch entry.
-  - At high state the constraint: a vendor different from every
-    Builder mark on the PR (`review.md`, Session marks). As a hint for where to open it:
+  - At high state the vendor constraint from `review.md`, Minimum reviews.
+    As a hint for where to open it:
     Claude Code runs Anthropic models, deepseekharness DeepSeek, the Codex harness OpenAI,
     and OpenCode whatever it is set to. The model's vendor decides, not the harness.
   - For a Codex harness session, a Local-mode chat in this repository's directory, not
@@ -123,11 +115,9 @@ A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
   - The review bot request the tier's slot needs on this head, as `review.md`'s Review bots
     gives it: a command or a browser step. Give habit fresh ones after each repair push, and
     the next enabled bot's request when a slot's bot is unavailable.
-  - On a PR that is high for authentication, privacy or secret handling, offer habit the
-    optional Codex security review request (`review.md`, The Codex review bot).
-- **"粘贴给 agent"** is
-  `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
-  Reviewer status and, when clear, the Merge summary.`
+  - For the optional extra, follow `review.md`, The Codex review bot, and record the
+    request and output under Evidence comment.
+- For **"粘贴给 agent"**, use the start instruction in `reviewer.md`, Start.
 
 It is a final handoff (`handoff.md`). Tell habit whether this Builder is waiting on the
 PR or has stopped, and give the applicable return instruction (After merge).
@@ -135,7 +125,8 @@ PR or has stopped, and give the applicable return instruction (After merge).
 ## Syncing and waiting
 
 - **Sync** only on a conflict or habit's request, by merging the default branch in. A pushed
-  branch is never rebased. The new head is reviewed again (`review.md`, Rounds).
+  branch is never rebased. On a new head follow `review.md`, Rounds, and `AGENTS.md`,
+  From round 2.
 - **PR-body updates**: After pushing to an existing PR, wait for the current head's active
   `governance-gate` workflow to complete before routine body edits. A passed gate-judgment
   step alone is insufficient. Batch the routine PR-body edits for that head, then wait for
@@ -146,23 +137,22 @@ PR or has stopped, and give the applicable return instruction (After merge).
   repair and escalation rules and `review.md`, Rerun-only passes. This sequence applies to
   PR-body edits, not ordinary issue or evidence comments; step 7's evidence and review
   prerequisites still apply. Other actors' concurrent edits can still cause cancellations.
-- **Wait** on the PR within the harness limits in `AGENTS.md`, How to start, using a
-  background command or a poll. For the high Builder waiting for merge, follow After merge.
-  For other waits the harness cannot perform, stop and say what you wait for.
-  habit says "continue" to resume.
+- **Wait.** For PR waiting and the fallback, follow `AGENTS.md`, How to start. Use a
+  background command or a poll where supported. For the high Builder waiting for merge,
+  follow After merge. For other waits, habit says "continue" to resume.
 
 ## Escalations
 
-Stop the affected work, put the full question and the options in the terminal, and leave
-one "Waiting on habit: …" line on the PR or ticket (`handoff.md`, Three kinds of
-message).
+Stop the affected work. For the escalation message, follow `handoff.md`, Three kinds
+of message. Use the affected PR or ticket.
 
 - **The ticket must change.** Propose the change on the ticket, and edit it only after
   habit's agreement is recorded there.
 - **An unforeseen high**: the change turns out high, and the ticket's Risk notes didn't
   foresee it.
-- **The round cap**, or no enabled bot left: follow the tier's substitute or escalation
-  in `review.md`, Review bots. Only habit waives the slot (`review.md`, Waivers).
+- **The round cap** (`review.md`, Rounds).
+- **An exhausted bot slot:** follow `review.md`, Review bots, for the tier's substitute
+  or escalation.
 - **An Actions secret** the ticket names is missing, or the work needs one the ticket
   doesn't name.
 - **Reverting a one-way door.**
@@ -205,7 +195,7 @@ This section applies to PR delivery.
   its worktree alone. Never ask habit to return just for cleanup.
 - The after-merge report is a final handoff (`handoff.md`). It reports this delivery only;
   what is dispatched next is the Planner's dispatch plan. When actual difficulty differed
-  from that plan, say so in one sentence; say nothing otherwise.
+  from the dispatch plan, say so in one sentence. When it matched, omit the difficulty.
 - Before any after-merge report, reread from GitHub, for the PR's exact head at merge: each
   required review's result, the Comment review and `Reviewer` status when a Reviewer ran,
   and the Merge summary. Report only what that reading shows. If required evidence is

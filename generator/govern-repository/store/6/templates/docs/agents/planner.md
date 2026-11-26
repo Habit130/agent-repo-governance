@@ -157,8 +157,8 @@ names.
 ## Escalations
 
 Scope, delivery shapes, specs, tickets and changes to a published ticket are habit's to
-approve. Put the question and the options in the terminal (`handoff.md`, Three kinds of
-message), and leave one "Waiting on habit: …" line on the issue.
+approve. For the escalation message, follow `handoff.md`, Three kinds of message.
+Use the issue.
 
 ## Skills this role relies on
 

@@ -126,12 +126,13 @@ Role: Reviewer. PR: #57. Skills: code-review. Post on the PR: the Comment review
 本 session 保持打开，自行等待 PR merge，merge 后报告结果；无需回复。
 ```
 
-A Builder's final handoff to a Reviewer, at high.
+A Builder's final handoff to a Reviewer, at high. In this example the Builder who
+pushed used OpenAI. The vendor choice follows `review.md`, Minimum reviews.
 
 ```text
-Builder → habit：PR #58 已开，high，self-verification 已 clear，所有 Builder session 的 vendor 均为 OpenAI，需要 Reviewer。
+Builder → habit：PR #58 已开，high，self-verification 已 clear，推送 commit 的 Builder vendor 为 OpenAI，需要 Reviewer。
 
-给 habit：在 Claude Code 中开一个新 session，使用 Anthropic vendor，不同于已记录的 OpenAI Builder vendor；难度：high，需要判断新规则的效果，现有测试不能证明效果（沿用派发计划）；Reviewer 的 vendor 必须不同于所有 Builder session，不占用共享资源。
+给 habit：在 Claude Code 中开一个新 session，使用 Anthropic vendor，不同于已记录的 OpenAI Builder vendor；难度：high，需要判断新规则的效果，现有测试不能证明效果（沿用派发计划），不占用共享资源。
 粘贴给 agent：
 ```
 
