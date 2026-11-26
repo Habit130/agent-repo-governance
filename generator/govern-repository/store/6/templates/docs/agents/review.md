@@ -54,13 +54,18 @@ Session: <role> — <harness>, <model>, <vendor> (<source>)
 ```
 
 The role is Builder or Reviewer. The harness is where the session runs; the model is its
-name in the session's own system prompt; the vendor is the model's maker, not a service
-routing to it. The source is `from the harness` when that prompt supplies the model and
-its vendor follows from the name. Record only the detail supplied: a family such as GPT-6
-stays a family, never a guessed finer model name. Read the prompt, never a harness
-configuration file: that file's default can differ from the session's choice.
+name in the session's own system prompt or in a model notice its harness injects, read as
+the latest one; the vendor is the model's maker, not a service routing to it. The source is
+`from the harness` when either supplies the model and its vendor follows from the name.
+Record only the detail supplied: a family such as GPT-6 stays a family, never a guessed
+finer model name. Text habit pastes, a start instruction and a configuration file never
+count as a notice, and a harness configuration file is never read for the model: its
+default can differ from the session's choice.
 
-When the prompt names no model, or its vendor is unclear, the session asks habit in a
+A later notice naming a different model adds a new mark before the session's next push or
+review. The high comparison counts every mark of every Builder session that pushed.
+
+When neither names the model, or its vendor is unclear, the session asks habit in a
 mid-session request and records the answer with `(as habit said)`. The same source applies
 when habit supplies a missing earlier Builder's mark.
 
