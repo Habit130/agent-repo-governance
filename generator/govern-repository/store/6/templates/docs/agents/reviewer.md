@@ -2,10 +2,9 @@
 
 # Reviewer
 
-The Reviewer works in a context that didn't write the change. The role applies at high, or
-at medium when substituting for the bot or required alongside it (same vendor allowed,
-`review.md`, Review bots). `AGENTS.md` holds the hard limits and how to talk to habit.
-`review.md` explains how the review rules apply.
+For when a Reviewer is needed, see `review.md`, Minimum reviews and Review bots.
+`AGENTS.md` holds the hard limits and how to talk to habit. `review.md` explains how
+the review rules apply.
 
 ## Start
 
@@ -14,53 +13,52 @@ with, with
 `Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
 Reviewer status and, when clear, the Merge summary.`
 
-habit's start instruction requests the Comment review, the `Reviewer` status and the
-Merge summary, whatever policy the default branch holds. Follow [Outputs](#outputs) for
-when to post each one. A Reviewer that cannot make these writes, under a read-only
+Use this request whatever policy the default branch holds. Follow [Outputs](#outputs)
+for when to post each one. A Reviewer that cannot make these writes, under a read-only
 instruction or a denied permission, stops and tells habit instead of posting a summary alone.
+If a denied permission blocks other Reviewer work, stop the affected work and follow Escalations.
 
 Read `AGENTS.md`, this file and `review.md`. Before reading the diff, check the PR's
-declared tier and evidence comment as step 1 says. After that check, read its diff, ticket
-and spec (for a whole-spec PR, the spec and every ticket it closes), and the review bots'
-findings with the Builder's answers. The Builder's conversation stays unread; the review
-rests on what GitHub holds.
+declared tier and evidence comment as step 1 says. After that check, read the diff,
+ticket and spec, and the review bots' findings with the Builder's answers. For the set
+of tickets this PR covers, follow `builder.md`, Whole-spec delivery. For separate context
+follow `AGENTS.md`, Hard limits. Leave the Builder's conversation unread and base the
+review on what GitHub holds.
 
 ## Steps
 
 1. **Check session marks.** Read the Builder marks in the evidence comment and state your own mark
-   (`review.md`, Session marks). At high, compare your vendor with every Builder session
-   that pushed a commit to the PR. If any Builder mark is missing or your vendor matches
-   any Builder's, stop before reviewing: tell habit in the terminal and leave one
-   "Waiting on habit: …" line on the PR. habit opens a Reviewer on another vendor or
+   (`review.md`, Session marks). At high apply the vendor constraint from `review.md`, Minimum
+   reviews. If any required Builder mark is missing or a vendor matches, stop before reviewing
+   and escalate under Escalations. habit opens a Reviewer on another vendor or
    supplies the missing mark; if no different vendor is available, see `review.md`, Waivers.
    At medium, record your own mark without comparing vendors or requiring Builder marks.
 2. **Pin the head.** Note the PR's exact head SHA. Everything below concerns that head; if
    it moves, restart at step 1 for the new head.
 3. **Worktree.** Check the head out in your own detached worktree:
    `git fetch origin pull/<n>/head`, then `git worktree add --detach <path> FETCH_HEAD`.
-4. **Classify the tier** yourself against the Code Review Rules. It can only rise: when
-   yours is higher than the `Risk:` line, raise an Important finding naming your tier, and
-   the Builder updates the line (`review.md`, The tier). If the tier rises to high, post
-   the tier finding, then repeat step 1 before continuing the review.
+4. **Classify the tier** yourself. Apply `AGENTS.md`, The tier challenge, and follow
+   `review.md`, The tier, for the effective tier. If the tier rises to high, post the tier
+   finding, then repeat step 1 before continuing the review.
 5. **Review in full** with `code-review`: each acceptance criterion, fit with the system,
    and bugs. A direct-request ticket is judged against habit's quoted words.
 6. **Judge each answer** the Builder gave to a finding, and reopen a rejection you disagree
    with, saying why.
-7. **Rerun the ticket's Verification** in your worktree; for a whole-spec PR, every
-   ticket's.
+7. **Rerun the ticket's Verification** in your worktree. For the set of tickets this PR
+   covers, follow `builder.md`, Whole-spec delivery.
 8. **Check the bot slot.** At high, wait for its review on the head or habit's waiver
    (`review.md`, Review bots and Waivers). At medium, verify that every enabled bot is
    unavailable or the list started empty before substituting; check the actual requests and
    unavailability evidence, then declare the exhausted slot as Review bots and the Merge
    summary grammar require. Otherwise review alongside the completed bot when its subsection
    requires it.
-   Judge the Builder's answers to any bot findings. At high, check the change for
-   authentication, privacy or secret handling. If any applies, run the security review
-   (`review.md`, Security review). Record the decision in the Merge summary.
+   Judge the Builder's answers to any bot findings. Use `review.md`, Security review, to
+   decide whether the security review applies and run it when required. Record the
+   decision under `review.md`, On the PR.
 9. **Remove your worktree** once the outputs are posted.
 
-Wait in your harness when it can wait. Otherwise stop and say what you wait for, and habit
-says "continue".
+For PR waiting and the fallback, follow `AGENTS.md`, How to start. habit says "continue"
+to resume. For a high Builder's resumption, see `builder.md`, After merge.
 
 ## Outputs
 
@@ -80,9 +78,8 @@ On the exact head, as the agent account:
   [The merge handoff](review.md#the-merge-handoff) to give habit the pinned command and
   the accompanying instructions.
 
-The review speaks in the Reviewer's voice only: it states findings and never commits the
-Builder to changes. Repairs are the Builder's: the Reviewer never pushes, and leaves the
-PR, tickets and labels as they are (`AGENTS.md`, Hard limits).
+Post the Reviewer's own findings. For independence and write limits, follow `AGENTS.md`,
+Hard limits and Voices.
 
 ## A new head
 
@@ -92,12 +89,11 @@ Comment review and a new `Reviewer` status on it.
 
 ## Escalations
 
-Put the question and the options in the terminal, and leave one "Waiting on habit: …" line
-on the PR (`handoff.md`, Three kinds of message), when:
+For the escalation message, follow `handoff.md`, Three kinds of message. Use the PR.
 
-- a finding turns on a product or scope decision the ticket doesn't settle;
-- at high the bot slot has no enabled bot left (`review.md`, Review bots);
-- a permission is denied.
+- Escalate when a finding turns on a product or scope decision the ticket doesn't settle.
+- For an exhausted bot slot at high, follow `review.md`, Review bots, No bot left at high.
+- For permission problems, follow Start and the escalation message above.
 
 ## Skills this role relies on
 

@@ -28,13 +28,12 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 | Self-verification | yes | yes | yes |
 | Review bot | — | one: `bot-1` | one: `bot-1` |
 | Reviewer session | — | when substituting for the bot or required alongside it, same vendor allowed (Review bots) | yes, a vendor different from every Builder session that pushed to the PR, judged by the session marks |
-| Security review | — | — | when the change involves authentication, privacy or secret handling |
-| Merge summary by | Builder | Builder; the Reviewer when one ran | Reviewer, or the Builder when it is waived, as the high-risk report |
+| Security review | — | — | See [Security review](#security-review) |
 
+- For the summary writer, see [Merge summary](#merge-summary).
 - Minimums are floors: every review that runs on a head binds. A Reviewer substitutes for
   the bot only at medium, as Review bots below gives it.
-- habit's waiver is the only way a required review goes unmet; a waived Reviewer session
-  leaves the Merge summary to the Builder (Waivers).
+- habit's waiver is the only way a required review goes unmet (Waivers).
 - **Before any merge:** required checks green (the governance gate from the first PR after
   Initialize; an Initialize PR's evidence states it as not yet applicable); the evidence
   comment on the head; the `Risk:` line present; a Merge summary naming the head; no open
@@ -200,14 +199,14 @@ verification table, for one PR at one head.
 - **A new head voids it.** The same waiver on the new head needs a new comment.
 - **Never waived**: the required status checks, the `Risk:` line, the evidence comment and
   the Merge summary; nor a Reviewer session that a review bot's subsection keeps.
-- **A waived Reviewer session** leaves the Merge summary to the Builder: it runs the checks,
-  writes the summary, at high as the high-risk report, and gives the merge handoff.
+- **A waived Reviewer session.** The writer selected in Merge summary runs the checks,
+  writes the summary and gives the merge handoff.
 - **No different vendor available.** A same-vendor review at high does not meet the
   Reviewer requirement. Only habit's existing `reviewer` waiver for that head, subject to
   all the limits here, lets the PR proceed without a qualifying Reviewer. A same-vendor
   review that runs still binds like any review on the head; the fixed line reads
-  `reviewer=waived`, the Builder writes the high-risk report, and its evidence sentence
-  says that the review ran on a Builder's vendor. If no review ran, say so.
+  `reviewer=waived` and the report's evidence sentence says that the review ran on a
+  Builder's vendor. If no review ran, say so.
 - No agent writes, edits or widens a waiver. For merge authority, follow
   [Hard limits](../../AGENTS.md#hard-limits) and [The merge handoff](#the-merge-handoff) for habit's command.
 - Merge watch checks each review waiver's author, head and item after the merge. The Merge
@@ -267,10 +266,11 @@ One PR comment by the Builder, bound to the head it names and updated on every n
 ## Security review
 
 At high, when the change involves authentication, privacy or secret handling, the
-Reviewer runs a security-review subagent with no conversation context. Its task names the
-diff against the merge-base, the ticket, and these checks: authentication and authorization
-paths; credentials and Actions secrets, in code, logs, errors and CI output; trust in input
-from users, PRs and the network; exposure of private data. It rates each finding:
+Reviewer runs a security-review subagent. Start it under Subagents with no conversation
+context. Its task names the diff against the merge-base, the ticket, and these checks:
+authentication and authorization paths; credentials and Actions secrets, in code, logs,
+errors and CI output; trust in input from users, PRs and the network; exposure of private
+data. It rates each finding:
 
 - **HIGH**: exploitable as merged, or exposes a credential or private data;
 - **MEDIUM**: a weakness that one further mistake or an unlikely condition would expose;
@@ -338,7 +338,7 @@ Security review applies: <yes|no>
 - Write `low`, `medium` or `high` and all 40 lowercase hex digits of the PR head.
   Write an Upgrade's summary under the policy on its base. A v4-to-v5 Upgrade uses the
   published v4 title with seven digits. The first PR governed by v5 uses the full head.
-- At high, judge whether the change involves authentication, privacy or secret handling.
+- At high, use `review.md`, Security review, to decide whether the security review applies.
   On the third line write `Security review applies: yes` if it does and
   `Security review applies: no` otherwise. With `yes`, include `security=clear` or
   `security=waived` on the second line. A waiver requires habit's exact-head comment for
