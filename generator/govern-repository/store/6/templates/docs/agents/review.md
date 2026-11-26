@@ -81,9 +81,10 @@ when the edit corrects the failed gate input, such as its Risk declaration.
 The Reviewer and the Merge summary's writer inspect the required checks' run history on the
 head, earlier attempts included: GitHub's default listing shows only the latest attempt.
 Compare changes between attempts with the evidence comment, verifying that each claimed
-repair addresses that check's failure. For each rerun-only pass, confirm the linked issue
-is open and covers its cause; no linked open issue is an Important finding. The Builder
-owns ticketing the cause (`builder.md`, step 9).
+repair addresses that check's failure. For each rerun-only pass, the Builder links an open
+issue for its cause, including an outside cause. The Reviewer and the writer confirm the
+issue is open and covers the cause. A missing, closed or unrelated issue is an Important
+finding and blocks the merge. See `builder.md`, step 9, for filing the issue.
 
 ## Subagents with no conversation context
 

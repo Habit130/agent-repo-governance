@@ -99,11 +99,10 @@ The Steps below apply to it as to a ticket, with these differences:
    and waiting below.
 8. **Review**: from medium, get the bot slot's review on every head that needs one, through
    habit's requests (`review.md`, Review bots); answer findings and run rounds (`review.md`).
-9. **Hand over**: for each required check's rerun-only pass on the head (`review.md`,
-   Rerun-only passes), link an open issue for its cause. Open it yourself as `needs-triage`,
-   naming the check, the failed run and how it ended, or link an open issue that already
-   covers it. An outside cause, such as a GitHub outage, still needs the issue. Record each
-   in the evidence comment; the Merge summary links each issue. Then, at high or at medium when a Reviewer is required (`review.md`, Review bots),
+9. **Hand over**: For the cause issue and merge condition, see `review.md`, Rerun-only passes.
+   If you need to file the issue, open it as `needs-triage` and name the check, the failed run
+   and how it ended. Record the pass and its issue in the evidence comment. Then, at high
+   or at medium when a Reviewer is required (`review.md`, Review bots),
    hand habit the Reviewer handoff below and wait on the PR. At low, the Builder writes
    the Merge summary. At medium, a Reviewer who ran writes it. When no Reviewer is
    required at medium and none ran, the Builder writes it. When habit waived the Reviewer
@@ -177,8 +176,7 @@ message).
 ## Actions secrets
 
 Before relying on an Actions secret the ticket names, confirm it exists by name with
-`gh secret list`, which shows names only. Only habit writes Actions secrets (`AGENTS.md`,
-Secrets).
+`gh secret list`, which shows names only. For the owner action follow `AGENTS.md`, Secrets.
 
 ## After merge
 

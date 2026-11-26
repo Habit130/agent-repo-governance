@@ -24,12 +24,12 @@ least medium.
 
 ## Actions secrets
 
-<!-- Replace with each Actions secret a workflow uses, GITHUB_TOKEN aside: its name, what CI
-     uses it for and the service that issues it, never a value. With none, say that CI uses
-     no Actions secret. -->
+<!-- List each Actions secret a workflow uses, GITHUB_TOKEN aside, using the ticket fields
+     below. With none, say that CI uses no Actions secret. -->
 
 | Name | Purpose | Issuing service |
 | --- | --- | --- |
 | `<NAME>` | <purpose> | <issuing service> |
 
-Only habit writes Actions secrets (`AGENTS.md`, Secrets).
+For the owner action follow `AGENTS.md`, Secrets. Use the ticket fields from
+`planner.md`, Tickets.

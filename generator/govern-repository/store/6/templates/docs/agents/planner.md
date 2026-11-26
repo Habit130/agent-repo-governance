@@ -68,8 +68,7 @@ A ticket holds `to-tickets`' body, or triage's agent brief, plus:
 - **Risk notes**: only foreseen risks the diff won't show, such as a one-way door or a
   production resource.
 - **Actions secrets**: each one CI needs, by name, purpose and issuing service, never a
-  value. Give habit the repository's Actions secrets settings link and the exact name, so
-  habit sets it in the browser while approving the ticket (`AGENTS.md`, Secrets).
+  value. For the owner action follow `AGENTS.md`, Secrets, during ticket approval.
 
 A ticket carries no tier or difficulty. Once published it is frozen: a Builder proposes a
 change, habit agrees, and the ticket records both.
@@ -116,7 +115,8 @@ Only the Planner updates the dispatch grade; the ticket body carries none.
 
 ## The docs PR
 
-`GLOSSARY.md` and ADRs change through the Planner's own docs PR, on the low path: follow
+`GLOSSARY.md` and ADRs change through the Planner's own docs PR. Tier the Planner's docs PR
+under `AGENTS.md`, Risk tiers, using this repository's actual sensitive paths. Follow
 `builder.md`'s steps 3 to 9 with the Planner in the Builder's place. The PR references its
 spec or map and closes no issue.
 

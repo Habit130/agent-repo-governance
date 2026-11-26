@@ -153,7 +153,7 @@ Highest tier in the change wins.
   - a security review's HIGH or MEDIUM;
   - a declared tier below what the change warrants;
   - any review or authorization exception broader than its narrowest statement (`review.md`, Exceptions);
-  - a required check's rerun-only pass with no linked open issue for its cause (`review.md`);
+  - For rerun-only findings, see `review.md`, Rerun-only passes.
   - fixed-content edits outside the generator's own PR (Governance files);
   - a credential value in a diff, PR text or comment, named by its type and location only.
 - **Nit** never blocks: a review bot's Nit; a security review's LOW.
