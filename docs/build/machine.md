@@ -47,10 +47,12 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   files, credential-bearing metadata and unchanged source-file assertions. The
   `machine-wizard` suite never runs `ghm` or any `gh` inside a login shell: macOS's login
   profile reorders PATH, so a real gh there could reach the keychain.
-- **Generated credential routes**, in `machine-wizard`'s
-  `GeneratedCredentialRoute`, compare the credential step with the runner's real Git.
-  The exhaustive bounded corpus combines three schemes, eight hosts and five decorations,
-  each before/after gh's section and with/without a reset.
+- **Generated credential routes**, in `machine-wizard`'s `GeneratedCredentialCorpus1` to
+  `GeneratedCredentialCorpus3`, compare the credential step with the runner's real Git;
+  `GeneratedCredentialRoute` holds the oracle's negative controls and checks that the three
+  parts cover the corpus once. The exhaustive bounded corpus combines three schemes, eight
+  hosts and five decorations, each before/after gh's section and with/without a reset: 480
+  routes, every third URL in each part, and each part keeps every assertion.
   Each route starts with an earlier synthetic helper. Certified routes must call only the
   test-local gh helper on both `fill` and `approve`; certain nonmatches are checked without
   a masking reset. Successful reruns preserve the home's bytes. Two deliberately unsafe

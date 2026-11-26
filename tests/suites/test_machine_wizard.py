@@ -884,6 +884,7 @@ class GeneratedCredentialRoute(CredentialRouteCase):
         with self.assertRaisesRegex(AssertionError, "approve helper fan-out is not gh-only"):
             self.assert_certified_route(status)
 
+
 class GeneratedCredentialCorpus1(CredentialRouteCase):
     def test_generated_routes_agree_with_real_git(self):
         self.check_corpus_part(0)
