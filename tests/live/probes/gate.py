@@ -1,32 +1,38 @@
 """The governance gate's probes (#41 §8, #44 §11): its trigger, its reruns, its one source, and the rulesets with it.
 
-Run the four together. A check takes three steps after habit's merge and owner-script run:
+Run the four together. A check takes two steps after habit's merge and owner-script run:
 
-1. `live.py probe` without `--post` sets the check up, as the agent account, in the sandbox
-   only. It opens three probe PRs from `live/gate-<sandbox PR>-<UTC stamp>-…` branches: `trigger`, with
-   a good `Risk:` line and then a pushed second commit; `edit`, with a bad one that a body
-   edit fixes; `failing`, whose bad line stays. Each change is one file under
-   `live-checks/`. It pushes a `source` branch whose commit is in no PR, and posts the
-   agent's success statuses on it for `governance-gate` and every confirmed check. After
-   each step it waits for the gate's run, failing on a timeout, and reads the run, its job's
-   log and the head's check runs. It remembers what it read as `gate_setup` and writes
-   `gate_targets.txt` for habit's command. A later run reads them back and never sets up
-   again. An attempt that stops fails its run; the next run tries afresh under new branch
-   names, and `gate-trigger` names the stopped attempts.
-2. habit runs `gate-rulesets`' one command, as the agent account (`gh`, never `ghm`): a
-   direct push of the source commit to the default branch, a force-push of the default
-    branch and of the source branch, and the merge of each probe PR at its head. The harness keeps these attempts
-    with habit; the probes never push to the default branch, force-push or merge.
-    The command is a quoted invocation of `tests/live/gate_attempts.py`; that standalone
-    Python entry owns preparation, attempts and the output protocol, not probe execution.
-   The first push or merge that exits 0 stops every later attempt and exits 3. Its section
-   keeps `exit=0` and prints `stop-after: <attempt>` plus Chinese advice; `== account`
-   remains, and `== after` reads the refs after the stop. habit then stops as for a product
-   question instead of rerunning. A failed clone, checkout or amend prints `never-reached:`;
-   it is neither a success nor a rejection, and later attempts still run.
-3. `live.py probe --post` judges what step 1 read, habit's output, and the refs and PRs as
-    they are then. A stopped rulesets run fails each skipped attempt with the stop's reason,
-    while still reading both refs and every probe PR from GitHub.
+1. habit runs `gate-rulesets`' one command, as the agent account (`gh`, never `ghm`). The
+   command is a quoted invocation of `tests/live/gate_attempts.py` naming the check's
+   `prepared.json`; that standalone Python entry owns the setup, the attempts and the output
+   protocol, not probe execution.
+   - **The setup** comes first, in the sandbox only, after `live.py probe`'s own
+     preconditions: this checkout at the prepared commit, clean, and the sandbox PR merged at
+     its head. It opens three probe PRs from `live/gate-<sandbox PR>-<UTC stamp>-…`
+     branches: `trigger`, with a good `Risk:` line and then a pushed second commit; `edit`,
+     with a bad one that a body edit fixes; `failing`, whose bad line stays. Each change is
+     one file under `live-checks/`. It pushes a `source` branch whose commit is in no PR, and
+     posts the agent's success statuses on it for `governance-gate` and every confirmed
+     check. After each step it waits for the gate's run, failing on a timeout, and reads the
+     run, its job's log and the head's check runs. It remembers what it read as `gate_setup`
+     and writes `gate_targets.txt` for the attempts. A later run of the command reads them
+     back and never sets up again. A setup that fails is recorded under `stopped`; the
+     command prints `setup-failed:` and a Chinese line, makes no attempt and exits 4. The
+     next run sets up afresh under new branch names, and `gate-trigger` names the stopped
+     attempts.
+   - **The attempts** follow: a direct push of the source commit to the default branch, a
+     force-push of the default branch and of the source branch, and the merge of each probe
+     PR at its head. The harness keeps these attempts with habit; the probes never push to
+     the default branch, force-push or merge. The first push or merge that exits 0 stops
+     every later attempt and exits 3. Its section keeps `exit=0` and prints
+     `stop-after: <attempt>` plus Chinese advice; `== account` remains, and `== after` reads
+     the refs after the stop. habit then stops as for a product question instead of
+     rerunning. A failed clone, checkout or amend prints `never-reached:`; it is neither a
+     success nor a rejection, and later attempts still run.
+2. `live.py probe --post` judges what the setup read, habit's output, and the refs and PRs as
+   they are then. It never sets up: with no completed setup recorded, each gate probe fails
+   and names habit's command. A stopped rulesets run fails each skipped attempt with the
+   stop's reason, while still reading both refs and every probe PR from GitHub.
 
 Every assertion reads GitHub's own answers. A same-name status sits only on the source
 commit, so it never confounds a probe PR's head. GitHub's rejections, recorded from the
@@ -66,7 +72,7 @@ _EXIT = re.compile(r"(?m)^exit=(\d+)\s*$")
 _STOP = re.compile(r"(?m)^stop-after: (.+)$")
 
 
-# Step 1: the setup, as the agent account.
+# Step 1: habit's command. First the setup, as the agent account.
 
 
 def _git(args, cwd):
@@ -235,31 +241,23 @@ def _attempts(count):
     return "%d earlier attempt%s stopped" % (count, "" if count == 1 else "s")
 
 
-# The check directories whose setup stopped in this `live.py probe` run, with why: the other
-# gate probes of the run fail with it instead of attempting again.
-_STOPPED_THIS_RUN = {}
+def setup(context):
+    """habit's command's first part: the setup's observations, read back once one attempt has completed.
 
-
-def _setup(context):
-    """The setup's observations, read back once one attempt has completed; otherwise one fresh attempt per run.
-
-    A stopped attempt fails every gate probe of its run and is recorded under `stopped`; the
-    next run sets up afresh under new branch names, and `gate-trigger` names the stopped attempts.
+    Otherwise one fresh attempt, which writes `gate_setup` and the targets. A stopped attempt
+    is recorded under `stopped` and raises ProbeError; habit's next run of the command sets up
+    afresh under new branch names, and `gate-trigger` names the stopped attempts.
     """
     setup = context.recall("gate_setup") or {}
     if "pulls" in setup:
         return setup
-    if context.directory in _STOPPED_THIS_RUN:
-        raise ProbeError(_STOPPED_THIS_RUN[context.directory])
     stopped = list(setup.get("stopped") or [])
     try:
         setup = _act(context)
     except Exception as error:  # Any failure leaves sandbox writes behind, so it is recorded.
         reason = str(error) if isinstance(error, ProbeError) else "%s: %s" % (type(error).__name__, error)
         context.remember("gate_setup", {"stopped": stopped + [reason]})
-        _STOPPED_THIS_RUN[context.directory] = ("the gate probes' setup stopped: %s (%s); the next `live.py probe` run sets up afresh"
-                                                % (reason, _attempts(len(stopped))))
-        raise ProbeError(_STOPPED_THIS_RUN[context.directory])
+        raise ProbeError("the gate probes' setup stopped: %s (%s)" % (reason, _attempts(len(stopped))))
     setup["stopped"] = stopped
     context.remember("gate_setup", setup)
     with open(os.path.join(context.directory, TARGETS), "w") as handle:
@@ -267,23 +265,35 @@ def _setup(context):
     return setup
 
 
-# Step 2: habit's command.
+def _setup(context):
+    """What habit's command's setup read, for judging; judging never sets up or calls GitHub for it."""
+    setup = context.recall("gate_setup") or {}
+    if "pulls" in setup:
+        return setup
+    stopped = setup.get("stopped") or []
+    if stopped:
+        raise ProbeError("the gate probes' setup in habit's command stopped: %s (%s); habit runs gate-rulesets' command "
+                         "again, which sets up afresh" % (stopped[-1], _attempts(len(stopped))))
+    raise ProbeError("no gate setup in %s: habit runs gate-rulesets' command first, which sets the check up"
+                     % context.directory)
+
+
+# Step 1's command line: the setup above, then the attempts.
 
 
 def attempts_commands(context):
-    """Print only an invocation; gate_attempts.py owns the habit-only protocol."""
+    """Print only an invocation; gate_attempts.py owns the setup, then the habit-only protocol."""
     entry = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gate_attempts.py")
-    line = shlex.join(["/usr/bin/python3", entry, "--repository", context.repository,
-                       "--branch", context.default_branch, "--targets", os.path.join(context.directory, TARGETS)])
-    return [(ATTEMPTS, "the agent's direct push, force-push and merges, as the agent account (gh), after the first "
-             "`live.py probe` run, which opens the gate's probe PRs", line)]
+    line = shlex.join(["/usr/bin/python3", entry, "--state", os.path.join(context.directory, "prepared.json")])
+    return [(ATTEMPTS, "the gate probes' setup, which opens their probe PRs, then the agent's direct push, force-push "
+             "and merges, all as the agent account (gh), after the owner-script command", line)]
 
 
 def no_commands(context):
     return []
 
 
-# Step 3: judging.
+# Step 2: judging.
 
 
 def attempts(text):

@@ -100,6 +100,8 @@ Only habit writes Actions secrets (`AGENTS.md`, Secrets).
   ~/.agents/governance/machine/scripts/machine.py check`.
 - **Sandbox setup and gate attempts:** habit runs `live.py sandbox-command`'s line and
   `gate-rulesets`' printed command, including its agent-account push and merge attempts.
+  That one combined command, `tests/live/gate_attempts.py --state <check>/prepared.json`,
+  first runs the gate probes' setup as the agent account, then the attempts.
   See [live checks](../build/live-checks.md) for setup, evidence and stop conditions.
 - **Release Initialize:** habit runs the line printed by `live.py end-to-end`, then
   `/cut:govern-repository` in that Claude Code session. See [Releasing](../build/releasing.md).

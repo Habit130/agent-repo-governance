@@ -430,11 +430,11 @@ def gate_attempts(push=PUSH_VIOLATIONS, edit=(UPDATE,), push_exit=1, account="Ha
     return text + "== after\n%s\trefs/heads/main\n%s\trefs/heads/%s\n" % (DEFAULT_HEAD, SOURCE, SOURCE_BRANCH)
 
 
-def sandbox_now(path, main=DEFAULT_HEAD, branch=SOURCE, merged=()):
+def sandbox_now(path, main=DEFAULT_HEAD, branch=SOURCE, merged=(), source_branch=SOURCE_BRANCH, pulls=tuple(PULLS.values())):
     """The stand-in GitHub as the agent reads the refs and probe PRs when judging."""
     calls = [ow.ok(["api", "repos/%s/commits/main" % PUBLIC], {"sha": main}),
-             ow.ok(["api", "repos/%s/git/ref/heads/%s" % (PUBLIC, SOURCE_BRANCH)], {"object": {"sha": branch}})]
-    calls += [ow.ok(["api", "repos/%s/pulls/%d" % (PUBLIC, n)], {"number": n, "merged": n in merged}) for n in PULLS.values()]
+             ow.ok(["api", "repos/%s/git/ref/heads/%s" % (PUBLIC, source_branch)], {"object": {"sha": branch}})]
+    calls += [ow.ok(["api", "repos/%s/pulls/%d" % (PUBLIC, n)], {"number": n, "merged": n in merged}) for n in pulls]
     with open(path, "w") as handle:
         json.dump({"tool": "gh", "calls": calls}, handle)
     return path
@@ -443,113 +443,331 @@ def sandbox_now(path, main=DEFAULT_HEAD, branch=SOURCE, merged=()):
 GATE_PROBES = ("gate-trigger", "gate-reruns", "gate-source", "gate-rulesets")
 
 
-class GateAttemptsCommand(ProbeCase):
-    """Run the real command only with test-local git AND gh; no sandbox is contacted."""
+# The sandbox as habit's combined command meets it: a small GitHub of its own behind test-local
+# git and gh. The setup's local git runs for real against a bare repository; GitHub's answers,
+# the gate's runs and the attempts' rejections come from the plan; every call is logged.
+FAKE_GITHUB = r'''import datetime, json, os, re, subprocess, sys
+tool = os.path.basename(sys.argv[0])
+args = sys.argv[1:]
+env = os.environ
+with open(env["FAKE_PLAN"]) as handle:
+    plan = json.load(handle)
+with open(env["FAKE_STATE"]) as handle:
+    state = json.load(handle)
+R, MAIN, DEFAULT = plan["repository"], plan["branch"], plan["default_head"]
+URL = "https://github.com/%s.git" % R
+where, rest = (args[1], args[2:]) if tool == "git" and args[:1] == ["-C"] else (None, args)
+logged = [tool] + rest
+if tool == "git" and rest[:1] == ["clone"]:
+    logged = logged[:-1] + ["<clone>"]
+with open(env["FAKE_LOG"], "a") as handle:
+    handle.write(json.dumps({"args": logged, "executable": sys.argv[0]}) + "\n")
 
-    def command(self, success=None, preparation=None, capture=False, missing=False, quoted=False):
+
+def done(out="", code=0, err=""):
+    with open(env["FAKE_STATE"], "w") as handle:
+        json.dump(state, handle)
+    sys.stdout.write(out if isinstance(out, str) else json.dumps(out))
+    sys.stderr.write(err)
+    sys.exit(code)
+
+
+def real(argv, cwd=None):
+    result = subprocess.run([env["REAL_GIT"]] + argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            universal_newlines=True)
+    return result
+
+
+def new_run(head, conclusion):
+    now = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    state["runs"].append({"id": len(state["runs"]) + 1, "head": head, "conclusion": conclusion, "at": now})
+
+
+def conclusion(pull):
+    return "success" if "Risk: low" in pull["body"] else "failure"
+
+
+def attempt(index, rejection):
+    state["writes"].append(index)
+    if plan["success"] == index:
+        done("accepted\n")
+    done(rejection, 1)
+
+
+fail = plan.get("fail")
+if fail and " ".join(logged).startswith(fail):
+    done("", 1, "HTTP 502: a planned failure\n")
+
+if tool == "ghm":
+    done("", 99, "ghm was called\n")
+
+if tool == "git":
+    if where is not None and rest == ["rev-parse", "HEAD"]:
+        done(plan["commit"] + "\n")
+    if where is not None and rest == ["status", "--porcelain"]:
+        done("")
+    if rest[:2] == ["clone", "-q"] and "--filter=blob:none" in rest:
+        done("", plan["preparation"].get("clone", 0))
+    if rest[:3] == ["checkout", "-q", "--detach"]:
+        done("", plan["preparation"].get("checkout", 0))
+    if rest[:3] == ["commit", "-q", "--amend"]:
+        done("", plan["preparation"].get("amend", 0))
+    if rest[:1] == ["ls-remote"]:
+        source = state["source"] or ["0" * 40, "none"]
+        done("%s\trefs/heads/%s\n%s\trefs/heads/%s\n" % (DEFAULT, MAIN, source[0], source[1]))
+    if where is not None and rest[:1] == ["push"]:
+        if rest[1:] == [URL, "%s:refs/heads/%s" % ((state["source"] or [""])[0], MAIN)]:
+            attempt(0, plan["rejections"]["push"])
+        if rest[1:] == ["--force", URL, "HEAD:refs/heads/%s" % MAIN]:
+            attempt(1, plan["rejections"]["force"].replace("{ref}", MAIN))
+        if rest[1:] == ["--force", URL, "HEAD:refs/heads/%s" % (state["source"] or ["", ""])[1]]:
+            attempt(2, plan["rejections"]["force"].replace("{ref}", state["source"][1]))
+    if rest[:2] == ["clone", "-q"] and rest[2] == URL:
+        result = real(["clone", "-q", plan["bare"], rest[3]])
+        done(result.stdout, result.returncode, result.stderr)
+    if rest[:2] == ["push", "-q"] and rest[2] == URL and where is None:
+        branch = rest[3].split("refs/heads/", 1)[1]
+        result = real(["push", "-q", plan["bare"], rest[3]])
+        head = real(["rev-parse", "HEAD"]).stdout.strip()
+        state["branches"][branch] = head
+        if branch.endswith("-source"):
+            state["source"] = [head, branch]
+        for pull in state["pulls"]:
+            if pull["branch"] == branch:
+                new_run(head, conclusion(pull))
+        done(result.stdout, result.returncode, result.stderr)
+    if where is None and rest[:1] in (["checkout"], ["add"], ["commit"], ["rev-parse"]):
+        result = real(rest)
+        done(result.stdout, result.returncode, result.stderr)
+
+if tool == "gh":
+    body = sys.stdin.read() if rest[-2:] == ["--body-file", "-"] else None
+    path = next((a for a in rest if a.startswith("repos/") or a == "user"), "")
+    if rest == ["api", "user", "--jq", ".login"]:
+        done(plan["account"] + "\n")
+    if rest == ["pr", "view", str(plan["sandbox_pr"]), "--repo", R, "--json", "state,headRefOid"]:
+        done({"state": plan["sandbox_state"], "headRefOid": plan["sandbox_head"]})
+    if rest == ["api", "repos/%s/commits/%s" % (R, MAIN)]:
+        done({"sha": DEFAULT})
+    if rest == ["api", "repos/%s/rules/branches/%s" % (R, MAIN)]:
+        done([{"type": "required_status_checks", "parameters": {"required_status_checks": plan["required"]}}])
+    match = re.match(r"repos/[^/]+/[^/]+/statuses/([0-9a-f]{40})$", path)
+    if rest[:3] == ["api", "--method", "POST"] and match:
+        fields = dict(a.split("=", 1) for a in rest[4:] if "=" in a)
+        state["statuses"].append({"sha": match.group(1), "context": fields["context"], "state": fields["state"]})
+        done({})
+    match = re.match(r"repos/[^/]+/[^/]+/commits/([0-9a-f]{40})/statuses\?per_page=100$", path)
+    if match:
+        done([{"context": s["context"], "state": s["state"], "creator": {"login": plan["account"]}}
+              for s in reversed(state["statuses"]) if s["sha"] == match.group(1)])
+    match = re.match(r"repos/[^/]+/[^/]+/commits/([0-9a-f]{40})/check-runs\?check_name=governance-gate&filter=all", path)
+    if match:
+        found = []
+        for run in state["runs"]:
+            if run["head"] == match.group(1):
+                found.append({"id": run["id"] * 10, "conclusion": run["conclusion"], "app": {"id": 15368},
+                              "output": {"title": None}, "completed_at": run["at"]})
+                found.append({"id": run["id"] * 10 + 1, "conclusion": run["conclusion"], "app": {"id": 15368},
+                              "output": {"title": "a planned title"}, "completed_at": run["at"]})
+        done({"total_count": len(found), "check_runs": found})
+    if rest[:2] == ["pr", "create"]:
+        branch = rest[rest.index("--head") + 1]
+        pull = {"number": plan["first_pull"] + len(state["pulls"]), "branch": branch, "body": body}
+        state["pulls"].append(pull)
+        new_run(state["branches"][branch], conclusion(pull))
+        done("https://github.com/%s/pull/%d\n" % (R, pull["number"]))
+    if rest[:2] == ["pr", "edit"]:
+        pull = next(p for p in state["pulls"] if p["number"] == int(rest[2]))
+        pull["body"] = body
+        new_run(state["branches"][pull["branch"]], conclusion(pull))
+        done("https://github.com/%s/pull/%d\n" % (R, pull["number"]))
+    match = re.match(r"repos/[^/]+/[^/]+/actions/runs\?head_sha=([0-9a-f]{40})&per_page=100$", path)
+    if match:
+        done({"workflow_runs": [{"id": run["id"], "path": ".github/workflows/governance-gate.yml", "status": "completed",
+                                 "event": "pull_request_target", "head_sha": run["head"], "conclusion": run["conclusion"],
+                                 "created_at": run["at"]} for run in state["runs"] if run["head"] == match.group(1)]})
+    match = re.match(r"repos/[^/]+/[^/]+/actions/runs/(\d+)/jobs$", path)
+    if match:
+        run = state["runs"][int(match.group(1)) - 1]
+        done({"jobs": [{"id": run["id"] * 100, "name": "governance-gate", "started_at": run["at"], "completed_at": run["at"],
+                        "check_run_url": "https://api.github.com/repos/%s/check-runs/%d" % (R, run["id"] * 10)}]})
+    match = re.match(r"repos/[^/]+/[^/]+/actions/jobs/(\d+)/logs$", path)
+    if match:
+        run = state["runs"][int(match.group(1)) // 100 - 1]
+        done("2026-11-26T00:00:00Z governance-gate on %s, judged by the default branch at %s\n" % (run["head"], DEFAULT))
+    match = re.match(r"repos/[^/]+/[^/]+/pulls/(\d+)/merge$", path)
+    if rest[:3] == ["api", "--method", "PUT"] and match:
+        order = sorted(p["number"] for p in state["pulls"]).index(int(match.group(1)))
+        attempt(3 + order, plan["rejections"]["merges"][order])
+
+done("", 97, "unrecorded call: %r\n" % (logged,))
+'''
+
+SANDBOX_HEAD = "e" * 40
+FIRST_PULL = 4
+
+
+class GateAttemptsCommand(ProbeCase):
+    """habit's combined command, run under /bin/bash with test-local git, gh and a ghm tripwire; no sandbox is contacted.
+
+    The setup runs as `live.py probe` without `--post` ran it, against the fake GitHub above;
+    the attempts follow on the targets it wrote.
+    """
+
+    def command(self, success=None, preparation=None, capture=False, quoted=False, fail=None, sandbox_state="MERGED",
+                directory=None, setup=None, github=None):
         root = tempfile.mkdtemp(prefix="attempts-", dir=self.tmp)
         binary = os.path.join(root, "bin")
         os.mkdir(binary)
-        log_path, plan_path = os.path.join(root, "calls.jsonl"), os.path.join(root, "plan.json")
-        url = "https://github.com/%s.git" % PUBLIC
-        writes = [
-            ["git", "push", url, "%s:refs/heads/main" % SOURCE],
-            ["git", "push", "--force", url, "HEAD:refs/heads/main"],
-            ["git", "push", "--force", url, "HEAD:refs/heads/%s" % SOURCE_BRANCH],
-        ] + [["gh", "api", "--method", "PUT", "repos/%s/pulls/%d/merge" % (PUBLIC, PULLS[role]),
-              "-f", "merge_method=squash", "-f", "sha=%s" % HEADS["pushed" if role == "trigger" else role]]
-             for role in ("trigger", "edit", "failing")]
-        headers = ["push %s to main" % SOURCE, "force-push main", "force-push %s" % SOURCE_BRANCH] + [
-            "merge %d at %s" % (PULLS[role], HEADS["pushed" if role == "trigger" else role])
-            for role in ("trigger", "edit", "failing")]
-        plan = [{"args": ["gh", "api", "user", "--jq", ".login"], "code": 0, "out": "Habit098\n"},
-                {"args": ["git", "clone", "-q", "--filter=blob:none", url, "<clone>"],
-                 "code": 1 if preparation == "clone" else 0, "out": ""},
-                {"args": ["git", "ls-remote", url, "refs/heads/main", "refs/heads/%s" % SOURCE_BRANCH], "code": 0,
-                 "out": "%s\trefs/heads/main\n%s\trefs/heads/%s\n" % (DEFAULT_HEAD, SOURCE, SOURCE_BRANCH)}]
-        for ref in ("main", SOURCE_BRANCH):
-            plan.append({"args": ["git", "checkout", "-q", "--detach", "origin/%s" % ref],
-                         "code": 1 if preparation == "checkout" else 0, "out": ""})
-        plan.append({"args": ["git", "commit", "-q", "--amend", "-m", "Live check: a force-push attempt"],
-                     "code": 1 if preparation == "amend" else 0, "out": ""})
-        for index, args in enumerate(writes):
-            out = (push_rejection("main", *PUSH_VIOLATIONS) if index == 0 else
-                   push_rejection("main" if index == 1 else SOURCE_BRANCH, "Cannot force-push to this branch")
-                   if index < 3 else merge_rejection(UPDATE))
-            plan.append({"args": args, "code": 0 if success == index else 1, "out": "accepted\n" if success == index else out})
+        log_path, plan_path, state_path = (os.path.join(root, name) for name in ("calls.jsonl", "plan.json", "github.json"))
+        real_git = shutil.which("git")
+        bare = os.path.join(root, "sandbox.git")
+        seed = os.path.join(root, "seed")
+        support.git(root, "init", "-q", "--bare", bare)
+        os.mkdir(seed)
+        support.git(seed, "init", "-q", "-b", "main")
+        support.git(seed, "commit", "-q", "--allow-empty", "-m", "seed")
+        support.git(seed, "push", "-q", bare, "HEAD:refs/heads/main")
+        support.git(bare, "symbolic-ref", "HEAD", "refs/heads/main")
+        plan = {"repository": PUBLIC, "branch": "main", "default_head": DEFAULT_HEAD, "commit": COMMIT, "bare": bare,
+                "account": "Habit098", "sandbox_pr": 7, "sandbox_head": SANDBOX_HEAD, "sandbox_state": sandbox_state,
+                "required": [{"context": "governance-gate", "integration_id": 15368}, {"context": "test"}],
+                "first_pull": FIRST_PULL, "success": success, "preparation": {preparation: 1} if preparation else {},
+                "fail": fail,
+                "rejections": {"push": push_rejection("main", *PUSH_VIOLATIONS),
+                               "force": push_rejection("{ref}", "Cannot force-push to this branch"),
+                               "merges": [merge_rejection(UPDATE), merge_rejection(UPDATE), merge_rejection(FAILING, UPDATE)]}}
         with open(plan_path, "w") as handle:
             json.dump(plan, handle)
-        stub = '''import json, os, sys
-tool = os.path.basename(sys.argv[0])
-args = sys.argv[1:]
-if tool == "git" and args[:1] == ["-C"]:
-    args = args[2:]
-if tool == "git" and args[:1] == ["clone"]:
-    args[-1] = "<clone>"
-call = [tool] + args
-with open(os.environ["ATTEMPT_LOG"], "a") as handle:
-    handle.write(json.dumps({"args": call, "executable": sys.argv[0]}) + "\\n")
-with open(os.environ["ATTEMPT_PLAN"]) as handle:
-    plan = json.load(handle)
-for entry in plan:
-    if call == entry["args"]:
-        sys.stdout.write(entry["out"])
-        sys.exit(entry["code"])
-sys.stderr.write("unrecorded call: %r\\n" % call)
-sys.exit(97)
-'''
-        for tool in ("git", "gh"):
+        with open(state_path, "w") as handle:
+            json.dump(dict(github, writes=[]) if github else
+                      {"runs": [], "pulls": [], "branches": {}, "statuses": [], "writes": [], "source": None}, handle)
+        for tool in ("git", "gh", "ghm"):
             path = os.path.join(binary, tool)
             with open(path, "w") as handle:
-                handle.write("#!%s\n%s" % (sys.executable, stub))
+                handle.write("#!%s\n%s" % (sys.executable, FAKE_GITHUB))
             os.chmod(path, 0o755)
-        env = support.isolated_env({"PATH": binary + os.pathsep + os.environ["PATH"],
-                                    "ATTEMPT_LOG": log_path, "ATTEMPT_PLAN": plan_path})
+        env = support.isolated_env({"PATH": binary + os.pathsep + os.environ["PATH"], "REAL_GIT": real_git,
+                                    "FAKE_LOG": log_path, "FAKE_PLAN": plan_path, "FAKE_STATE": state_path})
         for tool in ("git", "gh"):
             self.assertEqual(shutil.which(tool, path=env["PATH"]), os.path.join(binary, tool))
-        check = os.path.join(root, "check ' quoted") if quoted else root
-        if quoted:
-            os.mkdir(check)
+        check = directory or os.path.join(root, "check ' quoted" if quoted else "check")
+        os.makedirs(check, exist_ok=True)
+        with open(os.path.join(check, "prepared.json"), "w") as handle:
+            json.dump({"pr": 9, "commit": COMMIT, "sandbox": PUBLIC, "visibility": "public", "branch": "live/x",
+                       "sandbox_pr": 7, "sandbox_head": SANDBOX_HEAD, "version": 5, "probes": list(GATE_PROBES)}, handle)
+        if setup is not None:
+            with open(os.path.join(check, "gate_setup.json"), "w") as handle:
+                json.dump(setup, handle)
         context = probes.Context(PUBLIC, "public", "main", {}, COMMIT, 7, check)
-        targets = "source %s %s\n" % (SOURCE, SOURCE_BRANCH)
-        targets += "".join("merge %d %s\n" % (PULLS[role], HEADS["pushed" if role == "trigger" else role])
-                           for role in ("trigger", "edit", "failing"))
-        if not missing:
-            with open(os.path.join(check, "gate_targets.txt"), "w") as handle:
-                handle.write(targets)
         if quoted:
-            entry_dir = os.path.join(root, "entry ' quoted")
-            os.makedirs(os.path.join(entry_dir, "probes"))
-            shutil.copyfile(os.path.join(LIVE, "gate_attempts.py"), os.path.join(entry_dir, "gate_attempts.py"))
-            with mock.patch.object(gate_probes, "__file__", os.path.join(entry_dir, "probes", "gate.py")):
+            linked = os.path.join(root, "repo ' quoted")
+            os.symlink(support.REPO, linked)
+            with mock.patch.object(gate_probes, "__file__", os.path.join(linked, "tests", "live", "probes", "gate.py")):
                 (_, _, line), = probes.registered()["gate-rulesets"].commands(context)
         else:
             (_, _, line), = probes.registered()["gate-rulesets"].commands(context)
         if capture:
-            line += " 2>&1 | tee " + os.path.join(root, "capture.txt")
+            line += " 2>&1 | tee " + shlex.quote(os.path.join(check, "gate_attempts.txt"))
         result = subprocess.run(["/bin/bash", "-c", line], env=env, cwd=root,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True,
-                                stdin=subprocess.DEVNULL, timeout=30)
+                                stdin=subprocess.DEVNULL, timeout=120)
         if capture:
-            with open(os.path.join(root, "capture.txt")) as handle:
+            with open(os.path.join(check, "gate_attempts.txt")) as handle:
                 self.assertEqual(handle.read(), result.stdout)
+        else:
+            with open(os.path.join(check, "gate_attempts.txt"), "w") as handle:
+                handle.write(result.stdout)
         log = []
         if os.path.exists(log_path):
             with open(log_path) as handle:
                 log = [json.loads(line) for line in handle]
         self.assertNotIn("unrecorded call", result.stdout + result.stderr)
+        self.assertNotIn("ghm", [entry["args"][0] for entry in log])
         self.assertTrue(all(entry["executable"] == os.path.join(binary, entry["args"][0]) for entry in log))
-        calls = [entry["args"] for entry in log]
-        self.assertTrue(all(call in [entry["args"] for entry in plan] for call in calls))
-        return result, calls, writes, headers
+        with open(state_path) as handle:
+            github = json.load(handle)
+        self.check, self.github = check, github
+        return result, [entry["args"] for entry in log], self.attempt_calls(), self.attempt_headers()
 
-    def test_quoted_entry_and_targets_paths_work_from_an_unrelated_cwd(self):
+    def recorded(self):
+        with open(os.path.join(self.check, "gate_setup.json")) as handle:
+            return json.load(handle)
+
+    def targets(self):
+        with open(os.path.join(self.check, "gate_targets.txt")) as handle:
+            return [line.split() for line in handle if line.strip()]
+
+    def attempt_calls(self):
+        """The six attempts' exact argument vectors, from the targets the setup wrote, in the command's order."""
+        if not os.path.exists(os.path.join(self.check, "gate_targets.txt")):
+            return []
+        url = "https://github.com/%s.git" % PUBLIC
+        rows = self.targets()
+        (_, source, branch), merges = rows[0], rows[1:]
+        return [["git", "push", url, "%s:refs/heads/main" % source],
+                ["git", "push", "--force", url, "HEAD:refs/heads/main"],
+                ["git", "push", "--force", url, "HEAD:refs/heads/%s" % branch]] + [
+            ["gh", "api", "--method", "PUT", "repos/%s/pulls/%s/merge" % (PUBLIC, number), "-f", "merge_method=squash",
+             "-f", "sha=%s" % head] for _, number, head in merges]
+
+    def attempt_headers(self):
+        if not os.path.exists(os.path.join(self.check, "gate_targets.txt")):
+            return []
+        rows = self.targets()
+        (_, source, branch), merges = rows[0], rows[1:]
+        return ["push %s to main" % source, "force-push main", "force-push %s" % branch] + [
+            "merge %s at %s" % (number, head) for _, number, head in merges]
+
+    def judge(self, names=("gate-rulesets",)):
+        """Each named probe's results on the check directory the command left, as the later `--post` run judges it."""
+        setup = self.recorded()
+        scratch = self.with_github(sandbox_now(self.path("judge-%d.json" % len(os.listdir(self.tmp))),
+                                               branch=setup["source"]["commit"], source_branch=setup["source"]["branch"],
+                                               pulls=[p["number"] for p in setup["pulls"].values()]))
+        if "gate-trigger" in names:
+            with open(os.path.join(self.check, "owner_report.txt"), "w") as handle:
+                handle.write(owner_report(tempfile.mkdtemp(prefix="report-", dir=self.tmp), "public-from-nothing"))
+        with open(os.path.join(self.check, "prepared.json")) as handle:
+            context = live.context(json.load(handle), self.check)
+        results = [result for name in names for result in self.results(name, context)]
+        if names == ("gate-rulesets",):
+            self.assertEqual(len(results), 10)
+            log = environment.read_log(scratch)
+            self.assertEqual(len(log), 5)  # Both refs and every probe PR are still read.
+            self.assertTrue(all(entry["recorded"] for entry in log))
+        return results
+
+    def test_a_successful_setup_writes_what_the_post_judgment_reads_and_every_gate_probe_passes(self):
+        result, calls, writes, _ = self.command()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        setup = self.recorded()
+        self.assertEqual(setup["stopped"], [])
+        self.assertEqual(setup["default_head"], DEFAULT_HEAD)
+        self.assertEqual(sorted(setup["pulls"]), ["edit", "failing", "trigger"])
+        self.assertEqual([p["number"] for p in (setup["pulls"][r] for r in ("trigger", "edit", "failing"))], [4, 5, 6])
+        self.assertEqual([s["step"] for s in setup["pulls"]["trigger"]["stages"]], ["opened", "pushed"])
+        self.assertEqual([s["step"] for s in setup["pulls"]["edit"]["stages"]], ["opened", "body fixed"])
+        self.assertEqual(self.targets(), [["source", setup["source"]["commit"], setup["source"]["branch"]]] + [
+            ["merge", str(setup["pulls"][r]["number"]), setup["pulls"][r]["stages"][-1]["head"]]
+            for r in ("trigger", "edit", "failing")])
+        # Every sandbox write of the setup comes before the first attempt, which follows the account line.
+        first = calls.index(["gh", "api", "user", "--jq", ".login"])
+        setup_writes = [i for i, call in enumerate(calls) if call[:2] in (["git", "push"], ["gh", "pr"])
+                        and call not in writes] + [i for i, call in enumerate(calls) if call[:4] == ["gh", "api", "--method", "POST"]]
+        self.assertTrue(setup_writes and max(setup_writes) < first)
+        self.assertEqual([call for call in calls if call in writes], writes)
+        self.assertEqual(self.github["writes"], [0, 1, 2, 3, 4, 5])
+        failed = [(r.assertion, r.detail) for r in self.judge(GATE_PROBES) if not r.passed]
+        self.assertEqual(failed, [])
+
+    def test_quoted_entry_and_state_paths_work_from_an_unrelated_cwd(self):
         result, calls, writes, _ = self.command(quoted=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual([call for call in calls if call in writes], writes)
-        self.assertEqual(self.failed(self.judge(result.stdout)), [])
+        self.assertEqual(self.failed(self.judge()), [])
 
-    def test_the_first_success_stops_every_later_write_and_still_prints_account_and_after(self):
+    def test_the_first_success_stops_every_later_write_prints_account_and_after_and_the_judge_names_it(self):
         for index in range(6):
             with self.subTest(attempt=index):
                 result, calls, writes, headers = self.command(success=index)
@@ -562,12 +780,23 @@ sys.exit(97)
                 self.assertIn("== after\n", result.stdout)
                 self.assertGreater(result.stdout.index("== after"), result.stdout.index("stop-after:"))
                 self.assertEqual(calls[-1][1], "ls-remote")
+                # The judge names the success and each skipped attempt, without rerun advice.
+                results = self.judge()
+                self.assertTrue(all(r.passed for r in results[:index + 1]))
+                for later, judged in enumerate(results[index + 1:7], start=index):
+                    self.assertFalse(judged.passed)
+                    self.assertIn(headers[index], judged.detail)
+                    self.assertIn("stop as for a product question", judged.detail)
+                    self.assertNotIn("rerun", judged.detail)
+                    self.assertIn("went through" if later == index else "skipped", judged.detail)
+                self.assertTrue(all(r.passed for r in results[7:]))
 
-    def test_missing_targets_exit_before_any_git_or_gh_call(self):
-        result, calls, _, _ = self.command(missing=True)
+    def test_missing_targets_after_a_read_back_setup_exit_2_before_any_attempt(self):
+        result, calls, _, _ = self.command(setup=gate_setup())
         self.assertEqual(result.returncode, 2)
-        self.assertEqual(calls, [])
-        self.assertIn("先运行一次不带 --post 的 live.py probe", result.stdout)
+        self.assertFalse(os.path.exists(os.path.join(self.check, "gate_targets.txt")))
+        self.assertEqual([call for call in calls if call[:2] not in (["git", "rev-parse"], ["git", "status"], ["gh", "pr"])], [])
+        self.assertIn("准备没有写出目标，未进行任何推送或合并尝试", result.stdout)
 
     def test_runner_capture_preserves_stop_protocol_even_when_tee_exits_zero(self):
         for index in range(6):
@@ -578,34 +807,9 @@ sys.exit(97)
                 self.assertIn("stop-after: " + headers[index], result.stdout)
                 self.assertIn("== account\nHabit098\nexit=0\n", result.stdout)
                 self.assertIn("== after\n", result.stdout)
-                results = self.judge(result.stdout)
+                results = self.judge()
                 self.assertTrue(all(r.passed for r in results[:index + 1]))
                 self.assertTrue(all(not r.passed for r in results[index + 1:7]))
-                self.assertTrue(all(r.passed for r in results[7:]))
-
-    def judge(self, output):
-        scratch = self.with_github(sandbox_now(self.path("judge.json")))
-        context = self.context(inputs={"gate_attempts": output})
-        context.remember("gate_setup", gate_setup())
-        results = self.results("gate-rulesets", context)
-        self.assertEqual(len(results), 10)
-        log = environment.read_log(scratch)
-        self.assertEqual(len(log), 5)  # Both refs and every probe PR are still read.
-        self.assertTrue(all(entry["recorded"] for entry in log))
-        return results
-
-    def test_the_judge_names_the_success_and_each_skipped_attempt_without_rerun_advice(self):
-        for index in range(6):
-            with self.subTest(attempt=index):
-                result, _, _, headers = self.command(success=index)
-                results = self.judge(result.stdout)
-                self.assertTrue(all(r.passed for r in results[:index + 1]))
-                for later, judged in enumerate(results[index + 1:7], start=index):
-                    self.assertFalse(judged.passed)
-                    self.assertIn(headers[index], judged.detail)
-                    self.assertIn("stop as for a product question", judged.detail)
-                    self.assertNotIn("rerun", judged.detail)
-                    self.assertIn("went through" if later == index else "skipped", judged.detail)
                 self.assertTrue(all(r.passed for r in results[7:]))
 
     def test_failed_clone_checkout_or_amend_never_counts_as_a_rejection_and_later_attempts_run(self):
@@ -622,7 +826,7 @@ sys.exit(97)
                 self.assertEqual([line for line in result.stdout.splitlines() if line.startswith("exit=")],
                                  ["exit=0"] + ["exit=1"] * 6)
                 self.assertIn("== after\n", result.stdout)
-                results = self.judge(result.stdout)
+                results = self.judge()
                 self.assertEqual([index for index, r in enumerate(results[1:7]) if not r.passed], skipped)
                 for index in skipped:
                     self.assertIn("never reached GitHub", results[index + 1].detail)
@@ -638,25 +842,83 @@ sys.exit(97)
                          ["exit=0"] + ["exit=1"] * 6)
         self.assertNotIn("stop-after:", result.stdout)
         self.assertNotIn("never-reached:", result.stdout)
-        self.assertEqual(self.failed(self.judge(result.stdout)), [])
+        self.assertEqual(self.failed(self.judge()), [])
 
         # A missing section without a stop still asks for the safe rerun.
-        context = self.context(inputs={"gate_attempts": result.stdout.split("== force-push main")[0]})
-        context.remember("gate_setup", gate_setup())
-        (missing,) = self.results("gate-rulesets", context)
+        with open(os.path.join(self.check, "gate_attempts.txt"), "w") as handle:
+            handle.write(result.stdout.split("== force-push main")[0])
+        (missing,) = self.results("gate-rulesets", probes.Context(PUBLIC, "public", "main", {}, COMMIT, 7, self.check))
         self.assertFalse(missing.passed)
         self.assertIn("rerun habit's command", missing.detail)
 
     def test_sibling_probes_do_not_advise_rerun_after_the_command_stops(self):
         result, _, _, headers = self.command(success=0)
-        context = self.context(inputs={"gate_attempts": result.stdout})
-        context.remember("gate_setup", gate_setup())
+        context = probes.Context(PUBLIC, "public", "main", {}, COMMIT, 7, self.check)
         for name in ("gate-trigger", "gate-reruns"):
             (stopped,) = self.results(name, context)
             self.assertFalse(stopped.passed)
             self.assertIn(headers[0], stopped.detail)
             self.assertIn("stop as for a product question", stopped.detail)
             self.assertNotIn("rerun", stopped.detail)
+
+    def attempted(self, calls):
+        """The calls of the attempts' part: the account read, its clone, and every push or merge attempt."""
+        return [call for call in calls if call == ["gh", "api", "user", "--jq", ".login"] or "--filter=blob:none" in call
+                or call[:3] == ["gh", "api", "--method"] and call[3] == "PUT" or call[1:2] == ["ls-remote"]]
+
+    def test_a_setup_failure_stops_before_any_attempt_with_a_chinese_line_and_its_own_exit_status(self):
+        result, calls, _, _ = self.command(fail="gh pr create")
+        self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
+        self.assertNotIn(result.returncode, (0, 2, 3))
+        self.assertIn("setup-failed: the gate probes' setup stopped: `gh pr create --repo` failed", result.stdout)
+        self.assertIn("门禁探针的准备失败，未进行任何推送或合并尝试", result.stdout)
+        self.assertNotIn("== ", result.stdout)
+        self.assertEqual(self.attempted(calls), [])
+        self.assertEqual(self.github["writes"], [])
+        self.assertFalse(os.path.exists(os.path.join(self.check, "gate_targets.txt")))
+        (reason,) = self.recorded()["stopped"]
+        self.assertIn("`gh pr create --repo` failed", reason)
+
+        # The later judgment sets nothing up: it reads only, and asks for habit's command again.
+        scratch = self.with_github(self.path("nothing.json"))
+        with open(self.path("nothing.json"), "w") as handle:
+            json.dump({"tool": "gh", "calls": []}, handle)
+        context = probes.Context(PUBLIC, "public", "main", {}, COMMIT, 7, self.check)
+        for name in GATE_PROBES:
+            (judged,) = self.results(name, context)
+            self.assertFalse(judged.passed)
+            self.assertIn("setup in habit's command stopped", judged.detail)
+            self.assertIn("habit runs gate-rulesets' command again", judged.detail)
+        self.assertEqual(environment.read_log(scratch), [])
+        self.assertEqual(self.recorded()["stopped"], [reason])
+
+    def test_a_sandbox_pr_not_merged_fails_the_setup_before_any_sandbox_write(self):
+        result, calls, _, _ = self.command(sandbox_state="OPEN")
+        self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
+        self.assertIn("setup-failed: %s#7 is OPEN" % PUBLIC, result.stdout)
+        self.assertIn("门禁探针的准备失败，未进行任何推送或合并尝试", result.stdout)
+        self.assertEqual([call[:2] for call in calls], [["git", "rev-parse"], ["git", "status"], ["gh", "pr"]])
+        self.assertFalse(os.path.exists(os.path.join(self.check, "gate_setup.json")))
+
+    def test_a_rerun_after_a_stopped_setup_sets_up_afresh_and_the_trigger_probe_names_the_stop(self):
+        stopped = {"stopped": ["`gh pr create --repo` failed: EOF"]}
+        result, calls, writes, _ = self.command(setup=stopped)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual([call for call in calls if call in writes], writes)
+        self.assertEqual(self.recorded()["stopped"], stopped["stopped"])
+        results = self.judge(GATE_PROBES)
+        self.assertEqual(self.failed(results), [])
+        self.assertIn("1 earlier setup attempt stopped first: `gh pr create --repo` failed: EOF", results[0].detail)
+
+    def test_a_rerun_after_a_completed_setup_reads_it_back_and_repeats_only_the_attempts(self):
+        self.command()
+        first, targets = self.recorded(), self.targets()
+        result, calls, writes, _ = self.command(directory=self.check, github=self.github)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.recorded(), self.targets()), (first, targets))
+        self.assertEqual([call for call in calls if call[:2] == ["gh", "pr"] and call[2] != "view"], [])
+        self.assertEqual([call for call in calls if call[:2] == ["git", "push"] and call not in writes], [])
+        self.assertEqual([call for call in calls if call in writes], writes)
 
 
 class OwnerRecoveryProbe(ProbeCase):
@@ -794,22 +1056,28 @@ class GateProbes(ProbeCase):
         for name in GATE_PROBES:
             self.assertEqual(failed[name], ["%s ran" % name], name)
 
-    def test_a_stopped_setup_is_attempted_once_per_run_recorded_and_fails_every_gate_probe(self):
+    def test_judging_never_sets_up_a_stopped_or_absent_setup_fails_every_gate_probe_and_asks_for_habits_command(self):
         with open(self.path("nothing.json"), "w") as handle:
             json.dump({"tool": "gh", "calls": []}, handle)
-        self.with_github(self.path("nothing.json"))
+        scratch = self.with_github(self.path("nothing.json"))
         earlier = "`gh pr create --repo` failed: Post \"https://api.github.com/graphql\": EOF"
         stopped = self.gate_context(setup={"stopped": [earlier]})
         for name in GATE_PROBES:
             (result,) = self.results(name, stopped)
             self.assertFalse(result.passed)
-            self.assertIn("repos/%s/commits/main" % PUBLIC, result.detail)
+            self.assertIn(earlier, result.detail)
             self.assertIn("1 earlier attempt stopped", result.detail)
-            self.assertIn("the next `live.py probe` run sets up afresh", result.detail)
-        recorded = stopped.recall("gate_setup")["stopped"]
-        self.assertEqual(len(recorded), 2)
-        self.assertEqual(recorded[0], earlier)
-        self.assertFalse(os.path.exists(os.path.join(stopped.directory, "gate_targets.txt")))
+            self.assertIn("habit runs gate-rulesets' command again, which sets up afresh", result.detail)
+        self.assertEqual(stopped.recall("gate_setup"), {"stopped": [earlier]})
+        absent = self.context(inputs={"gate_attempts": gate_attempts()})
+        for name in GATE_PROBES:
+            (result,) = self.results(name, absent)
+            self.assertFalse(result.passed)
+            self.assertIn("habit runs gate-rulesets' command first, which sets the check up", result.detail)
+        self.assertIsNone(absent.recall("gate_setup"))
+        for context in (stopped, absent):
+            self.assertFalse(os.path.exists(os.path.join(context.directory, "gate_targets.txt")))
+        self.assertEqual(environment.read_log(scratch), [])
 
     def test_a_setup_after_stopped_attempts_names_them_in_the_trigger_probe(self):
         self.with_github(sandbox_now(self.path("gh.json")))
@@ -1646,21 +1914,22 @@ class HabitsCommands(support.TempDirCase):
             self.assertEqual(name, "gate_attempts")
             self.assertEqual(subprocess.run(["/bin/bash", "-n", "-c", line]).returncode, 0)
             self.assertEqual(shlex.split(line), ["/usr/bin/python3", os.path.join(LIVE, "gate_attempts.py"),
-                                               "--repository", repository, "--branch", "main",
-                                               "--targets", "/check dir/gate_targets.txt"])
+                                               "--state", "/check dir/prepared.json"])
             self.assertNotIn("ghm", line)
         for name in ("gate-trigger", "gate-reruns", "gate-source"):
             self.assertEqual(probes.registered()[name].commands(context), [])
 
-    def test_the_gate_attempts_command_stops_without_the_setup_runs_targets(self):
+    def test_the_gate_attempts_command_without_a_prepared_check_fails_its_setup_and_attempts_nothing(self):
         context = probes.Context(PUBLIC, "public", "main", {}, COMMIT, 7, self.path("check"))
         (_, _, line), = probes.registered()["gate-rulesets"].commands(context)
         recording = self.path("empty.json")
         with open(recording, "w") as handle:
             json.dump({"tool": "gh", "calls": []}, handle)
         result, log, scratch = self.run_line(line, recording)
-        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn("gate_targets.txt", result.stdout)
+        self.assertEqual(result.returncode, 4, result.stdout + result.stderr)
+        self.assertIn("setup-failed: ", result.stdout)
+        self.assertIn("prepared.json", result.stdout)
+        self.assertIn("门禁探针的准备失败，未进行任何推送或合并尝试", result.stdout)
         self.assertEqual(log, [])
         self.assertFalse(ms.ghm_called(scratch))
 

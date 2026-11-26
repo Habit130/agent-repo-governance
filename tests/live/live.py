@@ -329,11 +329,17 @@ def comment(state, results):
     return "\n".join(lines) + "\n"
 
 
-def cmd_probe(args):
-    directory = os.path.dirname(os.path.realpath(args.state))
-    with open(args.state) as handle:
-        state = json.load(handle)
-    chosen = chosen_probes(args.probe, state["visibility"])
+def load_prepared(path):
+    """(prepared.json's state, the check directory holding it)."""
+    with open(path) as handle:
+        return json.load(handle), os.path.dirname(os.path.realpath(path))
+
+
+def checked_context(state, directory):
+    """The probes' context, once this checkout is the prepared commit, clean, and the sandbox PR merged at its head.
+
+    `probe` and habit's gate-attempts command, which sets the gate probes up, both start here.
+    """
     # The probes and the target come from this checkout, so it must be the commit the results name.
     commit = run(["git", "-C", REPO, "rev-parse", "HEAD"]).stdout.strip()
     if commit != state["commit"] or run(["git", "-C", REPO, "status", "--porcelain"]).stdout.strip():
@@ -343,7 +349,13 @@ def cmd_probe(args):
     if merged["state"] != "MERGED" or merged["headRefOid"] != state["sandbox_head"]:
         raise RunnerError("%s#%d is %s at %s, not merged at %s" % (state["sandbox"], state["sandbox_pr"], merged["state"],
                                                                   merged["headRefOid"][:12], state["sandbox_head"][:12]))
-    ctx = context(state, directory)
+    return context(state, directory)
+
+
+def cmd_probe(args):
+    state, directory = load_prepared(args.state)
+    chosen = chosen_probes(args.probe, state["visibility"])
+    ctx = checked_context(state, directory)
     results = [(probe.name, result) for probe in chosen for result in probes.run(probe, ctx)]
     text = comment(state, results)
     sys.stdout.write(text)
