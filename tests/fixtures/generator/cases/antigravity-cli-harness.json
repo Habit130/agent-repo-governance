@@ -1,0 +1,41 @@
+{
+  "description": "The Antigravity CLI shell's recorded names are refused before any other step, naming Antigravity, with no call to GitHub.",
+  "expect": {
+    "preconditions": {
+      "exit": 2,
+      "harness": {
+        "passed": false,
+        "harness": "Antigravity"
+      }
+    },
+    "mode": {
+      "exit": 2,
+      "harness": {
+        "passed": false,
+        "harness": "Antigravity"
+      }
+    },
+    "inspect": {
+      "exit": 2,
+      "harness": {
+        "passed": false,
+        "harness": "Antigravity"
+      }
+    },
+    "accept-invitation": {
+      "exit": 2,
+      "harness": {
+        "passed": false,
+        "harness": "Antigravity"
+      }
+    }
+  },
+  "expect_no_calls": true,
+  "harness": "antigravity-cli",
+  "run": [
+    "preconditions",
+    "mode",
+    "inspect",
+    "accept-invitation"
+  ]
+}
