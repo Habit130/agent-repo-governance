@@ -873,6 +873,22 @@ class VersionSixHistoricalPolicy(RecordedMerge):
         self.assert_reader_boundary(tree, accessor)
 
     def assert_reader_boundary(self, tree, accessor):
+        # Only at_merge selects a fact. The other public methods construct a
+        # context, copy tentative evidence, or record a diagnostic.
+        context_calls = {
+            "for_merge": ["MergeFacts"],
+            "conditional_evidence": ["copy", "copy", "isinstance", "self._cache.copy"],
+            "unknown": ["unresolved"],
+        }
+        methods = (ast.FunctionDef, ast.AsyncFunctionDef)
+        public = {node.name: node for node in accessor.body if isinstance(node, methods) and not node.name.startswith("_")}
+        bound_names = {name.id for node in accessor.body if not isinstance(node, methods) for name in ast.walk(node)
+                       if isinstance(name, ast.Name) and isinstance(name.ctx, ast.Store) and not name.id.startswith("_")}
+        self.assertEqual(set(public) | bound_names, {"at_merge", *context_calls})
+        for name, expected in context_calls.items():
+            calls = [ast.unparse(expr.func) for expr in ast.walk(public[name]) if isinstance(expr, ast.Call)]
+            self.assertCountEqual(calls, expected, name)
+
         # Pin where the raw reader is constructed, forwarded, or used for live
         # event data. Every merge-time consumer gets facts through at_merge.
         routes = {
@@ -923,6 +939,15 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                 definitions[consumer].body.extend(ast.parse(extra).body)
                 with self.assertRaises(AssertionError):
                     self.assert_reader_boundary(tree, definitions["MergeFacts"])
+
+        for extra in ("def read_description(self, merge): return self._pull_snapshot(merge.number)",
+                      "read_description = _pull_snapshot"):
+            with self.subTest(extra=extra):
+                tree = ast.parse(self.text(SCRIPT))
+                accessor = next(node for node in tree.body if getattr(node, "name", None) == "MergeFacts")
+                accessor.body.extend(ast.parse(extra).body)
+                with self.assertRaises(AssertionError):
+                    self.assert_reader_boundary(tree, accessor)
 
     def test_unreadable_association_is_not_evidence_of_a_direct_push(self):
         associations = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
