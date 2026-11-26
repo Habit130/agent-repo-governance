@@ -539,16 +539,16 @@ class ScenarioSettings(support.TempDirCase):
 class HarnessProbes(unittest.TestCase):
     """Each harness's shell, as probed by name, is judged as #44 §6 and ADR 0013 require."""
 
-    def test_only_claude_code_and_opencode_pass(self):
+    def test_only_claude_code_and_opencode_pass_and_every_antigravity_shell_is_refused(self):
         from govlib import harness
 
         with open(os.path.join(support.FIXTURES, "generator", "harness-probes.json")) as handle:
             probes = json.load(handle)["harnesses"]
-        self.assertEqual(sorted(probes), ["Claude Code", "OpenCode", "deepseekharness", "the Codex harness"])
+        self.assertEqual(sorted(probes), ["Antigravity CLI", "Antigravity app", "Claude Code", "OpenCode", "deepseekharness", "the Codex harness"])
         for name, probe in sorted(probes.items()):
             judged = harness.judge(dict((variable, "set") for variable in probe["names"]))
             self.assertEqual(judged["passed"], probe["passes"], (name, judged))
-            self.assertEqual(judged["harness"], name, judged)
+            self.assertEqual(judged["harness"], probe.get("judged_as", name), judged)
 
 
 class DriftTarget(unittest.TestCase):

@@ -21,8 +21,8 @@ work at an intended destination; never reuse or clear another run's directory or
 Cleanup removes only paths this run allocated and worktrees it created.
 
 **The harness.** The run happens only in Claude Code or OpenCode. In the Codex harness,
-deepseekharness or anything else, stop before any other step and tell habit in Chinese where
-to run it, whatever a script says.
+deepseekharness, Antigravity (app or CLI) or anything else, stop before any other step and
+tell habit in Chinese where to run it, whatever a script says.
 
 **Talking to habit.** Every message is plain Chinese, with governance terms and product names
 in English and no code, diffs or paths. It names its sender and target.

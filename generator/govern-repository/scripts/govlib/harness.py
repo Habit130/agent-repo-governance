@@ -5,7 +5,8 @@ supported marker isn't empty. It fails closed: a run passes only when exactly on
 harness's marker is set and no other harness's marker is, since a session started from
 another harness's shell inherits that harness's variables. Every other case refuses, the
 Codex harness and deepseekharness included. The markers come from each harness's own shell,
-probed by name on 2026-10-29 (`tests/fixtures/generator/harness-probes.json`).
+probed by name on 2026-10-29, Antigravity's CLI on 2026-11-25 and its app on 2026-11-26
+(`tests/fixtures/generator/harness-probes.json`).
 """
 
 import os
@@ -28,10 +29,12 @@ SUPPORTED = (
 )
 
 # What marks a harness the generator never runs in: every variable with the harness's prefix,
-# except the homes a user may export for every shell.
+# except the homes a user may export for every shell. Antigravity's app and CLI shells carry the
+# same `ANTIGRAVITY_` names, and none is exempt.
 FOREIGN = (
     ("the Codex harness", "CODEX_", ("CODEX_HOME",)),
     ("deepseekharness", "DSH_", ("DSH_HOME", "DSH_AGENTS_HOME")),
+    ("Antigravity", "ANTIGRAVITY_", ()),
 )
 
 
