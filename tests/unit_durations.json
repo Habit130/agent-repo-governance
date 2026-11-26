@@ -89,6 +89,7 @@
   "test_materialized_version.VersionFourReviewLadder": 1.2,
   "test_materialized_version.VersionFourSessionMarks": 0.6,
   "test_materialized_version.VersionFourSkillInvocations": 0.6,
+  "test_materialized_version.VersionSixAntigravityApp": 2.0,
   "test_materialized_version.VersionSixPlannerPolicy": 0.6,
   "test_materialized_version.VersionSixPolicy": 1.3,
   "test_materialized_version.VersionThreeHandoffs": 1.6,

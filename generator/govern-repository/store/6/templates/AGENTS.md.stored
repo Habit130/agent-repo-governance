@@ -51,6 +51,15 @@ the statement's final period.
   5 minutes. For a Codex Desktop Local Builder or Reviewer waiting on a PR, use the installed
   `wait-on-pr` skill when available; if unavailable, poll within that limit or stop and say
   what the session is waiting for.
+- **Antigravity app**: a conversation in a two-folder project: the checkout and its
+  persistent sibling worktree directory, named for the checkout, in Local Checkout mode under
+  habit's Auto preset; never New Worktree mode or remote projects. Builders' worktrees and
+  Reviewers' temporary ones go there. The start instruction is the first message; skills use
+  `/name`. One paste is unverified; use the two-step form. No-history subagents are `research`,
+  or `self` when one must run commands. No whole-spec delivery, teamwork, swarm or remote
+  agents; the generator never runs there; the Antigravity CLI is unsupported. Waiting is
+  unverified: stop and say what you wait for. Without machine rules against `ghm` or
+  Actions-secret writes, those limits rest on instructions.
 
 ## Flow at a glance
 
@@ -106,7 +115,8 @@ tickets); reviews run; habit reads Merge summary and uses its pinned merge comma
 - Committed governance wins over conflicting skill text; report the conflict to habit.
 - A missing relied-on skill stops the session; tell habit.
 - Only this file and `.claude/CLAUDE.md` are instruction files. The repository holds no root
-  `CLAUDE.md`, `AGENTS.override.md` or `.codex/` directory that would split the policy.
+  `CLAUDE.md`, `GEMINI.md`, `AGENTS.override.md`, `.codex/` or Antigravity `.agents/` or
+  `.agent/` instruction or rule file that would split the policy.
 
 ## Secrets
 
