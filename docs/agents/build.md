@@ -9,18 +9,18 @@ change. Human-facing setup stays in `README.md`.
 
 ## Commands
 
-Run these in order, and every one must pass. Steps 2 to 6 are CI's steps in its order; step
-7 prints the exact comparison that the `materialized-version` suite asserts in CI. None needs
-a service or the network.
+Run these in order, and every one must pass. Steps 2 to 6 are CI's steps in its order, CI
+splitting step 6 across two macOS shards; step 7 prints the exact comparison that the
+`materialized-version` suite asserts in CI. None needs a service or the network.
 
 | Step | Command | Evidence / notes |
 | --- | --- | --- |
 | 1. Whitespace | `git diff --check origin/main...HEAD` | Also `git diff --check` before committing. |
 | 2. Stored form | `python3 tests/run.py stored-form` | One PASS line, or one FAIL line per stored path that could load or fails to decode. |
 | 3. Release check | `python3 tests/run.py release-check --base "$(git merge-base origin/main HEAD)" --head HEAD` | One PASS or FAIL line per rule, then INFO lines for new and changed fixtures. Use the merge-base: a newer `origin/main` would read its own new fixtures as removed. |
-| 4. Linux suites | `python3 tests/run.py suites --job linux` | Whole verbose unittest output per suite, then each suite's result/count/duration and the total result/count/wall time. |
+| 4. Linux suites | `python3 tests/run.py suites --job linux` | Whole verbose unittest output per scheduling unit (a test class, or a part of one), then each unit's and each suite's result/count/duration and the total result/count/wall time. |
 | 5. Python 3.9 and bash 3.2 | `/usr/bin/python3 tests/run.py py39` | Fails unless the interpreter is 3.9; parses every script as 3.9 and runs `/bin/bash -n` on every shell entry. |
-| 6. Every suite under 3.9 | `/usr/bin/python3 tests/run.py suites --all` | Every suite in a separate 3.9 child; whole verbose output per suite, then per-suite and total summaries as in step 4. |
+| 6. Every suite under 3.9 | `/usr/bin/python3 tests/run.py suites --all` | Every unit in a separate 3.9 child, on one machine; whole verbose output per unit, then per-unit, per-suite and total summaries as in step 4. CI runs it as `--shard 1/2` and `--shard 2/2`. |
 | 7. Exact comparison | `python3 tests/run.py exact-comparison` | Renders version 1 into the tally sample repository and prints exact comparison's JSON; `differences` must be empty. |
 | 8. Committed whitespace | `git show --format= --check HEAD` | After committing. |
 | 9. Scope | `git diff --stat origin/main...HEAD` and `git status --short` | Inspect against the ticket. |
@@ -31,8 +31,9 @@ coverage, read [Testing](../build/testing.md).
 ## CI
 
 `.github/workflows/ci.yml` runs on every PR and on pushes to `main`, with no path filter,
-in two jobs whose names stay stable: `linux` and `macos`, the required checks habit confirmed
-at this repository's Initialize, beside the governance gate's `governance-gate`. Pushes to
+in four jobs whose names stay stable. `linux` and `macos` are the required checks habit
+confirmed at this repository's Initialize, beside the governance gate's `governance-gate`;
+the two macOS shard jobs are not required checks. Pushes to
 other branches and tags don't run CI. A merge's push-triggered run tests the actual merged
 combination and is the Builder's after-merge smoke check: record that run and its result;
 green PR CI alone isn't that evidence. A failed default-branch run is observed by Merge
@@ -45,8 +46,15 @@ watch for a `red-default-branch` miss record. The governance workflows,
   `main`. The release check compares these two trees in both events. The offline
   `release-check` suite proves both shapes with real shallow fetches, including rejection
   of a frozen-template edit; it doesn't substitute for the hosted push run.
-- **`macos`**, on `macos-15`: steps 5 and 6 with `/usr/bin/python3`, which is Python 3.9.6
-  there, beside `/bin/bash` 3.2.57.
+- **`macos shard 1 of 2`** and **`macos shard 2 of 2`**, each on its own `macos-15` runner
+  with `/usr/bin/python3`, which is Python 3.9.6 there, beside `/bin/bash` 3.2.57. Shard 1
+  runs step 5; each runs its half of step 6's units, `suites --all --shard K/2`, and hands
+  its report of the units it planned and ran to `macos`
+  ([Testing](../build/testing.md), Shards).
+- **`macos`**, on `ubuntu-24.04`, after both shards whatever their outcome: it fails unless
+  both shard jobs succeeded and `python3 tests/run.py shard-check` finds that the two shards
+  planned the same units and together ran each exactly once. A failed, cancelled or skipped
+  shard fails it; it never skips.
 - Both use no model, credential, network, GitHub writes, third-party actions or package
   installs in their suites. Checkout is the existing pinned external action and needs
   GitHub/network access; its only token is the read-only `GITHUB_TOKEN`, not kept in the

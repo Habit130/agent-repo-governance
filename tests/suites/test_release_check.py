@@ -73,17 +73,36 @@ class CIConfiguration(unittest.TestCase):
         self.assertEqual(events.strip("\n"), "  pull_request:\n  push:\n    branches: [main]")
         permissions = workflow.split("\npermissions:\n", 1)[1].split("\njobs:", 1)[0]
         self.assertEqual(permissions.strip(), "contents: read")
-        self.assertEqual(re.findall(r"^  ([a-z]+):$", workflow.split("\njobs:\n", 1)[1], re.M),
-                         ["linux", "macos"])
-        self.assertEqual(re.findall(r"^    name: (.+)$", workflow, re.M), ["linux", "macos"])
+        jobs = workflow.split("\njobs:\n", 1)[1]
+        self.assertEqual(re.findall(r"^  ([a-z0-9-]+):$", jobs, re.M),
+                         ["linux", "macos-shard-1", "macos-shard-2", "macos"])
+        self.assertEqual(re.findall(r"^    name: (.+)$", workflow, re.M),
+                         ["linux", "macos shard 1 of 2", "macos shard 2 of 2", "macos"])
+        self.assertEqual(re.findall(r"^    runs-on: (.+)$", workflow, re.M),
+                         ["ubuntu-24.04", "macos-15", "macos-15", "ubuntu-24.04"])
+        report = "printf 'report=%s\\n' \"$(cat \"$RUNNER_TEMP/shard.json\")\" >> \"$GITHUB_OUTPUT\""
         self.assertEqual(re.findall(r"^        run: (.+)$", workflow, re.M), [
             "python3 tests/run.py stored-form",
             "python3 tests/run.py release-check --base HEAD^1 --head HEAD",
             "python3 tests/run.py suites --job linux",
             "/usr/bin/python3 tests/run.py py39",
-            "/usr/bin/python3 tests/run.py suites --all",
+            "/usr/bin/python3 tests/run.py suites --all --shard 1/2 --report \"$RUNNER_TEMP/shard.json\"",
+            report,
+            "/usr/bin/python3 tests/run.py suites --all --shard 2/2 --report \"$RUNNER_TEMP/shard.json\"",
+            report,
+            'echo "shard 1 $SHARD_1, shard 2 $SHARD_2"; test "$SHARD_1" = success && test "$SHARD_2" = success',
+            'python3 tests/run.py shard-check "$REPORT_1" "$REPORT_2"',
         ])
-        self.assertEqual(workflow.count("persist-credentials: false"), 2)
+        self.assertEqual(workflow.count("persist-credentials: false"), 4)
+        # The required macos check runs after every shard outcome and passes only on two successes.
+        aggregate = jobs.split("\n  macos:\n", 1)[1]
+        self.assertIn("    needs: [macos-shard-1, macos-shard-2]\n    if: always()\n", aggregate)
+        for index in ("1", "2"):
+            self.assertIn("SHARD_%s: ${{ needs.macos-shard-%s.result }}" % (index, index), aggregate)
+            self.assertIn("REPORT_%s: ${{ needs.macos-shard-%s.outputs.report }}" % (index, index), aggregate)
+        for shard in jobs.split("\n  macos-shard-")[1:]:
+            self.assertIn("      report: ${{ steps.report.outputs.report }}", shard)
+            self.assertIn("        id: report\n        if: always()\n", shard)
 
 
 class ReleaseCheck(support.TempDirCase):
@@ -102,7 +121,7 @@ class ReleaseCheck(support.TempDirCase):
 
     def check_ci_history(self, shape):
         workflow = support.read_text(os.path.join(support.REPO, ".github", "workflows", "ci.yml"))
-        linux = workflow.split("  linux:\n", 1)[1].split("  macos:\n", 1)[0]
+        linux = workflow.split("  linux:\n", 1)[1].split("\n  macos-shard-1:\n", 1)[0]
         depth = re.search(r"fetch-depth: (\d+)", linux).group(1)
         command = re.search(r"run: python3 tests/run.py (release-check .+)", linux).group(1).split()
         with open(os.path.join(support.FIXTURES, "release-check", "released-template-edited.json")) as handle:
