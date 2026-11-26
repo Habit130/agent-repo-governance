@@ -216,6 +216,10 @@ A file that only one harness or review bot reads. It translates the canonical po
 **Codex harness**:
 Local Codex sessions in the ChatGPT app or its bundled CLI. It is distinct from the Codex review bot.
 
+**Antigravity CLI**:
+Local sessions of Google's terminal agent, started as `agy`. It is distinct from the Antigravity desktop app, which governance doesn't support, and from any Gemini review bot.
+_Avoid_: a bare Antigravity
+
 ## Repository governance and the generator
 
 **Governance model**:
