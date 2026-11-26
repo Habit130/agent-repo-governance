@@ -97,7 +97,7 @@ class CIConfiguration(unittest.TestCase):
             'python3 tests/run.py shard-check "$REPORT_1" "$REPORT_2" "$REPORT_3"',
         ])
         self.assertEqual(workflow.count("persist-credentials: false"), 5)
-        # The required macos check runs after every shard outcome and passes only on two successes.
+        # The required macos check runs after every shard outcome and passes only when every shard succeeded.
         aggregate = jobs.split("\n  macos:\n", 1)[1]
         self.assertIn("    needs: [macos-shard-1, macos-shard-2, macos-shard-3]\n    if: always()\n", aggregate)
         for index in ("1", "2", "3"):
