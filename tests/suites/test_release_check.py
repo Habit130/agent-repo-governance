@@ -75,29 +75,32 @@ class CIConfiguration(unittest.TestCase):
         self.assertEqual(permissions.strip(), "contents: read")
         jobs = workflow.split("\njobs:\n", 1)[1]
         self.assertEqual(re.findall(r"^  ([a-z0-9-]+):$", jobs, re.M),
-                         ["linux", "macos-shard-1", "macos-shard-2", "macos"])
+                         ["linux", "macos-shard-1", "macos-shard-2", "macos-shard-3", "macos"])
         self.assertEqual(re.findall(r"^    name: (.+)$", workflow, re.M),
-                         ["linux", "macos shard 1 of 2", "macos shard 2 of 2", "macos"])
+                         ["linux", "macos shard 1 of 3", "macos shard 2 of 3", "macos shard 3 of 3", "macos"])
         self.assertEqual(re.findall(r"^    runs-on: (.+)$", workflow, re.M),
-                         ["ubuntu-24.04", "macos-15", "macos-15", "ubuntu-24.04"])
+                         ["ubuntu-24.04", "macos-15", "macos-15", "macos-15", "ubuntu-24.04"])
         report = "printf 'report=%s\\n' \"$(cat \"$RUNNER_TEMP/shard.json\")\" >> \"$GITHUB_OUTPUT\""
         self.assertEqual(re.findall(r"^        run: (.+)$", workflow, re.M), [
             "python3 tests/run.py stored-form",
             "python3 tests/run.py release-check --base HEAD^1 --head HEAD",
             "python3 tests/run.py suites --job linux",
             "/usr/bin/python3 tests/run.py py39",
-            "/usr/bin/python3 tests/run.py suites --all --shard 1/2 --report \"$RUNNER_TEMP/shard.json\"",
+            "/usr/bin/python3 tests/run.py suites --all --shard 1/3 --report \"$RUNNER_TEMP/shard.json\"",
             report,
-            "/usr/bin/python3 tests/run.py suites --all --shard 2/2 --report \"$RUNNER_TEMP/shard.json\"",
+            "/usr/bin/python3 tests/run.py suites --all --shard 2/3 --report \"$RUNNER_TEMP/shard.json\"",
             report,
-            'echo "shard 1 $SHARD_1, shard 2 $SHARD_2"; test "$SHARD_1" = success && test "$SHARD_2" = success',
-            'python3 tests/run.py shard-check "$REPORT_1" "$REPORT_2"',
+            "/usr/bin/python3 tests/run.py suites --all --shard 3/3 --report \"$RUNNER_TEMP/shard.json\"",
+            report,
+            'echo "shard 1 $SHARD_1, shard 2 $SHARD_2, shard 3 $SHARD_3"; '
+            'test "$SHARD_1" = success && test "$SHARD_2" = success && test "$SHARD_3" = success',
+            'python3 tests/run.py shard-check "$REPORT_1" "$REPORT_2" "$REPORT_3"',
         ])
-        self.assertEqual(workflow.count("persist-credentials: false"), 4)
+        self.assertEqual(workflow.count("persist-credentials: false"), 5)
         # The required macos check runs after every shard outcome and passes only on two successes.
         aggregate = jobs.split("\n  macos:\n", 1)[1]
-        self.assertIn("    needs: [macos-shard-1, macos-shard-2]\n    if: always()\n", aggregate)
-        for index in ("1", "2"):
+        self.assertIn("    needs: [macos-shard-1, macos-shard-2, macos-shard-3]\n    if: always()\n", aggregate)
+        for index in ("1", "2", "3"):
             self.assertIn("SHARD_%s: ${{ needs.macos-shard-%s.result }}" % (index, index), aggregate)
             self.assertIn("REPORT_%s: ${{ needs.macos-shard-%s.outputs.report }}" % (index, index), aggregate)
         for shard in jobs.split("\n  macos-shard-")[1:]:
