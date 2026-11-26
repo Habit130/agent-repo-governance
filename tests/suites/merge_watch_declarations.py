@@ -1,6 +1,8 @@
 """Ticket #234: judge v5 Merge summaries through the rendered push workflow."""
 
-from merge_watch_history import RecordedMerge
+import json
+
+from merge_watch_history import EARLY, RecordedMerge
 
 
 class SummaryDeclarations(RecordedMerge):
@@ -104,3 +106,36 @@ class SummaryDeclarations(RecordedMerge):
         self.declare("medium", "reviewer=clear")
         self.statuses.clear()
         self.replay(missing=("reviewer", "merge-summary"))
+
+
+class VersionSixConsolidatedDeclarations(RecordedMerge):
+    VERSION = 6
+
+    def test_incomplete_line_still_checks_the_declared_reviewer(self):
+        self.api[self.record_path] = self.record.replace("version: 5", "version: 6")
+        reviewer, = self.statuses
+        for slot, lacks_summary in (
+            ("bot-1=clear(copilot)", ()),
+            (None, ("merge-summary",)),
+        ):
+            reviews = ("reviewer=clear",) if slot is None else (slot, "reviewer=clear")
+            self.declare("medium", *reviews)
+            for status, lacks_reviewer in (([reviewer], ()), ([], ("reviewer",))):
+                with self.subTest(bot_slot=slot, reviewer_attested=bool(status)):
+                    self.statuses[:] = status
+                    self.replay(missing=lacks_reviewer + lacks_summary)
+
+    def test_codex_completion_counts_without_a_request_comment_on_the_head(self):
+        self.api[self.record_path] = self.record.replace("version: 5", "version: 6").replace('    - "copilot"\n', "")
+        self.declare("medium", "bot-1=clear(codex)")
+        completion = {"user": {"login": "chatgpt-codex-connector[bot]"}, "created_at": EARLY, "updated_at": EARLY}
+        self.comments.append(completion)
+        for sha, status, missing in (
+            (self.head, "completed", ()),
+            ("f" * 40, "completed", ("bot-1",)),
+            (self.head, "in_progress", ("bot-1",)),
+        ):
+            with self.subTest(head=sha, status=status):
+                marker = {"code_review": {"commit_sha": sha, "status": status}}
+                completion["body"] = f"<!-- codex-review-state:v1 {json.dumps(marker)} -->"
+                self.replay(missing=missing)

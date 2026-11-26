@@ -7,9 +7,10 @@ import support
 from govlib import render
 from materialized_version_support import VersionThreeRendered, flat
 from policy_rows_312 import ROWS as ROWS_312
+from policy_rows_317 import ROWS as ROWS_317
 
 
-ROWS = (*ROWS_312,)
+ROWS = (*ROWS_312, *ROWS_317)
 
 
 class VersionSixPolicy(VersionThreeRendered):

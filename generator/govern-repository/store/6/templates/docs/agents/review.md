@@ -16,11 +16,10 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 - **Rejecting below high.** A Builder that wants to reject a review bot's Important finding
   at low or medium first raises the PR to high.
 - **Lowering.** Only habit lowers a tier, in a PR comment. The Builder records it by
-  updating the line, its reason linking habit's comment. Not even habit goes below the
-  highest floor among the sensitive paths the PR touches; the governance gate enforces that.
+  updating the line, its reason linking habit's comment. Apply the floors and confirmed-revert
+  rules in the [gate contract](../../.github/governance/gate.py), steps 3–4.
 - **Pure Upgrade.** An Upgrade is pure when exact comparison reports no differences and
   the record's confirmed part is unchanged from the default branch.
-- A pure revert the governance gate confirms takes the low path (`builder.md`, Pure reverts).
 
 ## Minimum reviews
 
@@ -40,10 +39,10 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
   Initialize; an Initialize PR's evidence states it as not yet applicable); the evidence
   comment on the head; the `Risk:` line present; a Merge summary naming the head; no open
   Important finding from any review on the head; rerun-only passes checked as below.
-- **High adds:** before-and-after evidence in plain words; each one-way door rehearsed on a
-  copy, the result attached and its recovery performed once; every finding answered, Nits
-  included; only the high part in the PR; habit's go-ahead after merge for each
-  one-way-door step (`builder.md`, After merge).
+- **High adds:** give before-and-after evidence in plain words. Rehearse each one-way door
+  on a copy, attach the result and perform its recovery once. For answers required on this
+  head, apply [Checks first](#checks-first), item 2. Keep only the high part in the PR.
+  Get habit's go-ahead after merge for each one-way-door step (`builder.md`, After merge).
 
 ## Session marks
 
@@ -103,11 +102,12 @@ Initialize, the list the PR adds is the one, since there is no earlier list to l
 supported bot missing from the list is disabled: never requested, retried, awaited or
 counted, and never reported as unavailable.
 
-- **Filling the slot.** At medium and high the Builder asks for the first enabled bot. When
+- **Filling the slot.** At medium and high the Builder starts with the first enabled bot. When
   it is unavailable, the next enabled bot takes the slot, a **fallback**. One bot completes
   the list's purpose: it is an order to try for one slot, not a count of required bots.
-- **Requests.** A bot starts only on habit's request. The Builder hands habit each request,
-  as its subsection below gives it, and again after each repair push.
+- **Requests.** An automatic Codex review already complete on the head counts under
+  [The Codex review bot](#the-codex-review-bot). Only habit posts a manual request. The Builder
+  hands habit the request when needed, including after a repair push, as its subsection below gives it.
 - **Unavailable**: no completed review on the head within the bot's wait after one more
   request; an error or no quota is the same. A completed review with findings is completed.
 - **No bot left at medium.** After reading the bot policy, check whether every enabled bot is
@@ -208,7 +208,8 @@ verification table, for one PR at one head.
   review that runs still binds like any review on the head; the fixed line reads
   `reviewer=waived`, the Builder writes the high-risk report, and its evidence sentence
   says that the review ran on a Builder's vendor. If no review ran, say so.
-- No agent writes, edits or widens a waiver, and a waiver authorizes no merge by an agent.
+- No agent writes, edits or widens a waiver. For merge authority, follow
+  [Hard limits](../../AGENTS.md#hard-limits) and [The merge handoff](#the-merge-handoff) for habit's command.
 - Merge watch checks each review waiver's author, head and item after the merge. The Merge
   summary's writer checks a verification waiver the same way, and any condition a review
   bot's subsection puts on a Reviewer waiver.
@@ -217,18 +218,20 @@ verification table, for one PR at one head.
 
 A change that adds or edits an exception to a review requirement or an authorization rule,
 such as a waiver or a fallback, is checked at every place that states it: the decision
-point, each machine-read grammar, the examples and the reports. A statement broader than the
-narrowest one is an Important finding.
+point, each machine-read grammar, the examples and the reports.
+Judge each statement under [Findings](../../AGENTS.md#findings).
 
 ## Answering findings
 
+Classify findings and decide blocking under [Findings](../../AGENTS.md#findings).
+
 - **Important.** Fix it and reply "Fixed in `<sha>`", or reject it with evidence: "Not
-  fixing:" plus a command and its output, or a concrete fact. Then resolve the thread. A
-  rejection of a bot's Important finding first raises the PR to high (The tier); the
-  Reviewer judges each rejection and reopens one it disagrees with.
+  fixing:" plus a command and its output, or a concrete fact. Then resolve the thread.
+  Before rejecting a bot's Important finding, apply [The tier](#the-tier).
+  The Reviewer judges each rejection and reopens one it disagrees with.
 - **Nit.** Optional at low and medium; at high, answer each.
-- **Pre-existing.** Never blocks. The Important-severity ones go into one `needs-triage`
-  issue per PR, linked from the Merge summary.
+- **Pre-existing.** File the Important-severity findings in one `needs-triage` issue per PR.
+  Link it from the Merge summary.
 
 ## Rounds
 
@@ -347,7 +350,8 @@ Security review applies: <yes|no>
   `waived(<bot>)` for an enabled provider or `waived(none)` when none was left.
   At low, omit an unused optional slot. Reserve
   `unavailable(<bot>)` and `no-provider(none)` for the medium substitution below.
-- A line that leaves out a kind the tier requires, or a bot slot's provider, doesn't read.
+- Include every required kind and each listed bot slot's provider. For the audit of an
+  incomplete line, see [`parse_reviews`](../../.github/governance/merge_watch.py).
 - At medium a substituting Reviewer appears as `reviewer=clear`; `bot-1` must be
   `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
   base record's ordered list. An earlier unavailable provider does not qualify.
@@ -424,5 +428,4 @@ conclusion the summary's first line gives:
 4. **This session**: the Reviewer's can be closed; a Builder says whether it stays
    open, what it waits for and the words habit says on return.
 
-What is dispatched next comes from the Planner's dispatch plan, never from this handoff.
-Each start request takes the form `AGENTS.md`'s How to start gives.
+For later tickets, use [Planner → Tickets](planner.md#tickets), The dispatch plan.
