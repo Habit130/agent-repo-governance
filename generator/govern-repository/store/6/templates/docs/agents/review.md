@@ -425,8 +425,11 @@ conclusion the summary's first line gives:
    “继续” in that chat for the same checks. If its state is unknown, give both instructions
    conditionally.
 3. **Misses**, only when any is open: the count of open miss records,
-   `gh issue list --label miss --state open`, and a start request for a Planner session in
-   which habit invokes `retro` on the oldest.
+   `gh issue list --label miss --state open --repo @@repository@@`. In every repository
+   except the two registered sandboxes, include a Planner start request in which habit invokes
+   `retro` on the oldest open miss. In `Habit130/governance-sandbox` and
+   `Habit130/governance-sandbox-private`, give the count and omit the default start request.
+   habit can still invoke `retro` on any sandbox record.
 4. **This session**: the Reviewer's can be closed; a Builder says whether it stays
    open, what it waits for and the words habit says on return.
 

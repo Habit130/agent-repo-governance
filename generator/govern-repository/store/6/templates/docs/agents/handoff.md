@@ -30,7 +30,7 @@ It comes only at these moments:
 - **Builder**: when handing to the Reviewer, when giving the merge handoff after writing the
   Merge summary at any tier (`review.md`, The merge handoff), or when giving the after-merge
   report. For a results-comment ticket, its completion summary is the counterpart of that report.
-- **Reviewer**: after the Merge summary, with the merge command.
+- **Reviewer**: after the Merge summary, following `review.md`, The merge handoff.
 - **Any role**: the session cannot continue and another must take over.
 
 It always holds, in this order:
@@ -49,9 +49,8 @@ Then, only when they have content:
 An empty part is left out. A short handoff is a few sentences with no headings; headings
 appear only when it carries a dispatch plan or several actions.
 
-Before a session ends, it records on GitHub what a later session needs. That is its duty,
-not a displayed part: a handoff names only what the session could not record, under
-unfinished.
+Before closing, follow `AGENTS.md`, Talking to habit and to other agents, for the GitHub
+record and terminal language. Under unfinished, name only what the session could not record.
 
 ## Only the Planner arranges what comes next
 
@@ -59,17 +58,13 @@ unfinished.
   ends at their own delivery.
 - Still theirs, inside their own delivery or as a return to the Planner:
   - the Builder's Reviewer start request and review bot requests;
-  - the count of open miss records, shown only when above zero, with a Planner start request
-    for `retro`;
+  - for open misses in the delivery, follow `review.md`, The merge handoff, item 3;
   - when something the plan didn't foresee comes up, such as a split, a new order or a new
     ticket: one sentence saying the Planner must rearrange, with a Planner start request,
     and no order of their own.
-- **The dispatch plan** is the Planner's: `planner.md`, Tickets. It is a list, never a
-  table, and each terminal start form stands alone in its own block so habit can copy it
-  whole. Its GitHub copy uses the canonical form (`AGENTS.md`, How to start).
-  Every start request follows `AGENTS.md`'s layout for its harness.
-- To decide which start requests are ready together, follow the dispatch plan rule in
-  `planner.md`, Tickets. Each start request holds one start instruction.
+- **The dispatch plan** is the Planner's. For its terminal and GitHub forms, see
+  `planner.md`, Tickets, The dispatch plan. Use that section to decide which start requests
+  are ready together. Each start request holds one start instruction.
 
 ## Examples
 
@@ -153,13 +148,10 @@ A substituting Reviewer's final handoff, at medium:
 
 ```text
 Reviewer → habit：PR #57 clear，Merge summary 已发在 PR 上。
-
-1. 运行：
 ```
 
-```text
-ghm pr merge 57 --admin --squash --match-head-commit 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
-```
+Give habit the command from `review.md`, The merge handoff, item 1, using PR #57 and the
+full head SHA from the summary. Close with:
 
 ```text
 本 session 可以关闭。

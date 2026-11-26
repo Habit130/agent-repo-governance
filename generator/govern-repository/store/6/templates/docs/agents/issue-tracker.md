@@ -3,8 +3,8 @@
 # Issue tracker: GitHub
 
 This repository's tickets, specs, wayfinder maps and miss records are GitHub issues in
-`@@repository@@`. Sessions use the `gh` CLI, as the agent account, and pass
-`--repo @@repository@@` on every call, since the target is otherwise ambiguous.
+`@@repository@@`. Pass `--repo @@repository@@` on every `gh` call. For the GitHub identity,
+see `AGENTS.md`, How to start.
 
 ## Conventions
 
@@ -30,14 +30,14 @@ GitHub shares one number space between issues and PRs: resolve a bare `#42` with
   `gh issue create`, or `gh issue edit <n> --repo @@repository@@ --add-blocked-by <blocker>`
   (`--remove-blocked-by` to undo) on an existing issue.
 - **Read both**: `gh issue view <n> --repo @@repository@@ --json parent,subIssues,blockedBy,blocking`.
-  A ticket is unblocked once every blocker under `blockedBy` is done: a PR-delivered
-  ticket has merged, its PR closing it; a results-comment ticket (`builder.md`) is closed
-  as completed. A wayfinder ticket is unblocked once every blocker is closed.
+  A ticket is unblocked once every blocker under `blockedBy` is done. For a ticket's
+  delivery and completion rules, see `builder.md`, Results-comment tickets. A wayfinder
+  ticket is unblocked once every blocker is closed.
 
 ## Tickets
 
-- **Dispatch**: `triage-labels.md`, `ready-for-agent`. A spec approved for whole-spec
-  delivery is dispatched as one, its tickets with it (`planner.md`, Specs).
+- **Dispatch**: `triage-labels.md`, `ready-for-agent`. For the dispatch unit and spec labels,
+  see `planner.md`, Specs.
 - **Claim**: `gh issue edit <n> --repo @@repository@@ --add-assignee @me`. It is the Builder's
   first write, and it posts no comment. An assigned ticket is claimed. A Builder on a
   whole-spec delivery claims the spec and each of its tickets (`builder.md`).
@@ -49,9 +49,9 @@ GitHub shares one number space between issues and PRs: resolve a bare `#42` with
 
 ## Pull requests as a triage surface
 
-**PRs as a request surface: no.** `triage` reads this flag. An outside PR, by anyone but the
-repository owner or the agent account, fails the governance gate, and when habit wants its
-change a Builder re-lands it (`builder.md`, Outside PRs). So `triage` handles issues only.
+**PRs as a request surface: no.** `triage` reads this flag and handles issues only.
+Identify outside PRs under `AGENTS.md`, Risk tiers. For re-landing, follow `builder.md`,
+Outside PRs.
 
 ## When a skill says "publish to the issue tracker"
 
@@ -94,8 +94,7 @@ the role files and `AGENTS.md`, Secrets; this section is how.
   the record links.
 - **Close it** only after its `retro`, quoting habit's decision:
   `gh issue close <n> --repo @@repository@@ --comment "..."`.
-- **An exposed credential** is named by its type and location only, never its value, in the
-  title, the body and every comment.
+- For an exposed credential, follow `AGENTS.md`, Secrets, in the title, body and every comment.
 
 ### Format
 
