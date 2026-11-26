@@ -82,6 +82,9 @@ class ChangeNoteParser(unittest.TestCase):
 
 
 class Versions(support.TempDirCase):
+    def test_planted_failure_for_291_criterion_2(self):
+        self.fail("planted failure for #291 criterion 2; the next commit removes it")
+
     def store_copy(self):
         root = self.path("store")
         shutil.copytree(FOUR_CLASSES, root)
