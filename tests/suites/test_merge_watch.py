@@ -16,9 +16,11 @@ also hold `not_found`, the paths GitHub answers with its own 404 `Not Found`, wh
 3's reader raises as `NotFound` rather than as a read that failed.
 """
 
+import ast
 import importlib.util
 import json
 import os
+from pathlib import Path
 import re
 import subprocess
 import sys
@@ -28,7 +30,7 @@ from unittest import mock
 
 import materialized
 from merge_watch_states import ReviewGrammarCases
-from merge_watch_history import EARLY, HistoricalEvidence, RecordedMerge, load_v4_case_for_v5  # noqa: F401
+from merge_watch_history import EARLY, LATE, HistoricalEvidence, RecordedMerge, load_v4_case_for_v5  # noqa: F401
 from merge_watch_push import PushAndOpenRecords
 from merge_watch_declarations import SummaryDeclarations, VersionSixConsolidatedDeclarations  # noqa: F401
 from merge_watch_companion import CompanionReviewer  # noqa: F401
@@ -774,6 +776,226 @@ class VersionFive(unittest.TestCase):
 
 class VersionSixHistoricalPolicy(RecordedMerge):
     VERSION = 6
+    case_pairs = load(Path(FIXTURES, "v6", "merge-time.json"))["facts"]
+
+    def pair_description(self, pair):
+        self.pr["body"] = pair["at_merge"]
+        self.replay()
+        self.pr["body"] = pair["after_merge"]
+        self.last_edit = LATE
+        self.replay(incomplete="description: cannot establish content at merge")
+
+    def pair_comment_body(self, pair):
+        self.summary["body"] = pair["at_merge"]
+        self.replay()
+        self.summary.update(body=pair["after_merge"], updated_at=LATE)
+        self.replay(incomplete="pre-edit content")
+
+    def pair_association(self, pair):
+        self.statuses.clear()
+        self.pr["base"]["ref"] = pair["at_merge"]
+        self.replay(missing=("reviewer",))
+        self.description_response = self.snapshot()
+        self.pr["base"]["ref"] = pair["after_merge"]
+        self.replay(missing=("reviewer",))
+
+    def pair_merged_head(self, pair):
+        self.assertEqual(self.head, pair["at_merge"])
+        self.replay()
+        self.pr["head"]["sha"] = pair["after_merge"]
+        self.replay(incomplete="could not establish merged head")
+
+    def pair_merge_time(self, pair):
+        self.pr["merged_at"] = pair["at_merge"]
+        self.statuses.insert(0, dict(self.statuses[0], state="failure", created_at=LATE))
+        self.replay()
+        self.description_response = self.snapshot()
+        self.pr["merged_at"] = pair["after_merge"]
+        self.replay()
+
+    def pair_reviewer_status(self, pair):
+        self.statuses[0].update(pair["at_merge"])
+        self.replay()
+        self.statuses.insert(0, dict(self.statuses[0], **pair["after_merge"]))
+        self.replay()
+
+    def pair_copilot_review(self, pair):
+        self.review["state"] = pair["at_merge"]
+        self.replay()
+        self.review["state"] = pair["after_merge"]
+        self.replay(incomplete="state at merge before dismissal cannot be established")
+
+    def pair_copilot_check(self, pair):
+        self.check.update(pair["at_merge"])
+        self.replay()
+        check_path = next(path for path in self.api if "/check-runs?" in path)
+        self.api[check_path].insert(0, dict(self.check, **pair["after_merge"]))
+        self.replay()
+
+    def pair_policy(self, pair):
+        self.assertIn("agent_account: " + pair["at_merge"], self.record)
+        self.replay()
+        record = Path(self.dest, ".github/governance/record.yml")
+        record.write_text(self.record.replace(pair["at_merge"], pair["after_merge"]), encoding="utf-8")
+        self.replay()
+
+    def pair_merged_change(self, pair):
+        self.declare("medium", "bot-1=clear(copilot)")
+        self.statuses.clear()
+        files = f"{self.prefix}/pulls/54/files"
+        self.api[files] = [{"filename": pair["at_merge"], "status": "modified"}]
+        self.replay()
+        self.api[files][0]["filename"] = pair["after_merge"]
+        self.replay()
+        # Control the independent historical input: a fixed-file change really does require the Reviewer.
+        self.api[self.change_path]["files"] = self.api[files]
+        self.replay(missing=("reviewer", "merge-summary"))
+
+    def test_merge_time_read_inventory_and_pairs(self):
+        tree = ast.parse(self.text(SCRIPT))
+        accessor = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "MergeFacts")
+        at_merge = next(node for node in accessor.body if isinstance(node, ast.FunctionDef) and node.name == "at_merge")
+        readers, = [node for node in ast.walk(at_merge) if isinstance(node, ast.Dict)]
+        reads = {key.value for key in readers.keys}
+        calls = {node.args[0].value for node in ast.walk(tree)
+                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "at_merge"}
+        self.assertEqual(calls, reads)
+        self.assertEqual(reads, set(self.case_pairs))
+        self.assertEqual(reads, set(self.pair_handlers))
+        for kind, pair in self.case_pairs.items():
+            with self.subTest(kind=kind):
+                self.assertEqual(set(pair), {"at_merge", "after_merge"})
+                self.assertNotEqual(pair["at_merge"], pair["after_merge"])
+
+        # Event/incident reads are live by design. Every other GitHub read or raw merge
+        # selector belongs to the accessor, behind the named operation above.
+        live_reads = {
+            "read_rows": ["read(path)"],
+            "_red_incident": ["read(path + suffix)"],
+            "_open_records": ["read_rows(read, 'repos/%s/issues?labels=%s&state=open' % (repository, LABEL), problems)"],
+            "_push_commits": ["read('%s?per_page=%d&page=%d' % (path, PER_PAGE, page))"],
+        }
+        private_readers = {node.name for node in accessor.body if isinstance(node, ast.FunctionDef)
+                           and node.name.startswith("_") and node.name != "__init__"}
+        for node in tree.body:
+            if node is accessor:
+                continue
+            direct_reads = []
+            for call in ast.walk(node):
+                if not isinstance(call, ast.Call):
+                    continue
+                if isinstance(call.func, ast.Name) and call.func.id in {"read", "read_rows", "github"}:
+                    direct_reads.append(ast.unparse(call))
+                if isinstance(call.func, ast.Attribute):
+                    self.assertNotIn(call.func.attr, private_readers | {"_read"}, ast.unparse(call))
+            self.assertEqual(direct_reads, live_reads.get(getattr(node, "name", None), []))
+
+    def test_unreadable_association_is_not_evidence_of_a_direct_push(self):
+        associations = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
+        for unreadable in ({"merged_at": None}, dict(self.pr, merged_at="unknown")):
+            with self.subTest(unreadable=unreadable):
+                associations[:] = [unreadable]
+                self.replay(incomplete="unresolved PR association")
+
+    def test_confirmed_merge_survives_unreadable_sibling_associations(self):
+        associations = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
+        self.statuses.clear()
+        for rows in ([self.pr, {"merged_at": None}], [{"merged_at": None}, self.pr]):
+            with self.subTest(rows=rows):
+                associations[:] = rows
+                self.replay(missing=("reviewer",), incomplete="unresolved PR association")
+
+    def test_incomplete_body_does_not_hide_a_tier_independent_miss(self):
+        self.comments.clear()
+        self.description_response = self.snapshot()
+        pr = self.description_response["data"]["repository"]["pullRequest"]
+        del pr["body"]
+        self.description_response["errors"] = [{"path": ["repository", "pullRequest", "body"], "message": "cannot read"}]
+        self.description_exit = 1
+        self.replay(missing=("merge-summary",), incomplete="description: cannot establish content at merge",
+                    observation=f"Merged head {self.head}, risk tier indeterminate")
+
+    def test_partial_error_on_edit_timestamp_never_uses_the_current_body(self):
+        self.description_response = self.snapshot()
+        pull = self.description_response["data"]["repository"]["pullRequest"]
+        pull["body"] = self.case_pairs["reverts"]["after_merge"]
+        self.description_response["errors"] = [
+            {"path": ["repository", "pullRequest", "lastEditedAt"], "message": "cannot read"}
+        ]
+        self.description_exit = 1
+        self.replay(incomplete="description: cannot establish content at merge")
+
+    def test_unscoped_graphql_error_cannot_establish_merge_association(self):
+        self.description_response = dict(self.snapshot(), errors=[{"message": "cannot read"}])
+        self.description_exit = 1
+        self.replay(incomplete="unverified merge event")
+
+    def test_confirmed_revert_survives_an_unreadable_head(self):
+        reverted = "a" * 40
+        self.pr["body"] += "\n\nReverts: " + reverted
+        self.api[f"{self.prefix}/commits/{reverted}/pulls"] = []
+        self.api[f"{self.prefix}/git/ref/pull/54/head"]["object"]["sha"] = reverted
+        records = [{
+            "title": "Miss: escape, revert", "labels": ["miss"],
+            "body": ("Merged PR: none\nKind: escape\nCategory: revert\n"
+                     f"Observed: #54, merged as {self.squash}, reverted {reverted}, and its body had a `Reverts:` line.\n"
+                     "Found by: Merge watch\nBug issue: none\n"),
+        }]
+        self.replay(incomplete="could not establish merged head", extra_records=records)
+        self.replay(rate_limit=f"{self.prefix}/git/ref/pull/54/head",
+                    incomplete="rate limited", extra_records=records)
+
+    def test_description_edit_time_must_precede_the_merge(self):
+        self.last_edit = EARLY
+        self.replay()
+        for edit in (self.pr["merged_at"], "not a timestamp"):
+            with self.subTest(edit=edit):
+                self.last_edit = edit
+                self.replay(incomplete="description: cannot establish content at merge")
+
+    def test_no_edit_timestamp_must_have_a_readable_empty_edit_history(self):
+        for history in (None, {"totalCount": 1}, {"totalCount": False}, {}):
+            with self.subTest(history=history):
+                self.description_response = self.snapshot()
+                pull = self.description_response["data"]["repository"]["pullRequest"]
+                pull["userContentEdits"] = history
+                self.replay(incomplete="description: cannot establish content at merge")
+
+        # A pre-merge edit timestamp still proves the body when the optional history field fails.
+        self.last_edit = EARLY
+        self.description_response = self.snapshot()
+        pull = self.description_response["data"]["repository"]["pullRequest"]
+        pull.pop("userContentEdits")
+        self.description_response["errors"] = [
+            {"path": ["repository", "pullRequest", "userContentEdits"], "message": "cannot read"}
+        ]
+        self.description_exit = 1
+        self.replay()
+
+    def assert_waiver_contract(self, doc):
+        self.assertIn("Verify waiver eligibility under `docs/agents/review.md`, Waivers, and encode the result under On the PR.", doc)
+        self.assertNotIn("The Merge summary's writer checks waiver eligibility before merge.", doc)
+        self.assertNotIn("It doesn't check a condition a review bot's subsection", doc)
+
+    def test_merge_watch_contract_uses_policy_homes(self):
+        tree = ast.parse(self.text(SCRIPT))
+        doc = " ".join(ast.get_docstring(tree).split())
+        self.assert_waiver_contract(doc)  # #229 row 31.
+        definitions = {node.name: node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
+        declared = ast.get_docstring(definitions["_declared_missing"])
+        self.assertIn("`docs/agents/review.md`, Minimum reviews", declared)  # Row 35.
+        self.assertNotIn("including reviews above the minimum", declared)
+        not_found = ast.get_docstring(definitions["NotFound"])
+        self.assertIn("missing-record predicate in the Merge watch module contract", not_found)  # Row 51.
+        self.assertNotIn("HTTP 404", not_found)
+        self.assertIn("HTTP 404 with the message `Not Found`", doc)
+        self.assertIn("Any other answer, a missing ref's 404 among them, is a read that failed", doc)
+        self.assertIn("For categories and format, use `docs/agents/issue-tracker.md`, Miss records.", doc)  # Row 62.
+        self.assertNotIn("records an escape, `revert`, naming the reverted commit's PR", doc)
+        self.assertIn("Select required kinds under `docs/agents/review.md`, Minimum reviews.", doc)  # Row 67.
+        self.assertIn("For an unused low slot, see `docs/agents/review.md`, On the PR.", doc)
+        self.assertNotIn("From v5, check each listed bot and Reviewer as well as the tier minimum", doc)
+        self.assertEqual(doc.count("Every merge-time fact is read at merge or reported INCOMPLETE."), 1)
 
     def test_inherited_evidence_on_v5_and_v6_bases_and_unknown_future_base(self):
         for version in (5, 6):
@@ -785,6 +1007,32 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                 self.statuses.append(status)
         self.api[self.record_path] = self.record.replace("version: 5", "version: 7")
         self.replay(incomplete="unsupported historical version 7")
+
+
+    pair_handlers = {
+        "association": pair_association,
+        "merged_head": pair_merged_head,
+        "merge_time": pair_merge_time,
+        "risk": pair_description,
+        "reverts": pair_description,
+        "comment_body": pair_comment_body,
+        "reviewer_status": pair_reviewer_status,
+        "copilot_review": pair_copilot_review,
+        "copilot_check": pair_copilot_check,
+        "policy": pair_policy,
+        "merged_change": pair_merged_change,
+    }
+
+
+def _register_merge_time_pair(fact):
+    def run_pair(self):
+        self.pair_handlers[fact](self, self.case_pairs[fact])
+
+    setattr(VersionSixHistoricalPolicy, "test_merge_time_pair_" + fact, run_pair)
+
+
+for _fact in VersionSixHistoricalPolicy.case_pairs:
+    _register_merge_time_pair(_fact)
 
 
 class VersionFivePush(PushAndOpenRecords, support.TempDirCase):

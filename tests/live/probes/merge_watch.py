@@ -58,7 +58,9 @@ REVIEWS = "Required reviews: self-verification=clear, bugbot=clear, codex=clear,
 RECORD_AUTHOR = "github-actions[bot]"
 FIELDS = ("Merged PR", "Kind", "Category", "Observed", "Found by", "Bug issue")
 _MARKER = re.compile(r"<!-- codex-review-state:v1 (\{.*?\}) -->", re.S)
-_OUTCOME = re.compile(r"(?m)^\S+\s(No miss in this \w+ event\.|MISS .*?|UNREADABLE .*?|NOTE .*?|FAIL opening .*?)\s*$")
+_OUTCOME = re.compile(
+    r"(?m)^\S+\s(No miss in this \w+ event\.|(?:MISS|UNREADABLE|INCOMPLETE|NOTE|FAIL opening) .*?)\s*$"
+)
 _OBSERVED = re.compile(r"^Observed: Merged head ([0-9a-f]{40}), declared high, lacks: ([a-z0-9-]+(?:, [a-z0-9-]+)*)\.$")
 
 

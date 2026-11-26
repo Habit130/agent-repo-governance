@@ -1,0 +1,61 @@
+{
+  "description": "Synthetic #304 / #315 controls. Each changed value is first observed after the merge.",
+  "facts": {
+    "risk": {
+      "at_merge": "Risk: high — governance changes",
+      "after_merge": "Risk: low — edited after merge"
+    },
+    "reverts": {
+      "at_merge": "Risk: high — governance changes",
+      "after_merge": "Risk: high — governance changes\n\nReverts: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "comment_body": {
+      "at_merge": "## Merge summary: high at 4dd0a59f20bb3937346627d31dc70b3d5b07db49\nRequired reviews: self-verification=clear, bot-1=clear(copilot), reviewer=clear\nSecurity review applies: no",
+      "after_merge": "The earlier Merge summary body is no longer available."
+    },
+    "association": {
+      "at_merge": "main",
+      "after_merge": "renamed-main"
+    },
+    "merged_head": {
+      "at_merge": "4dd0a59f20bb3937346627d31dc70b3d5b07db49",
+      "after_merge": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "merge_time": {
+      "at_merge": "2026-11-10T09:45:00Z",
+      "after_merge": "2026-11-10T09:47:00Z"
+    },
+    "reviewer_status": {
+      "at_merge": {
+        "state": "success",
+        "created_at": "2026-11-10T09:44:00Z"
+      },
+      "after_merge": {
+        "state": "failure",
+        "created_at": "2026-11-10T09:46:00Z"
+      }
+    },
+    "copilot_review": {
+      "at_merge": "COMMENTED",
+      "after_merge": "DISMISSED"
+    },
+    "copilot_check": {
+      "at_merge": {
+        "conclusion": "success",
+        "completed_at": "2026-11-10T09:43:08Z"
+      },
+      "after_merge": {
+        "conclusion": "failure",
+        "completed_at": "2026-11-10T09:46:00Z"
+      }
+    },
+    "policy": {
+      "at_merge": "HistoricalAgent",
+      "after_merge": "AnotherAgent"
+    },
+    "merged_change": {
+      "at_merge": "README.md",
+      "after_merge": "AGENTS.md"
+    }
+  }
+}

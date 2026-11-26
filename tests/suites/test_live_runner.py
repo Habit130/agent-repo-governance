@@ -1728,6 +1728,19 @@ class MergeWatchV4Probes(support.TempDirCase):
             self.sandbox.watch_run(V3_SQUASH, 61, "NOTE transition was used.\nNo miss in this push event.")
             self.assertTrue(self.failed(self.run_probe(spec.name)))
 
+    def test_v6_probe_reports_the_merge_time_description_read_that_failed(self):
+        self.sandbox.version = 6
+        name = "merge-watch-v4-medium"
+        self.run_probe(name)
+        self.sandbox.answer.add((11, "codex"))
+        self.run_probe(name)
+        self.sandbox.merge_pull(11)
+        diagnostic = "INCOMPLETE #11 description: cannot establish content at merge"
+        self.sandbox.watch_run(V3_SQUASH, 61, diagnostic, conclusion="failure")
+
+        failed_details = [result.detail for result in self.run_probe(name) if not result.passed]
+        self.assertTrue(any(diagnostic in detail for detail in failed_details), failed_details)
+
     def test_a_manual_request_timeout_is_a_blocker_and_never_writes_a_merge_target(self):
         name = "merge-watch-v4-high"
         self.run_probe(name)

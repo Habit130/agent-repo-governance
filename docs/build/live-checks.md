@@ -88,6 +88,12 @@ and v5 follow-on in the offline `merge-watch` suite check the transition under t
 On incomplete evidence the workflow prints `INCOMPLETE`, posts independently supported
 miss records and exits 1.
 
+For the **version 6 draft**, prepare the same three public-sandbox probes with
+`--version 6`. The planted high-risk miss must name the probe's head, its declared
+tier and the missing `reviewer, merge-summary` in the squash commit's push run. This exercises the
+workflow token's read of the merge-time PR description. An `INCOMPLETE` line identifies
+the evidence the workflow could not establish and appears in the probe result.
+
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`, where `read`
   answers a REST path with GitHub's list, every page joined, or raises `ReadError`
   (version 3: `NotFound`, its subclass, for a file GitHub says isn't there). Its

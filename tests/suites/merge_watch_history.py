@@ -15,6 +15,14 @@ import support
 
 
 FIXTURE = Path(support.FIXTURES, "merge-watch", "v5", "qualified-copilot.json")
+DESCRIPTION_QUERY = (
+    "query($owner: String!, $name: String!, $number: Int!) { "
+    "repository(owner: $owner, name: $name) { pullRequest(number: $number) { "
+    "number body lastEditedAt mergedAt headRefOid mergeCommit { oid } "
+    "userContentEdits(first: 1) { totalCount } "
+    "timelineItems(last: 1, itemTypes: [MERGED_EVENT]) { totalCount nodes { "
+    "... on MergedEvent { mergeRefName commit { oid } } } } } } }"
+)
 EARLY = "2026-11-10T09:44:00Z"
 LATE = "2026-11-10T09:46:00Z"
 
@@ -22,6 +30,23 @@ LATE = "2026-11-10T09:46:00Z"
 def ordinary_change(base, squash):
     return {"base_commit": {"sha": base}, "total_commits": 1, "commits": [{"sha": squash}],
             "files": [{"filename": "README.md", "status": "modified"}]}
+
+
+def merged_pr_snapshot(pr, last_edit=None):
+    """Synthesized GraphQL witness for a recording with no intervening edits."""
+    return {"data": {"repository": {"pullRequest": {
+        "number": pr["number"], "body": pr["body"] or "", "lastEditedAt": last_edit,
+        "userContentEdits": {"totalCount": 0 if last_edit is None else 1},
+        "mergedAt": pr["merged_at"], "headRefOid": pr["head"]["sha"],
+        "mergeCommit": {"oid": pr["merge_commit_sha"]},
+        "timelineItems": {"totalCount": 1, "nodes": [
+            {"mergeRefName": pr["base"]["ref"], "commit": {"oid": pr["merge_commit_sha"]}},
+        ]},
+    }}}}
+
+
+def saved_pr_head(pr):
+    return {"ref": f"refs/pull/{pr['number']}/head", "object": {"type": "commit", "sha": pr["head"]["sha"]}}
 
 
 def supply_historical_fields(case):
@@ -94,16 +119,30 @@ class RecordedMerge(VersionThreeRendered):
         self.run = self.api[f"{self.prefix}/actions/runs/42792788901"]
         self.comments = self.api[f"{self.prefix}/issues/54/comments"]
         self.errors = {}
+        self.last_edit = None
+        self.description_response = None
+        self.description_exit = 0
+        if self.VERSION == 6:
+            self.api[f"{self.prefix}/git/ref/pull/54/head"] = saved_pr_head(self.pr)
         self.unassociated = None
 
-    def replay(self, missing=(), incomplete=None, notes=(), repository=None, observation=None, rate_limit=None):
+    def snapshot(self):
+        return merged_pr_snapshot(self.pr, self.last_edit)
+
+    def replay(self, missing=(), incomplete=None, notes=(), repository=None, observation=None, rate_limit=None, extra_records=()):
         """Serve the actual gh API shapes, then compare the posted records and workflow exit."""
         calls = []
+        if self.VERSION == 6:
+            owner, name = (repository or self.repo).split("/")
+            data = self.snapshot() if self.description_response is None else self.description_response
+            calls.append({"args": ["api", "--include", "-f", "query=" + DESCRIPTION_QUERY,
+                                   "-f", "owner=" + owner, "-f", "name=" + name, "-F", "number=54", "graphql"],
+                          "stdout": "HTTP/2.0 200 OK\r\n\r\n" + json.dumps(data), "exit": self.description_exit})
         for path, value in self.api.items():
             if "/contents/" in path:
                 args = ["api", "-H", "Accept: application/vnd.github.raw", path]
                 output = value
-            elif "/git/commits/" in path or "/actions/" in path or "/compare/" in path:
+            elif any(segment in path for segment in ("/git/commits/", "/git/ref/", "/actions/", "/compare/")):
                 args, output = ["api", path], json.dumps(value)
             else:
                 paged = path + ("&" if "?" in path else "?") + "per_page=100&page=1"
@@ -117,7 +156,7 @@ class RecordedMerge(VersionThreeRendered):
                 status = "429 Too Many Requests\r\nRetry-After: 99999"
             calls.append({"args": args, "stdout": "HTTP/2.0 " + status + "\r\n\r\n" + self.errors.get(path, output),
                           "exit": int(path in self.errors or path == rate_limit)})
-        expected = []
+        expected = list(extra_records)
         if missing:
             title = "Miss: process miss, missing-review in #54"
             if observation is None:
