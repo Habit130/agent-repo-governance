@@ -88,6 +88,7 @@
   "test_materialized_version.VersionFourReviewLadder": 1.2,
   "test_materialized_version.VersionFourSessionMarks": 0.6,
   "test_materialized_version.VersionFourSkillInvocations": 0.6,
+  "test_materialized_version.VersionSixPolicy": 1.1,
   "test_materialized_version.VersionThreeHandoffs": 1.6,
   "test_materialized_version.VersionThreeRerunPolicy": 0.9,
   "test_materialized_version.VersionThreeReviewProviders": 1.4,
