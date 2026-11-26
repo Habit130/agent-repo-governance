@@ -104,9 +104,11 @@ counted, and never reported as unavailable.
 - **Filling the slot.** At medium and high the Builder starts with the first enabled bot. When
   it is unavailable, the next enabled bot takes the slot, a **fallback**. One bot completes
   the list's purpose: it is an order to try for one slot, not a count of required bots.
-- **Requests.** An automatic Codex review already complete on the head counts under
-  [The Codex review bot](#the-codex-review-bot). Only habit posts a manual request. The Builder
-  hands habit the request when needed, including after a repair push, as its subsection below gives it.
+- **Requests.** When Codex takes the slot, first look for a completed review on the head
+  under [The Codex review bot](#the-codex-review-bot). An automatic completion fills the slot
+  without a manual request. Only habit posts a manual request. When a request is needed,
+  including after a repair push, the Builder hands habit the request from the provider's
+  subsection below.
 - **Unavailable**: no completed review on the head within the bot's wait after one more
   request; an error or no quota is the same. A completed review with findings is completed.
 - **No bot left at medium.** After reading the bot policy, check whether every enabled bot is
@@ -238,10 +240,11 @@ Classify findings and decide blocking under [Findings](../../AGENTS.md#findings)
   Self-verification is never a round: it runs before the PR opens and again on each new
   head.
 - From round 2 a review narrows as the Code Review Rules' round-2 rules say.
-- Any new head, a sync included, gets its bot slot's review again, through habit's requests,
-  and, at high or when a Reviewer ran at medium, a Reviewer pass over the change. First the
-  Builder reruns self-verification (`builder.md`, step 6) on that head, deals with its
-  findings, then updates the evidence comment.
+- Any new head, a sync included, gets its applicable bot-slot review under
+  [Review bots](#review-bots) and, at high or when a Reviewer ran at medium,
+  a Reviewer pass over the change. First the Builder reruns self-verification
+  (`builder.md`, step 6) on that head, deals with its findings, then updates the evidence
+  comment.
 - After three rounds with an Important finding still open, the Builder escalates with the
   options: change approach, split, more rounds, or drop.
 

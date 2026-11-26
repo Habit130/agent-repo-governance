@@ -7,6 +7,7 @@ import subprocess
 import sys
 from urllib.parse import quote
 
+sys.dont_write_bytecode = True
 from gate import CHECK as GATE_CONTEXT, RECORD, parse_record
 
 PRO_REFUSAL = "Upgrade to GitHub Pro or make this repository public to enable this feature."

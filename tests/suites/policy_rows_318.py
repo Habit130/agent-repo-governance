@@ -18,6 +18,7 @@ RISK = Section("AGENTS.md", "### Risk tiers")
 SPECS = agent_doc("planner", "## Specs")
 PLANNER_TICKETS = agent_doc("planner", "## Tickets")
 RESULTS = agent_doc("builder", "## Results-comment tickets")
+AFTER_MERGE = agent_doc("builder", "## After merge")
 DIRECT = agent_doc("builder", "## A direct request")
 OUTSIDE = agent_doc("builder", "## Outside PRs")
 HANDOFF = agent_doc("handoff", "## A final handoff")
@@ -70,10 +71,14 @@ ROWS = (
             Clause(RESULTS, "The work changes no tracked repository file, creates no branch and pushes nothing."),
         ),
         pointers=(
-            Clause(BLOCKING, "For a ticket's delivery and completion rules, see `builder.md`, Results-comment tickets."),
+            Clause(BLOCKING, "For each blocker, follow `builder.md`, Results-comment tickets for results-comment "
+                   "delivery and After merge for PR delivery."),
             Clause(TRACKER_TICKETS, "results-comment tickets follow `builder.md`, Results-comment tickets."),
         ),
-        red=(Clause(BLOCKING, r"PR-delivered ticket has merged|results-comment ticket .* is closed as completed"),),
+        red=(
+            Clause(BLOCKING, r"PR-delivered ticket has merged|results-comment ticket .* is closed as completed"),
+            Clause(BLOCKING, r"For a ticket's delivery and completion rules, see `builder.md`, Results-comment tickets\."),
+        ),
         search=r"results.comment|no PR|PR-delivered",
         branches=(
             ("absent declaration and direct request", (
@@ -82,7 +87,20 @@ ROWS = (
                 Clause(DIRECT, "Build it as your ticket."),
                 Clause(TRACKER_TICKETS, "a PR's `Closes #<n>` lines close those issues when habit merges it"),
             )),
+            ("all native blockers", (
+                Clause(BLOCKING, "`gh issue view <n> --repo Habit130/tally --json parent,subIssues,blockedBy,blocking`."),
+                Clause(BLOCKING, "A ticket is unblocked once every blocker under `blockedBy` is done."),
+            )),
+            ("merged closing PR", (
+                Clause(AFTER_MERGE, "`Closes` in the delivering PR closes the ticket when habit merges it "
+                       "into the default branch. That merge is the completion record."),
+            )),
+            ("PR closed without merge", (
+                Clause(AFTER_MERGE, "For a PR closed without merge, an unrelated event or a mismatched identity, "
+                       "report the discrepancy and stop."),
+            )),
             ("incomplete results", (Clause(RESULTS, "Otherwise, leave the ticket open and stop under Escalations for habit's decision."),)),
+            ("wayfinder closure", (Clause(BLOCKING, "A wayfinder ticket is unblocked once every blocker is closed."),)),
         ),
     ),
     PolicyRow(

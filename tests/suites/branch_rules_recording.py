@@ -26,6 +26,8 @@ def replay_branch_rules(self, filename, confirmed_checks=None):
     commands = re.findall(r"`(python3 [^`]+)`", section)
     self.assertEqual(len(commands), 1, "Checks first must give the writer the read-only command")
     command = shlex.split(commands[0])
+    # Apple's Python defaults to a separate cache directory. Test in-tree caching.
+    command[1:1] = ["-X", "pycache_prefix="]
     fixtures = os.path.join(support.FIXTURES, "generator")
     with open(os.path.join(fixtures, filename)) as handle:
         fixture = json.load(handle)
@@ -79,7 +81,10 @@ def replay_branch_rules(self, filename, confirmed_checks=None):
                 with open(recording, "w") as handle:
                     json.dump({"tool": "gh", "calls": calls}, handle)
                 env = environment.environment(os.path.join(root, "scratch"), recording)
+                env.pop("PYTHONDONTWRITEBYTECODE", None)
                 run = subprocess.run(command, cwd=self.dest, env=env, capture_output=True, text=True)
+                cache = os.path.join(self.dest, ".github", "governance", "__pycache__")
+                self.assertFalse(os.path.exists(cache), "The protection audit must leave the governed tree clean")
                 self.assertEqual(run.stderr, "")
                 self.assertEqual(run.returncode, row["exit"], run.stdout)
                 self.assertIn(branch, run.stdout)

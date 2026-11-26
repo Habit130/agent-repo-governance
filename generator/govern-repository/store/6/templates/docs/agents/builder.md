@@ -86,8 +86,8 @@ The Steps below apply to it as to a ticket, with these differences:
    `pr`'s shape, writing Summary and Merge Danger with `pr`, and the `Risk:` line
    (`review.md`, The tier). Post the evidence comment under `review.md`, Evidence comment.
    For pushes to an existing PR, follow `review.md`, Rounds, and Syncing and waiting below.
-8. **Review**: from medium, get the bot slot's review on every head that needs one, through
-   habit's requests (`review.md`, Review bots); answer findings and run rounds (`review.md`).
+8. **Review**: from medium, fill the bot slot under `review.md`, Review bots, on every head
+   that needs one. Answer findings and run rounds under `review.md`.
 9. **Hand over**: For the cause issue and merge condition, see `review.md`, Rerun-only passes.
    If you need to file the issue, open it as `needs-triage` and name the check, the failed run
    and how it ended. Record the pass and its issue in the evidence comment. Then, at high
@@ -107,9 +107,8 @@ A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
     and OpenCode whatever it is set to. The model's vendor decides, not the harness.
   - For a Codex harness session, a Local-mode chat in this repository's directory, not
     Worktree mode.
-  - The review bot request the tier's slot needs on this head, as `review.md`'s Review bots
-    gives it: a command or a browser step. Give habit fresh ones after each repair push, and
-    the next enabled bot's request when a slot's bot is unavailable.
+  - Any bot request needed on this head under `review.md`, Review bots. Give habit the
+    command or browser step from the provider's subsection.
   - For the optional extra, follow `review.md`, The Codex review bot, and record the
     request and output under Evidence comment.
 - For **"粘贴给 agent"**, use the start instruction in `reviewer.md`, Start.
@@ -167,7 +166,8 @@ Before relying on an Actions secret the ticket names, confirm it exists by name 
 
 This section applies to PR delivery.
 
-- `Closes` closes the ticket, and the merge is the completion record.
+- `Closes` in the delivering PR closes the ticket when habit merges it into the default
+  branch. That merge is the completion record.
 - At medium and high, wait for the PR to merge. At medium, a Builder that cannot wait
   leaves its worktree, and nobody nudges it.
 - At high, when its permitted in-session wait returns, the original Builder must read the

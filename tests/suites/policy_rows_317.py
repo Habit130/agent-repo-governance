@@ -23,6 +23,9 @@ WATCH = ".github/governance/merge_watch.py"
 TIER = Section(REVIEW, "## The tier")
 BOTS = Section(REVIEW, "## Review bots")
 CODEX = Section(REVIEW, "### The Codex review bot")
+ROUNDS = Section(REVIEW, "## Rounds")
+BUILD_STEPS = Section("docs/agents/builder.md", "## Steps")
+REVIEWER_HANDOFF = Section("docs/agents/builder.md", "## The Reviewer handoff")
 MINIMUM = Section(REVIEW, "## Minimum reviews")
 REVIEW_STATE = Section(REVIEW, "## Review state")
 ON_PR = Section(REVIEW, "### On the PR")
@@ -87,27 +90,46 @@ ROWS = (
         "07",
         home=(Clause(BOTS, "Only habit posts a manual request."),),
         # The repository-owned live-check pointer belongs to the v6 Upgrade.
-        pointers=(),
-        red=(Clause(BOTS, r"(?i)a bot starts only on habit.s request"),),
+        pointers=(
+            Clause(ROUNDS, "gets its applicable bot-slot review under [Review bots](#review-bots)"),
+            Clause(BUILD_STEPS, "fill the bot slot under `review.md`, Review bots, on every head that needs one"),
+            Clause(REVIEWER_HANDOFF, "Any bot request needed on this head under `review.md`, Review bots."),
+        ),
+        red=(
+            Clause(BOTS, r"(?i)a bot starts only on habit.s request"),
+            Clause(ROUNDS, r"through habit.s requests"),
+            Clause(BUILD_STEPS, r"through habit.s requests"),
+            Clause(REVIEWER_HANDOFF, r"Give habit fresh ones after each repair push"),
+        ),
         search=r"bot starts only|automatic Codex review|request comment|requests a review",
         branches=(
             ("manual request and repair push", (
                 Clause(
-                    BOTS, "The Builder hands habit the request when needed, including after a repair push, "
-                    "as its subsection below gives it.",
+                    BOTS, "When a request is needed, including after a repair push, the Builder hands habit "
+                    "the request from the provider's subsection below.",
                 ),
                 Clause(BOTS, "Only a request comment writes a bot's trigger"),
                 Clause(CODEX, '`ghm pr comment <n> --body "@codex review"`, which habit runs.'),
             )),
             ("automatic completion already on this head", (
                 Clause(
-                    BOTS, "An automatic Codex review already complete on the head counts under "
-                    "[The Codex review bot](#the-codex-review-bot).",
+                    BOTS, "When Codex takes the slot, first look for a completed review on the head under "
+                    "[The Codex review bot](#the-codex-review-bot). An automatic completion fills the slot "
+                    "without a manual request.",
                 ),
                 Clause(
                     CODEX, "its comment's `codex-review-state:v1` marker, whose `code_review.commit_sha` is the head "
                     "and whose `code_review.status` is `completed`.",
                 ),
+            )),
+            ("old or incomplete review", (
+                Clause(REVIEW_STATE, "A result for an older head never counts for this one, and only a "
+                       "completed review is ever written as clear."),
+                Clause(BOTS, "A completed review with findings is completed."),
+            )),
+            ("unavailable provider", (
+                Clause(BOTS, "When it is unavailable, the next enabled bot takes the slot"),
+                Clause(BOTS, "no completed review on the head within the bot's wait after one more request"),
             )),
         ),
     ),

@@ -251,6 +251,10 @@ ROWS = (
         branches=(
             ("new head", (Clause(review("Rounds"), "First the Builder reruns self-verification (`builder.md`, step 6) "
                                                    "on that head, deals with its findings, then updates the evidence comment."),)),
+            ("bot review decision", (Clause(
+                review("Rounds"), "Any new head, a sync included, gets its applicable bot-slot review under "
+                "[Review bots](#review-bots)",
+            ),)),
             ("high or medium Reviewer", (Clause(review("Rounds"), "at high or when a Reviewer ran at medium, a Reviewer pass over the change."),)),
             ("round 2", (Clause(ROUND_TWO, "Review only changes since the last reviewed head and open findings."),)),
             ("three rounds", (Clause(review("Rounds"), "After three rounds with an Important finding still open, the Builder escalates"),)),
