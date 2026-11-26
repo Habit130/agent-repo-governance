@@ -1,5 +1,7 @@
 # The Antigravity CLI joins as a fifth harness, and the generator stays out
 
+Superseded from version 6 by [ADR 0040](0040-the-antigravity-app-replaces-the-cli-and-its-limits-rest-on-instructions.md), before version 6 was released: the Antigravity app, not the CLI, is the supported harness, and its limits against habit's account alias and Actions-secret writes rest on instructions.
+
 From version 6, the Antigravity CLI is a supported harness for Planner, Builder and Reviewer sessions. [ADR 0013](0013-generator-in-claude-code-and-opencode.md) kept the generator to the harnesses where the machine deny rules against habit's account alias and Actions-secret writes hold. Under #322, the install will give the Antigravity CLI those rules, and still habit chose to keep the generator out of it, as habit did for the Codex harness. The generator will refuse every Antigravity CLI shell, including one that inherited another harness's marker.
 
 A repository's committed governance decides which harnesses it supports. So the Antigravity CLI becomes supported in a repository only once all of these hold:
