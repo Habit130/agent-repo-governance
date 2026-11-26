@@ -1,0 +1,37 @@
+{
+  "miss": "https://github.com/Habit130/agent-repo-governance/issues/302",
+  "version": 6,
+  "base": "required-checks-from-the-record",
+  "cases": [
+    {
+      "name": "rerun removes hand-added product publisher binding",
+      "required_checks": ["test"],
+      "github": {
+        "rulesets": [
+          {"as_target": "Gate", "changes": {"rules": [
+            {"type": "deletion"},
+            {"type": "non_fast_forward"},
+            {"type": "pull_request", "parameters": {
+              "required_approving_review_count": 0,
+              "dismiss_stale_reviews_on_push": false,
+              "require_code_owner_review": false,
+              "require_last_push_approval": false,
+              "require_review_thread_resolution": false,
+              "allowed_merge_methods": ["squash"]
+            }},
+            {"type": "required_status_checks", "parameters": {
+              "strict_required_status_checks_policy": false,
+              "do_not_enforce_on_create": false,
+              "required_status_checks": [
+                {"context": "governance-gate", "integration_id": 15368},
+                {"context": "test", "integration_id": 42}
+              ]
+            }}
+          ]}},
+          {"as_target": "Merge"},
+          {"as_target": "History"}
+        ]
+      }
+    }
+  ]
+}
