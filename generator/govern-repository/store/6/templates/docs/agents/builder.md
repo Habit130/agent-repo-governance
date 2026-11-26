@@ -104,7 +104,8 @@ A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
   - At high state the vendor constraint from `review.md`, Minimum reviews.
     As a hint for where to open it:
     Claude Code runs Anthropic models, deepseekharness DeepSeek, the Codex harness OpenAI,
-    and OpenCode whatever it is set to. The model's vendor decides, not the harness.
+    and OpenCode and the Antigravity app whatever model they run. The model's vendor decides,
+    not the harness.
   - For a Codex harness session, a Local-mode chat in this repository's directory, not
     Worktree mode.
   - Any bot request needed on this head under `review.md`, Review bots. Give habit the

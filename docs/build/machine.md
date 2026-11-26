@@ -78,6 +78,22 @@ refusal that wrote nothing. `machinelib/__init__.py` names the layout; `install.
   command word), exits 0 whatever the decision, and omits `decision` when no rule matches.
   `codex debug prompt-input` prints no budget warning; it shortens descriptions and drops
   entries silently, in name order, so the check compares the listed names with the home's skills.
+- **The Antigravity app** (public documentation, read 2026-11-26). Its global instruction
+  files, from <https://antigravity.google/docs/rules> ("Antigravity App file locations") and
+  <https://antigravity.google/docs/customization-discovery> (personal scope), are
+  `~/.gemini/AGENTS.md`, `~/.gemini/GEMINI.md`, `~/.gemini/config/AGENTS.md`,
+  `~/.gemini/config/GEMINI.md` and modular rules in `~/.gemini/config/rules/*.md`; it loads
+  every one it finds. The install links the first listed, `~/.gemini/AGENTS.md`, to
+  `~/.agents/AGENTS.md`; the check fails each of the other three instruction files, as it does
+  `~/.dsh/AGENTS.md`, and reports a rule file in `~/.gemini/config/rules/` or in an installed
+  plugin's `rules/` (global plugins live in `~/.gemini/config/plugins/`, per
+  <https://antigravity.google/docs/plugins>) as a `说明` line that never fails. Its
+  permission rules live in its settings UI and no file is documented for them
+  (<https://antigravity.google/docs/agent-settings>, <https://antigravity.google/docs/permissions>),
+  so neither the install nor the check manages them and its limits against `ghm` and
+  Actions-secret writes rest on instructions, as deepseekharness's do; the deny entries item
+  names only Claude Code and OpenCode. It finds the machine skill root without configuration,
+  as habit's 2026-11-26 probe on #321 observed.
 - **Personal skills**: a machine skill is a directory in
   `~/.agents/skills` named in the machine skill set; every other skill there and every skill
   in `~/.codex/skills` is personal. The install never writes inside a personal skill, nor
