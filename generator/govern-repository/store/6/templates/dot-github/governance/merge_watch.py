@@ -127,7 +127,7 @@ DESCRIPTION_QUERY = (
     "repository(owner: $owner, name: $name) { pullRequest(number: $number) { "
     "number body lastEditedAt mergedAt headRefOid mergeCommit { oid } "
     "userContentEdits(first: 1) { totalCount } "
-    "timelineItems(last: 1, itemTypes: [MERGED_EVENT]) { totalCount nodes { "
+    "timelineItems(first: 2, itemTypes: [MERGED_EVENT]) { pageInfo { hasNextPage } nodes { "
     "... on MergedEvent { mergeRefName commit { oid } } } } } } }"
 )
 Merge = namedtuple("Merge", "number base_ref squash")
@@ -438,9 +438,9 @@ class MergeFacts:
             return unresolved(self.problems, source + "invalid merge_commit_sha or conflicting PR state")
         pull = self._pull_snapshot(number)
         timeline = pull.get("timelineItems")
-        entries = timeline.get("nodes") if (isinstance(timeline, dict)
-                                            and type(timeline.get("totalCount")) is int
-                                            and timeline["totalCount"] == 1) else None
+        # GitHub's totalCount includes unrelated timeline items even with itemTypes set.
+        page = timeline.get("pageInfo") if isinstance(timeline, dict) else None
+        entries = timeline.get("nodes") if isinstance(page, dict) and page.get("hasNextPage") is False else None
         event = entries[0] if isinstance(entries, list) and len(entries) == 1 else None
         if (not isinstance(event, dict) or event.get("commit") != {"oid": squash}
                 or pull.get("mergeCommit") != {"oid": squash}

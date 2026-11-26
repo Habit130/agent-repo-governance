@@ -1021,6 +1021,18 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                 associations[:] = rows
                 self.replay(missing=("reviewer",), incomplete="unresolved PR association")
 
+    def test_merge_event_uniqueness_uses_the_complete_filtered_page(self):
+        self.description_response = self.snapshot()
+        pull = self.description_response["data"]["repository"]["pullRequest"]
+        event, = pull["timelineItems"]["nodes"]
+        # Sandbox #198 returned five total timeline items and one filtered merge event.
+        pull["timelineItems"] = {"totalCount": 5, "nodes": [event], "pageInfo": {"hasNextPage": False}}
+        self.replay()
+        for nodes, page in (([], False), ([event, event], False), ([event], True), ([event], None), ([event], 0)):
+            with self.subTest(count=len(nodes), next_page=page):
+                pull["timelineItems"] = {"nodes": nodes, "pageInfo": {"hasNextPage": page}}
+                self.replay(incomplete="unverified merge event")
+
     def test_incomplete_body_does_not_hide_a_tier_independent_miss(self):
         self.comments.clear()
         self.description_response = self.snapshot()

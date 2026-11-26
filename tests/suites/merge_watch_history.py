@@ -20,7 +20,7 @@ DESCRIPTION_QUERY = (
     "repository(owner: $owner, name: $name) { pullRequest(number: $number) { "
     "number body lastEditedAt mergedAt headRefOid mergeCommit { oid } "
     "userContentEdits(first: 1) { totalCount } "
-    "timelineItems(last: 1, itemTypes: [MERGED_EVENT]) { totalCount nodes { "
+    "timelineItems(first: 2, itemTypes: [MERGED_EVENT]) { pageInfo { hasNextPage } nodes { "
     "... on MergedEvent { mergeRefName commit { oid } } } } } } }"
 )
 EARLY = "2026-11-10T09:44:00Z"
@@ -39,7 +39,7 @@ def merged_pr_snapshot(pr, last_edit=None):
         "userContentEdits": {"totalCount": 0 if last_edit is None else 1},
         "mergedAt": pr["merged_at"], "headRefOid": pr["head"]["sha"],
         "mergeCommit": {"oid": pr["merge_commit_sha"]},
-        "timelineItems": {"totalCount": 1, "nodes": [
+        "timelineItems": {"pageInfo": {"hasNextPage": False}, "nodes": [
             {"mergeRefName": pr["base"]["ref"], "commit": {"oid": pr["merge_commit_sha"]}},
         ]},
     }}}}
