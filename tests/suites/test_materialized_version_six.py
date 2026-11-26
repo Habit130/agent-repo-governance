@@ -11,9 +11,12 @@ from materialized_version_support import VersionThreeRendered, flat
 from policy_rows_312 import ROWS as ROWS_312
 from policy_rows_316 import AFTER_MERGE, BUILD_WAIT, EXAMPLES, HANDOFF, MINIMUM, REVIEW_START, WAITS
 from policy_rows_316 import ROWS as ROWS_316
+from policy_rows_317 import ROWS as ROWS_317
+from policy_rows_318 import MERGE, SANDBOXES, sandbox_names
+from policy_rows_318 import ROWS as ROWS_318
 
 
-ROWS = (*ROWS_312, *ROWS_316)
+ROWS = (*ROWS_312, *ROWS_316, *ROWS_317, *ROWS_318)
 
 
 class VersionSixPolicy(VersionThreeRendered):
@@ -86,6 +89,30 @@ class VersionSixPolicy(VersionThreeRendered):
                 if takeover_pushed or "that pushed to the PR" not in high:
                     vendors.add(takeover_vendor)
                 self.assertIs(reviewer_vendor not in vendors, eligible)
+
+    def test_merge_handoff_names_only_registered_sandboxes(self):
+        for repository, sandbox in (
+            ("Habit130/governance-sandbox", True),
+            ("Habit130/governance-sandbox-private", True),
+            ("Habit130/tally", False),
+        ):
+            with self.subTest(repository=repository):
+                dest = self.path(repository.rsplit("/", 1)[-1] + "-handoff")
+                code, facts = support.govern([
+                    "render", "--version", str(self.VERSION), "--allow-unreleased", "--dest", dest,
+                    "--repository", repository, "--default-branch", "main",
+                    "--confirmed", self.path("confirmed.json"),
+                ])
+                self.assertEqual(code, 0, facts)
+                handoff = MERGE.read(support.read_text(os.path.join(dest, MERGE.path)))
+                registered = sandbox_names(handoff)
+                self.assertCountEqual(registered, SANDBOXES)
+                self.assertEqual(repository in registered, sandbox)
+                self.assertIn(
+                    "only when any is open: the count of open miss records, "
+                    "`gh issue list --label miss --state open --repo %s`." % repository,
+                    flat(handoff),
+                )
 
     def test_planner_docs_pr_uses_the_confirmed_floor(self):
         from parsers import load_gate
