@@ -945,7 +945,7 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                 "_on_push(event, read, repository, default_branch, notes, problems)",
                 "_on_workflow_run(event, read, repository, default_branch, open_records, problems)",
             ],
-            "main": ["GitHub(push=event_name == 'push')",
+            "main": ["github = GitHub(push=event_name == 'push')", "GitHub(push=event_name == 'push')",
                      "_event_records(event_name, event, github, notes, problems)",
                      "github.post", "github.unreadable", "github.unreadable"],
         }
@@ -960,8 +960,7 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                     self.assertNotIn(expr.attr, private_readers, ast.unparse(expr))
                 if isinstance(expr, ast.Name) and expr.id == "subprocess":
                     self.assertEqual(name, "GitHub", "Only the GitHub transport runs gh")
-                if any(isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load)
-                       and ref.id in {"read", "read_rows", "github", "GitHub"}
+                if any(isinstance(ref, ast.Name) and ref.id in {"read", "read_rows", "github", "GitHub"}
                        for ref in ast.iter_child_nodes(expr)):
                     uses.append(ast.unparse(expr))
             self.assertCountEqual(uses, routes.get(name, []), name)
@@ -997,6 +996,15 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                 target.body.extend(ast.parse(extra).body)
                 with self.assertRaises(AssertionError):
                     self.assert_reader_boundary(tree, accessor)
+
+        tree = ast.parse(self.text(SCRIPT))
+        main = next(node for node in tree.body if getattr(node, "name", None) == "main")
+        binding, = [stmt for stmt in main.body if isinstance(stmt, ast.Assign)
+                    and any(isinstance(target, ast.Name) and target.id == "github" for target in stmt.targets)]
+        binding.value = ast.Call(func=ast.Name(id="attach_metadata", ctx=ast.Load()), args=[binding.value], keywords=[])
+        accessor = next(node for node in tree.body if getattr(node, "name", None) == "MergeFacts")
+        with self.assertRaises(AssertionError):
+            self.assert_reader_boundary(tree, accessor)
 
     def test_unreadable_association_is_not_evidence_of_a_direct_push(self):
         associations = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
