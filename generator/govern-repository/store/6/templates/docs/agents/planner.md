@@ -13,8 +13,8 @@ to habit; this file points there.
   the ticket additions below is its ticket.
 - **A foggy effort**: habit invokes `wayfinder`, and the effort rejoins here at `to-spec`.
 - **A bug** arrives as an issue, through `triage`, or as a direct request to a Builder, who
-  uses `diagnosing-bugs`. When triage traces a bug to a merged PR, open a miss record
-  (Misses, below).
+  uses `diagnosing-bugs`. For a bug linked to a merged PR, follow Misses below. For
+  closing its miss record, see `issue-tracker.md`, Miss records.
 - **A Builder's start request** for work that outgrew one session: treat it as habit's idea.
 
 Reaching `to-spec`, `to-tickets`, `triage` or `wayfinder` mid-session follows `AGENTS.md`,
@@ -32,17 +32,13 @@ Choose it; habit approves it with the spec and tickets.
 - **Whole-spec delivery**: one Builder delivers the whole spec through `implement-spec`, in
   one PR (`builder.md`, Whole-spec delivery). Recommend it, and habit approves it with the
   spec, when each ticket is small and the combined diff stays reviewable in one pass.
-  Foreseen-high tickets join it only when they are high for the same reason and none holds a
-  one-way door: a data migration, a destructive operation, a release or publishing. Then
-  every ticket of that spec is high for that reason, since a high PR holds only its high
-  part (`review.md`, Minimum reviews). A ticket with a one-way door always gets its own PR.
-  Record the choice in the spec's Delivery section; the canonical start form is below,
-  adding the session-called skills the tickets name (`AGENTS.md`, How to start):
-
-  ```text
-  habit invokes: implement-spec.
-  Role: Builder. Spec: #<n>. Skills: tdd.
-  ```
+  Foreseen-high tickets join it only when every ticket is high for the same reason and none
+  holds a one-way door. A ticket with a one-way door always gets its own PR.
+  See `AGENTS.md`, Risk tiers, for what counts as a one-way door, `review.md`, Minimum
+  reviews, for high PR scope and rehearsal, and `builder.md`, After merge, for approval
+  before execution.
+  Record the choice in the spec's Delivery section. Use `AGENTS.md`, How to start, for
+  the canonical whole-spec start instruction and the tickets' session-called skills.
 
 ## Specs
 
@@ -50,8 +46,7 @@ Choose it; habit approves it with the spec and tickets.
 - After `to-tickets`, remove `ready-for-agent` from the spec; only its tickets are
   dispatched. A spec approved for whole-spec delivery is the exception: it keeps the label,
   its tickets never take it, and it is dispatched as one entry.
-- Close any spec still open once all its tickets are done as defined in `issue-tracker.md`,
-  Sub-issues and blocking.
+- For spec closure, see `builder.md`, Closing a spec.
 
 ## Tickets
 
@@ -65,14 +60,16 @@ A ticket holds `to-tickets`' body, or triage's agent brief, plus:
   `docs/agents/build.md`. At high, identify actual default-branch product verification;
   when none exists, predetermine an executable local smoke on the exact merged commit
   (`builder.md`, After merge). A release-only workflow is not default-branch product CI.
+- **Acceptance criteria.** When a ticket asks for a check or audit of a target state, name
+  the target's source, such as a spec section or the record, and ask for every fact that
+  source requires. A criterion to preserve a behavior states that behavior.
 - **Risk notes**: only foreseen risks the diff won't show, such as a one-way door or a
   production resource.
 - **Actions secrets**: each one CI needs, by name, purpose and issuing service, never a
-  value. Give habit the repository's Actions secrets settings link and the exact name, so
-  habit sets it in the browser while approving the ticket (`AGENTS.md`, Secrets).
+  value. For the owner action follow `AGENTS.md`, Secrets, during ticket approval.
 
-A ticket carries no tier or difficulty. Once published it is frozen: a Builder proposes a
-change, habit agrees, and the ticket records both.
+A ticket carries no tier or difficulty. For changes to a published ticket, see
+`builder.md`, Escalations, The ticket must change.
 
 **The dispatch plan.** When habit approves, the Planner's final handoff (`handoff.md`)
 carries the dispatch plan: every approved ticket of the effort, whether a spec, a map, a
@@ -89,6 +86,14 @@ Planner after each merge.
   blocker of the ticket with the test. Schedule the ticket with the test to start from
   the updated default branch after the blocker merges. Otherwise, the tickets may run
   together if they share no files or resources. When unsure, schedule one after the other.
+- If a ticket in the plan names a release in its Risk notes, place a class retro last,
+  after that release merges. A repository without releases runs one only when habit chooses.
+- For each class retro, use the issue already open for that run. Otherwise, the Planner
+  who places it in the plan or runs it standalone opens one issue. If there was a previous
+  class retro, link its issue from this run's issue. When the run follows a release, title
+  its issue `Class retro after <release>`.
+  The issue needs no new label. Use a Planner start request for `retro #<issue>` in the
+  plan. Close the issue once habit's picks are ticketed.
 - The Planner also writes the plan in English, using the canonical form from `AGENTS.md`,
   How to start, as a comment on the effort's parent issue. Only a Planner updates it, such
   as when a Builder or a Reviewer reports something the plan didn't foresee.
@@ -116,7 +121,8 @@ Only the Planner updates the dispatch grade; the ticket body carries none.
 
 ## The docs PR
 
-`GLOSSARY.md` and ADRs change through the Planner's own docs PR, on the low path: follow
+`GLOSSARY.md` and ADRs change through the Planner's own docs PR. Tier the Planner's docs PR
+under `AGENTS.md`, Risk tiers, using this repository's actual sensitive paths. Follow
 `builder.md`'s steps 3 to 9 with the Planner in the Builder's place. The PR references its
 spec or map and closes no issue.
 
@@ -134,7 +140,28 @@ Role: Planner. Issue: #<miss>.
 ## Running retro
 
 habit invokes `retro` in a Planner session, once per miss record or on anything else habit
-names.
+names. For a class retro, follow [Class retro](class-retro.md).
+
+Every retro applies these disciplines.
+
+- **Level.** Propose each lesson at the highest level that works. First structure, which
+  removes the cause, such as stating a condition once or generating cases from one source.
+  Then a mechanical check: the gate, Merge watch, CI or a test. Text comes last and says why
+  neither higher level works.
+- **Proof.** A candidate that adds a check names the past instance the check must fail on,
+  and its ticket asks the delivery to show that failure. If the check cannot run on that
+  instance in the committed suite, demonstrate the failure outside the suite.
+- **Recurrence.** A bug class that recurs after its fix merged has a failed fix: propose
+  the next level up.
+- **Deletion.** Propose deleting text whose mistake a check now prevents.
+- **Cost.** Each candidate states the CI time, files and fixtures it adds, the policy text
+  it adds or removes, and whether it changes fixed content.
+- **Cap.** Recommend at most three new tickets per retro, and list the other candidates as
+  not recommended, each with its reason.
+
+A retro reports events, never rates.
+
+Use steps 1 to 4 for a miss record. Step 3 also applies to a class retro.
 
 1. Read the record, the merged PR with its review threads, its evidence comment and Merge
    summary, and its ticket. Read session logs only when habit names them.
@@ -151,14 +178,15 @@ names.
      a medium ticket here.
 
    The first three are fixed content. Each such pick becomes an incoming issue in
-   `Habit130/agent-repo-governance`, quoting habit's decision and linking the record.
+   `Habit130/agent-repo-governance`, quoting habit's decision. For a retro on a miss record,
+   link that record. For a class retro, link its class retro issue.
 4. Close the record, quoting habit's decision.
 
 ## Escalations
 
 Scope, delivery shapes, specs, tickets and changes to a published ticket are habit's to
-approve. Put the question and the options in the terminal (`handoff.md`, Three kinds of
-message), and leave one "Waiting on habit: …" line on the issue.
+approve. For the escalation message, follow `handoff.md`, Three kinds of message.
+Use the issue.
 
 ## Skills this role relies on
 

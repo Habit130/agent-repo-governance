@@ -16,11 +16,10 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 - **Rejecting below high.** A Builder that wants to reject a review bot's Important finding
   at low or medium first raises the PR to high.
 - **Lowering.** Only habit lowers a tier, in a PR comment. The Builder records it by
-  updating the line, its reason linking habit's comment. Not even habit goes below the
-  highest floor among the sensitive paths the PR touches; the governance gate enforces that.
+  updating the line, its reason linking habit's comment. Apply the floors and confirmed-revert
+  rules in the [gate contract](../../.github/governance/gate.py), steps 3–4.
 - **Pure Upgrade.** An Upgrade is pure when exact comparison reports no differences and
   the record's confirmed part is unchanged from the default branch.
-- A pure revert the governance gate confirms takes the low path (`builder.md`, Pure reverts).
 
 ## Minimum reviews
 
@@ -29,21 +28,20 @@ round-2 rules are `AGENTS.md`'s Code Review Rules, and this file doesn't restate
 | Self-verification | yes | yes | yes |
 | Review bot | — | one: `bot-1` | one: `bot-1` |
 | Reviewer session | — | when substituting for the bot or required alongside it, same vendor allowed (Review bots) | yes, a vendor different from every Builder session that pushed to the PR, judged by the session marks |
-| Security review | — | — | when the change involves authentication, privacy or secret handling |
-| Merge summary by | Builder | Builder; the Reviewer when one ran | Reviewer, or the Builder when it is waived, as the high-risk report |
+| Security review | — | — | See [Security review](#security-review) |
 
+- For the summary writer, see [Merge summary](#merge-summary).
 - Minimums are floors: every review that runs on a head binds. A Reviewer substitutes for
   the bot only at medium, as Review bots below gives it.
-- habit's waiver is the only way a required review goes unmet; a waived Reviewer session
-  leaves the Merge summary to the Builder (Waivers).
+- habit's waiver is the only way a required review goes unmet (Waivers).
 - **Before any merge:** required checks green (the governance gate from the first PR after
   Initialize; an Initialize PR's evidence states it as not yet applicable); the evidence
   comment on the head; the `Risk:` line present; a Merge summary naming the head; no open
   Important finding from any review on the head; rerun-only passes checked as below.
-- **High adds:** before-and-after evidence in plain words; each one-way door rehearsed on a
-  copy, the result attached and its recovery performed once; every finding answered, Nits
-  included; only the high part in the PR; habit's go-ahead after merge for each
-  one-way-door step (`builder.md`, After merge).
+- **High adds:** give before-and-after evidence in plain words. Rehearse each one-way door
+  on a copy, attach the result and perform its recovery once. For answers required on this
+  head, apply [Checks first](#checks-first), item 2. Keep only the high part in the PR.
+  Get habit's go-ahead after merge for each one-way-door step (`builder.md`, After merge).
 
 ## Session marks
 
@@ -81,9 +79,10 @@ when the edit corrects the failed gate input, such as its Risk declaration.
 The Reviewer and the Merge summary's writer inspect the required checks' run history on the
 head, earlier attempts included: GitHub's default listing shows only the latest attempt.
 Compare changes between attempts with the evidence comment, verifying that each claimed
-repair addresses that check's failure. For each rerun-only pass, confirm the linked issue
-is open and covers its cause; no linked open issue is an Important finding. The Builder
-owns ticketing the cause (`builder.md`, step 9).
+repair addresses that check's failure. For each rerun-only pass, the Builder links an open
+issue for its cause, including an outside cause. The Reviewer and the writer confirm the
+issue is open and covers the cause. A missing, closed or unrelated issue is an Important
+finding and blocks the merge. See `builder.md`, step 9, for filing the issue.
 
 ## Subagents with no conversation context
 
@@ -102,11 +101,14 @@ Initialize, the list the PR adds is the one, since there is no earlier list to l
 supported bot missing from the list is disabled: never requested, retried, awaited or
 counted, and never reported as unavailable.
 
-- **Filling the slot.** At medium and high the Builder asks for the first enabled bot. When
+- **Filling the slot.** At medium and high the Builder starts with the first enabled bot. When
   it is unavailable, the next enabled bot takes the slot, a **fallback**. One bot completes
   the list's purpose: it is an order to try for one slot, not a count of required bots.
-- **Requests.** A bot starts only on habit's request. The Builder hands habit each request,
-  as its subsection below gives it, and again after each repair push.
+- **Requests.** When Codex takes the slot, first look for a completed review on the head
+  under [The Codex review bot](#the-codex-review-bot). An automatic completion fills the slot
+  without a manual request. Only habit posts a manual request. When a request is needed,
+  including after a repair push, the Builder hands habit the request from the provider's
+  subsection below.
 - **Unavailable**: no completed review on the head within the bot's wait after one more
   request; an error or no quota is the same. A completed review with findings is completed.
 - **No bot left at medium.** After reading the bot policy, check whether every enabled bot is
@@ -199,15 +201,16 @@ verification table, for one PR at one head.
 - **A new head voids it.** The same waiver on the new head needs a new comment.
 - **Never waived**: the required status checks, the `Risk:` line, the evidence comment and
   the Merge summary; nor a Reviewer session that a review bot's subsection keeps.
-- **A waived Reviewer session** leaves the Merge summary to the Builder: it runs the checks,
-  writes the summary, at high as the high-risk report, and gives the merge handoff.
+- **A waived Reviewer session.** The writer selected in Merge summary runs the checks,
+  writes the summary and gives the merge handoff.
 - **No different vendor available.** A same-vendor review at high does not meet the
   Reviewer requirement. Only habit's existing `reviewer` waiver for that head, subject to
   all the limits here, lets the PR proceed without a qualifying Reviewer. A same-vendor
   review that runs still binds like any review on the head; the fixed line reads
-  `reviewer=waived`, the Builder writes the high-risk report, and its evidence sentence
-  says that the review ran on a Builder's vendor. If no review ran, say so.
-- No agent writes, edits or widens a waiver, and a waiver authorizes no merge by an agent.
+  `reviewer=waived` and the report's evidence sentence says that the review ran on a
+  Builder's vendor. If no review ran, say so.
+- No agent writes, edits or widens a waiver. For merge authority, follow
+  [Hard limits](../../AGENTS.md#hard-limits) and [The merge handoff](#the-merge-handoff) for habit's command.
 - Merge watch checks each review waiver's author, head and item after the merge. The Merge
   summary's writer checks a verification waiver the same way, and any condition a review
   bot's subsection puts on a Reviewer waiver.
@@ -216,18 +219,20 @@ verification table, for one PR at one head.
 
 A change that adds or edits an exception to a review requirement or an authorization rule,
 such as a waiver or a fallback, is checked at every place that states it: the decision
-point, each machine-read grammar, the examples and the reports. A statement broader than the
-narrowest one is an Important finding.
+point, each machine-read grammar, the examples and the reports.
+Judge each statement under [Findings](../../AGENTS.md#findings).
 
 ## Answering findings
 
+Classify findings and decide blocking under [Findings](../../AGENTS.md#findings).
+
 - **Important.** Fix it and reply "Fixed in `<sha>`", or reject it with evidence: "Not
-  fixing:" plus a command and its output, or a concrete fact. Then resolve the thread. A
-  rejection of a bot's Important finding first raises the PR to high (The tier); the
-  Reviewer judges each rejection and reopens one it disagrees with.
+  fixing:" plus a command and its output, or a concrete fact. Then resolve the thread.
+  Before rejecting a bot's Important finding, apply [The tier](#the-tier).
+  The Reviewer judges each rejection and reopens one it disagrees with.
 - **Nit.** Optional at low and medium; at high, answer each.
-- **Pre-existing.** Never blocks. The Important-severity ones go into one `needs-triage`
-  issue per PR, linked from the Merge summary.
+- **Pre-existing.** File the Important-severity findings in one `needs-triage` issue per PR.
+  Link it from the Merge summary.
 
 ## Rounds
 
@@ -235,10 +240,11 @@ narrowest one is an Important finding.
   Self-verification is never a round: it runs before the PR opens and again on each new
   head.
 - From round 2 a review narrows as the Code Review Rules' round-2 rules say.
-- Any new head, a sync included, gets its bot slot's review again, through habit's requests,
-  and, at high or when a Reviewer ran at medium, a Reviewer pass over the change. First the
-  Builder reruns self-verification (`builder.md`, step 6) on that head, deals with its
-  findings, then updates the evidence comment.
+- Any new head, a sync included, gets its applicable bot-slot review under
+  [Review bots](#review-bots) and, at high or when a Reviewer ran at medium,
+  a Reviewer pass over the change. First the Builder reruns self-verification
+  (`builder.md`, step 6) on that head, deals with its findings, then updates the evidence
+  comment.
 - After three rounds with an Important finding still open, the Builder escalates with the
   options: change approach, split, more rounds, or drop.
 
@@ -263,10 +269,11 @@ One PR comment by the Builder, bound to the head it names and updated on every n
 ## Security review
 
 At high, when the change involves authentication, privacy or secret handling, the
-Reviewer runs a security-review subagent with no conversation context. Its task names the
-diff against the merge-base, the ticket, and these checks: authentication and authorization
-paths; credentials and Actions secrets, in code, logs, errors and CI output; trust in input
-from users, PRs and the network; exposure of private data. It rates each finding:
+Reviewer runs a security-review subagent. Start it under Subagents with no conversation
+context. Its task names the diff against the merge-base, the ticket, and these checks:
+authentication and authorization paths; credentials and Actions secrets, in code, logs,
+errors and CI output; trust in input from users, PRs and the network; exposure of private
+data. It rates each finding:
 
 - **HIGH**: exploitable as merged, or exposes a credential or private data;
 - **MEDIUM**: a weakness that one further mistake or an unlikely condition would expose;
@@ -306,17 +313,19 @@ and link each cause's open issue in the summary. Then check:
    active Gate and Merge IDs and the effective rule types belonging to each. Gate must
    supply deletion, non-fast-forward, pull request and required status checks, including
    `governance-gate` from GitHub Actions (integration ID 15368). Merge must supply the
-   update restriction. Product checks retain their configured publishers.
+   update restriction. The command verifies the required checks confirmed in the default
+   branch's governance record. Confirmed product checks are required by name, from any
+   publisher, and an owner-script rerun replaces a publisher binding added by hand.
 4. Report each missing, mismatched or unreadable fact to habit in Chinese. For a disabled
    ruleset, have habit re-enable it. If its name is taken by a tag or push ruleset, have
    habit rename that ruleset. If its reported scope excludes the default branch, have
    habit correct the scope or rename the ruleset before rerunning the owner script. For an
-   absent ruleset, missing rule or wrong gate publisher, have habit rerun the owner
-   script. For an unreadable response, check agent access and retry. When GitHub
-   specifically refuses private rules for lack of Pro, renew student verification or make
-   the repository public. On Initialize, state that the owner script follows merge and the
-   gate check applies from the next PR. Hand over the pinned merge command when the
-   remaining merge requirements pass.
+   absent ruleset, missing rule, missing confirmed check or wrong gate publisher, have
+   habit rerun the owner script. For an unreadable response, check agent access and retry.
+   When GitHub specifically refuses private rules for lack of Pro, renew student verification
+   or make the repository public. On Initialize, state that the owner script follows merge
+   and the gate check applies from the next PR. Hand over the pinned merge command when
+   the remaining merge requirements pass.
 
 ### On the PR
 
@@ -332,7 +341,7 @@ Security review applies: <yes|no>
 - Write `low`, `medium` or `high` and all 40 lowercase hex digits of the PR head.
   Write an Upgrade's summary under the policy on its base. A v4-to-v5 Upgrade uses the
   published v4 title with seven digits. The first PR governed by v5 uses the full head.
-- At high, judge whether the change involves authentication, privacy or secret handling.
+- At high, use `review.md`, Security review, to decide whether the security review applies.
   On the third line write `Security review applies: yes` if it does and
   `Security review applies: no` otherwise. With `yes`, include `security=clear` or
   `security=waived` on the second line. A waiver requires habit's exact-head comment for
@@ -346,7 +355,8 @@ Security review applies: <yes|no>
   `waived(<bot>)` for an enabled provider or `waived(none)` when none was left.
   At low, omit an unused optional slot. Reserve
   `unavailable(<bot>)` and `no-provider(none)` for the medium substitution below.
-- A line that leaves out a kind the tier requires, or a bot slot's provider, doesn't read.
+- Include every required kind and each listed bot slot's provider. For the audit of an
+  incomplete line, see [`parse_reviews`](../../.github/governance/merge_watch.py).
 - At medium a substituting Reviewer appears as `reviewer=clear`; `bot-1` must be
   `no-provider(none)` or `unavailable(<last enabled bot>)`, the last enabled bot in the
   base record's ordered list. An earlier unavailable provider does not qualify.
@@ -418,10 +428,12 @@ conclusion the summary's first line gives:
    “继续” in that chat for the same checks. If its state is unknown, give both instructions
    conditionally.
 3. **Misses**, only when any is open: the count of open miss records,
-   `gh issue list --label miss --state open`, and a start request for a Planner session in
-   which habit invokes `retro` on the oldest.
+   `gh issue list --label miss --state open --repo @@repository@@`. In every repository
+   except the two registered sandboxes, include a Planner start request in which habit invokes
+   `retro` on the oldest open miss. In `Habit130/governance-sandbox` and
+   `Habit130/governance-sandbox-private`, give the count and omit the default start request.
+   habit can still invoke `retro` on any sandbox record.
 4. **This session**: the Reviewer's can be closed; a Builder says whether it stays
    open, what it waits for and the words habit says on return.
 
-What is dispatched next comes from the Planner's dispatch plan, never from this handoff.
-Each start request takes the form `AGENTS.md`'s How to start gives.
+For later tickets, use [Planner → Tickets](planner.md#tickets), The dispatch plan.

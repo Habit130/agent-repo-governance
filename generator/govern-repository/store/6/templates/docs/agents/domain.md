@@ -30,5 +30,6 @@ reopening, instead of overriding it silently.
 
 - `GLOSSARY.md` and `docs/adr/` are the repository's own. The generator leaves them as they
   are.
-- They aren't sensitive paths, so a change to them alone carries no floor. The Planner records
-  decisions there through its docs PR, on the low path (`planner.md`, The docs PR).
+- The Planner records decisions there through its docs PR (`planner.md`, The docs PR).
+  Tier the Planner's docs PR under `AGENTS.md`, Risk tiers, using this repository's actual
+  sensitive paths.

@@ -12,7 +12,7 @@ unrelated labels.
 
 ## Category roles
 
-`bug` means something is broken; `enhancement` means a new feature or improvement.
+Use the table for category roles. For state and dispatch, see State roles and `ready-for-agent`.
 
 | Role in mattpocock/skills | Label here | Meaning |
 | --- | --- | --- |
@@ -36,18 +36,20 @@ by itself.
 
 - **Dispatch** is habit naming the ticket in a start instruction, which starts its Builder.
   No comment marks it, and the Builder's claim follows (`issue-tracker.md`, Tickets).
-- A spec loses the label once its tickets exist, unless habit approved it for whole-spec
-  delivery: then the spec keeps it and its tickets never take it (`planner.md`, Specs).
+- For spec labels and the dispatch unit, see `planner.md`, Specs.
 
 ## Other labels
 
 The generator creates these too. None of them is a triage role.
 
-| Label | Meaning | Operations |
-| --- | --- | --- |
-| `wayfinder:map` | Wayfinder map: the index of a planning effort | `issue-tracker.md`, Wayfinding operations |
-| `wayfinder:research` | Wayfinder ticket: surface facts a decision waits on | `issue-tracker.md`, Wayfinding operations |
-| `wayfinder:prototype` | Wayfinder ticket: a rough artifact to react to | `issue-tracker.md`, Wayfinding operations |
-| `wayfinder:grilling` | Wayfinder ticket: a decision reached in conversation with habit | `issue-tracker.md`, Wayfinding operations |
-| `wayfinder:task` | Wayfinder ticket: work that must happen before a decision | `issue-tracker.md`, Wayfinding operations |
-| `miss` | Miss record: something governance should have stopped got through | `issue-tracker.md`, Miss records |
+| Label | Creation description |
+| --- | --- |
+| `wayfinder:map` | Wayfinder map: the index of a planning effort |
+| `wayfinder:research` | Wayfinder ticket: surface facts a decision waits on |
+| `wayfinder:prototype` | Wayfinder ticket: a rough artifact to react to |
+| `wayfinder:grilling` | Wayfinder ticket: a decision reached in conversation with habit |
+| `wayfinder:task` | Wayfinder ticket: work that must happen before a decision |
+| `miss` | Miss record: something governance should have stopped got through |
+
+- For map and child labels, see `issue-tracker.md`, Wayfinding operations.
+- For classification and record format, see `issue-tracker.md`, Miss records.
