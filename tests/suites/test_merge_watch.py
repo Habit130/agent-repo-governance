@@ -870,37 +870,59 @@ class VersionSixHistoricalPolicy(RecordedMerge):
                 self.assertEqual(set(pair), {"at_merge", "after_merge"})
                 self.assertNotEqual(pair["at_merge"], pair["after_merge"])
 
-        # Event/incident reads are live by design. Every other GitHub read or raw merge
-        # selector belongs to the accessor, behind the named operation above.
-        live_reads = {
+        self.assert_reader_boundary(tree, accessor)
+
+    def assert_reader_boundary(self, tree, accessor):
+        # Pin where the raw reader is constructed, forwarded, or used for live
+        # event data. Every merge-time consumer gets facts through at_merge.
+        routes = {
             "read_rows": ["read(path)"],
             "_red_incident": ["read(path + suffix)"],
             "_open_records": ["read_rows(read, 'repos/%s/issues?labels=%s&state=open' % (repository, LABEL), problems)"],
             "_push_commits": ["read('%s?per_page=%d&page=%d' % (path, PER_PAGE, page))"],
+            "_on_push": ["_push_commits(event, read, repository, problems)",
+                         "MergeFacts(read, repository, problems, notes)"],
+            "_on_workflow_run": ["_red_incident(observed, repository, default_branch, read, problems)",
+                                 "MergeFacts(read, repository, problems, [])"],
+            "decide": ["_event_records(event_name, event, read, notes, problems)"],
+            "_event_records": ["_open_records(read, repository, problems)"] * 2 + [
+                "_on_push(event, read, repository, default_branch, notes, problems)",
+                "_on_workflow_run(event, read, repository, default_branch, open_records, problems)",
+            ],
+            "main": ["GitHub(push=event_name == 'push')",
+                     "_event_records(event_name, event, github, notes, problems)",
+                     "github.post", "github.unreadable", "github.unreadable"],
         }
-        private_readers = {node.name for node in accessor.body if isinstance(node, ast.FunctionDef)
-                           and node.name.startswith("_") and node.name != "__init__"}
-        forwards_reader_to = {"MergeFacts", "_event_records", "_push_commits", "_open_records",
-                              "_red_incident", "_on_push", "_on_workflow_run", "read_rows"}
+        private_readers = {"_read"} | {node.name for node in accessor.body if isinstance(node, ast.FunctionDef)
+                                      and node.name.startswith("_") and node.name != "__init__"}
         for node in tree.body:
             if node is accessor:
                 continue
-            direct_reads = []
+            name = getattr(node, "name", None)
+            uses = []
             for expr in ast.walk(node):
                 if isinstance(expr, ast.Attribute):
-                    self.assertNotIn(expr.attr, private_readers | {"_read"}, ast.unparse(expr))
-                for ref in ast.iter_child_nodes(expr):
-                    if not (isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load)
-                            and ref.id in {"read", "read_rows", "github"}):
-                        continue
-                    if isinstance(expr, ast.Call) and expr.func is ref:
-                        direct_reads.append(ast.unparse(expr))
-                    elif isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
-                        self.assertIn(expr.func.id, forwards_reader_to, ast.unparse(expr))
-                    else:
-                        self.assertTrue(ref.id == "github" and isinstance(expr, ast.Attribute)
-                                        and expr.attr in {"post", "unreadable"}, ast.unparse(expr))
-            self.assertEqual(direct_reads, live_reads.get(getattr(node, "name", None), []))
+                    self.assertNotIn(expr.attr, private_readers, ast.unparse(expr))
+                if isinstance(expr, ast.Name) and expr.id == "subprocess":
+                    self.assertEqual(name, "GitHub", "Only the GitHub transport runs gh")
+                if any(isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load)
+                       and ref.id in {"read", "read_rows", "github", "GitHub"}
+                       for ref in ast.iter_child_nodes(expr)):
+                    uses.append(ast.unparse(expr))
+            self.assertCountEqual(uses, routes.get(name, []), name)
+
+    def test_reader_boundary_rejects_unregistered_routes(self):
+        for consumer, extra in (
+            ("_event_records", "_on_push(event, read, repository, default_branch, notes, problems, read)"),
+            ("_judge_pull", "fetch = facts._object_at"),
+            ("_judge_pull", "GitHub()('/pulls/54/merge-description')"),
+        ):
+            with self.subTest(consumer=consumer, extra=extra):
+                tree = ast.parse(self.text(SCRIPT))
+                definitions = {node.name: node for node in tree.body if isinstance(node, (ast.ClassDef, ast.FunctionDef))}
+                definitions[consumer].body.extend(ast.parse(extra).body)
+                with self.assertRaises(AssertionError):
+                    self.assert_reader_boundary(tree, definitions["MergeFacts"])
 
     def test_unreadable_association_is_not_evidence_of_a_direct_push(self):
         associations = self.api[f"{self.prefix}/commits/{self.squash}/pulls"]
