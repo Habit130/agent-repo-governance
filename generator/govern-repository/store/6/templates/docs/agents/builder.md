@@ -194,8 +194,9 @@ This section applies to PR delivery.
   same GitHub checks, including the open-PR branch. Other sessions leave that chat and
   its worktree alone. Never ask habit to return just for cleanup.
 - The after-merge report is a final handoff (`handoff.md`). It reports this delivery only;
-  what is dispatched next is the Planner's dispatch plan. When actual difficulty differed
-  from the dispatch plan, say so in one sentence. When it matched, omit the difficulty.
+  what is dispatched next is the Planner's dispatch plan. When the dispatch plan gave a
+  difficulty and the actual difficulty differed, say so in one sentence. Otherwise omit
+  the difficulty.
 - Before any after-merge report, reread from GitHub, for the PR's exact head at merge: each
   required review's result, the Comment review and `Reviewer` status when a Reviewer ran,
   and the Merge summary. Report only what that reading shows. If required evidence is

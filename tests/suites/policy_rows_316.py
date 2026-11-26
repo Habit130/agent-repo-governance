@@ -110,11 +110,19 @@ ROWS = (
     # B208-210 B41-44
     PolicyRow(
         "20",
-        home=(Clause(AFTER_MERGE, "When actual difficulty differed from the dispatch plan, say so in one sentence. "
-                                  "When it matched, omit the difficulty."),),
+        home=(Clause(AFTER_MERGE, "When the dispatch plan gave a difficulty and the actual difficulty differed, "
+                                  "say so in one sentence."),),
         pointers=(Clause(RESULTS, "Apply the completion-difficulty rule in After merge."),),
         red=(Clause(RESULTS, r"actual difficulty differed|say nothing otherwise"),),
         search=r"actual difficulty differed|say nothing otherwise|planned difficulty",
+        branches=(
+            ("same difficulty", (Clause(AFTER_MERGE, "Otherwise omit the difficulty."),)),
+            ("direct request with no planned difficulty", (
+                Clause(DIRECT, "The direct request carries no difficulty"),
+                Clause(AFTER_MERGE, "When the dispatch plan gave a difficulty and the actual difficulty differed, "
+                                    "say so in one sentence. Otherwise omit the difficulty."),
+            )),
+        ),
     ),
     # H14-19 B157-159 P159-161 V95-100 V32-35
     PolicyRow(
