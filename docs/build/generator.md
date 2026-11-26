@@ -71,8 +71,9 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
   without them, and the skill text names none of them, so no skill file changes for a run.
 - **Exact comparison** checks content and mode of every fixed file, every fixed part between
   its markers, and the record up to its one top-level `confirmed:` key, after which only
-  indented values, blank lines and comments may follow. It leaves the confirmed values,
-  which are the repository's own, and skeletons, which become repository-owned content.
+  indented values, blank lines and comments may follow. It excludes confirmed values and
+  repository-owned skeletons. For changes to confirmed values, follow
+  [Governance files](../../AGENTS.md#governance-files).
 - **Rendering a fixed part** writes the whole template when the target is absent, replaces
   the one well-formed marker block when there is one, and refuses anything else. A skeleton
   is written only when its target is absent. `mode` reports damaged markers; restoring or
@@ -89,7 +90,8 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
   `preconditions` and `mode` take `--store` (default: the store beside the entry). The
   modules' docstrings define the facts: `govlib/preconditions.py`, `drift.py`,
   `inspection.py`, `workflows.py`.
-  - **The harness comes first** in all four, and a refusal prints the harness facts under
+  - **Harness eligibility** follows [How to start](../../AGENTS.md#how-to-start).
+    The harness check runs first in all four. A refusal prints the harness facts under
     `harness` with exit 2. `govlib/harness.py` passes only when `CLAUDECODE` (Claude Code)
     or `OPENCODE` (OpenCode) is set, not both, and no `CODEX_…` or `DSH_…` variable is, the
     homes `CODEX_HOME`, `DSH_HOME` and `DSH_AGENTS_HOME` aside. Each harness's shell was

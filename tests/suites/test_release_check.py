@@ -49,6 +49,102 @@ def draft_transitions():
 
 
 class RepositoryInstructions(unittest.TestCase):
+    def test_repeated_conditions_link_to_rendered_governance(self):
+        # Row numbers and sections refer to the policy inventory on #229.
+        cases = (
+            (23, "AGENTS.md", "## This repository",
+             ("each parallel writer, a subagent included, works in its own git worktree",),
+             ("(`builder.md`, Whole-spec delivery and step 3).",)),
+            (46, "AGENTS.md", "### Verification by change",
+             ("rendered governance files change only through the generator",),
+             ("[Governance files](#governance-files) for this repository's rendered governance.",)),
+            (57, "AGENTS.md", "### Verification by change",
+             ("All offline checks, CI, live checks, reviews and after-merge smoke remain required.",),
+             ("Record checks under `review.md`, Evidence comment.",)),
+            (58, "AGENTS.md", "### Verification by change",
+             ("the Builder repairs it before handing over",),
+             ("`review.md`, Minimum reviews, and `builder.md`, Escalations.",)),
+            (28, "docs/build/releasing.md", "## Cut a version",
+             ("try the next enabled bot only when the current one is unavailable",
+              "the first confirmed bot for one slot",),
+             ("choose the provider under [Review bots](../agents/review.md#review-bots)",
+              "[On the PR](../agents/review.md#on-the-pr).",)),
+            (59, "docs/build/generator.md", "# Generator command line",
+             ("It leaves the confirmed values, which are the repository's own",),
+             ("For changes to confirmed values, follow [Governance "
+              "files](../../AGENTS.md#governance-files).",)),
+            (60, "docs/build/generator.md", "# Generator command line",
+             ("**The harness comes first** in all four",),
+             ("**Harness eligibility** follows [How to start](../../AGENTS.md#how-to-start).",)),
+            (27, "docs/build/live-checks.md", "## Merge watch",
+             ("when Copilot alone completed a bot review on fixed content or an instruction file",),
+             ("[Copilot code review](../agents/review.md#copilot-code-review) for the companion "
+              "Reviewer",
+              "proof for the companion Reviewer.",)),
+            (29, "docs/build/live-checks.md", "## Merge watch",
+             ("At Initialize it reads the introduced record after a confirmed path 404",
+              "reads the policy version, agent account and ordered bots from the squash commit's "
+              "parent",),
+             ("[Review bots](../agents/review.md#review-bots) for enabled bot selection",
+              "[Merge watch module contract](../../.github/governance/merge_watch.py) covers "
+              "historical record resolution",)),
+            (49, "docs/build/live-checks.md", "## Owner permission verification",
+             ("The current gate still uses shared GitHub Actions App 15368",),
+             ("For effective rules and recovery, follow [Checks "
+              "first](../agents/review.md#checks-first).",)),
+            (50, "docs/build/live-checks.md", "## Merge watch",
+             ("Read back all 40 head digits on each v5 probe",),
+             ("Read back each v5 probe's summary title and check it against "
+              "[On the PR](../agents/review.md#on-the-pr).",
+              "suite check the transition under the [module "
+              "contract](../../.github/governance/merge_watch.py).",)),
+            (52, "docs/build/live-checks.md", "## Merge watch",
+             ("It compares comments, Reviewer statuses, Copilot submissions and check completions "
+              "with the PR's merge time",),
+             ("[Merge watch module contract](../../.github/governance/merge_watch.py) covers "
+              "historical record resolution, reviewer identity, the evidence cutoff",)),
+            (53, "docs/build/live-checks.md", "## The gate's live check",
+             ("Its gate reads the PR from GitHub when it runs",
+              "edit judges the current body",
+              "a run that started before a push judges and posts on the newest head",),
+             ("For the PR, policy and changed-path sources, see the [gate module "
+              "contract](../../.github/governance/gate.py).",)),
+            (68, "docs/build/live-checks.md", "## Merge watch",
+             ("it never blocks anything and is never a required check",
+              "it never blocks anything",
+              "is never a required check",),
+             ("its evidence and enforcement boundary, see the [Merge watch module "
+              "contract](../../.github/governance/merge_watch.py).",)),
+            (71, "docs/build/live-checks.md", "## The gate's live check",
+             ("30 minutes for the Codex review bot, 15 for Copilot",),
+             ("[Review bots](../agents/review.md#review-bots) for provider request steps, wait "
+              "durations and the ordinary PR retry policy.",)),
+            (43, "docs/build/testing.md", "## Parsers",
+             ("requires the historical record to be a regular file in the parent tree",
+              "GitHub must show a PR merged into the default branch whose squash commit is the named "
+              "one",),
+             ("follows step 3 in the [gate module contract](../../.github/governance/gate.py) for "
+              "confirmation.",)),
+            (54, "docs/build/testing.md", "## Parsers",
+             ("the record reads it as an empty list",
+              "doesn't parse unless double-quoted",),
+             ("For scalar and empty-list syntax, use the [gate record "
+              "grammar](../../.github/governance/gate.py).",)),
+        )
+        for row, path, heading, restatements, pointers in cases:
+            with self.subTest(row=row, path=path, section=heading):
+                text = support.read_text(os.path.join(support.REPO, path))
+                if path == "AGENTS.md":
+                    text = text.split("<!-- governance:end -->", 1)[1]
+                _, found, section = ("\n" + text).partition(f"\n{heading}\n")
+                self.assertTrue(found, f"Missing section: {heading}")
+                section = re.split(r"\n#{1,6} ", section, maxsplit=1)[0]
+                section = " ".join(section.split())
+                for restatement in restatements:
+                    self.assertFalse(restatement in section, f"Restatement remains: {restatement}")
+                for pointer in pointers:
+                    self.assertTrue(pointer in section, f"Missing pointer: {pointer}")
+
     def test_repository_section_fits_its_byte_budget(self):
         with open(os.path.join(support.REPO, "AGENTS.md"), "rb") as instructions:
             for line in instructions:

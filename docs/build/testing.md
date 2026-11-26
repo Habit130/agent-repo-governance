@@ -172,9 +172,8 @@ individual fixture.
     commit predates governance. It reads git objects only, with no GitHub API call. A commit
     pushed without a PR after the record arrived still confirms; that boundary is accepted.
     Versions 1 to 3 keep the rule without the record condition.
-  - **Version 5's pure revert** requires the historical record to be a regular file in the
-    parent tree. After the git checks, GitHub must show a PR merged into the default branch
-    whose squash commit is the named one. Merge watch uses the same match criteria.
+  - **Version 5's pure revert** follows step 3 in the [gate module contract](../../.github/governance/gate.py)
+    for confirmation. Merge watch uses the same match criteria.
     The gate validates the association's fields, including its merge timestamp, to tell
     an incomplete response from a definite negative. The `merged(sha)` callback passed to
     `verdict` returns `True`, `False` or `None` (unreadable, an exception included). The entry reads
@@ -188,11 +187,9 @@ individual fixture.
     posted summary, including when a different rule fails.
 - **Its template loads as it is**, since its one token sits in its first line, a comment:
   `PARSERS` in `tests/suites/parsers.py` loads it by path.
-- **The record**: `govlib/record.py`, whose docstring defines the format in full. A list key
-  with no items is null in YAML, and the record reads it as an empty list, which is how
-  rendering writes one. Text that starts like a number, or that YAML could read as null or
-  a boolean, doesn't parse unless double-quoted, and rendering double-quotes every
-  confirmed value.
+- **The record**: `govlib/record.py` defines the format in full. For scalar and empty-list
+  syntax, use the [gate record grammar](../../.github/governance/gate.py). Rendering writes
+  empty lists as bare keys and double-quotes every confirmed value.
 - **The PR body's `Risk:` and `Reverts:` lines**: `govlib/prbody.py`. Only lines that start
   with `Risk:` or `Reverts:` count, inside comments and code fences too, and a CRLF body
   reads as LF.
