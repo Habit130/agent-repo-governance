@@ -899,6 +899,8 @@ class GateAttemptsCommand(ProbeCase):
         self.assertIn("门禁探针的准备失败，未进行任何推送或合并尝试", result.stdout)
         self.assertEqual([call[:2] for call in calls], [["git", "rev-parse"], ["git", "status"], ["gh", "pr"]])
         self.assertFalse(os.path.exists(os.path.join(self.check, "gate_setup.json")))
+        (judged,) = self.results("gate-rulesets", probes.Context(PUBLIC, "public", "main", {}, COMMIT, 7, self.check))
+        self.assertIn("its setup-failed line says why it stopped before recording", judged.detail)
 
     def test_a_rerun_after_a_stopped_setup_sets_up_afresh_and_the_trigger_probe_names_the_stop(self):
         stopped = {"stopped": ["`gh pr create --repo` failed: EOF"]}

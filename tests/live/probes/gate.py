@@ -274,8 +274,8 @@ def _setup(context):
     if stopped:
         raise ProbeError("the gate probes' setup in habit's command stopped: %s (%s); habit runs gate-rulesets' command "
                          "again, which sets up afresh" % (stopped[-1], _attempts(len(stopped))))
-    raise ProbeError("no gate setup in %s: habit runs gate-rulesets' command first, which sets the check up"
-                     % context.directory)
+    raise ProbeError("no gate setup in %s: habit runs gate-rulesets' command first, which sets the check up; when it "
+                     "already ran, its setup-failed line says why it stopped before recording" % context.directory)
 
 
 # Step 1's command line: the setup above, then the attempts.
