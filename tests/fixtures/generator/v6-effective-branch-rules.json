@@ -1,0 +1,14 @@
+{
+  "miss": "https://github.com/Habit130/agent-repo-governance/issues/302",
+  "gate_recording": "agent-view-gate-ruleset.json",
+  "branch": "release/current",
+  "confirmed_checks": ["test"],
+  "cases": [
+    {"name": "confirmed check absent from Gate but present under another ruleset", "checks": [{"context": "governance-gate", "integration_id": 15368}], "other_checks": [{"context": "test"}], "exit": 1, "evidence": ["Gate #41: governance-gate@15368", "Gate #41 missing confirmed required check: test"]},
+    {"name": "names come from the remote record", "confirmed_checks": ["test", "build / linux", "lint"], "exit": 1, "evidence": ["Gate #41 missing confirmed required check: build / linux", "Gate #41 missing confirmed required check: lint"]},
+    {"name": "every confirmed check is present", "exit": 0, "evidence": ["Gate #41: governance-gate@15368", "Protection verified"]},
+    {"name": "gate only with no confirmed product checks", "confirmed_checks": [], "checks": [{"context": "governance-gate", "integration_id": 15368}], "exit": 0, "evidence": ["Gate #41: governance-gate@15368", "Protection verified"]},
+    {"name": "default branch record unreadable", "record_error": 404, "exit": 1, "evidence": ["contents/.github/governance/record.yml?ref=release%2Fcurrent", "unreadable", "retry", "Gate #41: governance-gate@15368", "Merge #42 active: update"]},
+    {"name": "malformed record and unrelated Merge drift", "record_text": "invalid governance record\n", "merge_rule_id": 51, "exit": 1, "evidence": ["invalid governance record", "repair it on the default branch", "Gate #41: governance-gate@15368", "Merge #42 missing update"]}
+  ]
+}

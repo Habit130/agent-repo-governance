@@ -306,17 +306,19 @@ and link each cause's open issue in the summary. Then check:
    active Gate and Merge IDs and the effective rule types belonging to each. Gate must
    supply deletion, non-fast-forward, pull request and required status checks, including
    `governance-gate` from GitHub Actions (integration ID 15368). Merge must supply the
-   update restriction. Product checks retain their configured publishers.
+   update restriction. The command verifies the required checks confirmed in the default
+   branch's governance record. Confirmed product checks are required by name, from any
+   publisher, and an owner-script rerun replaces a publisher binding added by hand.
 4. Report each missing, mismatched or unreadable fact to habit in Chinese. For a disabled
    ruleset, have habit re-enable it. If its name is taken by a tag or push ruleset, have
    habit rename that ruleset. If its reported scope excludes the default branch, have
    habit correct the scope or rename the ruleset before rerunning the owner script. For an
-   absent ruleset, missing rule or wrong gate publisher, have habit rerun the owner
-   script. For an unreadable response, check agent access and retry. When GitHub
-   specifically refuses private rules for lack of Pro, renew student verification or make
-   the repository public. On Initialize, state that the owner script follows merge and the
-   gate check applies from the next PR. Hand over the pinned merge command when the
-   remaining merge requirements pass.
+   absent ruleset, missing rule, missing confirmed check or wrong gate publisher, have
+   habit rerun the owner script. For an unreadable response, check agent access and retry.
+   When GitHub specifically refuses private rules for lack of Pro, renew student verification
+   or make the repository public. On Initialize, state that the owner script follows merge
+   and the gate check applies from the next PR. Hand over the pinned merge command when
+   the remaining merge requirements pass.
 
 ### On the PR
 

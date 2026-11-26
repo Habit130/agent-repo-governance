@@ -36,6 +36,8 @@ from test_materialized_version_five import (
     VersionFivePureRevert,
 )
 
+from test_materialized_version_six_checks import VersionSixProtectionAudit
+
 
 if __name__ == "__main__":
     unittest.main()
