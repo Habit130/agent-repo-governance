@@ -80,6 +80,7 @@
   "test_materialized_version.VersionFiveCopilotCompletion": 1.9,
   "test_materialized_version.VersionFiveInitializeChecks": 7.0,
   "test_materialized_version.VersionFivePureRevert": 0.6,
+  "test_materialized_version.VersionSixProtectionAudit": 8.1,
   "test_materialized_version.VersionFourBodyUpdateOrder": 0.4,
   "test_materialized_version.VersionFourCodexSecurityReview": 0.6,
   "test_materialized_version.VersionFourDifficulty": 0.8,
