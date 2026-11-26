@@ -199,9 +199,9 @@ skill copies under `skill-copies/`.
   PR target.
 - Branches are `<type>/<kebab-slug>`, the type a Conventional Commits type. PRs are never
   stacked.
-- Each writer owns an exclusive scope, and each parallel writer, a subagent included, works
-  in its own git worktree. A shared resource, such as a sandbox repository, is allocated
-  explicitly in the ticket before parallel writers use it.
+- Writers own exclusive scopes. Parallel writers use separate worktrees (`builder.md`,
+  Whole-spec delivery and step 3). Tickets explicitly allocate shared resources before
+  parallel use.
 - Machine-specific hosts, absolute paths and resource instances live in the ignored
   `.local/`, never committed (`.local/README.md`).
 - Harness memory is context, not authority: rules live in `AGENTS.md` and `docs/agents/`,
@@ -231,8 +231,8 @@ What a PR needs follows what it changes, not its tier (#44 §11). Commands and C
 | The generator's skill text, templates or scripts under `generator/`, or the scenarios | Model scenarios not run; record final-head model behavior as unverified |
 | The gate, Merge watch or owner-script templates under `generator/`, the target state, or the record format the gate reads | Plus a live check in the sandbox repository |
 
-This repository's own rendered governance files change only through the generator, and on
-their own need neither of the last two rows.
+Follow [Governance files](#governance-files) for this repository's rendered governance.
+Changes to those files alone need neither of the last two rows.
 
 No PR runs a model scenario or a replacement for one, releases included. habit stopped them
 for their quota cost and approved the standing arrangement below
@@ -249,8 +249,8 @@ and #138):
 A PR that changes what the table's second row names states in one line of its evidence and
 Merge summary that model scenarios were not run because of their quota cost and final-head
 model behavior is unverified; other PRs leave the line out. Prior candidate runs are
-historical evidence, not final-head passes. All offline checks, CI, live checks, reviews and
-after-merge smoke remain required.
+historical evidence, not final-head passes. Record checks under `review.md`, Evidence
+comment. Offline checks and after-merge smoke remain required.
 
 - The Builder runs the live checks, posts results naming the commit they ran on, and reruns
   them after a later push that touches the second or third row.
@@ -262,8 +262,8 @@ after-merge smoke remain required.
   scenarios line saying “未运行：额度成本；最终 head 的模型行为未经验证”; one line for the live
   check or why none was needed; new fixtures with their miss records; anything not run, with
   the reason.
-- A failing check never reaches habit: the Builder repairs it before handing over, and a
-  review that finds one raises an Important finding.
+- The Builder fixes failing checks before handoff. Reviews flag them as Important. See
+  `review.md`, Minimum reviews, and `builder.md`, Escalations.
 - Fixtures are never removed or renamed; the release check enforces it. A PR that changes an
   expected result says so in its change note when it cuts a version, otherwise in its body.
   A miss that generator output or the install caused adds a fixture in its fix's PR.

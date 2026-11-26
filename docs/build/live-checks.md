@@ -7,9 +7,8 @@ habit-only commands. This reference describes the current state.
 
 The rendered `.github/workflows/merge-watch.yml` and `.github/governance/merge_watch.py`
 come from version 5's fixed templates under `generator/govern-repository/store/5/templates/`
-(#41 §9). The script's docstring gives what it
-records, from which facts, and how an unreadable fact yields a false miss record; it never
-blocks anything and is never a required check.
+(#41 §9). For what the audit records, its evidence and enforcement boundary, see the
+[Merge watch module contract](../../.github/governance/merge_watch.py).
 
 **Version 3** judges reviews by responsibility, not provider, where versions 1 and 2
 read Bugbot and the Codex review bot by name. Version 3's docstring is the full statement;
@@ -66,24 +65,26 @@ them. Versions 1 and 2 still require the Reviewer status. Bots are not judged by
 watch, and a `NOTE` line records the transition. Version 4's recorded cases live under
 `tests/fixtures/merge-watch/v4/`; earlier cases and expectations remain unchanged.
 
-**Version 5** reads the policy version, agent account and ordered bots from the squash
-commit's parent. At Initialize it reads the introduced record after a confirmed path 404.
-It compares comments, Reviewer statuses, Copilot submissions and check completions with
-the PR's merge time. The `actions: read` permission lets it identify the linked Copilot
-workflow by its job, run, head and check suite. The public sandbox recording on #131
-supplies the positive producer control. Run `python3 tests/run.py suites merge-watch`
-for the offline Copilot replay. It checks the compulsory Reviewer on a v5 medium merge
-when Copilot alone completed a bot review on fixed content or an instruction file. It
-asserts the posted record for an omitted summary entry, a missing successful status by
-merge time, or both.
+**Version 5** follows [Review bots](../agents/review.md#review-bots) for enabled bot
+selection. The [Merge watch module contract](../../.github/governance/merge_watch.py)
+covers historical record resolution, reviewer identity, the evidence cutoff and proof for
+the companion Reviewer.
+
+The `actions: read` permission lets the audit identify the linked Copilot workflow by its
+job, run, head and check suite. The public sandbox recording on #131 supplies the positive
+producer control. Run `python3 tests/run.py suites merge-watch` for the offline Copilot
+replay. Apply [Copilot code review](../agents/review.md#copilot-code-review) for the companion
+Reviewer. The replay asserts the posted record for an omitted summary entry, a missing
+successful status, or both.
 
 For the hosted check of a v5 render, pass `--version 5` to
 `prepare` with the public sandbox's `merge-watch-v4-high`, `merge-watch-v4-medium` and
 `merge-watch-v4-miss` probes. These probes exercise Codex. The prepared version selects
-the summary format for the probe PRs. Read back all 40 head digits on each v5 probe and
-`Security review applies: no` on both high probes, which change only a sandbox text file.
-The recorded v4-to-v5 Upgrade and v5 follow-on in the offline `merge-watch` suite check
-the transition across the two historical policies.
+the summary format for the probe PRs. Read back each v5 probe's summary title and check
+it against [On the PR](../agents/review.md#on-the-pr). Require `Security review applies: no`
+on both high probes, which change only a sandbox text file. The recorded v4-to-v5 Upgrade
+and v5 follow-on in the offline `merge-watch` suite check the transition under the
+[module contract](../../.github/governance/merge_watch.py).
 On incomplete evidence the workflow prints `INCOMPLETE`, posts independently supported
 miss records and exits 1.
 
@@ -208,8 +209,8 @@ not evidence that an optional-field API failure or propagation delay was reprodu
 
 Reverting files does not restore GitHub settings: habit must rerun the corresponding
 version's owner command after a revert.
-The current gate still uses shared GitHub Actions App 15368, not a unique workflow issuer;
-same-SHA stale-success limitations remain.
+For effective rules and recovery, follow [Checks first](../agents/review.md#checks-first).
+The gate's shared GitHub Actions publisher leaves same-SHA stale-success limitations.
 
 ## Owner recovery checks
 
@@ -232,13 +233,11 @@ proves the retained owner repair, not reproduction of an optional-field API fail
 `gate-source` and `gate-rulesets`, run together, with the input `owner_report` that every check
 takes. Its docstring gives the setup, the probe PRs and what each assertion reads.
 
-- **Version 5's inputs and title.** Its gate reads the PR from GitHub when it runs
-  (`gh api repos/<repository>/pulls/<number>`), not from the event: a re-run after a body
-  edit judges the current body, and a run that started before a push judges and posts on
-  the newest head. When the PR can't be read, the check fails with one line advising a
-  rerun, on the event's head. The check's title names the declared tier (`Passed: declared
-  <tier>`, `Passed: a pure revert, declared <tier>`, `Failed: <n> rule(s), declared <tier>`
-  or `Failed: <n> rule(s), no valid Risk: line`).
+- **Version 5's inputs and title.** For the PR, policy and changed-path sources, see
+  the [gate module contract](../../.github/governance/gate.py). When the PR can't be read,
+  the check fails with one line advising a rerun, on the event's head. The check's title
+  names the declared tier (`Passed: declared <tier>`, `Passed: a pure revert, declared
+  <tier>`, `Failed: <n> rule(s), declared <tier>` or `Failed: <n> rule(s), no valid Risk: line`).
 - **Two steps after habit's merge and owner-script run:** habit runs `gate-rulesets`' one
   command, which sets the check up as the agent account and then makes the attempts; then
   `live.py probe --post` judges. No agent step comes between `prepare` and habit's command.
@@ -301,11 +300,12 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   The steps are the clean probe's: a first `live.py probe` opens the PRs and writes the
   targets; habit runs the printed steps (two Codex review bot requests, two Copilot
   requests in the browser at Lite, about 6 AI credits each by #63's measurement, and one
-  waiver comment); a second run waits for each bot within its wait (30 minutes for the
-  Codex review bot, 15 for Copilot), posts each summary and reports `READY`; habit runs
-  each printed pinned merge; a last run judges Merge watch's own push runs and posts with
-  `--post`. A bot that doesn't answer stops its probe as an environment blocker, never a
-  pass. A run whose log holds a `NOTE` line fails the clean and waived probes.
+  waiver comment). See [Review bots](../agents/review.md#review-bots) for provider request
+  steps, wait durations and the ordinary PR retry policy. For these probes, the second run
+  waits once for each printed request, posts each summary and reports `READY`. A bot that
+  doesn't answer stops its probe as an environment blocker. habit runs each printed pinned
+  merge. A last run judges Merge watch's own push runs and posts with `--post`. A run whose
+  log holds a `NOTE` line fails the clean and waived probes.
 - **Version 4's review probes (#183, #187)**, public sandbox only: from the committed,
   pushed delivery head, run
   `python3 tests/live/live.py prepare --pr <n> --sandbox public --probe merge-watch-v4-high --probe merge-watch-v4-medium --probe merge-watch-v4-miss --directory <dir>`.
