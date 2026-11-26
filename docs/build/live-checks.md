@@ -239,16 +239,25 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   rerun, on the event's head. The check's title names the declared tier (`Passed: declared
   <tier>`, `Passed: a pure revert, declared <tier>`, `Failed: <n> rule(s), declared <tier>`
   or `Failed: <n> rule(s), no valid Risk: line`).
-- **Three steps after habit's merge and owner-script run:** `live.py probe` without `--post`
-  sets the check up as the agent account; habit runs `gate-rulesets`' one command; then
-  `live.py probe --post` judges. The setup writes the targets of habit's command to
-  `gate_targets.txt` in the check directory.
+- **Two steps after habit's merge and owner-script run:** habit runs `gate-rulesets`' one
+  command, which sets the check up as the agent account and then makes the attempts; then
+  `live.py probe --post` judges. No agent step comes between `prepare` and habit's command.
+  The setup writes its observations to `gate_setup.json` and the attempts' targets to
+  `gate_targets.txt` in the check directory, where the judgment reads them.
 - **The entry is `tests/live/gate_attempts.py`.** `gate-rulesets` prints a thin shell
-  invocation of `/usr/bin/python3` with `--repository`, `--branch` and `--targets` pointing
-  at the existing targets file. The entry owns preparation, dispatch, stop classification
-  and the final ref read; subprocess argument vectors are separate from shell quoting.
-  Absolute entry paths and quoted values let the command run from an unrelated directory.
-  Importing, setting up or judging a probe never invokes the entry.
+  invocation of `/usr/bin/python3` with `--state` pointing at the check's `prepared.json`.
+  The entry first runs the setup as `live.py probe` without `--post` ran it, with the same
+  preconditions: this checkout at the prepared commit, clean, and the sandbox PR merged at
+  its head. A completed setup is read back, never repeated; a stopped one is recorded and
+  the next run sets up afresh. Then it owns preparation, dispatch, stop classification and
+  the final ref read; subprocess argument vectors are separate from shell quoting. Absolute
+  entry paths and quoted values let the command run from an unrelated directory. Importing
+  or judging a probe never invokes the entry, and judging never sets up: without a
+  completed setup, each gate probe fails and names habit's command.
+- **A setup failure stops before any attempt.** The command prints `setup-failed:` with the
+  reason and a Chinese line saying the setup failed and no push or merge was attempted, then
+  exits 4, distinct from the attempts' 0, 2 and 3. habit hands the output to the agent and
+  may run the command again, which sets up afresh under new branch names.
 - **The attempts stay with habit.** The agent's direct push to the default branch, its
   force-push and its merges are habit's command, run as the agent account with `gh`. Claude
   Code's auto mode refused them to the agent on 2026-10-30. The probes never push to the
@@ -263,13 +272,18 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   a success nor a rejection; later attempts still run. When every attempt is rejected,
   the command keeps its section headers and `exit=` lines, prints no stop and exits 0.
 - **Offline coverage** in `live-runner` executes the same generated invocation under bash
-  with test-local `git` and `gh`, verifies every call's executable and complete arguments,
-  and judges the captured protocol. It covers all six success positions, preparation
-  failures, missing targets (exit 2 before tool calls), healthy rejections and quoted paths.
-  It also appends the runner's unchanged `2>&1 | tee` capture decoration: the output's
-  stop marker, not the outer pipeline status, tells the judge which attempts were skipped.
-  These stand-in runs make no claim about live protection behavior; real attempts remain
-  habit-only.
+  with test-local `git` and `gh` and a `ghm` tripwire: a small GitHub of the test's own, with
+  the setup's local git run for real against a bare repository. It verifies every call's
+  executable and complete arguments, that every setup write comes before the first attempt,
+  and judges the captured protocol. After a successful setup it covers all six success
+  positions, preparation failures, healthy rejections and quoted paths, and judges the
+  written setup state and targets with all four gate probes. It also covers a setup failure
+  (exit 4, no attempt), a sandbox PR not merged (exit 4, no sandbox write), missing targets
+  after a read-back setup (exit 2 before any attempt), and reruns after a stopped and a
+  completed setup. It also appends the runner's unchanged `2>&1 | tee` capture decoration:
+  the output's stop marker, not the outer pipeline status, tells the judge which attempts
+  were skipped. These stand-in runs make no claim about live protection behavior; real
+  attempts remain habit-only.
 - **Version 3's review probes (#148)**, public sandbox only: prepare with
   `--probe merge-watch-v3-clean --probe merge-watch-v3-waived --probe merge-watch-v3-miss`.
   Any of them renders version 3 with the per-call opt-in and the confirmed `review_bots`
