@@ -3,17 +3,39 @@
 Start with [Build and verification](../agents/build.md) for the ordered checks and
 habit-only commands. This reference describes the current state.
 
-The suites command runs one child process per selected suite using the invoking interpreter.
-Concurrency defaults to the CPU count (one if unavailable); `--workers N` sets a positive
-limit, and `--workers 1` runs serially for debugging. `machine-wizard` starts first, then
-`owner`, then the remaining suites in registry order. Tests within each suite stay serial.
-Completed suites print their captured stdout and stderr as whole blocks, without interleaving.
-After all suites finish, summaries in scheduling order report each result, test count and
-duration, followed by the total count and wall time. Failure, error, load failure or worker
-crash makes the command fail without suppressing other suites. A worker without a completed
-result reports an unknown count and the total is marked incomplete; it is never a pass.
-Selection by names, `--job linux`, `--job macos` or `--all` retains the suite registry's jobs;
-the macOS compatibility command still runs every suite under `/usr/bin/python3`.
+The suites command runs each selected suite's scheduling units, each in its own child process
+using the invoking interpreter. A unit is one `unittest` test class of a suite's module, found
+by its attribute name there, imported classes included; `CHUNKS` in `tests/run.py` splits a
+long class into a given number of units, `<class>[k/n]`, dealing its sorted test methods
+round-robin. A child first lists each suite's classes, failing unless they cover the module's
+tests exactly once; a suite whose module doesn't list runs as one unit, so its load failure
+or crash is reported. Concurrency defaults to the CPU count (one if unavailable); `--workers N`
+sets a positive limit, and `--workers 1` runs serially for debugging. Units start longest
+first by their measured durations, unmeasured ones first, ties by id. Classes of one suite can
+run at the same time; tests within a unit stay serial. Completed units print their captured
+stdout and stderr as whole blocks, without interleaving. After all units finish, a summary line
+per unit in scheduling order reports its result, test count and duration, then one per suite
+in registry order sums its units, followed by the total count and wall time. Failure, error,
+load failure or worker crash makes the command fail without suppressing other units. A worker
+without a completed result reports an unknown count and the total is marked incomplete; it is
+never a pass. Selection by names, `--job linux`, `--job macos` or `--all` retains the suite
+registry's jobs; the macOS compatibility command still runs every suite under `/usr/bin/python3`.
+
+### Shards
+
+`--shard K/N` runs only shard K of N. The plan deals the selected units, longest first, each
+to the shard with the least measured time so far, ties by id and lower shard; every shard
+computes the same plan. `tests/unit_durations.json` holds each unit's measured seconds, taken
+from the macOS shards' per-unit summary lines. A sharded run fails before running anything
+when a selected unit has no measured duration or a measured unit no longer exists: add, rename
+or remove its entry, with the seconds its unit line reports, in the same change as the class.
+Without `--shard` an unmeasured unit still runs.
+
+`--report PATH` writes JSON: the shard, every unit planned across all shards, the units this
+shard ran with their durations, and whether it passed. `tests/run.py shard-check REPORT...`
+takes each shard's report as JSON text and fails unless every shard from 1 to N reported once,
+all planned the same units, each passed, and the units ran form an exact partition: a unit no
+shard ran, or one two shards ran, fails it. CI's `macos` job runs it on the shards' reports.
 
 ## Suites
 
@@ -68,9 +90,9 @@ Register a new suite there under the job appropriate to its dependencies.
 | `parser-fixtures` | One result per parser and applicable fixture for the machine parser and every stored governed version, including the draft. Checks the reported results against the store and fixture catalogs. | linux |
 | `gate` | Seam 1: every case in `tests/fixtures/gate/cases/` built into git and judged by version 1's gate, by version 4's and by version 5's, every case under `cases/v4/` by version 4's and by version 5's, and every case under `cases/v5/` by version 5's alone, each existing case given a lookup that confirms any commit and a `cases/v5/` case's `merged` key (`found`, `none` or `unreadable`) giving it, a case's `record_in` naming the commit that adds the record; the failure lines, the pattern rules, the rendered workflow, a sibling script importing the parser, and the entry fetching the head and posting through the stand-in; version 5's entry run against a recorded `gh` that answers the PR read, judging GitHub's body and head over the event's, posting on the event's head with one failure line when the read fails, calling the commit lookup only for a `Reverts:` line and reading its failure as unconfirmed, and titling the check with the declared tier; its workflow equal to version 4's byte for byte | linux |
 | `merge-watch` | Seam 2: every case in `tests/fixtures/merge-watch/cases/` judged on its recorded event and GitHub answers, its records exact and compared field by field with `issue-tracker.md`'s format; the gate's parser imported from beside the script; the rendered workflow's triggers, `workflows` glob and six permissions, and it not being a required check; the six permissions on v4 and v5 (v5 uses Actions read for Copilot attribution); the entry reading and posting through the stand-in; version 3's cases under `v3/`, its review cases and its no-record base cases among them, judged by version 3's script beside version 3's gate; v4 declarations replayed in v5 with synthetic pre-merge dates and producer links, plus the v5 workflow entry on the #131 recording and the #233 historical-evidence cases, including incomplete results; GitHub's own `Not Found` told apart from a failed read | linux |
-| `release-check` | Seam E covers [version transitions and copy equality](#unpublished-model-development), fixture preservation, and CI's PR/main-push event contract, jobs, commands and permissions | linux |
+| `release-check` | Seam E covers [version transitions and copy equality](#unpublished-model-development), fixture preservation, and CI's PR/main-push event contract, jobs, runners, commands and permissions, with the `macos` aggregate depending on every shard, running after any outcome and reading their results and reports | linux |
 | `skill-copies` | Refreshing, verifying and listing changes against a local stand-in upstream, a planted one-byte change failing; the copies check on the real tree and on planted mismatches; both Codex key detectors on every shape in `tests/fixtures/machine/codex-policy-shapes.json`, one test per shape and detector | linux |
-| `suite-runner` | Real suites CLI with isolated synthetic modules: concurrent rendezvous, serial scheduling and longest-first order, interpreter identity, complete output blocks, selection and worker limits, counts and summaries, failures/errors/load failures/crashes with a passing sibling | linux |
+| `suite-runner` | Real suites CLI with isolated synthetic modules: concurrent rendezvous across suites and across classes of one suite, serial scheduling and longest-measured-first order, chunked classes running each method once, interpreter identity, complete output blocks, selection, worker and shard limits, counts and per-unit and per-suite summaries, failures/errors/load failures/crashes with a passing sibling; shards partitioning the units by measured duration, a shard refusing an unmeasured or stale unit, and `shard-check` passing real reports and failing planted ones with an unassigned or doubly assigned unit, a missing or failed shard, or differing plans | linux |
 | `standins` | The stand-in GitHub and the Codex stand-in, a stray call included | macos |
 | `machine-install` | Seam C: every install fixture of #44's Testing Decisions, the machine rules, forward-only refusals and the ready command against a local origin | macos |
 | `machine-check` | Seam C: each machine-check item failing on its own with the home unchanged, Codex absent, personal skills' Codex problems only reported, and the Codex key detector's shapes | macos |
