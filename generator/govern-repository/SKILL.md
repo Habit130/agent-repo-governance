@@ -99,7 +99,8 @@ conflict habit confirms. At Repair, make none of them; Antigravity's files are o
   them, as `.codex/`. For a `rules.json`, list each of its entries for habit. Read a rule an
   entry selects only from the Git blob of a tracked regular file (`git ls-files -s` mode
   `100644` or `100755`), never through a link or a path outside the checkout, sort its
-  rules, and keep such a file when it lies outside `.agents/` and `.agent/`. Class the
+  rules, and keep such a file when it lies outside `.agents/` and `.agent/`. Read the
+  manifest itself the same way; an untracked or linked manifest is listed unread. Class the
   manifest `removed` once every entry is accounted for. When an entry selects a directory,
   uses a filter, inherits another manifest, or resolves to a link or to no tracked regular
   file, name it for habit with the rules it leaves unaccounted for, and keep the manifest
@@ -107,8 +108,9 @@ conflict habit confirms. At Repair, make none of them; Antigravity's files are o
   and keep them, since other harnesses may read them. The legacy `.agent/` directory follows
   the same groups: the same files, hooks, MCP servers, plugins, subagents, workflows and
   skills, handled the same way. At Upgrade to version 6 or later, each file of the first two
-  groups conflicts with the new fixed rule: sort its rules and propose its removal. At
-  Repair, list each for habit and change nothing.
+  groups conflicts with the new fixed rule: sort its rules and propose its removal, a
+  `rules.json` only once every entry is accounted for. At Repair, list each for habit and
+  change nothing.
 
   Each rule's text is quoted with its file, except a credential in a rule, which is never
   quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets). Sort other files the model never writes, such as

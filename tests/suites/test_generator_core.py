@@ -375,7 +375,7 @@ class SkillFiles(unittest.TestCase):
         for required in ("For a `rules.json`, list each of its entries for habit",
                          "Read a rule an entry selects only from the Git blob of a tracked regular file "
                          "(`git ls-files -s` mode `100644` or `100755`), never through a link or a path outside the checkout",
-                         "keep such a file when it lies outside `.agents/` and `.agent/`. "
+                         "keep such a file when it lies outside `.agents/` and `.agent/`",
                          "Class the manifest `removed` once every entry is accounted for.",
                          "When an entry selects a directory, uses a filter, inherits another manifest, or resolves to a link "
                          "or to no tracked regular file, name it for habit with the rules it leaves unaccounted for, "
@@ -383,6 +383,8 @@ class SkillFiles(unittest.TestCase):
             self.assertIn(required, text)
         self.assertNotIn("list for habit any entry that names no tracked file, before proposing the manifest's removal", text)
         self.assertNotIn("`rules/` and `rules.json` file", text)
+        self.assertIn("Read the manifest itself the same way; an untracked or linked manifest is listed unread", text)
+        self.assertIn("sort its rules and propose its removal, a `rules.json` only once every entry is accounted for", text)
 
     def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):
         text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
