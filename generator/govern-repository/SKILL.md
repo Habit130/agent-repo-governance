@@ -75,9 +75,9 @@ in English and no code, diffs or paths. It names its sender and target.
 
 At Initialize, or a rebuilt record, make every entry below; each ends up in the issue, and
 in the confirmation as its items allow. At Upgrade, sort only the rules in
-repository-owned content, to find what conflicts with the new fixed rules, and run no
-commands: confirmed values and repository-owned content stay as they are, apart from a
-conflict habit confirms. At Repair, make none of them; Antigravity's files are only listed.
+repository-owned content, to find what conflicts with the new fixed rules, and run no build
+or test commands (the read-only Git checks for a `rules.json` below still apply): confirmed
+values and repository-owned content stay as they are, apart from a conflict habit confirms. At Repair, make none of them; Antigravity's files are only listed.
 
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
@@ -99,19 +99,19 @@ conflict habit confirms. At Repair, make none of them; Antigravity's files are o
   them, as `.codex/`. For a `rules.json`, read the manifest and each file an entry selects
   only from a tracked regular file (`git ls-files -s` mode `100644` or `100755`), never
   through a link or a path outside the checkout, and only when its working file is
-  byte-identical to its raw blob in the pinned commit (`git cat-file blob HEAD:<path>`
-  compared with `cmp`, no filters); parse and quote that blob. A manifest that is untracked,
-  linked, differs or can't be compared is named by location only, unread, and kept until
-  habit decides. Otherwise list each of its entries for habit, sort the rules of each file
-  it selects, and keep such a file when it lies outside `.agents/` and `.agent/`. A selected
-  file that differs or can't be compared is unresolved: name its location without either
-  version's content, and keep the manifest until habit decides. Class the manifest `removed`
-  once every entry is accounted for. When an entry selects a directory, uses a filter,
-  inherits another manifest, or resolves to a link or to no tracked regular file, name it
-  for habit with the rules it leaves unaccounted for, and keep the manifest until habit
-  decides on that entry. List workspace skills under `.agents/skills/` for habit and keep
-  them, since other harnesses may read them. The legacy `.agent/` directory follows the same
-  groups: the same files, hooks, MCP servers, plugins, subagents, workflows and skills,
+  byte-identical to its raw blob in the checkout's `HEAD` commit (`git cat-file blob
+  HEAD:<path>` compared with `cmp`, no filters); parse and quote that blob. A manifest that
+  is untracked, linked, differs or can't be compared is named by location only, unread, and
+  kept until habit decides. Otherwise list each of its entries for habit, sort the rules of
+  each file it selects, and keep such a file when it lies outside `.agents/` and `.agent/`.
+  A selected file that differs or can't be compared is unresolved: name its location without
+  either version's content, and keep the manifest until habit decides. Class the manifest
+  `removed` once every entry is accounted for. When an entry selects a directory, uses a
+  filter, inherits another manifest, or resolves to a link or to no tracked regular file,
+  name it for habit with the rules it leaves unaccounted for, and keep the manifest until
+  habit decides on that entry. List workspace skills under `.agents/skills/` for habit and
+  keep them, since other harnesses may read them. The legacy `.agent/` directory follows the
+  same groups: the same files, hooks, MCP servers, plugins, subagents, workflows and skills,
   handled the same way. At Upgrade to version 6 or later, each file of the first two groups
   conflicts with the new fixed rule: sort its rules and propose its removal, a `rules.json`
   only once every entry is accounted for. At Repair, list each for habit and change nothing.

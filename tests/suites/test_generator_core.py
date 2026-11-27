@@ -374,7 +374,7 @@ class SkillFiles(unittest.TestCase):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
         for required in ("For a `rules.json`, read the manifest and each file an entry selects only from a tracked regular "
                          "file (`git ls-files -s` mode `100644` or `100755`), never through a link or a path outside the "
-                         "checkout, and only when its working file is byte-identical to its raw blob in the pinned commit "
+                         "checkout, and only when its working file is byte-identical to its raw blob in the checkout's `HEAD` commit "
                          "(`git cat-file blob HEAD:<path>` compared with `cmp`, no filters); parse and quote that blob.",
                          "A manifest that is untracked, linked, differs or can't be compared is named by location only, "
                          "unread, and kept until habit decides.",
@@ -390,6 +390,9 @@ class SkillFiles(unittest.TestCase):
             self.assertIn(required, text)
         # The gate comes before the manifest's entries are listed, so no unverified entry reaches habit or the issue.
         self.assertLess(text.index("For a `rules.json`, read the manifest"), text.index("Otherwise list each of its entries"))
+        # Upgrade still runs these read-only Git checks; only build and test commands are skipped there.
+        self.assertIn("and run no build or test commands (the read-only Git checks for a `rules.json` below still apply)", text)
+        self.assertNotIn("the pinned commit", text)
         for gone in ("list for habit any entry that names no tracked file, before proposing the manifest's removal",
                      "`rules/` and `rules.json` file", "only from the Git blob of a tracked regular file",
                      "For a `rules.json`, list each of its entries for habit", "Read the manifest itself the same way",
