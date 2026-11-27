@@ -30,36 +30,43 @@ def kinds(text):
     return [kind for kind, pattern in SHAPES if pattern.search(text)]
 
 
-# Match the earliest credential first so a multiline key owns its entire block.
-_LOCATED = re.compile("|".join("(?P<shape%d>%s)" % (i, pattern.pattern)
-                               for i, (_, pattern) in enumerate(SHAPES)))
-
-
 # The same line boundaries as str.splitlines(), including CR-only files.
 _LINE_BREAK = re.compile(r"\r\n|[\r\n\v\f\x1c-\x1e\x85\u2028\u2029]")
 
 
-def redact(value, path=None):
-    """value with every credential shape in its strings, keys included, replaced by its type."""
+def _redact_text(text, path):
+    # Match on the original input: replacing one shape first can hide the start of another.
+    spans = sorted((m.start(), m.end(), kind) for kind, pattern in SHAPES for m in pattern.finditer(text))
+    if not spans:
+        return text
     if path is not None:
-        location = json.dumps(redact(path))[1:-1]
-        line, end = 1, 0
+        # JSON escapes control characters. Escape the other Unicode line separators too
+        # so placing a filename inside a marker never inserts another source line.
+        location = json.dumps(redact(path), ensure_ascii=False)[1:-1]
+        location = location.translate({0x85: r"\u0085", 0x2028: r"\u2028", 0x2029: r"\u2029"})
+    output = []
+    covered_end = previous_start = 0
+    line = 1
+    for start, end, kind in spans:
+        if end <= covered_end:
+            continue  # Already fully hidden, e.g. inside a multiline private key.
+        output.append(text[covered_end:start])
+        if path is None:
+            output.append("<redacted %s>" % kind)
+        else:
+            line += sum(1 for _ in _LINE_BREAK.finditer(text, previous_start, start))
+            output.append("<redacted %s at %s:%d>" % (kind, location, line))
+            output.extend(_LINE_BREAK.findall(text, max(covered_end, start), end))
+        covered_end = end
+        previous_start = start
+    output.append(text[covered_end:])
+    return "".join(output)
 
-        def located(match):
-            nonlocal line, end
-            line += sum(1 for _ in _LINE_BREAK.finditer(value, end, match.start()))
-            kind = SHAPES[match.lastindex - 1][0]
-            marker = "<redacted %s at %s:%d>" % (kind, location, line)
-            newlines = _LINE_BREAK.findall(match[0])
-            line += len(newlines)
-            end = match.end()
-            return marker + "".join(newlines)
 
-        return _LOCATED.sub(located, value)
+def redact(value, path=None):
+    """Replace credential values in strings and mapping keys, optionally recording locations."""
     if isinstance(value, str):
-        for kind, pattern in SHAPES:
-            value = pattern.sub("<redacted %s>" % kind, value)
-        return value
+        return _redact_text(value, path)
     if isinstance(value, dict):
         return dict((redact(key), redact(item)) for key, item in value.items())
     if isinstance(value, (list, tuple)):

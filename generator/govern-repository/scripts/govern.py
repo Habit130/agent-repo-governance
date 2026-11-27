@@ -38,13 +38,12 @@ DEFAULT_STORE = os.environ.get("GOVERN_SCENARIO_STORE") or os.path.join(SKILL_DI
 DEFAULT_HOME = os.environ.get("GOVERN_SCENARIO_HOME") or os.path.expanduser("~")
 
 
-def emit(facts, code=0, ascii_only=False):
+def emit(facts, code=0):
     """Print the facts, every credential shape in them replaced by its type (#41 §10)."""
     safe = secrets.redact(facts)
-    # The reader can carry non-UTF-8 bytes as JSON surrogate escapes.
-    output = (json.dumps(safe, indent=2, sort_keys=True) if ascii_only else
-              json.dumps(safe, indent=2, sort_keys=True, ensure_ascii=False))
-    sys.stdout.write(output + "\n")
+    output = json.dumps(safe, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    # Encode valid Unicode literally and lone surrogates as JSON escapes.
+    sys.stdout.buffer.write(output.encode("utf-8", "backslashreplace"))
     return code
 
 
@@ -189,15 +188,15 @@ def cmd_read(args):
     except GovernError:
         blob = None
     if blob is None:
-        return emit({"path": args.path}, 1, ascii_only=True)
+        return emit({"path": args.path}, 1)
     text = blob.decode("utf-8", "surrogateescape")
-    return emit({"path": args.path, "text": secrets.redact(text, path=args.path)}, ascii_only=True)
+    return emit({"path": args.path, "text": secrets.redact(text, path=args.path)})
 
 
 def cmd_inspect(args):
     facts, code = inspection.run(args.worktree, args.home)
     facts["ok"] = code == 0
-    return emit(facts, code, ascii_only=True)
+    return emit(facts, code)
 
 
 def cmd_accept_invitation(args):

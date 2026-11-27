@@ -81,6 +81,7 @@ class CommittedReads(support.TempDirCase):
         git("config", "filter.example.smudge", "sed s/original-example/draft-example/g")
         changed = [case[k] for k in ("working_edit", "document", "staged")]
         files = dict.fromkeys(changed, original)
+        files[case["working_edit"]] += gs.PLANTED["github-token"]
         files.update({case["unchanged"]: unchanged, case["filtered"]: draft,
                       ".gitattributes": case["filtered"] + " filter=example\n"})
         support.write_tree(self.root, files)
@@ -90,7 +91,9 @@ class CommittedReads(support.TempDirCase):
         git("add", "-A")
         git("commit", "-qm", "inspection samples")
         self.assertEqual(git("status", "--porcelain"), "")
-        support.write_tree(self.root, dict.fromkeys(changed, draft))
+        drafts = dict.fromkeys(changed, draft)
+        drafts[case["working_edit"]] += gs.PLANTED["aws-key"]
+        support.write_tree(self.root, drafts)
         git("add", "--", case["staged"])
         code, out, err = self.entry("inspect", "--home", self.home)
         self.assertEqual((code, err), (0, ""))
@@ -101,6 +104,7 @@ class CommittedReads(support.TempDirCase):
             with self.subTest(path=path, command="read"):
                 code, out_read, err = self.entry("read", "--", path)
                 self.assertEqual((code, json.loads(out_read), err), (1, {"path": path}, ""))
+        self.assertNotIn(case["working_edit"], [item["path"] for item in facts["credentials"]])
         self.assertNotIn("draft-example", out)
         self.assertNotIn("original-example", out)
         self.assertEqual(facts["byte_identity"]["head"], git("rev-parse", "HEAD").strip())
@@ -109,6 +113,42 @@ class CommittedReads(support.TempDirCase):
                       facts["commands"]["documents"])
         code, out, err = self.entry("read", "--", case["unchanged"])
         self.assertEqual((code, json.loads(out)["text"], err), (0, unchanged, ""))
+
+    def test_reader_and_inspect_emit_literal_unicode_and_escape_undecodable_bytes(self):
+        path = "指南/TESTING.md"
+        command = "echo 验证 café 🧪"
+        text = "```sh\n" + command + "\n```\n"
+        support.write_tree(self.root, {path: text})
+        mixed = "AGENTS.md"
+        with open(os.path.join(self.root, mixed), "wb") as handle:
+            handle.write(text.encode("utf-8") + b"\xff")
+        support.git(self.root, "add", "--", path, mixed)
+        support.git(self.root, "commit", "-qm", "Unicode examples")
+        for name, args in (("read", ["--", mixed]), ("inspect", ["--home", self.home])):
+            with self.subTest(command=name):
+                code, out, err = self.entry(name, *args)
+                self.assertEqual((code, err), (0, ""))
+                self.assertIn(command, out)
+                facts = json.loads(out)
+                if name == "read":
+                    self.assertIn(r"\udcff", out)
+                    self.assertEqual(facts["text"], text + "\udcff")
+                else:
+                    self.assertIn(path, out)
+                    self.assertIn({"path": path, "line": 2, "command": command}, facts["commands"]["documents"])
+
+    def test_overlapping_credential_shapes_are_redacted_through_their_last_byte(self):
+        path = "指南/AGENTS.md"
+        # Two existing, nonfunctional fixture shapes share a boundary inside the first match.
+        example = "AI" + "za" + "X" * 20 + "-" + gs.PLANTED["aws-key"]
+        support.write_tree(self.root, {path: "before\n" + example + "\nafter"})
+        support.git(self.root, "add", "--", path)
+        support.git(self.root, "commit", "-qm", "overlapping examples")
+        code, out, err = self.entry("read", "--", path)
+        self.assertEqual((code, err), (0, ""))
+        expected = ("before\n<redacted Google API key at 指南/AGENTS.md:2>"
+                    "<redacted AWS access key ID at 指南/AGENTS.md:2>\nafter")
+        self.assertTrue(json.loads(out)["text"] == expected, "incomplete located redaction")
 
     def credential_lines(self):
         lines, expected = ["keep"], {2: "private key"}
@@ -552,7 +592,7 @@ class SkillFiles(unittest.TestCase):
                          "that fails is named by location only",
                          "At Upgrade, use the reader to sort conflicts in repository-owned content. Run only the reader for this judgment.",
                          "At Repair, use only the reader when listing files",
-                         "At Initialize, read, sort or quote repository text only from `<entry> read -- <path>`",
+                         "At Initialize, Upgrade and Repair, read, sort or quote repository text only from `<entry> read -- <path>`",
                          "Use this reader for every file whose text enters the issue, confirmation or a message to "
                          "habit, including commands and runbooks. Use the returned `text`."):
             self.assertIn(required, text)

@@ -11,7 +11,7 @@
   "test_gate.SiblingImport": 0.8,
   "test_gate.Workflow": 1.2,
   "test_generator_core.Checklist": 2.8,
-  "test_generator_core.CommittedReads": 7.2,
+  "test_generator_core.CommittedReads": 7.4,
   "test_generator_core.CredentialCoverage": 5.7,
   "test_generator_core.DriftTarget": 0.2,
   "test_generator_core.FixtureSetup": 17.4,

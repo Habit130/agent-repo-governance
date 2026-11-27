@@ -78,7 +78,8 @@ in English and no code, diffs or paths. It names its sender and target.
 
 ## 2. Judgment
 
-At Initialize, read, sort or quote repository text only from `<entry> read -- <path>`.
+At Initialize, Upgrade and Repair, read, sort or quote repository text only from
+`<entry> read -- <path>`.
 Use this reader for every file whose text enters the issue, confirmation or a message to
 habit, including commands and runbooks. Use the returned `text`. The reader applies the
 byte-identity check and identifies credentials by type and location. Exit 1 returns just
