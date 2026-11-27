@@ -45,7 +45,7 @@ HARNESS_DIRS = (".claude", ".opencode", ".dsh", ".agents", "_agents", ".agent", 
 PERSONAL_CONFIG = ".gemini/config.json"
 OPENCODE_FILES = ("opencode.json", "opencode.jsonc")
 HARNESS_FILES = (*OPENCODE_FILES, PERSONAL_CONFIG)
-SKILL = re.compile(r"^([._]agents?|\.claude|\.opencode|\.codex|\.dsh)/skills/([^/]+)/SKILL\.md$")
+SKILL = re.compile(r"^(?:%s)/skills/([^/]+)/SKILL\.md$" % "|".join(map(re.escape, HARNESS_DIRS)))
 WORKFLOW = re.compile(r"^\.github/workflows/[^/]+\.ya?ml$")
 GENERATOR = "govern-repository"
 
@@ -167,12 +167,13 @@ def harness_files(texts, paths, home):
         match = SKILL.match(path)
         if not match or path not in texts:
             continue
-        name = _skill_name(texts[path], match.group(2))
+        directory = match.group(1)
+        name = _skill_name(texts[path], directory)
         skills.append({
             "path": path,
-            "directory": match.group(2),
+            "directory": directory,
             "name": name,
-            "shares_machine_skill_name": None if machine_names is None else (name in machine_names or match.group(2) in machine_names),
+            "shares_machine_skill_name": None if machine_names is None else (name in machine_names or directory in machine_names),
         })
     return {"files": files, "skills": skills, "machine_skill_set": machine_names,
             "machine_skill_set_unreadable": reason or None}

@@ -589,7 +589,9 @@ class SkillFiles(unittest.TestCase):
         for rule in (
             "In every step, `_agents/` follows `.agents/` and `_agent/` follows `.agent/`.",
             "If the root `.gemini/config.json` passes, list it with the folder its `personal_customization_dir` "
-            "names and propose removing the config. Leave that folder's contents alone.",
+            "names and propose removing the config.",
+            "Exclude files under that folder from all sorting and removal below, including every `GEMINI.md` "
+            "and any file selected by a `rules.json`. Keep a manifest with such an unexamined entry until habit decides.",
             "At Upgrade to version 6 or later, the verified personal-folder config is also a conflict; "
             "remove it only at habit's confirmation.",
             "At Repair, list each for habit and change nothing.",

@@ -108,7 +108,9 @@ leave Antigravity's files as they are.
   Apply the byte-identity check to every Antigravity file, including each file a
   `rules.json` selects. Name a failing file by location only. If the root `.gemini/config.json`
   passes, list it with the folder its `personal_customization_dir` names and propose removing
-  the config. Leave that folder's contents alone. Sort the rules of every `GEMINI.md`, every `.agents/`
+  the config. Exclude files under that folder from all sorting and removal below, including
+  every `GEMINI.md` and any file selected by a `rules.json`. Keep a manifest with such an
+  unexamined entry until habit decides. Sort the rules of every `GEMINI.md`, every `.agents/`
   `AGENTS.md`, `GEMINI.md` and `rules/` file, and every `.agent/` rule that passes as a root
   `CLAUDE.md`'s, then class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP
   servers (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for
