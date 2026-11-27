@@ -34,21 +34,43 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
                        "owner": {"login": "Habit130"}}
         fixture = Path(support.FIXTURES, "generator", "v6-handoff-recheck.json")
         self.fixture = json.loads(fixture.read_text())
+        self.checks_oid = self.head
         self.checks = self.fixture["checks"]
         self.pull = dict(self.fixture["pull"], base={"ref": "main", "repo": dict(self.remote)},
                          head={"sha": self.head})
+        self.association = None
         self.tip = {"ref": "refs/heads/main", "object": {"type": "commit", "sha": self.base}}
 
-    def run_helper(self, mode="judge", receipt="", number=17, last_pull=None):
+    def run_helper(self, mode="judge", receipt="", number=17, last_pull=None, check_pages=None):
         prefix = "repos/" + self.repository
         reads = [
             (["api", prefix], self.remote),
             (["api", prefix + "/git/ref/heads/main"], self.tip),
             (["api", prefix + "/pulls/" + str(number)], self.pull),
         ]
-        reads.append((["pr", "checks", str(number), "--repo", self.repository, "--required",
-                       "--json", "name,state"], self.checks))
+        if self.association:
+            original, response = self.association
+            reads.append((["api", prefix + "/commits/" + original + "/pulls?per_page=100"], response))
         calls = [{"args": args, "stdout": json.dumps(value)} for args, value in reads]
+        query_args = ["api", "graphql", "--paginate", "--slurp", "-f", "owner=Habit130", "-f",
+                      "repo=tally", "-f", "head=" + self.head, "-F", "pr=" + str(number), "-f"]
+        if self.checks is None:
+            pages = None
+        else:
+            nodes = []
+            for row in self.checks:
+                if row["name"] == "governance-gate":
+                    nodes.append(dict(name=row["name"], isRequired=True, status="COMPLETED",
+                                      conclusion=row["state"], startedAt="2026-05-01T00:00:00Z",
+                                      checkSuite={"app": {"databaseId": 15368}, "workflowRun": None}))
+                else:
+                    nodes.append(dict(row, isRequired=True, createdAt="2026-05-01T00:00:00Z"))
+            contexts = {"pageInfo": {"hasNextPage": False}, "nodes": nodes}
+            commit = {"oid": self.checks_oid, "statusCheckRollup": {"contexts": contexts}}
+            pages = [{"data": {"repository": {"object": commit}}}]
+        if check_pages is not None:
+            pages = check_pages
+        calls.append({"accepts": query_args, "stdout": json.dumps(pages)})
         if last_pull is not None:
             calls[2]["once"] = True
             calls.append({"args": reads[2][0], "stdout": json.dumps(last_pull)})
@@ -59,7 +81,14 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
         result = subprocess.run([sys.executable, self.script, mode, str(number), self.head],
                                 cwd=self.dest, env=env, input=receipt, capture_output=True, text=True)
         for call in environment.read_log(scratch):
-            self.assertIn(call["args"], [args for args, _ in reads])
+            args = call["args"]
+            if args[:-1] == query_args:
+                self.assertTrue(args[-1].startswith("query=query("))
+                self.assertNotIn("mutation", args[-1])
+                self.assertIn("object(oid:$head)", args[-1])
+                self.assertIn("isRequired(pullRequestNumber:$pr)", args[-1])
+            else:
+                self.assertIn(args, [args for args, _ in reads])
         return result
 
     def test_stable_judgment_identifies_the_remote_pr_and_policy(self):
@@ -164,3 +193,55 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
         self.assertEqual(judged.returncode, 0, judged.stderr)
         self.assertEqual(support.git(self.dest, "rev-parse", "HEAD").strip(), self.base)
         self.assertEqual(support.git(self.dest, "status", "--porcelain"), "")
+
+    def test_other_commits_green_checks_cannot_fill_the_reviewed_heads_requirements(self):
+        receipt = self.run_helper().stdout
+        self.checks_oid = self.base
+        held = self.run_helper("confirm", receipt)
+        self.assertNotEqual(held.returncode, 0)
+        self.assertIn("commit", held.stderr)
+
+    def test_receipt_names_the_gate_revert_classification(self):
+        receipt = json.loads(self.run_helper().stdout)
+        self.assertIs(receipt["pure_revert"], False)
+
+    def test_pure_revert_receipt_requires_the_same_readable_association(self):
+        support.write_tree(self.dest, {"changed.txt": "change to revert"})
+        support.git(self.dest, "add", ".")
+        support.git(self.dest, "commit", "-qm", "Change")
+        original = support.git(self.dest, "rev-parse", "HEAD").strip()
+        self.tip["object"]["sha"] = original
+        support.git(self.dest, "checkout", "-qb", "undo")
+        support.git(self.dest, "revert", "--no-edit", original)
+        self.head = self.checks_oid = support.git(self.dest, "rev-parse", "HEAD").strip()
+        support.git(self.dest, "checkout", "-q", "main")
+        self.pull.update(head={"sha": self.head}, body="Risk: low — revert notes\nReverts: " + original)
+        self.association = original, [{"merged_at": "2026-05-01T00:00:00Z", "base": {"ref": "main"},
+                                      "merge_commit_sha": original}]
+        receipt = self.run_helper().stdout
+        self.assertIs(json.loads(receipt)["pure_revert"], True)
+        self.association = original, []
+        self.assertNotEqual(self.run_helper("confirm", receipt).returncode, 0)
+        self.association = original, None
+        self.assertNotEqual(self.run_helper().returncode, 0)
+
+    def test_paginated_same_head_rerun_replaces_its_failure_and_keeps_other_producers(self):
+        receipt = self.run_helper().stdout
+
+        def check(name, run_id, success, app):
+            return {"name": name, "isRequired": True, "status": "COMPLETED",
+                    "conclusion": "SUCCESS" if success else "FAILURE", "startedAt": "2026-05-01T00:00:%02dZ" % run_id,
+                    "checkSuite": {"app": {"databaseId": app}, "workflowRun": None}}
+
+        def page(nodes, more):
+            contexts = {"nodes": nodes, "pageInfo": {"hasNextPage": more}}
+            commit = {"oid": self.head, "statusCheckRollup": {"contexts": contexts}}
+            return {"data": {"repository": {"object": commit}}}
+
+        pages = [page([check("governance-gate", 1, True, 15368), check("test", 5, False, 7)], True),
+                 page([check("test", 6, True, 7)], False)]
+        self.assertEqual(self.run_helper("confirm", receipt, check_pages=pages).returncode, 0)
+        self.assertNotEqual(self.run_helper("confirm", receipt, check_pages=pages[:1]).returncode, 0)
+        pages[1]["data"]["repository"]["object"]["statusCheckRollup"]["contexts"]["nodes"].append(
+            check("test", 7, False, 8))
+        self.assertNotEqual(self.run_helper("confirm", receipt, check_pages=pages).returncode, 0)

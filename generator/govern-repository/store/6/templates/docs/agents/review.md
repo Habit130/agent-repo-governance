@@ -442,7 +442,8 @@ scratch=$(mktemp -d) &&
   python3 .github/governance/handoff_recheck.py judge "$pr" "$head" > "$scratch/receipt"
 ```
 
-Copy the successful receipt line into the PR Merge summary's evidence. Complete Checks
+Copy the successful receipt line into the PR Merge summary's evidence. Use its
+`pure_revert` result when applying The tier. Complete Checks
 first, including the review, required checks and rerun history on that head. Immediately
 before handing habit the pinned command, run from the same clean clone:
 

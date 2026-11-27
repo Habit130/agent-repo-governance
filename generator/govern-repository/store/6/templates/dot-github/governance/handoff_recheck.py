@@ -7,11 +7,12 @@ import json
 import re
 import subprocess
 import sys
+from datetime import datetime
 from urllib.parse import quote
 
 sys.dont_write_bytecode = True
 import gate
-from branch_rules import read
+from branch_rules import ACTIONS_APP, read
 
 REPOSITORY = "@@repository@@"
 SHA = re.compile(r"[0-9a-f]{40}")
@@ -44,18 +45,75 @@ def snapshot(number, reviewed):
     return facts, owner, author, body
 
 
+# Pin all pages to the reviewed object. GitHub supplies requiredness for this PR.
+CHECKS_QUERY = """query($owner:String!, $repo:String!, $head:GitObjectID!, $pr:Int!, $endCursor:String) {
+  repository(owner:$owner, name:$repo) {
+    object(oid:$head) { ... on Commit {
+      oid
+      statusCheckRollup { contexts(first:100, after:$endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          ... on CheckRun {
+            name status conclusion startedAt isRequired(pullRequestNumber:$pr)
+            checkSuite { app { databaseId } workflowRun { event workflow { id } } }
+          }
+          ... on StatusContext { name:context state createdAt isRequired(pullRequestNumber:$pr) }
+        }
+      } }
+    } }
+  }
+}"""
+
+
+def check_result(row):
+    """A check's producer, ordering within that producer, and green state."""
+    name = row["name"]
+    if not gate.is_text(name):
+        raise ValueError("required check name unreadable")
+    if "state" in row:
+        created = datetime.fromisoformat(row["createdAt"].replace("Z", "+00:00"))
+        return (name, "status"), created, row["state"] == "SUCCESS" and name != gate.CHECK
+    suite = row["checkSuite"]
+    app = (suite["app"] or {}).get("databaseId")
+    run = suite["workflowRun"] or {}
+    producer = (name, "run", app, (run.get("workflow") or {}).get("id"), run.get("event"))
+    passed = row["status"] == "COMPLETED" and row["conclusion"] == "SUCCESS"
+    if not row["startedAt"]:
+        raise ValueError("required check start time unavailable: " + name)
+    started = datetime.fromisoformat(row["startedAt"].replace("Z", "+00:00"))
+    return producer, started, passed and (name != gate.CHECK or app == ACTIONS_APP)
+
+
 def check_required(facts):
+    owner, repo = facts["repository"].split("/")
+    args = ["gh", "api", "graphql", "--paginate", "--slurp", "-f", "owner=" + owner, "-f", "repo=" + repo,
+            "-f", "head=" + facts["head"], "-F", "pr=" + str(facts["pr"]), "-f", "query=" + CHECKS_QUERY]
+    pages = json.loads(subprocess.check_output(args))
+    if not isinstance(pages, list) or not pages:
+        raise ValueError("required checks unreadable")
+    latest = {}
+    for index, page in enumerate(pages):
+        commit = page["data"]["repository"]["object"]
+        if page.get("errors") or commit["oid"] != facts["head"]:
+            raise ValueError("required checks do not identify the reviewed commit")
+        contexts = commit["statusCheckRollup"]["contexts"]
+        if contexts["pageInfo"]["hasNextPage"] is not (index + 1 < len(pages)) or not isinstance(contexts["nodes"], list):
+            raise ValueError("required check pages incomplete")
+        for row in contexts["nodes"]:
+            if type(row["isRequired"]) is not bool:
+                raise ValueError("required check attribution unreadable")
+            if row["isRequired"]:
+                producer, order, passed = check_result(row)
+                if producer not in latest or order > latest[producer][0]:
+                    latest[producer] = order, passed
+                elif order == latest[producer][0] and not passed:
+                    latest[producer] = order, False
     record = subprocess.check_output(["git", "show", facts["base"] + ":" + gate.RECORD])
     required = set(gate.parse_record(record)["confirmed"]["required_checks"]) | {gate.CHECK}
-    args = ["gh", "pr", "checks", str(facts["pr"]), "--repo", facts["repository"],
-            "--required", "--json", "name,state"]
-    rows = json.loads(subprocess.check_output(args))
-    if not isinstance(rows, list):
-        raise ValueError("required checks unreadable")
-    for row in rows:
-        if not isinstance(row, dict) or not gate.is_text(row.get("name")) or row.get("state") != "SUCCESS":
-            raise ValueError("required check unreadable or unsuccessful")
-        required.discard(row["name"])
+    for producer, (_, passed) in latest.items():
+        if not passed:
+            raise ValueError("required check unsuccessful: " + producer[0])
+        required.discard(producer[0])
     if required:
         raise ValueError("missing required check: " + ", ".join(sorted(required)))
 
@@ -69,9 +127,20 @@ def run(args):
     head = facts["head"]
     if not gate._is_commit(".", head) and not gate._fetch(".", head):
         raise ValueError("reviewed head objects unavailable")
-    verdict = gate.verdict(".", author, owner, body, tip, head,
-                           gate._merged_lookup(facts["repository"], facts["target"]))
-    receipt = json.dumps(dict(facts, outcome="pass" if verdict["passed"] else "fail"), sort_keys=True)
+    lookup = gate._merged_lookup(facts["repository"], facts["target"])
+    unreadable = False
+
+    def merged(sha):
+        nonlocal unreadable
+        found = lookup(sha)
+        if found is None:
+            unreadable = True
+        return found
+
+    verdict = gate.verdict(".", author, owner, body, tip, head, merged)
+    if unreadable:
+        raise ValueError("pure-revert association unreadable; retry")
+    receipt = json.dumps(dict(facts, pure_revert=verdict["pure_revert"], outcome="pass" if verdict["passed"] else "fail"), sort_keys=True)
     if not verdict["passed"]:
         print(receipt)
         raise ValueError("gate failed: " + " ".join(verdict["failures"]))
