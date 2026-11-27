@@ -38,10 +38,15 @@ in English and no code, diffs or paths. It names its sender and target.
    repository whose `private` item fails, give habit `rules_in_effect.habit_lines` verbatim,
    with its `command` beside them when there is one, and end: the run never waits on it.
 2. Run `<entry> mode`, saving its report. On mode `stop`, or when any subcommand exits 2, tell
-   habit the reason and end.
+   habit the reason and end. For each path under `drift.unverified_files`, use only its
+   location in the confirmation and subsequent messages. Keep it until habit decides.
+
 3. Follow the report's `outcome` by the words it begins with:
    - `no drift`: run `<entry> inspect` (read-only), send one Chinese message saying so and
      naming each Antigravity file it lists, left as it is, and end. No issue, no PR.
+   - `not proven: the unverified files`: run `<entry> inspect` (read-only). Name the
+     unverified files by location only and each Antigravity file it lists, left as it is.
+     Name any inactive ruleset under `unplaced` too. Wait for habit's decision.
    - `not proven: the inactive rulesets`: run `<entry> inspect` (read-only), name each one
      under `drift.github.unplaced`, say it enforces nothing and needs no action, name each
      Antigravity file it lists, left as it is, and end. Write nothing and hand no command.
@@ -82,7 +87,7 @@ the path. On failure, name only the location, skip sorting and keep the file unt
 At Initialize or a rebuilt record, make every entry below. At Upgrade, use the reader to
 sort conflicts in repository-owned content. Run only the reader for this judgment. Keep
 confirmed values and repository-owned content apart from conflicts habit confirms.
-At Repair, use the reader when listing files. Make none of the Initialize proposals and
+At Repair, use only the reader when listing files. Make none of the Initialize proposals and
 leave Antigravity's files as they are.
 
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
@@ -219,7 +224,9 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    Preserve existing same-name, same-purpose labels with different descriptions. Their
    manifest descriptions are creation defaults. Escalate a purpose conflict before writing.
 2. Allocate a worktree as **Temporary paths** above, on a new branch from the latest
-   `origin` default branch.
+   `origin` default branch. Before rendering, replacing, moving or removing a failing path,
+   wait for habit's explicit decision on that path, including when a fresh worktree holds
+   the committed version.
 3. Render: `<entry> render --dest <worktree> --repository <owner/name> --default-branch
    <branch> --confirmed <file>`, the file holding JSON with `sensitive_paths` and
    `required_checks`, plus `review_bots`, habit's list, when the version's manifest lists

@@ -61,7 +61,7 @@ def _first_difference(expected, found):
     return found.count(b"\n", 0, index) + 1
 
 
-def compare(store, worktree, repository, default_branch, version=None, allow_unreleased=False):
+def compare(store, worktree, repository, default_branch, version=None, allow_unreleased=False, verified=None):
     """Compare a worktree with a version; return the facts, differences sorted by path."""
     version = render.select_version(store, version, allow_unreleased)
     manifest = store.manifest(version)
@@ -75,6 +75,8 @@ def compare(store, worktree, repository, default_branch, version=None, allow_unr
         path, kind = entry["path"], entry["class"]
         if kind in NOT_COMPARED:
             not_compared[path] = NOT_COMPARED[kind]
+            continue
+        if verified is not None and path not in verified:
             continue
         checked.append(path)
         expected_text = render.template_text(store, version, entry, values)
@@ -95,8 +97,14 @@ def compare(store, worktree, repository, default_branch, version=None, allow_unr
         if not os.path.exists(found_path):
             differ("missing")
             continue
-        with open(found_path, "rb") as handle:
-            found = handle.read()
+        if verified is None:
+            with open(found_path, "rb") as handle:
+                found = handle.read()
+        else:
+            found = verified[path]
+            if found is None:
+                differ("missing")
+                continue
         if kind == "record":
             expected = render.record_fixed_part(expected_text, path).encode("utf-8")
             try:
@@ -132,7 +140,7 @@ def compare(store, worktree, repository, default_branch, version=None, allow_unr
         if actual_mode != entry["mode"]:
             differ("mode", "expected %s, found %s" % (entry["mode"], actual_mode))
 
-    for path in render.retired_generated(root, manifest):
+    for path in render.retired_generated(root, manifest, verified):
         differences.append({"path": path, "class": "retired", "kind": "retired",
                             "detail": "version %d no longer writes it, and rendering removes it" % version})
 

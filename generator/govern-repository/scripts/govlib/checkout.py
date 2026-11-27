@@ -105,15 +105,6 @@ class CommittedFiles:
             return None
 
 
-def read(root, path):
-    """A file's bytes in the checkout, or None when it is absent or not a regular file."""
-    full = os.path.join(root, *path.split("/"))
-    if os.path.islink(full) or not os.path.isfile(full):
-        return None
-    with open(full, "rb") as handle:
-        return handle.read()
-
-
 def record_facts(data):
     """The record's facts: whether it is there, whether it parses, and what it holds."""
     if data is None:

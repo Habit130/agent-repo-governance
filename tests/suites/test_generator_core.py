@@ -110,37 +110,46 @@ class CommittedReads(support.TempDirCase):
         code, out, err = self.entry("read", "--", case["unchanged"])
         self.assertEqual((code, json.loads(out)["text"], err), (0, unchanged, ""))
 
+    def credential_lines(self):
+        lines, expected = ["keep"], {2: "private key"}
+        lines.extend(gs.PLANTED[k] for k in ("private-key", "private-key-body", "private-key-end"))
+        for kind, name in gs.SHAPE_PLANTS.items():
+            if kind != "private key":
+                lines.append("example " + gs.PLANTED[name])
+                expected[len(lines)] = kind
+        return lines + ["end"], expected
 
     def test_reader_reports_credentials_at_their_original_lines(self):
         from credential_plants import assert_no_values
 
         path = "AGENTS.md"
-        text = "\n".join(["keep", gs.PLANTED["private-key"], gs.PLANTED["private-key-body"],
-                          gs.PLANTED["private-key-end"], "example " + gs.PLANTED["github-token"], "end"])
-        support.write_tree(self.root, {path: text})
+        lines, expected = self.credential_lines()
+        support.write_tree(self.root, {path: "\n".join(lines)})
         support.git(self.root, "commit", "-qam", "credential examples")
         code, out, err = self.entry("read", "--", path)
         assert_no_values(self, out, err)
         self.assertEqual((code, err), (0, ""))
-        out = json.loads(out)["text"]
-        self.assertEqual(out.splitlines()[0], "keep")
-        self.assertIn("<redacted private key at AGENTS.md:2>", out)
-        self.assertTrue(out.endswith("example <redacted GitHub token at AGENTS.md:5>\nend"))
+        safe = json.loads(out)["text"].splitlines()
+        self.assertEqual((safe[0], safe[-1]), ("keep", "end"))
+        for line, kind in expected.items():
+            self.assertIn("<redacted %s at AGENTS.md:%d>" % (kind, line), safe[line - 1])
 
     def test_mend_redacts_multiline_credentials_before_selecting_dropped_lines(self):
         from credential_plants import assert_no_values
 
         path = "AGENTS.md"
         text = support.read_text(os.path.join(self.root, path))
-        key = "\n".join(gs.PLANTED[k] for k in ("private-key", "private-key-body", "private-key-end"))
-        text = text.replace("# AGENTS.md", key).replace("<!-- governance:end -->", "")
+        lines, expected = self.credential_lines()
+        offset = text[:text.index("# AGENTS.md")].count("\n")
+        text = text.replace("# AGENTS.md", "\n".join(lines)).replace("<!-- governance:end -->", "")
         support.write_tree(self.root, {path: text})
         support.git(self.root, "commit", "-qam", "damaged markers")
         code, out, err = self.entry("mend-markers", "--store", self.store)
         assert_no_values(self, out, err)
         self.assertEqual((code, err), (0, ""))
-        self.assertTrue(any("private key at AGENTS.md:" in line
-                            for line in json.loads(out)["mended"][0]["dropped"]))
+        dropped = "\n".join(json.loads(out)["mended"][0]["dropped"])
+        for line, kind in expected.items():
+            self.assertIn("<redacted %s at AGENTS.md:%d>" % (kind, line + offset), dropped)
 
     def test_reader_returns_only_location_when_the_index_is_unreadable(self):
         path = "AGENTS.md"
@@ -171,6 +180,31 @@ class CommittedReads(support.TempDirCase):
             with self.subTest(command=command):
                 code, out, err = self.entry(command, "--store", self.store)
                 self.assertEqual((code, json.loads(out).get("error"), err), (2, record, ""))
+
+    def test_inspect_names_workflows_removed_from_the_index(self):
+        workflows = support.git(self.root, "ls-files", ".github/workflows").splitlines()
+        support.git(self.root, "rm", "-q", "--cached", "--", *workflows)
+        code, out, err = self.entry("inspect", "--home", self.home)
+        self.assertEqual((code, err), (0, ""))
+        facts = json.loads(out)
+        self.assertFalse(facts["ci"]["none"])
+        self.assertEqual(facts["ci"]["workflows"], [])
+        for path in workflows:
+            self.assertIs(facts["byte_identity"]["files"].get(path), False)
+
+    def test_mode_keeps_unverified_files_out_of_repair_diagnostics(self):
+        path = "AGENTS.md"
+        workflow = ".github/workflows/governance-gate.yml"
+        before = support.read_text(os.path.join(self.root, path))
+        support.write_tree(self.root, {path: before.replace("<!-- governance:end -->", ""),
+                                      workflow: "example workflow"})
+        code, out, err = self.entry("mode", "--store", self.store)
+        self.assertEqual((code, err), (0, ""))
+        drift = json.loads(out)["drift"]
+        self.assertEqual(drift.get("unverified_files"), sorted([path, workflow]))
+        self.assertEqual(drift["markers"], [])
+        self.assertEqual(drift["differences"], [])
+        self.assertFalse(drift["in_files"])
 
     def test_mend_keeps_uncommitted_rules_and_omits_their_text(self):
         path = "AGENTS.md"
@@ -463,7 +497,7 @@ class SkillFiles(unittest.TestCase):
         heads = [re.match(r"((?:`[^`]+`(?:,\s*|\s+or\s+)?)+)", " ".join(bullet.split()))
                  for bullet in re.split(r"\n   - ", step)[1:]]
         branches = [re.findall(r"`([^`]+)`", head.group(1)) if head else [] for head in heads]
-        ends = ["no drift", "inactive", "section 6", "carry on"]
+        ends = ["no drift", "unverified files", "inactive", "section 6", "carry on"]
         routes = {}
         for mode, present in (("Initialize", False), ("Initialize", True)):
             routes[drift.outcome(mode, {"present": present}, {})] = "carry on"
@@ -477,6 +511,8 @@ class SkillFiles(unittest.TestCase):
                         want = ("carry on" if files else "section 6" if in_github or unread
                                 else "inactive" if unplaced else "no drift")
                         routes[drift.outcome("Repair", {"present": True}, facts)] = want
+        routes[drift.outcome("Repair", {}, {"in_files": False, "in_github": False,
+                     "github": {}, "unverified_files": ["AGENTS.md"]})] = "unverified files"
         for said, want in routes.items():
             matched = [i for i, prefixes in enumerate(branches) if any(said.startswith(p) for p in prefixes)]
             self.assertEqual(len(matched), 1, (said, branches))
@@ -514,9 +550,11 @@ class SkillFiles(unittest.TestCase):
                          "each file of the first two groups that passes the check conflicts with the new fixed rule: sort "
                          "its rules and propose its removal, a `rules.json` only once every entry is accounted for; a file "
                          "that fails is named by location only",
-                         "At Upgrade, use the reader to sort conflicts in repository-owned content",
-                         "At Repair, use the reader when listing files",
-                         "At Initialize, read, sort or quote repository text only from `<entry> read -- <path>`"):
+                         "At Upgrade, use the reader to sort conflicts in repository-owned content. Run only the reader for this judgment.",
+                         "At Repair, use only the reader when listing files",
+                         "At Initialize, read, sort or quote repository text only from `<entry> read -- <path>`",
+                         "Use this reader for every file whose text enters the issue, confirmation or a message to "
+                         "habit, including commands and runbooks. Use the returned `text`."):
             self.assertIn(required, text)
         # One source decision comes before either discovery path reads rule text, so a rule the `rules/` scan finds
         # while an unread manifest also selects it can only be reported by location when its bytes differ.
@@ -527,6 +565,13 @@ class SkillFiles(unittest.TestCase):
                      "For a `rules.json`, list each of its entries for habit", "Read the manifest itself the same way",
                      "git diff --quiet HEAD", "the pinned commit", "For a `rules.json`, read the manifest"):
             self.assertNotIn(gone, text)
+
+    def test_writing_waits_for_a_decision_on_each_failing_target(self):
+        skill = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
+        writing = " ".join(skill.split("## 5. Writing")[1].split())
+        self.assertLess(writing.index("Before rendering, replacing, moving or removing a failing path"),
+                        writing.index("3. Render:"))
+        self.assertIn("wait for habit's explicit decision on that path", writing)
 
     def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):
         text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))

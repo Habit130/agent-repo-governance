@@ -179,16 +179,25 @@ def handover(mode, owner_changed, required_checks_changed, in_github, unreadable
     return {"owner_command": command, "lines": lines}
 
 
-def file_drift(source, root, repository, branch, version):
+def file_drift(source, files, repository, branch, version):
     """Exact comparison and the markers, at the record's version."""
-    compared = compare.compare(source, root, repository, branch, version=version)
     manifest = source.manifest(version)
+    paths = [entry["path"] for entry in manifest["templates"] if entry["class"] != "skeleton"]
+    verified = {}
+    unverified = []
+    for path in paths + manifest.get("retired", []):
+        data = files.read(path)
+        if data is None and files.present(path):
+            unverified.append(path)
+        else:
+            verified[path] = data  # None denotes an absent file, which is ordinary drift.
+    compared = compare.compare(source, files.root, repository, branch, version=version, verified=verified)
     values = render.check_values(version, repository, branch)
     marker_report = []
     for entry in manifest["templates"]:
-        if entry["class"] != "fixed part":
+        if entry["class"] != "fixed part" or entry["path"] not in verified:
             continue
-        data = checkout.read(root, entry["path"])
+        data = verified[entry["path"]]
         try:
             text = data.decode("utf-8") if data is not None else None
         except UnicodeDecodeError:
@@ -202,8 +211,9 @@ def file_drift(source, root, repository, branch, version):
             report["repair"] = "restore the markers" if report["generator_text_intact"] else "rebuild as at Initialize"
             marker_report.append(report)
     damaged = set(report["path"] for report in marker_report)
-    files = [d for d in compared["differences"] if not (d["kind"] == "markers" and d["path"] in damaged)]
-    return {"differences": files, "markers": marker_report, "checked": compared["checked"]}
+    differences = [d for d in compared["differences"] if not (d["kind"] == "markers" and d["path"] in damaged)]
+    return {"differences": differences, "markers": marker_report, "checked": compared["checked"],
+            "unverified_files": sorted(unverified)}
 
 
 def run(worktree, store_root, env=None):
@@ -221,7 +231,8 @@ def run(worktree, store_root, env=None):
     if not released:
         raise GovernError("the installed template store has no released version, so the run stops")
     installed = released[-1]
-    found = checkout.read_record(checkout.CommittedFiles(root))
+    files = checkout.CommittedFiles(root)
+    found = checkout.read_record(files)
     mode, reason, notes = decide(found, installed, released)
 
     facts = {
@@ -238,7 +249,7 @@ def run(worktree, store_root, env=None):
     drift = {"checked": False, "record_parses": bool(found.get("parses")) if found["present"] else None}
     if mode in ("Upgrade", "Repair"):
         version = found["version"]
-        drift.update(file_drift(source, root, repository, branch, version))
+        drift.update(file_drift(source, files, repository, branch, version))
         drift["version"] = version
         drift["github"] = github_drift(gh, repository, data, branch, found["confirmed"]["required_checks"])
         drift["checked"] = True
@@ -279,6 +290,8 @@ def outcome(mode, found, drift):
         chosen = "a ready owner-script command, then re-verification"
     elif unread:
         return "not proven: the unread items named beside a ready owner-script command, then one more read"
+    elif drift.get("unverified_files"):
+        return "not proven: the unverified files need a decision from habit"
     elif github_facts.get("unplaced"):
         return "not proven: the inactive rulesets named, with no command, nothing written"
     else:
