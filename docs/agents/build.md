@@ -9,9 +9,21 @@ change. Human-facing setup stays in `README.md`.
 
 ## Commands
 
-Run these in order, and every one must pass. Steps 2 to 6 are CI's steps in its order, CI
+Run these in order, and every command run must pass. Steps 2 to 6 are CI's steps in its order, CI
 splitting step 6 across three macOS shards; step 7 prints the exact comparison that the
 `materialized-version` suite asserts in CI. None needs a service or the network.
+
+For local Verification, including a Reviewer's rerun, compare the resolved executable and
+version of `python3` and `/usr/bin/python3` before step 4. The command prints them in that order.
+
+```sh
+python3 -c 'import os, sys; print(os.path.realpath(sys.executable), sys.version.split()[0])' &&
+  /usr/bin/python3 -c 'import os, sys; print(os.path.realpath(sys.executable), sys.version.split()[0])'
+```
+
+If both lines match, skip step 4 locally because step 6 runs every Linux suite under the same
+interpreter. Otherwise, run step 4 as listed. For PR delivery, the Builder records the skip,
+its reason and both output lines in the evidence comment in place of step 4's result.
 
 | Step | Command | Evidence / notes |
 | --- | --- | --- |
