@@ -224,9 +224,14 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    Preserve existing same-name, same-purpose labels with different descriptions. Their
    manifest descriptions are creation defaults. Escalate a purpose conflict before writing.
 2. Allocate a worktree as **Temporary paths** above, on a new branch from the latest
-   `origin` default branch. Before rendering, replacing, moving or removing a failing path,
-   wait for habit's explicit decision on that path, including when a fresh worktree holds
-   the committed version.
+   `origin` default branch. Before render or manual edits, check every existing or tracked
+   path the planned writes can change, including fixed, mixed and retired targets of the
+   destination version. Check them in both the inspected checkout and the fresh worktree:
+   use `<entry> read --worktree <checkout> -- <path>` for each path present or tracked there.
+   Include earlier failures even if the new read passes. A failure in either checkout holds
+   that operation until habit explicitly approves that change to that path. If habit chooses
+   to keep it, skip the change. If keeping it prevents exact comparison from passing, stop
+   before render. Carry existing text forward only from a passing read in the fresh worktree.
 3. Render: `<entry> render --dest <worktree> --repository <owner/name> --default-branch
    <branch> --confirmed <file>`, the file holding JSON with `sensitive_paths` and
    `required_checks`, plus `review_bots`, habit's list, when the version's manifest lists

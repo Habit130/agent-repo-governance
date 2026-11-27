@@ -569,9 +569,17 @@ class SkillFiles(unittest.TestCase):
     def test_writing_waits_for_a_decision_on_each_failing_target(self):
         skill = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
         writing = " ".join(skill.split("## 5. Writing")[1].split())
-        self.assertLess(writing.index("Before rendering, replacing, moving or removing a failing path"),
-                        writing.index("3. Render:"))
-        self.assertIn("wait for habit's explicit decision on that path", writing)
+        preflight = writing.split("3. Render:")[0]
+        for required in ("check every existing or tracked path the planned writes can change",
+                         "including fixed, mixed and retired targets of the destination version",
+                         "in both the inspected checkout and the fresh worktree",
+                         "use `<entry> read --worktree <checkout> -- <path>`",
+                         "A failure in either checkout holds that operation until habit explicitly approves "
+                         "that change to that path",
+                         "If habit chooses to keep it, skip the change. If keeping it prevents exact "
+                         "comparison from passing, stop before render",
+                         "Carry existing text forward only from a passing read in the fresh worktree"):
+            self.assertIn(required, preflight)
 
     def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):
         text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
