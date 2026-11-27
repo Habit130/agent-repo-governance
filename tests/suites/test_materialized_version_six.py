@@ -59,8 +59,8 @@ class VersionSixPolicy(VersionThreeRendered):
                       flat(policy))
         self.assertIn("has not been invoked, stop and request its full invocation in the current session", flat(policy))
         for harness, observations in (
-            ("Claude Code", ("verified as a fresh session's first message", "A terminal argument is unverified")),
-            ("Codex harness", ("verified as a fresh Local-mode app chat's first message", "CLI one paste is unverified")),
+            ("Claude Code", ("was verified as a fresh session's first message", "A terminal argument is unverified")),
+            ("Codex harness", ("was verified as a fresh Local-mode app chat's first message", "CLI one paste is unverified")),
             ("OpenCode", ("One paste is unverified",)),
             ("deepseekharness", ("One paste is unverified",)),
             ("Antigravity app", ("One paste is unverified",)),
