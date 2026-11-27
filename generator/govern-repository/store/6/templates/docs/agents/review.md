@@ -250,8 +250,8 @@ Classify findings and decide blocking under [Findings](../../AGENTS.md#findings)
 - Any new head, a sync included, gets its applicable bot-slot review under
   [Review bots](#review-bots) and, at high or when a Reviewer ran at medium,
   a Reviewer pass over the change. First the Builder reruns self-verification
-  (`builder.md`, step 6) on that head, deals with its findings, then updates the evidence
-  comment.
+  (`builder.md`, step 6) on the committed head before pushing, deals with its findings,
+  then updates the evidence comment on the pushed head.
 - After three rounds with an Important finding still open, the Builder escalates with the
   options: change approach, split, more rounds, or drop.
 
@@ -262,7 +262,7 @@ One PR comment by the Builder, bound to the head it names and updated on every n
 - the head's full SHA;
 - every session mark of every Builder session that pushed a commit to the PR, at every tier,
   kept on every head's update (Session marks);
-- each verification command and its result;
+- each distinct Verification command and its result from the Builder's full run on this head;
 - for a pure Upgrade, both facts in The tier's definition;
 - for a required check that passed after a repair on this head, the failed run, the
   repair and why it fixes that check's failure;
@@ -412,7 +412,8 @@ In Chinese (`AGENTS.md`, Talking to habit and to other agents):
   6. what the checks don't cover;
   7. how to revert.
 - **Item 4 also lists** each waiver, with its item, reason and link, and each fallback, in
-  plain words.
+  plain words. When the Reviewer cites CI, link each cited run with its head SHA and the
+  commands it covers. Report local rerun results alongside it.
 - **The high-risk report adds** why the change is high, the rehearsal result, and each step
   awaiting habit's go-ahead, with what it does and whether it can be undone.
   Its evidence item adds one plain sentence naming each Builder's and the Reviewer's vendor,

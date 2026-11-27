@@ -46,8 +46,13 @@ review on what GitHub holds.
    and bugs. A direct-request ticket is judged against habit's quoted words.
 6. **Judge each answer** the Builder gave to a finding, and reopen a rejection you disagree
    with, saying why.
-7. **Rerun the ticket's Verification** in your worktree. For the set of tickets this PR
-   covers, follow `builder.md`, Whole-spec delivery.
+7. **Verify the ticket on the pinned head.** For the set of tickets this PR covers, follow
+   `builder.md`, Whole-spec delivery. If the build document names which Verification commands
+   its required checks run, confirm that each covering check finished and passed on exactly
+   the pinned head (a rerun-only pass is ineligible under `review.md`, Rerun-only passes).
+   With that evidence, cite the covering run for each covered command and rerun every
+   uncovered command locally. If coverage is undocumented or any covering run fails these
+   conditions, rerun the entire Verification in your worktree.
 8. **Check the bot slot.** At high, wait for its review on the head or habit's waiver
    (`review.md`, Review bots and Waivers). At medium, verify that every enabled bot is
    unavailable or the list started empty before substituting; check the actual requests and

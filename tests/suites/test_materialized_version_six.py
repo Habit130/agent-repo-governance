@@ -24,6 +24,41 @@ ROWS = (*ROWS_312, *ROWS_316, *ROWS_317, *ROWS_318, *ROWS_319)
 class VersionSixPolicy(VersionThreeRendered):
     VERSION = 6
 
+    def test_builder_verifies_each_committed_head_before_push(self):
+        steps = self.text("docs/agents/builder.md").split("4. **Implement**", 1)[1]
+        working, verification = steps.split("6. **Self-verify**")
+        self.assertIn("run only focused tests for the change", flat(working))
+        self.assertNotIn("Verification", working)
+        self.assertIn("Before the first push and every later push (fixes and syncs included), run the full "
+                      "Verification once on the committed head.", flat(verification))
+        self.assertIn("If it fails, fix the failure, commit and repeat on the new head.", flat(verification))
+
+    def test_reviewer_can_cite_only_documented_clean_runs_on_the_pinned_head(self):
+        steps = self.text("docs/agents/reviewer.md").split("7. **", 1)[1].split("8. **", 1)[0]
+        for condition in (
+            "build document names which Verification commands its required checks run",
+            "each covering check finished and passed on exactly the pinned head",
+            "a rerun-only pass is ineligible",
+            "cite the covering run for each covered command and rerun every uncovered command locally",
+            "If coverage is undocumented or any covering run fails these conditions, rerun the entire Verification",
+        ):
+            with self.subTest(condition=condition):
+                self.assertIn(condition, flat(steps))
+
+    def test_build_skeleton_names_required_check_coverage(self):
+        ci = self.text("docs/agents/build.md").split("## CI", 1)[1].split("## Actions secrets", 1)[0]
+        self.assertIn("Name the Verification commands each required check runs on a PR head. "
+                      "If none are covered, say so.", flat(ci))
+
+    def test_review_evidence_distinguishes_builder_runs_from_reviewer_citations(self):
+        review = self.text("docs/agents/review.md")
+        evidence = review.split("## Evidence comment", 1)[1].split("## Security review", 1)[0]
+        self.assertIn("each distinct Verification command and its result from the Builder's full run on this head",
+                      flat(evidence))
+        summary = review.split("### In the terminal", 1)[1].split("### The merge handoff", 1)[0]
+        self.assertIn("When the Reviewer cites CI, link each cited run with its head SHA and the commands it covers",
+                      flat(summary))
+
     def test_consolidated_conditions(self):
         for row in ROWS:
             for role, clauses in (

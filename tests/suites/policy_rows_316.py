@@ -64,12 +64,14 @@ ROWS = (
         search=r"every ticket|each of its tickets|closes the spec",
         branches=(
             ("whole spec", (
-                Clause(WHOLE, "Verification is every ticket's."),
+                Clause(WHOLE, "Each subagent runs only its ticket's focused tests."),
+                Clause(WHOLE, "On each committed integration head, run the union of all tickets' "
+                              "Verification commands, each distinct command once."),
                 Clause(WHOLE, "One PR** closes the spec and its tickets, with a `Closes` line for each."),
                 Clause(WHOLE, "Their work merges onto one integration branch"),
                 Clause(WHOLE, "and only that branch is pushed."),
             )),
-            ("one ticket", (Clause(REVIEW_STEPS, "Rerun the ticket's Verification** in your worktree."),)),
+            ("one ticket", (Clause(REVIEW_STEPS, "Verify the ticket on the pinned head."),)),
         ),
     ),
     # I41-43 B60 B78-81 I75-76 L37-38
@@ -250,7 +252,8 @@ ROWS = (
         search=r"any new head|on every new head|new head.*review",
         branches=(
             ("new head", (Clause(review("Rounds"), "First the Builder reruns self-verification (`builder.md`, step 6) "
-                                                   "on that head, deals with its findings, then updates the evidence comment."),)),
+                                                   "on the committed head before pushing, deals with its findings, "
+                                                   "then updates the evidence comment on the pushed head."),)),
             ("bot review decision", (Clause(
                 review("Rounds"), "Any new head, a sync included, gets its applicable bot-slot review under "
                 "[Review bots](#review-bots)",
@@ -265,7 +268,7 @@ ROWS = (
         "42",
         home=(Clause(NO_HISTORY, "Self-verification and the security review each run in a subagent that receives none of "
                                 "the starting session's conversation."),),
-        pointers=(Clause(BUILD_STEPS, "then start a subagent under `review.md`, Subagents with no conversation context."),
+        pointers=(Clause(BUILD_STEPS, "After it passes, start a subagent under `review.md`, Subagents with no conversation context."),
                   Clause(SECURITY, "Start it under Subagents with no conversation context.")),
         red=(Clause(BUILD_STEPS, r"start a subagent with no conversation context"),
              Clause(SECURITY, r"subagent with no conversation context")),
