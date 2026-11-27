@@ -372,31 +372,34 @@ class SkillFiles(unittest.TestCase):
 
     def test_a_rules_manifest_carries_the_rules_of_the_files_it_names(self):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
-        for required in ("For a `rules.json`, read the manifest and each file an entry selects only from a tracked regular "
-                         "file (`git ls-files -s` mode `100644` or `100755`), never through a link or a path outside the "
-                         "checkout, and only when its working file is byte-identical to its raw blob in the checkout's `HEAD` commit "
-                         "(`git cat-file blob HEAD:<path>` compared with `cmp`, no filters); parse and quote that blob.",
-                         "A manifest that is untracked, linked, differs or can't be compared is named by location only, "
-                         "unread, and kept until habit decides.",
-                         "Otherwise list each of its entries for habit, sort the rules of each file it selects, and keep "
-                         "such a file when it lies outside `.agents/` and `.agent/`.",
-                         "A selected file that differs or can't be compared is unresolved: name its location without "
-                         "either version's content, and keep the manifest until habit decides.",
+        gate = ("Every Antigravity file this paragraph reads, however it is found (by name, by the scan of `rules/` or "
+                "through a `rules.json`), passes one check first: it is a tracked regular file (`git ls-files -s` mode "
+                "`100644` or `100755`), reached through no link and no path outside the checkout, whose working file is "
+                "byte-identical to its raw blob in the checkout's `HEAD` commit (`git cat-file blob HEAD:<path>` "
+                "compared with `cmp`, no filters). Parse and quote only that blob.")
+        fails = ("A file that fails the check, or can't be checked, is named by location only, without either version's "
+                 "content; it is not sorted, and it is kept until habit decides.")
+        for required in (gate, fails,
+                         "Sort the rules of every `GEMINI.md`, every `.agents/` `AGENTS.md`, `GEMINI.md` and `rules/` "
+                         "file, and every `.agent/` rule that passes as a root `CLAUDE.md`'s, then class the file `removed`.",
+                         "For a `rules.json` that passes, list each of its entries for habit, sort the rules of each file "
+                         "it selects that passes, and keep such a file when it lies outside `.agents/` and `.agent/`.",
+                         "A `rules.json` that fails, or a selected file that fails, keeps the manifest until habit decides.",
                          "Class the manifest `removed` once every entry is accounted for.",
                          "When an entry selects a directory, uses a filter, inherits another manifest, or resolves to a link "
                          "or to no tracked regular file, name it for habit with the rules it leaves unaccounted for, "
                          "and keep the manifest until habit decides on that entry",
-                         "sort its rules and propose its removal, a `rules.json` only once every entry is accounted for"):
+                         "sort its rules and propose its removal, a `rules.json` only once every entry is accounted for",
+                         "and run no commands other than the read-only check for Antigravity files below"):
             self.assertIn(required, text)
-        # The gate comes before the manifest's entries are listed, so no unverified entry reaches habit or the issue.
-        self.assertLess(text.index("For a `rules.json`, read the manifest"), text.index("Otherwise list each of its entries"))
-        # Upgrade still runs these read-only Git checks; only build and test commands are skipped there.
-        self.assertIn("and run no commands other than the read-only checks for a `rules.json` below", text)
-        self.assertNotIn("the pinned commit", text)
+        # One source decision comes before either discovery path reads rule text, so a rule the `rules/` scan finds
+        # while an unread manifest also selects it can only be reported by location when its bytes differ.
+        self.assertLess(text.index(gate), text.index("Sort the rules of every `GEMINI.md`"))
+        self.assertLess(text.index(fails), text.index("For a `rules.json` that passes"))
         for gone in ("list for habit any entry that names no tracked file, before proposing the manifest's removal",
                      "`rules/` and `rules.json` file", "only from the Git blob of a tracked regular file",
                      "For a `rules.json`, list each of its entries for habit", "Read the manifest itself the same way",
-                     "git diff --quiet HEAD"):
+                     "git diff --quiet HEAD", "the pinned commit", "For a `rules.json`, read the manifest"):
             self.assertNotIn(gone, text)
 
     def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):

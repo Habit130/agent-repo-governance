@@ -76,7 +76,7 @@ in English and no code, diffs or paths. It names its sender and target.
 At Initialize, or a rebuilt record, make every entry below; each ends up in the issue, and
 in the confirmation as its items allow. At Upgrade, sort only the rules in repository-owned
 content, to find what conflicts with the new fixed rules, and run no commands other than the
-read-only checks for a `rules.json` below: confirmed values and repository-owned content
+read-only check for Antigravity files below: confirmed values and repository-owned content
 stay as they are, apart from a conflict habit confirms. At Repair, make none of them;
 Antigravity's files are only listed.
 
@@ -93,20 +93,21 @@ Antigravity's files are only listed.
     definitions, issue templates of a replaced process, an older Bugbot rule file.
 
   Antigravity's own files follow the `removed` rule too, so its sessions read `AGENTS.md`'s
-  policy. Sort the rules of every `GEMINI.md`, every `.agents/` `AGENTS.md`, `GEMINI.md` and
-  `rules/` file, and every `.agent/` rule as a root `CLAUDE.md`'s, then class the file
-  `removed`. List `.agents/` hooks (`hooks.json`), MCP servers (`mcp_config.json`),
-  `plugins/`, custom subagents (`agents/`) and `workflows/` for habit and propose removing
-  them, as `.codex/`. For a `rules.json`, read the manifest and each file an entry selects
-  only from a tracked regular file (`git ls-files -s` mode `100644` or `100755`), never
-  through a link or a path outside the checkout, and only when its working file is
-  byte-identical to its raw blob in the checkout's `HEAD` commit (`git cat-file blob
-  HEAD:<path>` compared with `cmp`, no filters); parse and quote that blob. A manifest that
-  is untracked, linked, differs or can't be compared is named by location only, unread, and
-  kept until habit decides. Otherwise list each of its entries for habit, sort the rules of
-  each file it selects, and keep such a file when it lies outside `.agents/` and `.agent/`.
-  A selected file that differs or can't be compared is unresolved: name its location without
-  either version's content, and keep the manifest until habit decides. Class the manifest
+  policy. Every Antigravity file this paragraph reads, however it is found (by name, by the
+  scan of `rules/` or through a `rules.json`), passes one check first: it is a tracked
+  regular file (`git ls-files -s` mode `100644` or `100755`), reached through no link and no
+  path outside the checkout, whose working file is byte-identical to its raw blob in the
+  checkout's `HEAD` commit (`git cat-file blob HEAD:<path>` compared with `cmp`, no
+  filters). Parse and quote only that blob. A file that fails the check, or can't be
+  checked, is named by location only, without either version's content; it is not sorted,
+  and it is kept until habit decides. Sort the rules of every `GEMINI.md`, every `.agents/`
+  `AGENTS.md`, `GEMINI.md` and `rules/` file, and every `.agent/` rule that passes as a root
+  `CLAUDE.md`'s, then class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP
+  servers (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for
+  habit and propose removing them, as `.codex/`. For a `rules.json` that passes, list each
+  of its entries for habit, sort the rules of each file it selects that passes, and keep
+  such a file when it lies outside `.agents/` and `.agent/`. A `rules.json` that fails, or a
+  selected file that fails, keeps the manifest until habit decides. Class the manifest
   `removed` once every entry is accounted for. When an entry selects a directory, uses a
   filter, inherits another manifest, or resolves to a link or to no tracked regular file,
   name it for habit with the rules it leaves unaccounted for, and keep the manifest until
