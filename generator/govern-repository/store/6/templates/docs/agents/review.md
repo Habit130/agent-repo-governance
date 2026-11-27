@@ -64,8 +64,8 @@ default can differ from the session's choice.
 
 A later notice naming a different model adds a new mark before the session's next push or
 review. A Reviewer at high whose new mark names a different vendor repeats `reviewer.md`,
-Steps 1, with it before posting. The high comparison counts every mark of every Builder
-session that pushed.
+Steps 1, with the new mark before posting. The high comparison counts every mark of every
+Builder session that pushed.
 
 When neither names the model, or its vendor is unclear, the session asks habit in a
 mid-session request and records the answer with `(as habit said)`. The same source applies

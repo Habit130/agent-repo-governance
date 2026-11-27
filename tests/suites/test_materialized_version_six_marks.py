@@ -26,8 +26,8 @@ class VersionSixSessionMarkNotice(VersionThreeRendered):
         self.assertIn("every mark of every Builder session that pushed", body)
 
     def test_a_reviewer_at_high_switching_vendor_repeats_the_high_comparison(self):
-        self.assertIn("A Reviewer at high whose new mark names a different vendor repeats `reviewer.md`, Steps 1, with it "
-                      "before posting", self.marks())
+        self.assertIn("A Reviewer at high whose new mark names a different vendor repeats `reviewer.md`, Steps 1, with the "
+                      "new mark before posting", self.marks())
 
     def test_the_evidence_keeps_every_mark_of_every_builder_session(self):
         evidence = flat(Section("docs/agents/review.md", "## Evidence comment").read(self.text("docs/agents/review.md")))
@@ -51,3 +51,6 @@ class VersionSixSessionMarkNotice(VersionThreeRendered):
                     self.assertNotIn(word, text)
         minimum = flat(MINIMUM.read(self.text(MINIMUM.path)))
         self.assertNotIn("notice", minimum)
+
+    def test_the_comment_review_carries_each_of_the_reviewers_marks(self):
+        self.assertIn("then carries each of its own session marks at medium and high", flat(self.text("docs/agents/reviewer.md")))
