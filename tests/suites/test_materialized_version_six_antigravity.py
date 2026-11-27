@@ -45,7 +45,7 @@ class VersionSixAntigravityApp(VersionThreeRendered):
             "in Local Checkout mode under habit's Auto preset; never New Worktree mode or remote projects.",
             "Builders' worktrees and Reviewers' temporary ones go there.",
             "The start instruction is the first message; skills use `/name`.",
-            "One paste is unverified; use the two-step form.",
+            "One paste is unverified.",
             "No-history subagents are `research`, or `self` when one must run commands.",
             "No whole-spec delivery, teamwork, swarm or remote agents; the generator never runs there; "
             "the Antigravity CLI is unsupported.",
@@ -67,11 +67,11 @@ class VersionSixAntigravityApp(VersionThreeRendered):
         self.assertIn("`GEMINI.md`", body)
         self.assertIn("Antigravity `.agents/` or `.agent/` instruction or rule file", body)
 
-    def test_reviewer_handoff_hints_the_apps_vendor_by_its_model(self):
+    def test_reviewer_handoff_reads_exclusions_from_marks(self):
         body = flat(HANDOFF.read(self.text(HANDOFF.path)))
-        self.assertIn("and OpenCode and the Antigravity app whatever model they run. "
-                      "The model's vendor decides, not the harness.", body)
-        self.assertEqual(body.count("The model's vendor decides"), 1)
+        self.assertIn("List the excluded model vendors from every pushing Builder's marks in the evidence "
+                      "comment, including marks before a takeover.", body)
+        self.assertNotIn("the Antigravity app whatever model", body)
 
     def test_readme_names_the_app_and_the_unsupported_cli(self):
         text = support.read_text(REPOSITORY_README)

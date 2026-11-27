@@ -147,8 +147,8 @@ ROWS = (
     # V12-19 B129-131 H122 H139 E65-67
     PolicyRow(
         "22",
-        home=(Clause(REVIEW_START, "`Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, "
-                                  "the Reviewer status and, when clear, the Merge summary.`"),),
+        home=(Clause(REVIEW_START, "```text Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, "
+                                  "the Reviewer status and, when clear, the Merge summary. ```"),),
         pointers=(Clause(HANDOFF, 'For **"粘贴给 agent"**, use the start instruction in `reviewer.md`, Start.'),),
         red=(Clause(HANDOFF, r"Role: Reviewer\. PR|Post on the PR"),),
         search=r"Role: Reviewer\. PR|Post on the PR|start instruction the Builder|requests the Comment review",

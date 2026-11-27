@@ -78,9 +78,9 @@ and its condition, such as "after #n merges" or "beside #n". A spec approved for
 is one entry, with the spec's start instruction. habit dispatches from it without opening a
 Planner after each merge.
 
-- It is a list, never a table. Each terminal translation uses a start request for one
-  harness (`AGENTS.md`, How to start and Talking to habit and to other agents), with its
-  paste block standing alone so habit copies it whole.
+- It is a list, never a table. Use the same start block on GitHub and in the terminal (`AGENTS.md`,
+  How to start). A routine Builder may use a different eligible harness from the Planner
+  without amending the dispatch.
 - Read both tickets' acceptance criteria. If one ticket's acceptance test exercises an
   interface the other changes, record the ticket changing the interface as a native
   blocker of the ticket with the test. Schedule the ticket with the test to start from
@@ -130,10 +130,10 @@ spec or map and closes no issue.
 
 When triage traces a bug to a merged PR, open a miss record for that PR
 (`issue-tracker.md`), linking the bug's own triaged issue. Tell habit at once, with a start
-request for a Planner session using `AGENTS.md`'s harness translation of this canonical form:
+request for a Planner session using this start block:
 
 ```text
-habit invokes: retro #<miss>.
+retro #<miss>
 Role: Planner. Issue: #<miss>.
 ```
 

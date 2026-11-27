@@ -87,19 +87,17 @@ Planner → habit：范围已经明确，下一步需要 habit 在本 session �
 /to-spec
 ```
 
-A start request from a Codex app session, for a retro on miss #51. Its canonical GitHub
-form is `habit invokes: retro #51.` followed by `Role: Planner. Issue: #51.`, and its
-terminal form is:
+A start request for a retro on miss #51, with an argument on the skill line:
 
 ```text
 Builder → habit：miss #51 已记录，需要 Planner 处理。
 
-给 habit：在本仓库的 Codex app Local mode 新开 chat，由 Planner 处理该 miss；不占用共享资源。habit 将下面整块作为首条消息发送，同时调用 retro 并启动 Planner。
+给 habit：在本仓库新开 Planner session，不占用共享资源。在所选 harness 的输入框键入技能前缀，再粘贴下面整块作为首条消息。
 粘贴给 agent：
 ```
 
 ```text
-$retro #51
+retro #51
 Role: Planner. Issue: #51.
 ```
 
@@ -109,7 +107,7 @@ its own; the message's prose sits outside it:
 ```text
 Builder → habit：PR #57 已开，medium，self-verification 已 clear，所有启用的 review bot 均 unavailable，需要 Reviewer 替代。
 
-给 habit：在 Claude Code 中开一个新 session；难度：medium，ticket 固定结果，在单一区域选择实现并以测试确认（沿用派发计划），无额外 vendor 约束，不占用共享资源。
+给 habit：在本仓库新开独立 Reviewer session；难度：medium，ticket 固定结果，在单一区域选择实现并以测试确认（沿用派发计划），Reviewer 可以与 Builder 同 vendor，不占用共享资源。
 粘贴给 agent：
 ```
 
@@ -121,13 +119,13 @@ Role: Reviewer. PR: #57. Skills: code-review. Post on the PR: the Comment review
 本 session 保持打开，自行等待 PR merge，merge 后报告结果；无需回复。
 ```
 
-A Builder's final handoff to a Reviewer, at high. In this example the Builder who
-pushed used OpenAI. The vendor choice follows `review.md`, Minimum reviews.
+A Builder's final handoff to a Reviewer, at high. In this example the original Builder pushed using OpenAI and the
+takeover Builder pushed using Anthropic. The vendor choice follows `review.md`, Minimum reviews.
 
 ```text
-Builder → habit：PR #58 已开，high，self-verification 已 clear，推送 commit 的 Builder vendor 为 OpenAI，需要 Reviewer。
+Builder → habit：PR #58 已开，high，self-verification 已 clear，需要独立 Reviewer。
 
-给 habit：在 Claude Code 中开一个新 session，使用 Anthropic vendor，不同于已记录的 OpenAI Builder vendor；难度：high，需要判断新规则的效果，现有测试不能证明效果（沿用派发计划），不占用共享资源。
+给 habit：在本仓库新开独立 Reviewer session。原 Builder 和接手的 Builder 都推送过 commit，按两者的 session marks 排除 OpenAI 和 Anthropic；其余符合条件的 harness、model 和 vendor 由 habit 选择。难度：high，需要判断新规则的效果，现有测试不能证明效果（沿用派发计划），不占用共享资源。
 粘贴给 agent：
 ```
 
@@ -169,7 +167,7 @@ Planner → habit：spec #40 的三张 ticket 已批准，派发计划也已写�
 
 1. #41，现在即可派发。
 
-   给 habit：在本仓库的 Codex app Local mode 新开 chat；难度：low，ticket 已固定改动与方法，测试确认结果。不占用共享资源。
+   给 habit：在本仓库新开 Builder session，可与 Planner 使用不同的 harness；难度：low，ticket 已固定改动与方法，测试确认结果。不占用共享资源。
    粘贴给 agent：
 
    ```text
@@ -178,7 +176,7 @@ Planner → habit：spec #40 的三张 ticket 已批准，派发计划也已写�
 
 2. #42，按派发计划与 #41 并行。
 
-   给 habit：在本仓库的 Codex app Local mode 新开 chat；难度：medium，ticket 固定结果，在单一区域选择实现并以测试确认。不占用共享资源。
+   给 habit：在本仓库新开 Builder session；难度：medium，ticket 固定结果，在单一区域选择实现并以测试确认。不占用共享资源。
    粘贴给 agent：
 
    ```text
@@ -187,7 +185,7 @@ Planner → habit：spec #40 的三张 ticket 已批准，派发计划也已写�
 
 3. #43，在 #41 merge 之后。
 
-   给 habit：在本仓库的 Codex app Local mode 新开 chat；难度：low，ticket 已固定改动与方法，测试确认结果。不占用共享资源。
+   给 habit：在本仓库新开 Builder session；难度：low，ticket 已固定改动与方法，测试确认结果。不占用共享资源。
    粘贴给 agent：
 
    ```text

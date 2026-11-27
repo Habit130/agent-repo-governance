@@ -45,10 +45,10 @@ The role that takes one delivery, a ticket or a spec approved for whole-spec del
 The role that reviews a high PR, or a medium PR as the Reviewer substitute, from a context that didn't write it, and writes the Merge summary once the review is clear.
 
 **Start instruction**:
-The harness-neutral text naming a session's role, target and, in `Skills:`, only the skills the session calls. When habit must invoke a skill, the canonical form precedes it with a separate statement of that action.
+The line naming a session's role, target and, in `Skills:`, only the skills the session calls.
 
 **Start request**:
-A session's request that habit start another session, with one part for habit, stating the work's difficulty unless it starts a Planner, and one block to paste for the named harness. When a needed skill invocation is unverified in one paste, a third part holds habit's invocation after the session starts.
+A request for habit to open a session in an eligible harness of habit's choice. It gives the launch details and one copyable block containing the start instruction. When habit must invoke a skill, its bare name and arguments occupy the first line of that block, immediately above the start instruction.
 
 **User-invoked skill**:
 A skill whose invocation belongs to habit, distinct from the skills a session calls. Naming it in a start instruction is not its invocation.
