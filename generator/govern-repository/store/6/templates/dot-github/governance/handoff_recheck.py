@@ -54,7 +54,7 @@ CHECKS_QUERY = """query($owner:String!, $repo:String!, $head:GitObjectID!, $pr:I
         pageInfo { hasNextPage endCursor }
         nodes {
           ... on CheckRun {
-            name status conclusion startedAt isRequired(pullRequestNumber:$pr)
+            name status conclusion completedAt isRequired(pullRequestNumber:$pr)
             checkSuite { app { databaseId } workflowRun { event workflow { id } } }
           }
           ... on StatusContext { name:context state createdAt isRequired(pullRequestNumber:$pr) }
@@ -77,11 +77,11 @@ def check_result(row):
     app = (suite["app"] or {}).get("databaseId")
     run = suite["workflowRun"] or {}
     producer = (name, "run", app, (run.get("workflow") or {}).get("id"), run.get("event"))
-    passed = row["status"] == "COMPLETED" and row["conclusion"] == "SUCCESS"
-    if not row["startedAt"]:
-        raise ValueError("required check start time unavailable: " + name)
-    started = datetime.fromisoformat(row["startedAt"].replace("Z", "+00:00"))
-    return producer, started, passed and (name != gate.CHECK or app == ACTIONS_APP)
+    if row["status"] != "COMPLETED" or not row["completedAt"]:
+        raise ValueError("required check has not finished: " + name)
+    completed = datetime.fromisoformat(row["completedAt"].replace("Z", "+00:00"))
+    passed = row["conclusion"] == "SUCCESS" and (name != gate.CHECK or app == ACTIONS_APP)
+    return producer, completed, passed
 
 
 def check_required(facts):

@@ -61,7 +61,7 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
             for row in self.checks:
                 if row["name"] == "governance-gate":
                     nodes.append(dict(name=row["name"], isRequired=True, status="COMPLETED",
-                                      conclusion=row["state"], startedAt="2026-05-01T00:00:00Z",
+                                      conclusion=row["state"], completedAt="2026-05-01T00:01:00Z", startedAt="2026-05-01T00:00:00Z",
                                       checkSuite={"app": {"databaseId": 15368}, "workflowRun": None}))
                 else:
                     nodes.append(dict(row, isRequired=True, createdAt="2026-05-01T00:00:00Z"))
@@ -231,6 +231,7 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
         def check(name, run_id, success, app):
             return {"name": name, "isRequired": True, "status": "COMPLETED",
                     "conclusion": "SUCCESS" if success else "FAILURE", "startedAt": "2026-05-01T00:00:%02dZ" % run_id,
+                    "completedAt": "2026-05-01T00:01:%02dZ" % run_id,
                     "checkSuite": {"app": {"databaseId": app}, "workflowRun": None}}
 
         def page(nodes, more):
@@ -244,4 +245,11 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
         self.assertNotEqual(self.run_helper("confirm", receipt, check_pages=pages[:1]).returncode, 0)
         pages[1]["data"]["repository"]["object"]["statusCheckRollup"]["contexts"]["nodes"].append(
             check("test", 7, False, 8))
+        self.assertNotEqual(self.run_helper("confirm", receipt, check_pages=pages).returncode, 0)
+
+        earlier_start = check("test", 1, False, 7)
+        earlier_start["completedAt"] = "2026-05-01T00:02:00Z"
+        pages = [page([check("governance-gate", 1, True, 15368), earlier_start, check("test", 6, True, 7)], False)]
+        self.assertNotEqual(self.run_helper("confirm", receipt, check_pages=pages).returncode, 0)
+        earlier_start.update(status="IN_PROGRESS", conclusion=None, completedAt=None)
         self.assertNotEqual(self.run_helper("confirm", receipt, check_pages=pages).returncode, 0)
