@@ -63,9 +63,9 @@ count as a notice, and a harness configuration file is never read for the model:
 default can differ from the session's choice.
 
 A later notice naming a different model adds a new mark before the session's next push or
-review. A Reviewer at high whose new mark names a different vendor repeats the high vendor
-comparison before posting. The high comparison counts every mark of every Builder session
-that pushed.
+review. A Reviewer at high whose new mark names a different vendor repeats `reviewer.md`,
+Steps 1, with it before posting. The high comparison counts every mark of every Builder
+session that pushed.
 
 When neither names the model, or its vendor is unclear, the session asks habit in a
 mid-session request and records the answer with `(as habit said)`. The same source applies
@@ -260,7 +260,7 @@ Classify findings and decide blocking under [Findings](../../AGENTS.md#findings)
 One PR comment by the Builder, bound to the head it names and updated on every new head:
 
 - the head's full SHA;
-- the session mark of every Builder session that pushed a commit to the PR, at every tier,
+- every session mark of every Builder session that pushed a commit to the PR, at every tier,
   kept on every head's update (Session marks);
 - each verification command and its result;
 - for a pure Upgrade, both facts in The tier's definition;

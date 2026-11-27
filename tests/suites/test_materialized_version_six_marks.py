@@ -26,8 +26,12 @@ class VersionSixSessionMarkNotice(VersionThreeRendered):
         self.assertIn("every mark of every Builder session that pushed", body)
 
     def test_a_reviewer_at_high_switching_vendor_repeats_the_high_comparison(self):
-        self.assertIn("A Reviewer at high whose new mark names a different vendor repeats the high vendor comparison before posting",
-                      self.marks())
+        self.assertIn("A Reviewer at high whose new mark names a different vendor repeats `reviewer.md`, Steps 1, with it "
+                      "before posting", self.marks())
+
+    def test_the_evidence_keeps_every_mark_of_every_builder_session(self):
+        evidence = flat(Section("docs/agents/review.md", "## Evidence comment").read(self.text("docs/agents/review.md")))
+        self.assertIn("every session mark of every Builder session that pushed a commit to the PR", evidence)
 
     def test_pasted_text_instructions_and_configuration_never_count_as_a_notice(self):
         body = self.marks()
