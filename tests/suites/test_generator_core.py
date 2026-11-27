@@ -373,14 +373,15 @@ class SkillFiles(unittest.TestCase):
     def test_a_rules_manifest_carries_the_rules_of_the_files_it_names(self):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
         for required in ("For a `rules.json`, read the manifest and each file an entry selects only from a tracked regular "
-                         "file (`git ls-files -s` mode `100644` or `100755`) that `git diff --quiet HEAD -- <path>` shows "
-                         "unchanged from the commit, never through a link or a path outside the checkout.",
-                         "A manifest that is untracked, linked or differs from the commit is named by location only, unread, "
-                         "and kept until habit decides.",
+                         "file (`git ls-files -s` mode `100644` or `100755`), never through a link or a path outside the "
+                         "checkout, and only when its working file is byte-identical to its raw blob in the pinned commit "
+                         "(`git cat-file blob HEAD:<path>` compared with `cmp`, no filters); parse and quote that blob.",
+                         "A manifest that is untracked, linked, differs or can't be compared is named by location only, "
+                         "unread, and kept until habit decides.",
                          "Otherwise list each of its entries for habit, sort the rules of each file it selects, and keep "
                          "such a file when it lies outside `.agents/` and `.agent/`.",
-                         "A selected file that differs from the commit is unresolved: name its location without either "
-                         "version's content, and keep the manifest until habit decides.",
+                         "A selected file that differs or can't be compared is unresolved: name its location without "
+                         "either version's content, and keep the manifest until habit decides.",
                          "Class the manifest `removed` once every entry is accounted for.",
                          "When an entry selects a directory, uses a filter, inherits another manifest, or resolves to a link "
                          "or to no tracked regular file, name it for habit with the rules it leaves unaccounted for, "
@@ -391,7 +392,8 @@ class SkillFiles(unittest.TestCase):
         self.assertLess(text.index("For a `rules.json`, read the manifest"), text.index("Otherwise list each of its entries"))
         for gone in ("list for habit any entry that names no tracked file, before proposing the manifest's removal",
                      "`rules/` and `rules.json` file", "only from the Git blob of a tracked regular file",
-                     "For a `rules.json`, list each of its entries for habit", "Read the manifest itself the same way"):
+                     "For a `rules.json`, list each of its entries for habit", "Read the manifest itself the same way",
+                     "git diff --quiet HEAD"):
             self.assertNotIn(gone, text)
 
     def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):
