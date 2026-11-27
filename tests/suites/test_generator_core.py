@@ -372,23 +372,27 @@ class SkillFiles(unittest.TestCase):
 
     def test_a_rules_manifest_carries_the_rules_of_the_files_it_names(self):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
-        for required in ("For a `rules.json`, list each of its entries for habit",
-                         "Read a rule an entry selects only from a tracked regular file (`git ls-files -s` mode `100644` "
-                         "or `100755`) that `git diff --quiet HEAD -- <path>` shows unchanged from the commit, never through "
-                         "a link or a path outside the checkout",
-                         "A manifest or selected file that differs from the commit is unresolved: name its location "
-                         "without either version's content, and keep the manifest until habit decides",
-                         "keep such a file when it lies outside `.agents/` and `.agent/`",
+        for required in ("For a `rules.json`, read the manifest and each file an entry selects only from a tracked regular "
+                         "file (`git ls-files -s` mode `100644` or `100755`) that `git diff --quiet HEAD -- <path>` shows "
+                         "unchanged from the commit, never through a link or a path outside the checkout.",
+                         "A manifest that is untracked, linked or differs from the commit is named by location only, unread, "
+                         "and kept until habit decides.",
+                         "Otherwise list each of its entries for habit, sort the rules of each file it selects, and keep "
+                         "such a file when it lies outside `.agents/` and `.agent/`.",
+                         "A selected file that differs from the commit is unresolved: name its location without either "
+                         "version's content, and keep the manifest until habit decides.",
                          "Class the manifest `removed` once every entry is accounted for.",
                          "When an entry selects a directory, uses a filter, inherits another manifest, or resolves to a link "
                          "or to no tracked regular file, name it for habit with the rules it leaves unaccounted for, "
-                         "and keep the manifest until habit decides on that entry"):
+                         "and keep the manifest until habit decides on that entry",
+                         "sort its rules and propose its removal, a `rules.json` only once every entry is accounted for"):
             self.assertIn(required, text)
-        self.assertNotIn("list for habit any entry that names no tracked file, before proposing the manifest's removal", text)
-        self.assertNotIn("`rules/` and `rules.json` file", text)
-        self.assertNotIn("only from the Git blob of a tracked regular file", text)
-        self.assertIn("Read the manifest itself the same way; an untracked or linked manifest is listed unread", text)
-        self.assertIn("sort its rules and propose its removal, a `rules.json` only once every entry is accounted for", text)
+        # The gate comes before the manifest's entries are listed, so no unverified entry reaches habit or the issue.
+        self.assertLess(text.index("For a `rules.json`, read the manifest"), text.index("Otherwise list each of its entries"))
+        for gone in ("list for habit any entry that names no tracked file, before proposing the manifest's removal",
+                     "`rules/` and `rules.json` file", "only from the Git blob of a tracked regular file",
+                     "For a `rules.json`, list each of its entries for habit", "Read the manifest itself the same way"):
+            self.assertNotIn(gone, text)
 
     def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):
         text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))

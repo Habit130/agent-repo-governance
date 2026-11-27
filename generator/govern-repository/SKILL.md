@@ -96,23 +96,24 @@ conflict habit confirms. At Repair, make none of them; Antigravity's files are o
   `rules/` file, and every `.agent/` rule as a root `CLAUDE.md`'s, then class the file
   `removed`. List `.agents/` hooks (`hooks.json`), MCP servers (`mcp_config.json`),
   `plugins/`, custom subagents (`agents/`) and `workflows/` for habit and propose removing
-  them, as `.codex/`. For a `rules.json`, list each of its entries for habit. Read a rule an
-  entry selects only from a tracked regular file (`git ls-files -s` mode `100644` or
-  `100755`) that `git diff --quiet HEAD -- <path>` shows unchanged from the commit, never
-  through a link or a path outside the checkout, sort its rules, and keep such a file when
-  it lies outside `.agents/` and `.agent/`. Read the manifest itself the same way; an
-  untracked or linked manifest is listed unread. A manifest or selected file that differs
-  from the commit is unresolved: name its location without either version's content, and
-  keep the manifest until habit decides. Class the manifest `removed` once every entry is
-  accounted for. When an entry selects a directory, uses a filter, inherits another
-  manifest, or resolves to a link or to no tracked regular file, name it for habit with the
-  rules it leaves unaccounted for, and keep the manifest until habit decides on that entry.
-  List workspace skills under `.agents/skills/` for habit and keep them, since other
-  harnesses may read them. The legacy `.agent/` directory follows the same groups: the same
-  files, hooks, MCP servers, plugins, subagents, workflows and skills, handled the same way.
-  At Upgrade to version 6 or later, each file of the first two groups conflicts with the new
-  fixed rule: sort its rules and propose its removal, a `rules.json` only once every entry
-  is accounted for. At Repair, list each for habit and change nothing.
+  them, as `.codex/`. For a `rules.json`, read the manifest and each file an entry selects
+  only from a tracked regular file (`git ls-files -s` mode `100644` or `100755`) that `git
+  diff --quiet HEAD -- <path>` shows unchanged from the commit, never through a link or a
+  path outside the checkout. A manifest that is untracked, linked or differs from the commit
+  is named by location only, unread, and kept until habit decides. Otherwise list each of
+  its entries for habit, sort the rules of each file it selects, and keep such a file when
+  it lies outside `.agents/` and `.agent/`. A selected file that differs from the commit is
+  unresolved: name its location without either version's content, and keep the manifest
+  until habit decides. Class the manifest `removed` once every entry is accounted for. When
+  an entry selects a directory, uses a filter, inherits another manifest, or resolves to a
+  link or to no tracked regular file, name it for habit with the rules it leaves unaccounted
+  for, and keep the manifest until habit decides on that entry. List workspace skills under
+  `.agents/skills/` for habit and keep them, since other harnesses may read them. The legacy
+  `.agent/` directory follows the same groups: the same files, hooks, MCP servers, plugins,
+  subagents, workflows and skills, handled the same way. At Upgrade to version 6 or later,
+  each file of the first two groups conflicts with the new fixed rule: sort its rules and
+  propose its removal, a `rules.json` only once every entry is accounted for. At Repair,
+  list each for habit and change nothing.
 
   Each rule's text is quoted with its file, except a credential in a rule, which is never
   quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets). Sort other files the model never writes, such as
