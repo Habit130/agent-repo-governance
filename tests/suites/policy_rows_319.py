@@ -28,7 +28,7 @@ ROWS = (
         "11",
         home=(
             Clause(START, "Start instructions name role, target and only session-called skills in `Skills:`"),
-            Clause(START, "precede the instruction with `habit invokes: <skill> <arguments>.` when needed, omitting absent arguments."),
+            Clause(START, "For a manual invocation, line one is the bare skill name and any arguments. Put the complete role instruction on the next line."),
         ),
         pointers=(
             Clause(DELIVERY, "Use `AGENTS.md`, How to start, for the canonical whole-spec start instruction and the tickets' session-called skills."),
@@ -42,9 +42,9 @@ ROWS = (
         branches=(
             ("approved whole spec", (Clause(
                 START,
-                "Approved whole-spec delivery: ```text habit invokes: implement-spec. Role: Builder. Spec: #<n>. Skills: tdd. ```",
+                "Example for an approved whole-spec delivery: ```text implement-spec Role: Builder. Spec: #322. Skills: tdd, research, writing-for-agents. ```",
             ),)),
-            ("ordinary ticket", (Clause(START, "`Role: Builder. Ticket: #<n>. Skills: tdd.`"),)),
+            ("ordinary ticket", (Clause(START, "```text Role: Builder. Ticket: #<n>. Skills: tdd. ```"),)),
         ),
     ),
     PolicyRow(
@@ -135,7 +135,7 @@ ROWS = (
                 "(`issue-tracker.md`), linking the bug's own triaged issue.",
             ),
             Clause(MISSES, "Tell habit at once, with a start request for a Planner session"),
-            Clause(MISSES, "```text habit invokes: retro #<miss>. Role: Planner. Issue: #<miss>. ```"),
+            Clause(MISSES, "```text retro #<miss> Role: Planner. Issue: #<miss>. ```"),
         ),
         pointers=(Clause(
             ENTRY_POINTS,

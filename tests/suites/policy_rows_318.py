@@ -107,14 +107,14 @@ ROWS = (
         "18",
         home=(
             Clause(PLANNER_TICKETS, "It is a list, never a table."),
-            Clause(PLANNER_TICKETS, "with its paste block standing alone so habit copies it whole."),
+            Clause(PLANNER_TICKETS, "Use the same start block on GitHub and in the terminal"),
             Clause(PLANNER_TICKETS, "The Planner also writes the plan in English, using the canonical form from `AGENTS.md`, How to start, as a comment on the effort's parent issue."),
         ),
         pointers=(Clause(DISPATCH, "For its terminal and GitHub forms, see `planner.md`, Tickets, The dispatch plan."),),
         red=(Clause(DISPATCH, r"list, never a table|stands alone in its own block|GitHub copy uses the canonical form"),),
         search=r"list, never a table|list, never a|standing alone",
         branches=(
-            ("terminal start request", (Clause(PLANNER_TICKETS, "Each terminal translation uses a start request for one harness"),)),
+            ("terminal start request", (Clause(PLANNER_TICKETS, "A routine Builder may use a different eligible harness from the Planner without amending the dispatch."),)),
             ("parent issue", (Clause(PLANNER_TICKETS, "using the canonical form from `AGENTS.md`, How to start, as a comment on the effort's parent issue."),)),
         ),
     ),

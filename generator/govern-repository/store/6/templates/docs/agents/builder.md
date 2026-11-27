@@ -99,15 +99,12 @@ The Steps below apply to it as to a ticket, with these differences:
 
 A start request in `AGENTS.md`'s form (Talking to habit and to other agents):
 
-- **"给 habit"** names the harness and repeats the ticket's difficulty from the dispatch plan
+- **"给 habit"** repeats the ticket's difficulty from the dispatch plan
   with its reason. For whole-spec delivery, use the spec's dispatch entry.
   - At high state the vendor constraint from `review.md`, Minimum reviews.
-    As a hint for where to open it:
-    Claude Code runs Anthropic models, deepseekharness DeepSeek, the Codex harness OpenAI,
-    and OpenCode and the Antigravity app whatever model they run. The model's vendor decides,
-    not the harness.
-  - For a Codex harness session, a Local-mode chat in this repository's directory, not
-    Worktree mode.
+    List the excluded model vendors from every pushing Builder's marks in the evidence
+    comment, including marks before a takeover. For a missing mark, follow `review.md`,
+    Session marks. At medium, an independent Reviewer may use the same vendor.
   - Any bot request needed on this head under `review.md`, Review bots. Give habit the
     command or browser step from the provider's subsection.
   - For the optional extra, follow `review.md`, The Codex review bot, and record the

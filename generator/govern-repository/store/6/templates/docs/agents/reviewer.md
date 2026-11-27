@@ -9,9 +9,11 @@ the review rules apply.
 ## Start
 
 habit starts the Reviewer when the tier requires one (`review.md`, Review bots), once the PR is open and its self-verification findings are dealt
-with, with
-`Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the
-Reviewer status and, when clear, the Merge summary.`
+with. Use this start block:
+
+```text
+Role: Reviewer. PR: #<n>. Skills: code-review. Post on the PR: the Comment review, the Reviewer status and, when clear, the Merge summary.
+```
 
 Use this request whatever policy the default branch holds. Follow [Outputs](#outputs)
 for when to post each one. A Reviewer that cannot make these writes, under a read-only

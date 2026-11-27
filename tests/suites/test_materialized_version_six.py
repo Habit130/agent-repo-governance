@@ -3,6 +3,7 @@
 import json
 import os
 import re
+from textwrap import dedent
 from unittest import mock
 
 import support
@@ -40,13 +41,54 @@ class VersionSixPolicy(VersionThreeRendered):
                         else:
                             self.assertIn(clause.text, body)
 
+    def test_start_examples_preserve_complete_lines_in_one_copy_block(self):
+        examples = (
+            ("AGENTS.md", "implement-spec\nRole: Builder. Spec: #322. Skills: tdd, research, writing-for-agents."),
+            ("docs/agents/planner.md", "retro #<miss>\nRole: Planner. Issue: #<miss>."),
+            (EXAMPLES.path, "retro #51\nRole: Planner. Issue: #51."),
+            (EXAMPLES.path, "Role: Builder. Ticket: #41. Skills: tdd."),
+        )
+        for path, expected in examples:
+            with self.subTest(path=path, block=expected):
+                blocks = re.findall(r"^([ ]*)```text\n(.*?)^\1```$", self.text(path), re.M | re.S)
+                self.assertIn(expected + "\n", [dedent(body) for _, body in blocks])
+
+    def test_copy_action_and_paste_observations_remain_distinct(self):
+        policy = self.text("AGENTS.md")
+        self.assertIn("habit types the chosen harness's prefix in its input field, then pastes the whole block once",
+                      flat(policy))
+        self.assertIn("has not been invoked, stop and request its full invocation in the current session", flat(policy))
+        for harness, observations in (
+            ("Claude Code", ("verified as a fresh session's first message", "A terminal argument is unverified")),
+            ("Codex harness", ("verified as a fresh Local-mode app chat's first message", "CLI one paste is unverified")),
+            ("OpenCode", ("One paste is unverified",)),
+            ("deepseekharness", ("One paste is unverified",)),
+            ("Antigravity app", ("One paste is unverified",)),
+        ):
+            with self.subTest(harness=harness):
+                entry = policy.split("- **" + harness + "**:", 1)[1].split("\n-", 1)[0]
+                for observation in observations:
+                    self.assertIn(observation, flat(entry))
+        for path in ("AGENTS.md", ".claude/CLAUDE.md"):
+            self.assertNotIn("two-step form", self.text(path))
+
+    def test_handoff_examples_leave_eligible_choices_to_habit(self):
+        examples = EXAMPLES.read(self.text(EXAMPLES.path))
+        for marker, rule in (("PR #57 已开", "可以与 Builder 同 vendor"),
+                             ("PR #58 已开", "排除 OpenAI 和 Anthropic"),
+                             ("#41，现在即可派发", "可与 Planner 使用不同的 harness")):
+            with self.subTest(example=marker):
+                prose = examples.split(marker, 1)[1].split("粘贴给 agent", 1)[0]
+                self.assertIn(rule, prose)
+                self.assertNotRegex(prose, r"在 Claude Code|在本仓库的 Codex|使用 Anthropic vendor")
+
     def test_reviewer_handoff_and_examples_use_the_start_instruction(self):
         start = REVIEW_START.read(self.text(REVIEW_START.path))
-        canonical, = re.findall(r"`(Role: Reviewer[^`]+)`", start)
+        canonical, = re.findall(r"^```text\n(Role: Reviewer[^\n]+)\n```$", start, re.M)
         for number in (57, 58):
             with self.subTest(row="22", pr=number):
-                expected = flat(canonical).replace("#<n>", "#%d" % number)
-                self.assertIn(expected, flat(EXAMPLES.read(self.text(EXAMPLES.path))))
+                expected = canonical.replace("#<n>", "#%d" % number)
+                self.assertIn("\n```text\n" + expected + "\n```\n", EXAMPLES.read(self.text(EXAMPLES.path)))
         handoff = flat(HANDOFF.read(self.text(HANDOFF.path)))
         self.assertIn("use the start instruction in `reviewer.md`, Start.", handoff)
 
