@@ -260,9 +260,12 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    review expectation; the Claude Code notes in
    `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands it ran, each marked as working
    or failing with the cause, the CI and the Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
-5. Make the removals habit's answer leaves standing. Move the repository's own skills to
-   `.agents/skills/`, with a `.claude/skills/` link. Keep skills under `_agents/skills/`,
-   `.agent/skills/` and `_agent/skills/` where they are.
+5. Make the removals habit's answer leaves standing. For Antigravity files, Repair stops at
+   the listing and Upgrade applies only confirmed changes. Apply the personal-folder
+   exclusion from §2 to skill moves. Move the repository's own skills, including those from
+   `_agents/skills/`, to `.agents/skills/`, with a `.claude/skills/` link. If a move would
+   overwrite a skill, keep both in place and bring the conflict to habit. Keep skills
+   under `.agent/skills/` and `_agent/skills/` where they are.
 6. From here follow `docs/agents/builder.md`, Steps, from step 5: Initialize uses the rendered
    policy; Upgrade and Repair use the default branch's adopted policy. Use the issue as the
    ticket and declare the run's tier as above. Exact comparison, `<entry> compare --worktree <worktree>`,
