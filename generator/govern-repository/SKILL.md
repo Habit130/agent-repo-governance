@@ -40,11 +40,14 @@ in English and no code, diffs or paths. It names its sender and target.
 2. Run `<entry> mode`, saving its report. On mode `stop`, or when any subcommand exits 2, tell
    habit the reason and end.
 3. Follow the report's `outcome` by the words it begins with:
-   - `no drift`: send one Chinese message saying so, and end. No issue, no PR.
-   - `not proven: the inactive rulesets`: name each one under `drift.github.unplaced`, say
-     it enforces nothing and needs no action, and end. Write nothing and hand no command.
+   - `no drift`: run `<entry> inspect` (read-only), send one Chinese message saying so and
+     naming each Antigravity file it lists, left as it is, and end. No issue, no PR.
+   - `not proven: the inactive rulesets`: run `<entry> inspect` (read-only), name each one
+     under `drift.github.unplaced`, say it enforces nothing and needs no action, name each
+     Antigravity file it lists, left as it is, and end. Write nothing and hand no command.
    - `not proven: the unread items` or `a ready owner-script command`, drift in GitHub state
-     only: go to section 6, step 2, naming any inactive ruleset under `unplaced` there too.
+     only: run `<entry> inspect` (read-only), go to section 6, step 2, naming any inactive
+     ruleset under `unplaced` there too and each Antigravity file it lists, left as it is.
      No issue, no PR.
    - `Initialize`, `rebuild as at Initialize`, `Upgrade` or `Repair through the Upgrade
      flow`: carry on. Inactive rulesets under `unplaced` are named in the
@@ -93,14 +96,17 @@ conflict habit confirms. At Repair, make none of them; Antigravity's files are o
   `rules/` and `rules.json` file, and every `.agent/` rule as a root `CLAUDE.md`'s, then
   class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP servers
   (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for habit
-  and propose removing them, as `.codex/`. List workspace skills under `.agents/skills/` for
-  habit and keep them, since other harnesses may read them. The legacy `.agent/` directory
+  and propose removing them, as `.codex/`. For a `rules.json`, also sort the rules of each
+  tracked file it names, keeping a named file that lies outside `.agents/` and `.agent/`, and
+  list for habit any entry that names no tracked file, before proposing the manifest's removal.
+  List workspace skills under `.agents/skills/` for habit and keep them, since other harnesses may read them. The legacy `.agent/` directory
   follows the same groups: the same files, hooks, MCP servers, plugins, subagents, workflows
   and skills, handled the same way. At Upgrade to version 6 or
   later, each file of the first two groups conflicts with the new fixed rule: sort its rules
   and propose its removal. At Repair, list each for habit and change nothing.
 
-  Each rule's text is quoted with its file. Sort other files the model never writes, such as
+  Each rule's text is quoted with its file, except a credential in a rule, which is never
+  quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets). Sort other files the model never writes, such as
   hooks, CODEOWNERS or a Bugbot config, the same way, and propose keeping or removing each.
   Preserve mandatory prohibitions and their force in the authoritative source. An
   explanatory consequence never replaces a prohibition. Carrying by reference removes
@@ -174,7 +180,9 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 
 - habit's invocation, the findings, the proposals and habit's answers, each verbatim;
 - one fenced block with the info string `govern-facts`, holding JSON with exactly these keys:
-  Each rule's `text` quotes the original rule verbatim, including inline backticks;
+  Each rule's `text` quotes the original rule verbatim, including inline backticks, except
+  that a credential in a rule is never quoted: its text names the credential's type and
+  location instead (`AGENTS.md`, Secrets);
   `class` holds its classification, and rewritten carried text belongs outside this block.
 
   ```text
@@ -219,7 +227,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands it ran, each marked as working
    or failing with the cause, the CI and the Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
 5. Make the removals habit's answer leaves standing. Move the repository's own skills to
-   `.agents/skills/`, with a `.claude/skills/` link.
+   `.agents/skills/`, with a `.claude/skills/` link, except skills under `.agent/skills/`,
+   which stay where they are.
 6. From here follow `docs/agents/builder.md`, Steps, from step 5: Initialize uses the rendered
    policy; Upgrade and Repair use the default branch's adopted policy. Use the issue as the
    ticket and declare the run's tier as above. Exact comparison, `<entry> compare --worktree <worktree>`,

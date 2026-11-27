@@ -63,7 +63,9 @@ count as a notice, and a harness configuration file is never read for the model:
 default can differ from the session's choice.
 
 A later notice naming a different model adds a new mark before the session's next push or
-review. The high comparison counts every mark of every Builder session that pushed.
+review. A Reviewer at high whose new mark names a different vendor repeats the high vendor
+comparison before posting. The high comparison counts every mark of every Builder session
+that pushed.
 
 When neither names the model, or its vendor is unclear, the session asks habit in a
 mid-session request and records the answer with `(as habit said)`. The same source applies

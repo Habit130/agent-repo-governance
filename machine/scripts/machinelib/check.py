@@ -225,6 +225,9 @@ def _app_rule_notes(home):
             notes.append("%s 是 Antigravity app 的 plugin rule，plugin 启用时加载；只报告，不算失败" % home.show(path))
         else:
             notes.append("%s 是 Antigravity app 的全局 rule，只报告，不算失败" % home.show(path))
+    manifest = os.path.join(home.gemini, "config", "rules.json")
+    if os.path.isfile(manifest):
+        notes.append("%s 是 Antigravity app 的个人 manifest；本检查不解析它登记的 rule，只报告，不算失败" % home.show(manifest))
     return notes
 
 

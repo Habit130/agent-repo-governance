@@ -357,6 +357,26 @@ class SkillFiles(unittest.TestCase):
             self.assertIn(want, step.split("\n   - ")[1 + matched[0]], said)
         self.assertEqual(len(branches), len(ends))
 
+    def test_every_repair_exit_inspects_and_names_antigravity_files(self):
+        text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
+        step = text.split("3. Follow the report's `outcome`")[1].split(" 4. ")[0]
+        for head in ("`no drift`:", "`not proven: the inactive rulesets`:", "`not proven: the unread items` or `a ready owner-script command`"):
+            branch = step.split(head)[1].split(" - `")[0]
+            self.assertIn("run `<entry> inspect` (read-only)", branch, head)
+            self.assertIn("each Antigravity file it lists, left as it is", branch, head)
+
+    def test_writing_leaves_legacy_skills_and_rules_never_quote_a_credential(self):
+        text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
+        self.assertIn("with a `.claude/skills/` link, except skills under `.agent/skills/`, which stay where they are.", text)
+        self.assertEqual(text.count("is never quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets)"), 2)
+
+    def test_a_rules_manifest_carries_the_rules_of_the_files_it_names(self):
+        text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
+        for required in ("For a `rules.json`, also sort the rules of each tracked file it names",
+                         "keeping a named file that lies outside `.agents/` and `.agent/`",
+                         "list for habit any entry that names no tracked file, before proposing the manifest's removal"):
+            self.assertIn(required, text)
+
     def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):
         text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
         self.assertIn("**Temporary paths.**", text)

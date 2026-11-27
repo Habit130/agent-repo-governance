@@ -153,7 +153,7 @@ class Home(object):
         """The app's global rule files and its global plugins' rule files, which are only reported."""
         found = []
         for pattern in (("config", "rules"), ("config", "plugins", "*", "rules")):
-            found.extend(glob.glob(os.path.join(self.gemini, *pattern) + os.sep + "*.md"))
+            found.extend(glob.glob(os.path.join(glob.escape(self.gemini), *pattern) + os.sep + "*.md"))
         return sorted(found)
 
     def personal_roots(self):

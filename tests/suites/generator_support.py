@@ -69,13 +69,14 @@ HARNESS_VARIABLES = {
               "CODEX_THREAD_ID": "fixture", "CODEX_VERSION": "fixture"},
     "dsh": {"DSH_HOME": "/fixture/.dsh", "DSH_PROFILE": "desktop", "DSH_PROFILE_DIR": "/fixture/.dsh/profiles/desktop",
             "DSH_SESSION_ID": "fixture", "DSH_SHELL": "1"},
-    "antigravity-cli": {"ANTIGRAVITY_AGENT": "fixture", "ANTIGRAVITY_AGENTAPI_EXE": "fixture", "ANTIGRAVITY_APP_DATA_DIR": "fixture",
-                        "ANTIGRAVITY_CONVERSATION_ID": "fixture", "ANTIGRAVITY_CSRF_TOKEN": "fixture", "ANTIGRAVITY_LS_ADDRESS": "fixture",
-                        "ANTIGRAVITY_LS_VERSION": "fixture", "ANTIGRAVITY_PROJECT_ID": "fixture", "ANTIGRAVITY_SOURCE_METADATA": "fixture",
-                        "ANTIGRAVITY_TRAJECTORY_ID": "fixture"},
 }
-# The app's shell carries the CLI's ten names and adds its own.
-HARNESS_VARIABLES["antigravity-app"] = dict(HARNESS_VARIABLES["antigravity-cli"], AGY_REQUIRE_AUTHENTICATED_UI_BOOTSTRAP="1")
+# The Antigravity shells carry every name their probes recorded; the values are the fixture's own.
+RECORDED_ONLY = {}
+for _label, _harness in (("Antigravity CLI", "antigravity-cli"), ("Antigravity app", "antigravity-app")):
+    with open(os.path.join(support.FIXTURES, "generator", "harness-probes.json")) as _handle:
+        _names = json.load(_handle)["harnesses"][_label]["names"]
+    HARNESS_VARIABLES[_harness] = dict((name, "fixture") for name in _names if name.startswith(("ANTIGRAVITY_", "AGY_")))
+    RECORDED_ONLY[_harness] = [name for name in _names if not name.startswith(("ANTIGRAVITY_", "AGY_"))]
 HARNESS_PREFIXES = ("CLAUDE", "OPENCODE", "CODEX_", "DSH_", "AI_AGENT", "AGENT", "ANTIGRAVITY_", "AGY_")
 RULESET_IDS = {"Gate": 7001, "Merge": 7002, "History": 7003}
 # GitHub's refusal of the rulesets and rules reads on a private repository without Pro (#17).
@@ -357,6 +358,8 @@ def case_env(case, home, scratch, gh_recording):
             del env[variable]
     for harness in case.get("harness", "claude-code").split("+"):
         env.update(HARNESS_VARIABLES.get(harness, {}))
+        for name in RECORDED_ONLY.get(harness, []):
+            env.setdefault(name, "fixture")
     env.update((key, value.replace("{home}", home)) for key, value in case.get("extra_env", {}).items())
     return env
 

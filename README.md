@@ -1,6 +1,6 @@
 # agent-repo-governance
 
-借鉴 Anthropic 的代码审查实践与 mattpocock/skills，构建个性化仓库治理体系。Claude Code、OpenCode、deepseekharness 和 Codex harness 均支持角色 session；Antigravity app 从仓库采用 version 6 起支持角色 session（version 6 目前是草稿），Antigravity CLI 不受支持；Codex review bot 是独立的 PR review bot。
+借鉴 Anthropic 的代码审查实践与 mattpocock/skills，构建个性化仓库治理体系。Claude Code、OpenCode、deepseekharness 和 Codex harness 均支持角色 session；Antigravity app 支持角色 session，需同时满足三个条件：仓库已采用 version 6（目前是草稿）、machine check 的 Antigravity app 项通过、仓库里没有该 app 自己的指令或配置文件，Antigravity CLI 不受支持；Codex review bot 是独立的 PR review bot。
 
 ## 运行
 
