@@ -46,6 +46,7 @@
   "test_live_runner.ProbeSelection": 0.5,
   "test_live_runner.Registry": 0.2,
   "test_machine_check.AppGlobalFiles": 16.0,
+  "test_machine_check.AppRuleNotesUnderPluginsDirectory": 3.0,
   "test_machine_check.CheckDiagnostics": 17.7,
   "test_machine_check.CommentedKey": 0.1,
   "test_machine_check.EveryItem": 41.4,

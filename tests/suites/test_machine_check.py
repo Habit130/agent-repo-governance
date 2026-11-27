@@ -422,6 +422,27 @@ class AppGlobalFiles(CheckCase):
         self.assertEqual(deny, ["Claude Code 和 OpenCode 都拒绝 ghm 和 Actions secret 写入，允许 `gh secret list`"], out)
 
 
+class AppRuleNotesUnderPluginsDirectory(CheckCase):
+    """A home whose absolute path has a plugins component still labels a global rule global."""
+
+    def path(self, *parts):
+        if parts == ("home",):
+            return super(AppRuleNotesUnderPluginsDirectory, self).path("plugins", "home")
+        return super(AppRuleNotesUnderPluginsDirectory, self).path(*parts)
+
+    def test_global_rule_is_not_a_plugin_rule(self):
+        support.write_tree(self.home, {
+            ".gemini/config/rules/style.md": "---\ntrigger: always_on\n---\nRule.\n",
+            ".gemini/config/plugins/tools/rules/extra.md": "Plugin rule.\n",
+        })
+        statuses, failures = self.check()
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+        self.assertEqual(self.notes["links"], [
+            "~/.gemini/config/plugins/tools/rules/extra.md 是 Antigravity app 的 plugin rule，plugin 启用时加载；只报告，不算失败",
+            "~/.gemini/config/rules/style.md 是 Antigravity app 的全局 rule，只报告，不算失败",
+        ])
+
+
 class CommentedKey(unittest.TestCase):
     """The detector reads the effective key, never a comment (#67's S-1, on the machine's wider surface)."""
 

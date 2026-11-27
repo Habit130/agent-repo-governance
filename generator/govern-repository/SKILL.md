@@ -94,7 +94,9 @@ conflict habit confirms. At Repair, make none of them; Antigravity's files are o
   class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP servers
   (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for habit
   and propose removing them, as `.codex/`. List workspace skills under `.agents/skills/` for
-  habit and keep them, since other harnesses may read them. At Upgrade to version 6 or
+  habit and keep them, since other harnesses may read them. The legacy `.agent/` directory
+  follows the same groups: the same files, hooks, MCP servers, plugins, subagents, workflows
+  and skills, handled the same way. At Upgrade to version 6 or
   later, each file of the first two groups conflicts with the new fixed rule: sort its rules
   and propose its removal. At Repair, list each for habit and change nothing.
 

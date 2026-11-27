@@ -219,8 +219,9 @@ def _link_problems(home):
 
 def _app_rule_notes(home):
     notes = []
+    plugins = os.path.join(home.gemini, "config", "plugins") + os.sep
     for path in home.app_rule_files():
-        if os.sep + "plugins" + os.sep in path:
+        if path.startswith(plugins):
             notes.append("%s 是 Antigravity app 的 plugin rule，plugin 启用时加载；只报告，不算失败" % home.show(path))
         else:
             notes.append("%s 是 Antigravity app 的全局 rule，只报告，不算失败" % home.show(path))

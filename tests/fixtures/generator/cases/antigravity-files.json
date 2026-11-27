@@ -37,9 +37,23 @@
             ".agents/workflows/ship.md"
           ],
           ".agent": [
-            ".agent/rules/legacy.md"
+            ".agent/hooks.json",
+            ".agent/rules/legacy.md",
+            ".agent/skills/old/SKILL.md"
           ]
-        }
+        },
+        "skills": [
+          {
+            "path": ".agent/skills/old/SKILL.md",
+            "directory": "old",
+            "name": "old"
+          },
+          {
+            "path": ".agents/skills/lint/SKILL.md",
+            "directory": "lint",
+            "name": "lint"
+          }
+        ]
       }
     }
   },
@@ -58,7 +72,9 @@
       ".agents/agents/reviewer.md": "# Reviewer\n",
       ".agents/workflows/ship.md": "# Ship\n",
       ".agents/skills/lint/SKILL.md": "---\nname: lint\ndescription: Lint.\n---\n",
-      ".agent/rules/legacy.md": "Legacy rule.\n"
+      ".agent/rules/legacy.md": "Legacy rule.\n",
+      ".agent/skills/old/SKILL.md": "---\nname: old\ndescription: Old.\n---\n",
+      ".agent/hooks.json": "{}\n"
     }
   },
   "run": [

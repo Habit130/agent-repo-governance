@@ -42,7 +42,7 @@ REVIEW_BOT_FILES = (
 )
 HARNESS_DIRS = (".claude", ".opencode", ".dsh", ".agents", ".agent", ".codex")
 HARNESS_FILES = ("opencode.json", "opencode.jsonc")
-SKILL = re.compile(r"^(\.agents|\.claude|\.opencode|\.codex|\.dsh)/skills/([^/]+)/SKILL\.md$")
+SKILL = re.compile(r"^(\.agents|\.agent|\.claude|\.opencode|\.codex|\.dsh)/skills/([^/]+)/SKILL\.md$")
 WORKFLOW = re.compile(r"^\.github/workflows/[^/]+\.ya?ml$")
 GENERATOR = "govern-repository"
 
