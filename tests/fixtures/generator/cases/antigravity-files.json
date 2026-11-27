@@ -1,0 +1,83 @@
+{
+  "description": "#325: GEMINI.md in any directory and Antigravity's files under .agents/ and the legacy .agent/ are found.",
+  "expect": {
+    "inspect": {
+      "instructions": {
+        "instructions": [
+          {
+            "path": ".agents/AGENTS.md",
+            "name": "AGENTS.md"
+          },
+          {
+            "path": ".agents/GEMINI.md",
+            "name": "GEMINI.md"
+          },
+          {
+            "path": "GEMINI.md",
+            "name": "GEMINI.md"
+          },
+          {
+            "path": "src/GEMINI.md",
+            "name": "GEMINI.md"
+          }
+        ]
+      },
+      "harness_files": {
+        "files": {
+          ".agents": [
+            ".agents/AGENTS.md",
+            ".agents/GEMINI.md",
+            ".agents/agents/reviewer.md",
+            ".agents/hooks.json",
+            ".agents/mcp_config.json",
+            ".agents/plugins/tools/plugin.json",
+            ".agents/rules.json",
+            ".agents/rules/style.md",
+            ".agents/skills/lint/SKILL.md",
+            ".agents/workflows/ship.md"
+          ],
+          ".agent": [
+            ".agent/hooks.json",
+            ".agent/rules/legacy.md",
+            ".agent/skills/old/SKILL.md"
+          ]
+        },
+        "skills": [
+          {
+            "path": ".agent/skills/old/SKILL.md",
+            "directory": "old",
+            "name": "old"
+          },
+          {
+            "path": ".agents/skills/lint/SKILL.md",
+            "directory": "lint",
+            "name": "lint"
+          }
+        ]
+      }
+    }
+  },
+  "harness": "claude-code",
+  "repository": {
+    "files": {
+      "GEMINI.md": "# Gemini notes\n",
+      "src/GEMINI.md": "# Nested gemini\n",
+      ".agents/AGENTS.md": "# Agents\n",
+      ".agents/GEMINI.md": "# Agents gemini\n",
+      ".agents/rules/style.md": "---\ntrigger: always_on\n---\nUse tabs.\n",
+      ".agents/rules.json": "{}\n",
+      ".agents/hooks.json": "{}\n",
+      ".agents/mcp_config.json": "{}\n",
+      ".agents/plugins/tools/plugin.json": "{}\n",
+      ".agents/agents/reviewer.md": "# Reviewer\n",
+      ".agents/workflows/ship.md": "# Ship\n",
+      ".agents/skills/lint/SKILL.md": "---\nname: lint\ndescription: Lint.\n---\n",
+      ".agent/rules/legacy.md": "Legacy rule.\n",
+      ".agent/skills/old/SKILL.md": "---\nname: old\ndescription: Old.\n---\n",
+      ".agent/hooks.json": "{}\n"
+    }
+  },
+  "run": [
+    "inspect"
+  ]
+}

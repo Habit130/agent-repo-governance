@@ -5,6 +5,7 @@ Every path derives from one home directory and the environment the harnesses rea
 all into a throwaway home never touches the real one.
 """
 
+import glob
 import os
 import re
 import shutil
@@ -110,6 +111,11 @@ class Home(object):
         return self._under("DSH_HOME", ".dsh")
 
     @property
+    def gemini(self):
+        """The Antigravity app's global directory; its documentation names no variable that moves it."""
+        return os.path.join(self.root, ".gemini")
+
+    @property
     def claude_settings(self):
         return os.path.join(self.claude, "settings.json")
 
@@ -132,7 +138,23 @@ class Home(object):
             (os.path.join(self.claude, "CLAUDE.md"), self.agents_md),
             (os.path.join(self.opencode, "AGENTS.md"), self.agents_md),
             (os.path.join(self.codex, "AGENTS.md"), self.agents_md),
+            (os.path.join(self.gemini, "AGENTS.md"), self.agents_md),
         ]
+
+    def app_conflicts(self):
+        """The Antigravity app's other global instruction files; it loads every one it finds."""
+        return [
+            os.path.join(self.gemini, "GEMINI.md"),
+            os.path.join(self.gemini, "config", "AGENTS.md"),
+            os.path.join(self.gemini, "config", "GEMINI.md"),
+        ]
+
+    def app_rule_files(self):
+        """The app's global rule files and its global plugins' rule files, which are only reported."""
+        found = []
+        for pattern in (("config", "rules"), ("config", "plugins", "*", "rules")):
+            found.extend(glob.glob(os.path.join(glob.escape(self.gemini), *pattern) + os.sep + "*.md"))
+        return sorted(found)
 
     def personal_roots(self):
         """Other skill directories a harness loads, where a personal skill could share a machine skill's name."""

@@ -357,6 +357,53 @@ class SkillFiles(unittest.TestCase):
             self.assertIn(want, step.split("\n   - ")[1 + matched[0]], said)
         self.assertEqual(len(branches), len(ends))
 
+    def test_every_repair_exit_inspects_and_names_antigravity_files(self):
+        text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
+        step = text.split("3. Follow the report's `outcome`")[1].split(" 4. ")[0]
+        for head in ("`no drift`:", "`not proven: the inactive rulesets`:", "`not proven: the unread items` or `a ready owner-script command`"):
+            branch = step.split(head)[1].split(" - `")[0]
+            self.assertIn("run `<entry> inspect` (read-only)", branch, head)
+            self.assertIn("each Antigravity file it lists, left as it is", branch, head)
+
+    def test_writing_leaves_legacy_skills_and_rules_never_quote_a_credential(self):
+        text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
+        self.assertIn("with a `.claude/skills/` link, except skills under `.agent/skills/`, which stay where they are.", text)
+        self.assertEqual(text.count("is never quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets)"), 2)
+
+    def test_a_rules_manifest_carries_the_rules_of_the_files_it_names(self):
+        text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
+        gate = ("Every Antigravity file this paragraph reads, however it is found (by name, by the scan of `rules/` or "
+                "through a `rules.json`), passes one check first: it is a tracked regular file (`git ls-files -s` mode "
+                "`100644` or `100755`), reached through no link and no path outside the checkout, whose working file is "
+                "byte-identical to its raw blob in the checkout's `HEAD` commit (`git cat-file blob HEAD:<path>` "
+                "compared with `cmp`, no filters). Parse and quote only that blob.")
+        fails = ("A file that fails the check, or can't be checked, is named by location only, without either version's "
+                 "content; it is not sorted, and it is kept until habit decides.")
+        for required in (gate, fails,
+                         "Sort the rules of every `GEMINI.md`, every `.agents/` `AGENTS.md`, `GEMINI.md` and `rules/` "
+                         "file, and every `.agent/` rule that passes as a root `CLAUDE.md`'s, then class the file `removed`.",
+                         "For a `rules.json` that passes, list each of its entries for habit, sort the rules of each file "
+                         "it selects that passes, and keep such a file when it lies outside `.agents/` and `.agent/`.",
+                         "A `rules.json` that fails, or a selected file that fails, keeps the manifest until habit decides.",
+                         "Class the manifest `removed` once every entry is accounted for.",
+                         "When an entry selects a directory, uses a filter, inherits another manifest, or resolves to a link "
+                         "or to no tracked regular file, name it for habit with the rules it leaves unaccounted for, "
+                         "and keep the manifest until habit decides on that entry",
+                         "each file of the first two groups that passes the check conflicts with the new fixed rule: sort "
+                         "its rules and propose its removal, a `rules.json` only once every entry is accounted for; a file "
+                         "that fails is named by location only",
+                         "and run no commands other than the read-only check for Antigravity files below"):
+            self.assertIn(required, text)
+        # One source decision comes before either discovery path reads rule text, so a rule the `rules/` scan finds
+        # while an unread manifest also selects it can only be reported by location when its bytes differ.
+        self.assertLess(text.index(gate), text.index("Sort the rules of every `GEMINI.md`"))
+        self.assertLess(text.index(fails), text.index("For a `rules.json` that passes"))
+        for gone in ("list for habit any entry that names no tracked file, before proposing the manifest's removal",
+                     "`rules/` and `rules.json` file", "only from the Git blob of a tracked regular file",
+                     "For a `rules.json`, list each of its entries for habit", "Read the manifest itself the same way",
+                     "git diff --quiet HEAD", "the pinned commit", "For a `rules.json`, read the manifest"):
+            self.assertNotIn(gone, text)
+
     def test_temporary_paths_require_unique_allocation_and_preserve_existing_work(self):
         text = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
         self.assertIn("**Temporary paths.**", text)
@@ -539,16 +586,16 @@ class ScenarioSettings(support.TempDirCase):
 class HarnessProbes(unittest.TestCase):
     """Each harness's shell, as probed by name, is judged as #44 §6 and ADR 0013 require."""
 
-    def test_only_claude_code_and_opencode_pass(self):
+    def test_only_claude_code_and_opencode_pass_and_every_antigravity_shell_is_refused(self):
         from govlib import harness
 
         with open(os.path.join(support.FIXTURES, "generator", "harness-probes.json")) as handle:
             probes = json.load(handle)["harnesses"]
-        self.assertEqual(sorted(probes), ["Claude Code", "OpenCode", "deepseekharness", "the Codex harness"])
+        self.assertEqual(sorted(probes), ["Antigravity CLI", "Antigravity app", "Claude Code", "OpenCode", "deepseekharness", "the Codex harness"])
         for name, probe in sorted(probes.items()):
             judged = harness.judge(dict((variable, "set") for variable in probe["names"]))
             self.assertEqual(judged["passed"], probe["passes"], (name, judged))
-            self.assertEqual(judged["harness"], name, judged)
+            self.assertEqual(judged["harness"], probe.get("judged_as", name), judged)
 
 
 class DriftTarget(unittest.TestCase):

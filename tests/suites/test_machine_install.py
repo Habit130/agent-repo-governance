@@ -456,6 +456,47 @@ class GlobalFiles(InstallCase):
         self.assertIn("~/.agents/AGENTS.md 不存在，未创建 ~/.claude/CLAUDE.md", self.notes(out, "links"))
 
 
+class AppGlobalFiles(InstallCase):
+    """The Antigravity app's global instruction link and its conflicting global files (#323)."""
+
+    CONFLICTS = (".gemini/GEMINI.md", ".gemini/config/AGENTS.md", ".gemini/config/GEMINI.md")
+
+    def test_the_app_link_is_created_where_absent(self):
+        code, out = self.install()
+        self.assertEqual(code, 0, out)
+        self.assertEqual(os.readlink(self.h(".gemini", "AGENTS.md")), self.h(".agents", "AGENTS.md"))
+        self.assertIn("已创建 ~/.gemini/AGENTS.md -> ~/.agents/AGENTS.md", self.notes(out, "links"))
+        self.assertEqual(self.check(out)["links"], "通过")
+        self.assertIn("五个链接就位", out)
+
+    def test_a_real_file_at_the_app_path_is_reported_and_kept(self):
+        self.write({".gemini/AGENTS.md": "The app's own copy.\n"})
+        code, out = self.install()
+        self.assertEqual(code, 1, out)
+        self.assertEqual(self.read(".gemini", "AGENTS.md"), "The app's own copy.\n")
+        self.assertIn("~/.gemini/AGENTS.md 是真实文件或目录，应链接到 ~/.agents/AGENTS.md；未覆盖", self.notes(out, "links"))
+        self.assertEqual(self.check(out)["links"], "失败")
+
+    def test_a_foreign_link_at_the_app_path_is_reported_and_kept(self):
+        self.write({"elsewhere.md": "Elsewhere.\n"})
+        os.makedirs(self.h(".gemini"))
+        os.symlink(self.h("elsewhere.md"), self.h(".gemini", "AGENTS.md"))
+        code, out = self.install()
+        self.assertEqual(code, 1, out)
+        self.assertEqual(os.readlink(self.h(".gemini", "AGENTS.md")), self.h("elsewhere.md"))
+        self.assertEqual(self.check(out)["links"], "失败")
+
+    def test_each_conflicting_global_file_fails_and_is_kept(self):
+        for relative in self.CONFLICTS:
+            with self.subTest(file=relative):
+                self.write({relative: "The app's second copy.\n"})
+                code, out = self.install()
+                self.assertEqual(code, 1, out)
+                self.assertTrue(os.path.isfile(self.h(*relative.split("/"))))
+                self.assertIn("[失败] links：~/%s 存在，Antigravity app 会把全局指令加载两次" % relative, out)
+                os.remove(self.h(*relative.split("/")))
+
+
 class Settings(InstallCase):
     CLAUDE = {"permissions": {"defaultMode": "auto", "allow": ["Bash(ls *)"], "deny": ["Bash(rm -rf *)"]}, "model": "opus"}
     OPENCODE = {"$schema": "https://opencode.ai/config.json", "permission": {"bash": {"*": "ask", "git *": "allow"}}, "theme": "x"}

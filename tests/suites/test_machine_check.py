@@ -375,6 +375,100 @@ class ModelInvokedMachineSkillUnclear(CheckCase):
         self.assertEqual(set(statuses.values()), {"通过"}, failures)
 
 
+class AppGlobalFiles(CheckCase):
+    """The Antigravity app's global instruction link and its conflicting global files (#323)."""
+
+    def test_the_app_link_missing(self):
+        os.remove(self.h(".gemini", "AGENTS.md"))
+        statuses, failures = self.check()
+        self.assert_only("links", statuses, failures, "~/.gemini/AGENTS.md 不存在，应链接到 ~/.agents/AGENTS.md")
+
+    def test_a_real_file_in_place_of_the_app_link(self):
+        os.remove(self.h(".gemini", "AGENTS.md"))
+        support.write_tree(self.home, {".gemini/AGENTS.md": "The app's own copy.\n"})
+        statuses, failures = self.check()
+        self.assert_only("links", statuses, failures, "~/.gemini/AGENTS.md 是真实文件或目录")
+
+    def test_each_conflicting_global_file_fails(self):
+        for relative in (".gemini/GEMINI.md", ".gemini/config/AGENTS.md", ".gemini/config/GEMINI.md"):
+            with self.subTest(file=relative):
+                support.write_tree(self.home, {relative: "The app's second copy.\n"})
+                statuses, failures = self.check()
+                self.assert_only("links", statuses, failures, "~/%s 存在，Antigravity app 会把全局指令加载两次" % relative)
+                os.remove(self.h(*relative.split("/")))
+
+    def test_rule_files_are_notes_that_never_fail(self):
+        support.write_tree(self.home, {
+            ".gemini/config/rules/style.md": "---\ntrigger: always_on\n---\nRule.\n",
+            ".gemini/config/plugins/tools/rules/extra.md": "Plugin rule.\n",
+        })
+        statuses, failures = self.check()
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+        self.assertEqual(self.notes["links"], [
+            "~/.gemini/config/plugins/tools/rules/extra.md 是 Antigravity app 的 plugin rule，plugin 启用时加载；只报告，不算失败",
+            "~/.gemini/config/rules/style.md 是 Antigravity app 的全局 rule，只报告，不算失败",
+        ])
+
+    def test_a_personal_manifest_is_a_note_that_never_fails(self):
+        support.write_tree(self.home, {".gemini/config/rules.json": "{}\n"})
+        statuses, failures = self.check()
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+        self.assertEqual(self.notes["links"], [
+            "~/.gemini/config/rules.json 是 Antigravity app 的个人 manifest；本检查不解析它登记的 rule，只报告，不算失败",
+        ])
+
+    def test_the_pass_line_counts_five_links(self):
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        code, out, err = ms.run_machine(["check", "--home", self.home, "--codex", ms.STANDIN_CODEX], env)
+        links = [d for s, subject, d in ms.lines(out) if subject == "links" and s == "通过"]
+        self.assertEqual(links, ["五个链接就位，~/.dsh/AGENTS.md 和 Antigravity app 的其他全局指令文件不存在"], out)
+
+    def test_no_deny_item_for_the_app(self):
+        env = ms.machine_env(self.home, self.path("scratch"), gh_recording=ms.write_gh_recording(self.path("gh.json")))
+        code, out, err = ms.run_machine(["check", "--home", self.home, "--codex", ms.STANDIN_CODEX], env)
+        deny = [d for _, s, d in ms.lines(out) if s == "deny entries"]
+        self.assertEqual(deny, ["Claude Code 和 OpenCode 都拒绝 ghm 和 Actions secret 写入，允许 `gh secret list`"], out)
+
+
+class AppRuleNotesUnderPluginsDirectory(CheckCase):
+    """A home whose absolute path has a plugins component still labels a global rule global."""
+
+    def path(self, *parts):
+        if parts == ("home",):
+            return super(AppRuleNotesUnderPluginsDirectory, self).path("plugins", "home")
+        return super(AppRuleNotesUnderPluginsDirectory, self).path(*parts)
+
+    def test_global_rule_is_not_a_plugin_rule(self):
+        support.write_tree(self.home, {
+            ".gemini/config/rules/style.md": "---\ntrigger: always_on\n---\nRule.\n",
+            ".gemini/config/plugins/tools/rules/extra.md": "Plugin rule.\n",
+        })
+        statuses, failures = self.check()
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+        self.assertEqual(self.notes["links"], [
+            "~/.gemini/config/plugins/tools/rules/extra.md 是 Antigravity app 的 plugin rule，plugin 启用时加载；只报告，不算失败",
+            "~/.gemini/config/rules/style.md 是 Antigravity app 的全局 rule，只报告，不算失败",
+        ])
+
+
+class AppRuleNotesUnderBracketedHome(CheckCase):
+    """A home whose path has square brackets is a literal directory, not a glob pattern."""
+
+    def path(self, *parts):
+        if parts == ("home",):
+            return super(AppRuleNotesUnderBracketedHome, self).path("reader[1]", "home")
+        return super(AppRuleNotesUnderBracketedHome, self).path(*parts)
+
+    def test_global_and_plugin_rules_are_found(self):
+        support.write_tree(self.home, {
+            ".gemini/config/rules/style.md": "---\ntrigger: always_on\n---\nRule.\n",
+            ".gemini/config/plugins/tools/rules/extra.md": "Plugin rule.\n",
+        })
+        statuses, failures = self.check()
+        self.assertEqual(set(statuses.values()), {"通过"}, failures)
+        self.assertEqual(len(self.notes["links"]), 2, self.notes)
+
+
 class CommentedKey(unittest.TestCase):
     """The detector reads the effective key, never a comment (#67's S-1, on the machine's wider surface)."""
 

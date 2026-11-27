@@ -70,7 +70,14 @@ HARNESS_VARIABLES = {
     "dsh": {"DSH_HOME": "/fixture/.dsh", "DSH_PROFILE": "desktop", "DSH_PROFILE_DIR": "/fixture/.dsh/profiles/desktop",
             "DSH_SESSION_ID": "fixture", "DSH_SHELL": "1"},
 }
-HARNESS_PREFIXES = ("CLAUDE", "OPENCODE", "CODEX_", "DSH_", "AI_AGENT", "AGENT")
+# The Antigravity shells carry every name their probes recorded; the values are the fixture's own.
+RECORDED_ONLY = {}
+for _label, _harness in (("Antigravity CLI", "antigravity-cli"), ("Antigravity app", "antigravity-app")):
+    with open(os.path.join(support.FIXTURES, "generator", "harness-probes.json")) as _handle:
+        _names = json.load(_handle)["harnesses"][_label]["names"]
+    HARNESS_VARIABLES[_harness] = dict((name, "fixture") for name in _names if name.startswith(("ANTIGRAVITY_", "AGY_")))
+    RECORDED_ONLY[_harness] = [name for name in _names if not name.startswith(("ANTIGRAVITY_", "AGY_"))]
+HARNESS_PREFIXES = ("CLAUDE", "OPENCODE", "CODEX_", "DSH_", "AI_AGENT", "AGENT", "ANTIGRAVITY_", "AGY_")
 RULESET_IDS = {"Gate": 7001, "Merge": 7002, "History": 7003}
 # GitHub's refusal of the rulesets and rules reads on a private repository without Pro (#17).
 PRO_REFUSAL = "Upgrade to GitHub Pro or make this repository public to enable this feature."
@@ -351,6 +358,8 @@ def case_env(case, home, scratch, gh_recording):
             del env[variable]
     for harness in case.get("harness", "claude-code").split("+"):
         env.update(HARNESS_VARIABLES.get(harness, {}))
+        for name in RECORDED_ONLY.get(harness, []):
+            env.setdefault(name, "fixture")
     env.update((key, value.replace("{home}", home)) for key, value in case.get("extra_env", {}).items())
     return env
 

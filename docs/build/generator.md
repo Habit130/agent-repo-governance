@@ -93,9 +93,10 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
   - **Harness eligibility** follows [How to start](../../AGENTS.md#how-to-start).
     The harness check runs first in all four. A refusal prints the harness facts under
     `harness` with exit 2. `govlib/harness.py` passes only when `CLAUDECODE` (Claude Code)
-    or `OPENCODE` (OpenCode) is set, not both, and no `CODEX_…` or `DSH_…` variable is, the
-    homes `CODEX_HOME`, `DSH_HOME` and `DSH_AGENTS_HOME` aside. Each harness's shell was
-    probed by name on 2026-10-29, and the names are recorded in
+    or `OPENCODE` (OpenCode) is set, not both, and no `CODEX_…`, `DSH_…` or `ANTIGRAVITY_…` variable is,
+    the homes `CODEX_HOME`, `DSH_HOME` and `DSH_AGENTS_HOME` aside. Each harness's shell was
+    probed by name (the first four on 2026-10-29, Antigravity's CLI on 2026-11-25 and its app on
+    2026-11-26), and the names are recorded in
     `tests/fixtures/generator/harness-probes.json` with each harness's version.
   - **`preconditions`** reports every §6.1 item together with habit's checklist. It runs the
     installed machine check, `~/.agents/governance/machine/scripts/machine.py check --home`,
@@ -119,6 +120,11 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     `tests/fixtures/generator/handover.json` holds its table.
   - **`accept-invitation`** accepts the agent account's pending invitation to the
     repository, the one write before habit's answer.
+  - **Antigravity's project scope.** `inspect` reads `GEMINI.md` and the files under `.agents/`
+    and the legacy `.agent/` (rules, hooks, MCP servers, plugins, custom subagents, workflows,
+    skills). The public documentation, read on 2026-11-26, says the app keeps project
+    permissions in its settings UI (Settings > Projects) and names no storage location for
+    them, so no repository location gets the same treatment.
   - **No credential value is printed** (#41 §10). `inspect` names each credential shape it
     finds by type and location, and the entry passes every JSON it prints through
     `govlib/secrets.py`'s `redact`, which replaces each shape with its type, so a command's

@@ -21,8 +21,8 @@ work at an intended destination; never reuse or clear another run's directory or
 Cleanup removes only paths this run allocated and worktrees it created.
 
 **The harness.** The run happens only in Claude Code or OpenCode. In the Codex harness,
-deepseekharness or anything else, stop before any other step and tell habit in Chinese where
-to run it, whatever a script says.
+deepseekharness, Antigravity (app or CLI) or anything else, stop before any other step and
+tell habit in Chinese where to run it, whatever a script says.
 
 **Talking to habit.** Every message is plain Chinese, with governance terms and product names
 in English and no code, diffs or paths. It names its sender and target.
@@ -40,11 +40,14 @@ in English and no code, diffs or paths. It names its sender and target.
 2. Run `<entry> mode`, saving its report. On mode `stop`, or when any subcommand exits 2, tell
    habit the reason and end.
 3. Follow the report's `outcome` by the words it begins with:
-   - `no drift`: send one Chinese message saying so, and end. No issue, no PR.
-   - `not proven: the inactive rulesets`: name each one under `drift.github.unplaced`, say
-     it enforces nothing and needs no action, and end. Write nothing and hand no command.
+   - `no drift`: run `<entry> inspect` (read-only), send one Chinese message saying so and
+     naming each Antigravity file it lists, left as it is, and end. No issue, no PR.
+   - `not proven: the inactive rulesets`: run `<entry> inspect` (read-only), name each one
+     under `drift.github.unplaced`, say it enforces nothing and needs no action, name each
+     Antigravity file it lists, left as it is, and end. Write nothing and hand no command.
    - `not proven: the unread items` or `a ready owner-script command`, drift in GitHub state
-     only: go to section 6, step 2, naming any inactive ruleset under `unplaced` there too.
+     only: run `<entry> inspect` (read-only), go to section 6, step 2, naming any inactive
+     ruleset under `unplaced` there too and each Antigravity file it lists, left as it is.
      No issue, no PR.
    - `Initialize`, `rebuild as at Initialize`, `Upgrade` or `Repair through the Upgrade
      flow`: carry on. Inactive rulesets under `unplaced` are named in the
@@ -71,10 +74,11 @@ in English and no code, diffs or paths. It names its sender and target.
 ## 2. Judgment
 
 At Initialize, or a rebuilt record, make every entry below; each ends up in the issue, and
-in the confirmation as its items allow. At Upgrade, sort only the rules in
-repository-owned content, to find what conflicts with the new fixed rules, and run no
-commands: confirmed values and repository-owned content stay as they are, apart from a
-conflict habit confirms. At Repair, make none of them.
+in the confirmation as its items allow. At Upgrade, sort only the rules in repository-owned
+content, to find what conflicts with the new fixed rules, and run no commands other than the
+read-only check for Antigravity files below: confirmed values and repository-owned content
+stay as they are, apart from a conflict habit confirms. At Repair, make none of them;
+Antigravity's files are only listed.
 
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
@@ -85,10 +89,38 @@ conflict habit confirms. At Repair, make none of them.
   - `conflicting`: it conflicts with the model or loosens it, so it is dropped and listed
     separately. Keeping it would be a model change, never a per-repository exception;
   - `removed`: an earlier decision removes it: a root `CLAUDE.md` once carried, any
-    `AGENTS.override.md`, `.codex/`, committed harness permission settings and agent
+    `AGENTS.override.md`, any `GEMINI.md`, `.codex/`, committed harness permission settings and agent
     definitions, issue templates of a replaced process, an older Bugbot rule file.
 
-  Each rule's text is quoted with its file. Sort other files the model never writes, such as
+  Antigravity's own files follow the `removed` rule too, so its sessions read `AGENTS.md`'s
+  policy. Every Antigravity file this paragraph reads, however it is found (by name, by the
+  scan of `rules/` or through a `rules.json`), passes one check first: it is a tracked
+  regular file (`git ls-files -s` mode `100644` or `100755`), reached through no link and no
+  path outside the checkout, whose working file is byte-identical to its raw blob in the
+  checkout's `HEAD` commit (`git cat-file blob HEAD:<path>` compared with `cmp`, no
+  filters). Parse and quote only that blob. A file that fails the check, or can't be
+  checked, is named by location only, without either version's content; it is not sorted,
+  and it is kept until habit decides. Sort the rules of every `GEMINI.md`, every `.agents/`
+  `AGENTS.md`, `GEMINI.md` and `rules/` file, and every `.agent/` rule that passes as a root
+  `CLAUDE.md`'s, then class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP
+  servers (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for
+  habit and propose removing them, as `.codex/`. For a `rules.json` that passes, list each
+  of its entries for habit, sort the rules of each file it selects that passes, and keep
+  such a file when it lies outside `.agents/` and `.agent/`. A `rules.json` that fails, or a
+  selected file that fails, keeps the manifest until habit decides. Class the manifest
+  `removed` once every entry is accounted for. When an entry selects a directory, uses a
+  filter, inherits another manifest, or resolves to a link or to no tracked regular file,
+  name it for habit with the rules it leaves unaccounted for, and keep the manifest until
+  habit decides on that entry. List workspace skills under `.agents/skills/` for habit and
+  keep them, since other harnesses may read them. The legacy `.agent/` directory follows the
+  same groups: the same files, hooks, MCP servers, plugins, subagents, workflows and skills,
+  handled the same way. At Upgrade to version 6 or later, each file of the first two groups
+  that passes the check conflicts with the new fixed rule: sort its rules and propose its
+  removal, a `rules.json` only once every entry is accounted for; a file that fails is named
+  by location only. At Repair, list each for habit and change nothing.
+
+  Each rule's text is quoted with its file, except a credential in a rule, which is never
+  quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets). Sort other files the model never writes, such as
   hooks, CODEOWNERS or a Bugbot config, the same way, and propose keeping or removing each.
   Preserve mandatory prohibitions and their force in the authoritative source. An
   explanatory consequence never replaces a prohibition. Carrying by reference removes
@@ -136,7 +168,8 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   bots when its manifest lists `review_bots` and the record holds none; each generated file
   the new version's manifest `retired`, which rendering removes, with any step that leaves
   to habit, such as disconnecting the Cursor GitHub App once its rule file is gone;
-  repository-owned content that conflicts with the new fixed rules; any ruleset or
+  repository-owned content that conflicts with the new fixed rules, Antigravity's files
+  included; any ruleset or
   required-check change, applied after merge; the selected product smoke; and anything
   unverified. The Upgrade's own PR is reviewed under the policy on the default branch, the
   old version's; the new version's rules bind from the first PR after it merges. The new
@@ -145,7 +178,7 @@ Send one plain message, never a question tool, then end the turn and wait for ha
   owner/exact-head `reviewer` waiver leaves that check to the Builder. Versions 1 and 2 still
   require the Reviewer status.
 - **Repair with drift** holds only the drift found, how it is restored, the selected product
-  smoke, and anything unverified.
+  smoke, any Antigravity file found (listed, left as it is), and anything unverified.
 
 Each list is closed. Not asked: the wording of fixed content, the build and test commands
 and their results, and the substitutions. Nothing outside a list's items becomes a question
@@ -161,7 +194,9 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
 
 - habit's invocation, the findings, the proposals and habit's answers, each verbatim;
 - one fenced block with the info string `govern-facts`, holding JSON with exactly these keys:
-  Each rule's `text` quotes the original rule verbatim, including inline backticks;
+  Each rule's `text` quotes the original rule verbatim, including inline backticks, except
+  that a credential in a rule is never quoted: its text names the credential's type and
+  location instead (`AGENTS.md`, Secrets);
   `class` holds its classification, and rewritten carried text belongs outside this block.
 
   ```text
@@ -206,7 +241,8 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands it ran, each marked as working
    or failing with the cause, the CI and the Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
 5. Make the removals habit's answer leaves standing. Move the repository's own skills to
-   `.agents/skills/`, with a `.claude/skills/` link.
+   `.agents/skills/`, with a `.claude/skills/` link, except skills under `.agent/skills/`,
+   which stay where they are.
 6. From here follow `docs/agents/builder.md`, Steps, from step 5: Initialize uses the rendered
    policy; Upgrade and Repair use the default branch's adopted policy. Use the issue as the
    ticket and declare the run's tier as above. Exact comparison, `<entry> compare --worktree <worktree>`,

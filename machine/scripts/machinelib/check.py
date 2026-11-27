@@ -211,7 +211,24 @@ def _link_problems(home):
             problems.append(problem)
     if os.path.lexists(home.dsh_agents_md):
         problems.append("%s 存在，dsh 会把全局指令加载两次" % home.show(home.dsh_agents_md))
+    for path in home.app_conflicts():
+        if os.path.lexists(path):
+            problems.append("%s 存在，Antigravity app 会把全局指令加载两次" % home.show(path))
     return problems
+
+
+def _app_rule_notes(home):
+    notes = []
+    plugins = os.path.join(home.gemini, "config", "plugins") + os.sep
+    for path in home.app_rule_files():
+        if path.startswith(plugins):
+            notes.append("%s 是 Antigravity app 的 plugin rule，plugin 启用时加载；只报告，不算失败" % home.show(path))
+        else:
+            notes.append("%s 是 Antigravity app 的全局 rule，只报告，不算失败" % home.show(path))
+    manifest = os.path.join(home.gemini, "config", "rules.json")
+    if os.path.isfile(manifest):
+        notes.append("%s 是 Antigravity app 的个人 manifest；本检查不解析它登记的 rule，只报告，不算失败" % home.show(manifest))
+    return notes
 
 
 def _managed_problems(home):
@@ -305,7 +322,8 @@ def run(home, codex=None, machine_names=None):
     add("Codex user-only key", failures, "每个 user-invoked machine skill 都有 Codex user-only key", notes)
     add("名称冲突", _collision_problems(home, machine_names), "没有 personal skill 与 machine skill 同名，~/.codex/skills/ 里也没有")
     add("deny entries", _deny_problems(home), "Claude Code 和 OpenCode 都拒绝 ghm 和 Actions secret 写入，允许 `gh secret list`")
-    add("links", _link_problems(home), "四个链接就位，~/.dsh/AGENTS.md 不存在")
+    add("links", _link_problems(home), "五个链接就位，~/.dsh/AGENTS.md 和 Antigravity app 的其他全局指令文件不存在",
+        _app_rule_notes(home))
     add("managed skills", _managed_problems(home), "managed skills 与 installed state 一致")
     add("identity", _identity_problems(home), "gh 和 git 都是 agent account %s，ghm 已定义" % AGENT)
     return report

@@ -67,8 +67,8 @@ On the exact head, as the agent account:
 - **One Comment review**, through
   `gh api repos/{owner}/{repo}/pulls/<n>/reviews` with `commit_id` set to the head, `event`
   `COMMENT` and each finding inline. Its body opens with the Important, Nit and Pre-existing
-  counts, then carries its own session mark at medium and high (`review.md`, Session marks)
-  and any Builder mark habit supplied, with `(as habit said)`. The agent account can't
+  counts, then carries each of its own session marks at medium and high
+  (`review.md`, Session marks) and any Builder mark habit supplied, with `(as habit said)`. The agent account can't
   approve its own PR, so the review is always a Comment.
 - **A `Reviewer` commit status**, through
   `gh api repos/{owner}/{repo}/statuses/<sha> -f context=Reviewer -f state=<state>`:
