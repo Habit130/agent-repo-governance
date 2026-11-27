@@ -56,9 +56,9 @@ A ticket holds `to-tickets`' body, or triage's agent brief, plus:
   Results-comment tickets.
 - **Skills**: two lines, `habit invokes:` and `The session calls:`, each naming which skill
   covers which part, or `none`.
-- **Verification**: the commands the Builder runs and the Reviewer reruns, from
-  `docs/agents/build.md`. At high, identify actual default-branch product verification;
-  when none exists, predetermine an executable local smoke on the exact merged commit
+- **Verification**: list the ticket's commands from `docs/agents/build.md`. The Reviewer
+  verifies them under `reviewer.md`, step 7. At high, identify actual default-branch product
+  verification; when none exists, predetermine an executable local smoke on the exact merged commit
   (`builder.md`, After merge). A release-only workflow is not default-branch product CI.
 - **Acceptance criteria.** When a ticket asks for a check or audit of a target state, name
   the target's source, such as a spec section or the record, and ask for every fact that

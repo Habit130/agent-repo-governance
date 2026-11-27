@@ -56,8 +56,10 @@ The Steps below apply to it as to a ticket, with these differences:
   the Builder's own branch from step 3, and only that branch is pushed.
 - **One PR** closes the spec and its tickets, with a `Closes` line for each. Its tier is the
   highest tier any part reaches.
-- Verification is every ticket's. Self-verification, the evidence comment and every review
-  cover that one PR, against the spec and every ticket.
+- Each subagent runs only its ticket's focused tests. On each committed integration head,
+  run the union of all tickets' Verification commands, each distinct command once.
+  Self-verification, the evidence comment and every review cover that one PR, against the
+  spec and every ticket.
 - The PR opens at step 7, after self-verification, never earlier as a draft. Where
   `implement-spec` says otherwise, this section wins.
 - Each ticket stays frozen (Escalations, The ticket must change). Anything the dispatch
@@ -75,8 +77,11 @@ The Steps below apply to it as to a ticket, with these differences:
    `git fetch origin`, then
    `git worktree add -b <branch> <path> origin/<default branch>`.
 4. **Implement** with `tdd` and the skills the ticket names; for a bug, `diagnosing-bugs`.
-5. **Commit**: run the ticket's Verification, then commit in English Conventional Commits.
-6. **Self-verify**: run the Verification again on the committed head, then start a subagent
+   While working, run only focused tests for the change.
+5. **Commit** in English Conventional Commits.
+6. **Self-verify**. Before the first push and every later push (fixes and syncs included),
+   run the full Verification once on the committed head. If it fails, fix the failure,
+   commit and repeat on the new head. After it passes, start a subagent
    under `review.md`, Subagents with no conversation context. Its task: run `code-review`
    on the committed diff against its merge-base with the default branch, with the ticket
    as the spec (for a whole-spec delivery, the spec and every ticket) and `AGENTS.md`'s
