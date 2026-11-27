@@ -91,7 +91,8 @@ confirmed values and repository-owned content apart from conflicts habit confirm
 At Repair, use only the reader when listing files. Make none of the Initialize proposals and
 leave Antigravity's files as they are.
 
-- **Rules.** Sort every rule found in instructions, process documents, contributing guides
+- **Rules.** Apply Antigravity's personal-folder exclusion before classifying any rule.
+  Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
   - `covered`: the model already holds it, so it is dropped and listed;
   - `carried`: repository-specific and compatible, so "This repository" points to its
@@ -108,8 +109,9 @@ leave Antigravity's files as they are.
   Apply the byte-identity check to every Antigravity file, including each file a
   `rules.json` selects. Name a failing file by location only. If the root `.gemini/config.json`
   passes, list it with the folder its `personal_customization_dir` names and propose removing
-  the config. Exclude files under that folder from all sorting and removal below, including
-  every `GEMINI.md` and any file selected by a `rules.json`. Keep a manifest with such an
+  the config. Throughout the run, keep files inside the named personal folder in place.
+  Exclude them from the general Rules classification, manifest sorting, removals and skill
+  moves, including every `GEMINI.md` and any file selected by a `rules.json`. Keep a manifest with such an
   unexamined entry until habit decides. Sort the rules of every `GEMINI.md`, every `.agents/`
   `AGENTS.md`, `GEMINI.md` and `rules/` file, and every `.agent/` rule that passes as a root
   `CLAUDE.md`'s, then class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP

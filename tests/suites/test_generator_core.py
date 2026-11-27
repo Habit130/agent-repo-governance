@@ -586,11 +586,15 @@ class SkillFiles(unittest.TestCase):
     def test_antigravity_aliases_and_personal_folder_use_the_existing_file_checks(self):
         skill = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
         policy = " ".join(skill.split("Antigravity's own files", 1)[1].split("Each rule's text", 1)[0].split())
+        with self.subTest(step="before general rule classification"):
+            self.assertIn("Apply Antigravity's personal-folder exclusion before classifying any rule.",
+                          skill.split("Sort every rule found in instructions", 1)[0])
         for rule in (
             "In every step, `_agents/` follows `.agents/` and `_agent/` follows `.agent/`.",
             "If the root `.gemini/config.json` passes, list it with the folder its `personal_customization_dir` "
             "names and propose removing the config.",
-            "Exclude files under that folder from all sorting and removal below, including every `GEMINI.md` "
+            "Throughout the run, keep files inside the named personal folder in place. Exclude them from the "
+            "general Rules classification, manifest sorting, removals and skill moves, including every `GEMINI.md` "
             "and any file selected by a `rules.json`. Keep a manifest with such an unexamined entry until habit decides.",
             "At Upgrade to version 6 or later, the verified personal-folder config is also a conflict; "
             "remove it only at habit's confirmation.",
