@@ -48,17 +48,19 @@ def _redact_text(text, path):
     covered_end = previous_start = 0
     line = 1
     for start, end, kind in spans:
-        if end <= covered_end:
-            continue  # Already fully hidden, e.g. inside a multiline private key.
+        if path is not None:
+            # Keep line breaks in covered text, even when the next match starts inside it.
+            output.extend(_LINE_BREAK.findall(text, previous_start, min(start, covered_end)))
         output.append(text[covered_end:start])
-        if path is None:
-            output.append("<redacted %s>" % kind)
-        else:
+        if path is not None:
             line += sum(1 for _ in _LINE_BREAK.finditer(text, previous_start, start))
             output.append("<redacted %s at %s:%d>" % (kind, location, line))
-            output.extend(_LINE_BREAK.findall(text, max(covered_end, start), end))
-        covered_end = end
+        elif end > covered_end:
+            output.append("<redacted %s>" % kind)
+        covered_end = max(covered_end, end)
         previous_start = start
+    if path is not None:
+        output.extend(_LINE_BREAK.findall(text, previous_start, covered_end))
     output.append(text[covered_end:])
     return "".join(output)
 

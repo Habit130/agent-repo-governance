@@ -150,6 +150,17 @@ class CommittedReads(support.TempDirCase):
                     "<redacted AWS access key ID at 指南/AGENTS.md:2>\nafter")
         self.assertTrue(json.loads(out)["text"] == expected, "incomplete located redaction")
 
+    def test_located_redaction_reports_a_shape_contained_in_a_multiline_key(self):
+        path = "AGENTS.md"
+        lines = [gs.PLANTED["private-key"], gs.PLANTED["github-token"], gs.PLANTED["private-key-end"], "after"]
+        support.write_tree(self.root, {path: "\n".join(lines)})
+        support.git(self.root, "commit", "-qam", "nested fixture shapes")
+        code, out, err = self.entry("read", "--", path)
+        self.assertEqual((code, err), (0, ""))
+        self.assertTrue(json.loads(out)["text"].splitlines() == [
+            "<redacted private key at AGENTS.md:1>", "<redacted GitHub token at AGENTS.md:2>", "", "after"
+        ], "a contained credential must have its own original location")
+
     def credential_lines(self):
         lines, expected = ["keep"], {2: "private key"}
         lines.extend(gs.PLANTED[k] for k in ("private-key", "private-key-body", "private-key-end"))
