@@ -430,7 +430,8 @@ summary writer rechecks it. When applicability is uncertain, recheck. An unaffec
 follows the ordinary handoff below. For Initialize, use the bootstrap in Checks first.
 Judge an Upgrade itself under the policy already adopted on its base.
 
-For a recheck, set `pr` to the named PR number and `head` to the full reviewed SHA.
+In both commands below, replace `<pr-number>` with the named PR number and
+`<reviewed-head>` with the full SHA from the review.
 In a fresh temporary clone of this repository's default branch, verify the checkout
 against the remote before running its helper. Stop on any failed command.
 
@@ -439,16 +440,22 @@ scratch=$(mktemp -d) &&
   git clone --quiet https://github.com/@@repository@@.git "$scratch/default" &&
   cd "$scratch/default" &&
   test "$(git rev-parse HEAD)" = "$(git ls-remote --exit-code origin HEAD | cut -f1)" &&
-  python3 .github/governance/handoff_recheck.py judge "$pr" "$head" > "$scratch/receipt"
+  python3 .github/governance/handoff_recheck.py judge '<pr-number>' '<reviewed-head>' > ../receipt &&
+  pwd -P && cat ../receipt
 ```
 
-Copy the successful receipt line into the PR Merge summary's evidence. Use its
-`pure_revert` result when applying The tier. Complete Checks
-first, including the review, required checks and rerun history on that head. Immediately
-before handing habit the pinned command, run from the same clean clone:
+Keep the first output line (the absolute clone path) for confirmation. Record the second
+line (the JSON receipt) verbatim in the English PR Merge summary as its one machine-readable
+evidence line. The Chinese terminal copy reports the outcome in plain words. Use the
+`pure_revert` result when applying The tier.
+
+Complete Checks first, including the review, required checks and rerun history on that head.
+Immediately before handing habit the pinned command, substitute the saved path for
+`<clone-path>` and run:
 
 ```sh
-python3 .github/governance/handoff_recheck.py confirm "$pr" "$head" < "$scratch/receipt"
+cd '<clone-path>' &&
+  python3 .github/governance/handoff_recheck.py confirm '<pr-number>' '<reviewed-head>' < ../receipt
 ```
 
 Hand over the command only when confirmation succeeds and its receipt matches the one

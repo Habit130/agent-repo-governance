@@ -3,6 +3,7 @@
 import copy
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -174,6 +175,31 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
                        "policy already adopted on its base", "git ls-remote", self.script + " judge",
                        self.script + " confirm", "Merge summary", "required checks", "after the comparison"):
             self.assertIn(phrase, " ".join(section.split()))
+
+    def test_writer_runs_the_documented_blocks_in_separate_shells(self):
+        expected = self.run_helper()
+        self.assertEqual(expected.returncode, 0, expected.stderr)
+        section = self.text("docs/agents/review.md").split("### The merge handoff", 1)[1]
+        judge, confirm = re.findall(r"```sh\n(.*?)\n```", section, re.S)
+        env = environment.environment(self.path("shell-reads"), self.recording, base=support.isolated_env())
+        env.update(TMPDIR=self.tmp, GIT_ALLOW_PROTOCOL="file", GIT_CONFIG_COUNT="1",
+                   GIT_CONFIG_KEY_0="url.%s.insteadOf" % Path(self.dest).as_uri(),
+                   GIT_CONFIG_VALUE_0="https://github.com/Habit130/tally.git")
+
+        def shell(block):
+            block = block.replace("<pr-number>", "17").replace("<reviewed-head>", self.head)
+            return subprocess.run(["/bin/sh", "-c", block], cwd=self.tmp, env=env, capture_output=True, text=True)
+
+        judged = shell(judge)
+        self.assertEqual(judged.returncode, 0, judged.stderr)
+        clone, receipt = judged.stdout.splitlines()
+        self.assertTrue(Path(clone).is_absolute())
+        self.assertEqual(receipt, expected.stdout.strip())
+        confirmed = shell(confirm.replace("<clone-path>", clone))
+        self.assertEqual(confirmed.returncode, 0, confirmed.stderr)
+        self.assertEqual(confirmed.stdout, expected.stdout)
+        self.assertIn("verbatim in the English PR Merge summary", " ".join(section.split()))
+        self.assertIn("Chinese terminal copy reports the outcome in plain words", " ".join(section.split()))
 
     def test_change_during_the_last_comparison_withholds_confirmation(self):
         receipt = self.run_helper().stdout
