@@ -5,6 +5,7 @@ prints through `redact`, so no value read from a repository or from GitHub, a co
 text, a title or an error included, reaches the session's output.
 """
 
+import json
 import re
 
 # Each shape, by the type habit hears.
@@ -29,12 +30,45 @@ def kinds(text):
     return [kind for kind, pattern in SHAPES if pattern.search(text)]
 
 
-def redact(value):
-    """value with every credential shape in its strings, keys included, replaced by its type."""
+# The same line boundaries as str.splitlines(), including CR-only files.
+_LINE_BREAK = re.compile(r"\r\n|[\r\n\v\f\x1c-\x1e\x85\u2028\u2029]")
+
+
+def _redact_text(text, path):
+    # Match on the original input: replacing one shape first can hide the start of another.
+    spans = sorted((m.start(), m.end(), kind) for kind, pattern in SHAPES for m in pattern.finditer(text))
+    if not spans:
+        return text
+    if path is not None:
+        # JSON escapes control characters. Escape the other Unicode line separators too
+        # so placing a filename inside a marker never inserts another source line.
+        location = json.dumps(redact(path), ensure_ascii=False)[1:-1]
+        location = location.translate({0x85: r"\u0085", 0x2028: r"\u2028", 0x2029: r"\u2029"})
+    output = []
+    covered_end = previous_start = 0
+    line = 1
+    for start, end, kind in spans:
+        if path is not None:
+            # Keep line breaks in covered text, even when the next match starts inside it.
+            output.extend(_LINE_BREAK.findall(text, previous_start, min(start, covered_end)))
+        output.append(text[covered_end:start])
+        if path is not None:
+            line += sum(1 for _ in _LINE_BREAK.finditer(text, previous_start, start))
+            output.append("<redacted %s at %s:%d>" % (kind, location, line))
+        elif end > covered_end:
+            output.append("<redacted %s>" % kind)
+        covered_end = max(covered_end, end)
+        previous_start = start
+    if path is not None:
+        output.extend(_LINE_BREAK.findall(text, previous_start, covered_end))
+    output.append(text[covered_end:])
+    return "".join(output)
+
+
+def redact(value, path=None):
+    """Replace credential values in strings and mapping keys, optionally recording locations."""
     if isinstance(value, str):
-        for kind, pattern in SHAPES:
-            value = pattern.sub("<redacted %s>" % kind, value)
-        return value
+        return _redact_text(value, path)
     if isinstance(value, dict):
         return dict((redact(key), redact(item)) for key, item in value.items())
     if isinstance(value, (list, tuple)):

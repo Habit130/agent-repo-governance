@@ -5,9 +5,21 @@ habit-only commands. This reference describes the current state.
 
 `generator/govern-repository/scripts/govern.py` is the generator's one entry. Its
 subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`,
-`handover`, `identity`, `mend-markers`, and the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
-and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
+`handover`, `identity`, `mend-markers`, and the mechanical core's `preconditions`, `mode`, `inspect`, `read` and `accept-invitation`) print JSON
+and exit 0 on good facts; 1 when exact comparison finds differences, a precondition or a file read fails, or
 the mode is stop; and 2 on a refusal, with the reason under `error`.
+
+- **Reading repository text.** `inspect` reports the commit in `byte_identity.head` and a
+  boolean per inspected path in `byte_identity.files`. Only matching files supply content
+  facts. `read --worktree <checkout> -- <path>` returns JSON with the path and the raw
+  committed text after credential redaction. Each redaction names the type, path and
+  original line. Valid Unicode is printed as UTF-8. Undecodable bytes use JSON surrogate
+  escapes. Exit 1 returns only the path, with no credential finding from either version.
+  Both commands check the index and the pinned commit for regular files and compare the
+  working bytes without following links or applying filters. A failed record check also
+  stops `preconditions`, `mode` and `mend-markers`. When checking drift, `mode` reports
+  present but unverifiable targets under `drift.unverified_files` by location. Marker
+  repair checks its inputs before writing or reporting dropped lines.
 
 - **Damaged markers** are mended before rendering: `mend-markers --worktree <path>` gives each
   fixed part's file whose markers `mode` reports damaged one well-formed block at the record's
@@ -137,8 +149,9 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     families and GitHub strings. Full-entry tests require exact redacted fields (proving
     echo reachability), type/location reports and no plant in stdout or stderr. Runtime
     plants cover every `SHAPES` class; set equality requires a plant for a new class.
-    An isolated copy with redaction bypassed is the negative control for both normal facts
-    and caught errors. Existing private-key fixtures retain the document-discard and
+    An isolated copy with redaction bypassed is the negative control for inspection facts
+    and caught errors. `CommittedReads` checks every shape's original location in both
+    the reader's `text` and marker repair's `dropped` lines, including a multiline key. Existing private-key fixtures retain the document-discard and
     truncated-key checks. Review the inventory when adding an echoed source; supported
     manifest names and the document-name expression are checked mechanically. Make/just
     target grammar and discarded document key lines limit which shapes can echo there.

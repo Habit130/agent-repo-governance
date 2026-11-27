@@ -207,7 +207,7 @@ def run(worktree, home, store_root, env=None):
     gh = github.Retried(env)
     root = checkout.toplevel(worktree)
     repository = data = in_effect = None
-    found = checkout.read_record(root) if root else {"present": False}
+    found = checkout.read_record(checkout.CommittedFiles(root)) if root else {"present": False}
     if root is None:
         result.add("directory", "fail", "%s isn't inside a git checkout" % os.path.realpath(worktree))
     else:

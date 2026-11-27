@@ -38,10 +38,15 @@ in English and no code, diffs or paths. It names its sender and target.
    repository whose `private` item fails, give habit `rules_in_effect.habit_lines` verbatim,
    with its `command` beside them when there is one, and end: the run never waits on it.
 2. Run `<entry> mode`, saving its report. On mode `stop`, or when any subcommand exits 2, tell
-   habit the reason and end.
+   habit the reason and end. For each path under `drift.unverified_files`, use only its
+   location in the confirmation and subsequent messages. Keep it until habit decides.
+
 3. Follow the report's `outcome` by the words it begins with:
    - `no drift`: run `<entry> inspect` (read-only), send one Chinese message saying so and
      naming each Antigravity file it lists, left as it is, and end. No issue, no PR.
+   - `not proven: the unverified files`: run `<entry> inspect` (read-only). Name the
+     unverified files by location only and each Antigravity file it lists, left as it is.
+     Name any inactive ruleset under `unplaced` too. Wait for habit's decision.
    - `not proven: the inactive rulesets`: run `<entry> inspect` (read-only), name each one
      under `drift.github.unplaced`, say it enforces nothing and needs no action, name each
      Antigravity file it lists, left as it is, and end. Write nothing and hand no command.
@@ -65,7 +70,7 @@ in English and no code, diffs or paths. It names its sender and target.
    qualifying run is failed smoke, not absent product verification. When verification is
    absent, select an executable local smoke from the repository's authoritative runbook and
    command inventory, with its prerequisites and success criterion. Preserve existing
-   command prohibitions. At Upgrade and Repair, select it by reading; do not run exploratory
+   command prohibitions. At Upgrade and Repair, select it with the reader in Judgment; do not run exploratory
    build/test commands or change confirmed values or repository-owned content. Record the
    selected verification in the ticket before it is frozen. Governance audits, pre-merge
    PR runs and Release dispatch do not substitute. If no executable smoke can be determined,
@@ -73,12 +78,18 @@ in English and no code, diffs or paths. It names its sender and target.
 
 ## 2. Judgment
 
-At Initialize, or a rebuilt record, make every entry below; each ends up in the issue, and
-in the confirmation as its items allow. At Upgrade, sort only the rules in repository-owned
-content, to find what conflicts with the new fixed rules, and run no commands other than the
-read-only check for Antigravity files below: confirmed values and repository-owned content
-stay as they are, apart from a conflict habit confirms. At Repair, make none of them;
-Antigravity's files are only listed.
+At Initialize, Upgrade and Repair, read, sort or quote repository text only from
+`<entry> read -- <path>`.
+Use this reader for every file whose text enters the issue, confirmation or a message to
+habit, including commands and runbooks. Use the returned `text`. The reader applies the
+byte-identity check and identifies credentials by type and location. Exit 1 returns just
+the path. On failure, name only the location, skip sorting and keep the file until habit decides.
+
+At Initialize or a rebuilt record, make every entry below. At Upgrade, use the reader to
+sort conflicts in repository-owned content. Run only the reader for this judgment. Keep
+confirmed values and repository-owned content apart from conflicts habit confirms.
+At Repair, use only the reader when listing files. Make none of the Initialize proposals and
+leave Antigravity's files as they are.
 
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
@@ -93,14 +104,8 @@ Antigravity's files are only listed.
     definitions, issue templates of a replaced process, an older Bugbot rule file.
 
   Antigravity's own files follow the `removed` rule too, so its sessions read `AGENTS.md`'s
-  policy. Every Antigravity file this paragraph reads, however it is found (by name, by the
-  scan of `rules/` or through a `rules.json`), passes one check first: it is a tracked
-  regular file (`git ls-files -s` mode `100644` or `100755`), reached through no link and no
-  path outside the checkout, whose working file is byte-identical to its raw blob in the
-  checkout's `HEAD` commit (`git cat-file blob HEAD:<path>` compared with `cmp`, no
-  filters). Parse and quote only that blob. A file that fails the check, or can't be
-  checked, is named by location only, without either version's content; it is not sorted,
-  and it is kept until habit decides. Sort the rules of every `GEMINI.md`, every `.agents/`
+  policy. Apply the byte-identity check to every Antigravity file, including each file a
+  `rules.json` selects. Name a failing file by location only. Sort the rules of every `GEMINI.md`, every `.agents/`
   `AGENTS.md`, `GEMINI.md` and `rules/` file, and every `.agent/` rule that passes as a root
   `CLAUDE.md`'s, then class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP
   servers (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for
@@ -138,7 +143,7 @@ Antigravity's files are only listed.
   or slot waiver. Older adopted policies still set the run's review requirements.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
   worktree allocated as **Temporary paths** above, so the checkout stays untouched. A manifest
-  whose `extraction` is `unsupported` has its commands read from the file by you. Record each command you ran and
+  whose `extraction` is `unsupported` gets its commands from the reader. Record each command you ran and
   whether it worked, with the cause of a failure. A failing command is a fact for `build.md`
   and the issue, never a question or an option for habit: the run never changes the
   repository's code, build or CI configuration to make one pass, which is separate work.
@@ -220,7 +225,14 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    Preserve existing same-name, same-purpose labels with different descriptions. Their
    manifest descriptions are creation defaults. Escalate a purpose conflict before writing.
 2. Allocate a worktree as **Temporary paths** above, on a new branch from the latest
-   `origin` default branch.
+   `origin` default branch. Before render or manual edits, check every existing or tracked
+   path the planned writes can change, including fixed, mixed and retired targets of the
+   destination version. Check them in both the inspected checkout and the fresh worktree:
+   use `<entry> read --worktree <checkout> -- <path>` for each path present or tracked there.
+   Include earlier failures even if the new read passes. A failure in either checkout holds
+   that operation until habit explicitly approves that change to that path. If habit chooses
+   to keep it, skip the change. If keeping it prevents exact comparison from passing, stop
+   before render. Carry existing text forward only from a passing read in the fresh worktree.
 3. Render: `<entry> render --dest <worktree> --repository <owner/name> --default-branch
    <branch> --confirmed <file>`, the file holding JSON with `sensitive_paths` and
    `required_checks`, plus `review_bots`, habit's list, when the version's manifest lists

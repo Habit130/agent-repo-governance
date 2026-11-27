@@ -140,12 +140,14 @@ def output_writers(text, entry=False):
                 node.value.id in sys_names and node.attr in ("stdout", "stderr", "__stdout__", "__stderr__")):
             continue
         parent = parents.get(node)
-        call = parents.get(parent)
+        writer = parents.get(parent)
+        call = parents.get(writer)
         scope = parent
         while scope is not None and not isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
             scope = parents.get(scope)
-        if (entry and node.attr == "stdout" and isinstance(parent, ast.Attribute) and parent.attr == "write"
-                and isinstance(call, ast.Call) and call.func is parent and
+        if (entry and node.attr == "stdout" and isinstance(parent, ast.Attribute) and parent.attr == "buffer"
+                and isinstance(writer, ast.Attribute) and writer.attr == "write"
+                and isinstance(call, ast.Call) and call.func is writer and
                 isinstance(scope, ast.FunctionDef) and scope.name == "emit"):
             allowed += 1
         else:
