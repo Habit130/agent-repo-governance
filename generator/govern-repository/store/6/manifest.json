@@ -5,6 +5,7 @@
     {"path": ".claude/CLAUDE.md", "class": "fixed part", "mode": "100644"},
     {"path": ".github/governance/record.yml", "class": "record", "mode": "100644"},
     {"path": ".github/governance/gate.py", "class": "fixed", "mode": "100644"},
+    {"path": ".github/governance/handoff_recheck.py", "class": "fixed", "mode": "100644"},
     {"path": ".github/governance/branch_rules.py", "class": "fixed", "mode": "100644"},
     {"path": ".github/governance/owner.sh", "class": "fixed", "mode": "100755"},
     {"path": ".github/workflows/governance-gate.yml", "class": "fixed", "mode": "100644"},

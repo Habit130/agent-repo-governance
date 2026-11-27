@@ -297,7 +297,8 @@ the Builder does when habit waived the Reviewer session (Waivers).
 ### Checks first
 
 On the head the summary names, perform the history and issue checks in Rerun-only passes
-and link each cause's open issue in the summary. Then check:
+and link each cause's open issue in the summary. For an affected PR, obtain the receipt
+under [The merge handoff](#the-merge-handoff) for the summary. Then check:
 
 1. Check that each required review and every additional review the summary lists is clear
    on this head, substituted at medium (Review bots), or waived by habit for this head
@@ -423,6 +424,44 @@ In Chinese (`AGENTS.md`, Talking to habit and to other agents):
 Neither copy points at code: no paths, line numbers, diffs or snippets.
 
 ### The merge handoff
+
+If the PR remained open across an Upgrade or a change to policy the gate reads, the Merge
+summary writer rechecks it. When applicability is uncertain, recheck. An unaffected PR
+follows the ordinary handoff below. For Initialize, use the bootstrap in Checks first.
+Judge an Upgrade itself under the policy already adopted on its base.
+
+In both commands below, replace `<pr-number>` with the named PR number and
+`<reviewed-head>` with the full SHA from the review.
+In a fresh temporary clone of this repository's default branch, verify the checkout
+against the remote before running its helper. Stop on any failed command.
+
+```sh
+scratch=$(mktemp -d) &&
+  git clone --quiet https://github.com/@@repository@@.git "$scratch/default" &&
+  cd "$scratch/default" &&
+  test "$(git rev-parse HEAD)" = "$(git ls-remote --exit-code origin HEAD | cut -f1)" &&
+  python3 .github/governance/handoff_recheck.py judge '<pr-number>' '<reviewed-head>' > ../receipt &&
+  pwd -P && cat ../receipt
+```
+
+Keep the first output line (the absolute clone path) for confirmation. Record the second
+line (the JSON receipt) verbatim in the English PR Merge summary as its one machine-readable
+evidence line. The Chinese terminal copy reports the outcome in plain words. Use the
+`pure_revert` result when applying The tier.
+
+Complete Checks first, including the review, required checks and rerun history on that head.
+Immediately before handing habit the pinned command, substitute the saved path for
+`<clone-path>` and run:
+
+```sh
+cd '<clone-path>' &&
+  python3 .github/governance/handoff_recheck.py confirm '<pr-number>' '<reviewed-head>' < ../receipt
+```
+
+Hand over the command only when confirmation succeeds and its receipt matches the one
+recorded in the summary. On a failure, unreadable evidence or changed input, hold the
+command. Once eligible, repeat from a fresh clone and update the evidence. The receipt
+records the last observation. The branch or PR can change after the comparison.
 
 In the terminal, after the summary, as its writer's final handoff (`handoff.md`), whose
 conclusion the summary's first line gives:
