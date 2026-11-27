@@ -74,10 +74,11 @@ in English and no code, diffs or paths. It names its sender and target.
 ## 2. Judgment
 
 At Initialize, or a rebuilt record, make every entry below; each ends up in the issue, and
-in the confirmation as its items allow. At Upgrade, sort only the rules in
-repository-owned content, to find what conflicts with the new fixed rules, and run no build
-or test commands (the read-only Git checks for a `rules.json` below still apply): confirmed
-values and repository-owned content stay as they are, apart from a conflict habit confirms. At Repair, make none of them; Antigravity's files are only listed.
+in the confirmation as its items allow. At Upgrade, sort only the rules in repository-owned
+content, to find what conflicts with the new fixed rules, and run no commands other than the
+read-only checks for a `rules.json` below: confirmed values and repository-owned content
+stay as they are, apart from a conflict habit confirms. At Repair, make none of them;
+Antigravity's files are only listed.
 
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:

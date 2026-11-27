@@ -391,7 +391,7 @@ class SkillFiles(unittest.TestCase):
         # The gate comes before the manifest's entries are listed, so no unverified entry reaches habit or the issue.
         self.assertLess(text.index("For a `rules.json`, read the manifest"), text.index("Otherwise list each of its entries"))
         # Upgrade still runs these read-only Git checks; only build and test commands are skipped there.
-        self.assertIn("and run no build or test commands (the read-only Git checks for a `rules.json` below still apply)", text)
+        self.assertIn("and run no commands other than the read-only checks for a `rules.json` below", text)
         self.assertNotIn("the pinned commit", text)
         for gone in ("list for habit any entry that names no tracked file, before proposing the manifest's removal",
                      "`rules/` and `rules.json` file", "only from the Git blob of a tracked regular file",
