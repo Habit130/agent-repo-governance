@@ -2,8 +2,8 @@
 """The generator's one command-line entry. Every subcommand prints JSON facts.
 
 Exit codes: 0 when the facts are good; 1 when exact comparison finds differences, a
-precondition fails, or the mode is stop; 2 when the command refuses, with the reason under
-"error". The mechanical core's subcommands (`preconditions`, `mode`, `inspect`,
+precondition or a file read fails, or the mode is stop; 2 when the command refuses, with the reason under
+"error". The mechanical core's subcommands (`preconditions`, `mode`, `inspect`, `read`,
 `accept-invitation`) refuse first, with the harness facts under "harness", outside Claude
 Code and OpenCode.
 """
@@ -38,9 +38,13 @@ DEFAULT_STORE = os.environ.get("GOVERN_SCENARIO_STORE") or os.path.join(SKILL_DI
 DEFAULT_HOME = os.environ.get("GOVERN_SCENARIO_HOME") or os.path.expanduser("~")
 
 
-def emit(facts, code=0):
+def emit(facts, code=0, ascii_only=False):
     """Print the facts, every credential shape in them replaced by its type (#41 §10)."""
-    sys.stdout.write(json.dumps(secrets.redact(facts), indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+    safe = secrets.redact(facts)
+    # The reader can carry non-UTF-8 bytes as JSON surrogate escapes.
+    output = (json.dumps(safe, indent=2, sort_keys=True) if ascii_only else
+              json.dumps(safe, indent=2, sort_keys=True, ensure_ascii=False))
+    sys.stdout.write(output + "\n")
     return code
 
 
@@ -99,7 +103,8 @@ def cmd_mend_markers(args):
     root = checkout.toplevel(args.worktree)
     if root is None:
         raise GovernError("%s isn't inside a git checkout" % args.worktree)
-    found = checkout.read_record(root)
+    files = checkout.CommittedFiles(root)
+    found = checkout.read_record(files)
     if not found.get("parses"):
         raise GovernError("the record is missing or doesn't parse, so there is no version to mend the markers at")
     version = found["version"]
@@ -107,19 +112,24 @@ def cmd_mend_markers(args):
     values = render.check_values(version, args.repository or compare.repository_from_origin(root),
                                  args.default_branch or compare.default_branch_from_origin(root))
     planned, mended = [], []
-    for entry in source.manifest(version)["templates"]:
-        data = checkout.read(root, entry["path"]) if entry["class"] == "fixed part" else None
-        if data is None:
+    targets = [entry for entry in source.manifest(version)["templates"] if entry["class"] == "fixed part"]
+    for entry in targets:
+        storedform.check_target(root, entry["path"])
+    for entry in targets:
+        path = entry["path"]
+        if not files.present(path):
             continue
+        data = files.read(path)
+        if data is None:
+            raise GovernError(path)
         try:
             text = data.decode("utf-8")
         except UnicodeDecodeError:
-            raise GovernError("%s is not UTF-8, so its markers can't be mended" % entry["path"])
-        result = render.mend(text, render.template_text(source, version, entry, values), entry["path"])
+            raise GovernError("%s is not UTF-8, so its markers can't be mended" % path)
+        result = render.mend(text, render.template_text(source, version, entry, values), path)
         if result is not None:
-            # The renderer's worktree boundary: a symlinked parent would send the write outside.
-            planned.append((storedform.check_target(root, entry["path"]), result[0]))
-            mended.append({"path": entry["path"], "repair": result[1], "dropped": result[2]})
+            planned.append((storedform.check_target(root, path), result[0]))
+            mended.append({"path": path, "repair": result[1], "dropped": result[2]})
     for full, text in planned:  # Written only once every file is mended, so a refusal writes nothing.
         with open(full, "w", encoding="utf-8", newline="") as handle:
             handle.write(text)
@@ -171,10 +181,23 @@ def cmd_handover(args):
     return emit(facts)
 
 
+def cmd_read(args):
+    harness.require()
+    root = checkout.toplevel(args.worktree)
+    try:
+        blob = checkout.CommittedFiles(root).read(args.path) if root else None
+    except GovernError:
+        blob = None
+    if blob is None:
+        return emit({"path": args.path}, 1, ascii_only=True)
+    text = blob.decode("utf-8", "surrogateescape")
+    return emit({"path": args.path, "text": secrets.redact(text, path=args.path)}, ascii_only=True)
+
+
 def cmd_inspect(args):
     facts, code = inspection.run(args.worktree, args.home)
     facts["ok"] = code == 0
-    return emit(facts, code)
+    return emit(facts, code, ascii_only=True)
 
 
 def cmd_accept_invitation(args):
@@ -266,6 +289,11 @@ def build_parser():
     hand.add_argument("--mode-facts", required=True, help="a file holding `mode`'s JSON")
     hand.add_argument("--required-checks-changed", action="store_true", help="habit's answer changed the required checks")
     hand.set_defaults(run=cmd_handover)
+
+    read = commands.add_parser("read", help="read a verified repository file")
+    add_core_arguments(read)
+    read.add_argument("path")
+    read.set_defaults(run=cmd_read)
 
     inspect = commands.add_parser("inspect", help="the inspection facts")
     add_core_arguments(inspect, home=True)

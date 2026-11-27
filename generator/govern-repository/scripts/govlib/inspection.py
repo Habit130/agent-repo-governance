@@ -58,23 +58,10 @@ _FENCE = re.compile(r"^\s*(```|~~~)\s*([A-Za-z0-9_-]*)")
 SHELL_FENCES = ("", "sh", "bash", "shell", "console", "zsh", "terminal")
 COMMAND_DOCS = re.compile(r"(^|/)(readme|contributing|development|hacking|building|testing)[^/]*\.(md|rst|txt)$|^docs/agents/build\.md$", re.I)
 
-def _text(root, path):
-    data = checkout.read(root, path)
-    if data is None:
-        return None
-    try:
-        return data.decode("utf-8")
-    except UnicodeDecodeError:
-        return None
-
-
-def credentials(root, paths):
-    """[{type, path, line}] for every credential shape in the files given."""
+def credentials(texts):
+    """[{type, path, line}] for every credential shape in the verified text."""
     found = []
-    for path in paths:
-        text = _text(root, path)
-        if text is None:
-            continue
+    for path, text in texts.items():
         for number, line in enumerate(text.splitlines(), 1):
             found.extend({"type": kind, "path": path, "line": number} for kind in secrets.kinds(line))
     return found
@@ -156,8 +143,7 @@ def instruction_files(paths):
     return found
 
 
-def _skill_name(root, path, fallback):
-    text = _text(root, path) or ""
+def _skill_name(text, fallback):
     if text.startswith("---\n"):
         for line in text.split("\n")[1:]:
             if line == "---":
@@ -167,7 +153,7 @@ def _skill_name(root, path, fallback):
     return fallback
 
 
-def harness_files(root, paths, home):
+def harness_files(texts, paths, home):
     files = dict((d, [p for p in paths if p.startswith(d + "/")]) for d in HARNESS_DIRS)
     files["opencode.json"] = [p for p in paths if p in HARNESS_FILES]
     machine, reason = installed_skills(home)
@@ -175,9 +161,9 @@ def harness_files(root, paths, home):
     skills = []
     for path in paths:
         match = SKILL.match(path)
-        if not match:
+        if not match or path not in texts:
             continue
-        name = _skill_name(root, path, match.group(2))
+        name = _skill_name(texts[path], match.group(2))
         skills.append({
             "path": path,
             "directory": match.group(2),
@@ -188,14 +174,13 @@ def harness_files(root, paths, home):
             "machine_skill_set_unreadable": reason or None}
 
 
-def commands(root, paths):
+def commands(texts):
     manifests, documents = [], []
-    for path in paths:
+    for path, text in texts.items():
         name = path.rsplit("/", 1)[-1]
         if "node_modules/" in path:
             continue
         if name in MANIFESTS:
-            text = _text(root, path) or ""
             # Only these formats' commands are extracted, so elsewhere an empty list says nothing.
             supported = name == "package.json" or MANIFESTS[name] in ("make", "just")
             entry = {"path": path, "tool": MANIFESTS[name], "commands": [],
@@ -217,7 +202,6 @@ def commands(root, paths):
                         entry["commands"].append({"command": "%s %s" % (MANIFESTS[name], match.group(1))})
             manifests.append(entry)
         if COMMAND_DOCS.search(path):
-            text = _text(root, path) or ""
             fence, key = None, False
             for number, line in enumerate(text.splitlines(), 1):
                 match = _FENCE.match(line)
@@ -247,32 +231,44 @@ def run(worktree, home, env=None):
     gh = github.Retried(env)
     data = gh.require("repos/%s" % repository, "the repository")
     branch = data.get("default_branch")
-    paths = checkout.tracked(root)
+    source = checkout.CommittedFiles(root)
+    paths = sorted(source.index)
     files = instruction_files(paths)
-    harness_facts = harness_files(root, paths, home)
     workflow_paths = [p for p in paths if WORKFLOW.match(p)]
-    ci = [workflows.inspect(p, _text(root, p) or "", branch) for p in workflow_paths]
-    found_commands = commands(root, paths)
     read = set(workflow_paths)
     for key in ("docs_agents", "process", "github_templates", "review_bot_rules"):
         read.update(files[key])
     read.update(entry["path"] for entry in files["instructions"])
-    for listed in harness_facts["files"].values():
-        read.update(listed)
-    read.update(entry["path"] for entry in found_commands["manifests"])
-    read.update(p for p in paths if COMMAND_DOCS.search(p))
-    read.add(checkout.RECORD_PATH)
+    harness_dirs = tuple(d + "/" for d in HARNESS_DIRS)
+    read.update(p for p in paths if p.startswith(harness_dirs) or p in HARNESS_FILES
+                or COMMAND_DOCS.search(p) or ("node_modules/" not in p and os.path.basename(p) in MANIFESTS))
+    if source.present(checkout.RECORD_PATH):
+        read.add(checkout.RECORD_PATH)
+    checks, texts = {}, {}
+    record = checkout.record_facts(None)
+    for path in sorted(read):
+        blob = source.read(path)
+        checks[path] = blob is not None
+        if path == checkout.RECORD_PATH:
+            record = checkout.record_facts(blob) if blob is not None else {"path": path}
+        if blob is not None:
+            try:
+                texts[path] = blob.decode("utf-8")
+            except UnicodeDecodeError:
+                texts[path] = ""
+    ci = [workflows.inspect(p, texts[p], branch) for p in workflow_paths if p in texts]
     facts = {
         "harness": judged,
         "repository": repository,
         "github": _github(gh, repository, data, branch),
-        "record": checkout.read_record(root),
+        "record": record,
+        "byte_identity": {"head": source.head, "files": checks},
         "instructions": files,
-        "harness_files": harness_facts,
-        "ci": {"workflows": ci, "none": not ci,
+        "harness_files": harness_files(texts, paths, home),
+        "ci": {"workflows": ci, "none": not workflow_paths,
                "secrets": sorted(set(name for workflow in ci for name in workflow["secrets"]))},
-        "commands": found_commands,
-        "credentials": credentials(root, sorted(p for p in read if p in set(paths))),
+        "commands": commands(texts),
+        "credentials": credentials(texts),
         "left_as_they_are": [p for p in ("GLOSSARY.md", "docs/adr") if p in paths or any(x.startswith(p + "/") for x in paths)],
     }
     return facts, 0

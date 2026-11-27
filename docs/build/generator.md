@@ -5,9 +5,19 @@ habit-only commands. This reference describes the current state.
 
 `generator/govern-repository/scripts/govern.py` is the generator's one entry. Its
 subcommands (`store`, `change-note`, `render`, `compare`, `materialize`, `owner-command`,
-`handover`, `identity`, `mend-markers`, and the mechanical core's `preconditions`, `mode`, `inspect` and `accept-invitation`) print JSON
+`handover`, `identity`, `mend-markers`, and the mechanical core's `preconditions`, `mode`, `inspect`, `read` and `accept-invitation`) print JSON
 and exit 0 on good facts; 1 when exact comparison finds differences, a precondition fails or
 the mode is stop; and 2 on a refusal, with the reason under `error`.
+
+- **Reading repository text.** `inspect` reports the commit in `byte_identity.head` and a
+  boolean per inspected path in `byte_identity.files`. Only matching files supply content
+  facts. `read --worktree <checkout> -- <path>` returns JSON with the path and the raw
+  committed text after credential redaction. Each redaction names the type, path and
+  original line. Non-UTF-8 bytes use JSON surrogate escapes. Exit 1 returns only the path.
+  Both commands check the index and the pinned commit for regular files and compare the
+  working bytes without following links or applying filters. A failed record check also
+  stops `preconditions`, `mode` and `mend-markers`; marker repair checks its input files
+  before writing or reporting dropped lines.
 
 - **Damaged markers** are mended before rendering: `mend-markers --worktree <path>` gives each
   fixed part's file whose markers `mode` reports damaged one well-formed block at the record's

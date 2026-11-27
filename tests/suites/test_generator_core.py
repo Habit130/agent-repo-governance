@@ -56,6 +56,132 @@ class SeamA(support.TempDirCase):
         return run
 
 
+class CommittedReads(support.TempDirCase):
+    def setUp(self):
+        super().setUp()
+        self.store = gs.build_store("released")
+        self.home = gs.build_home("ready")
+        self.root = gs.build_repository(self.tmp, {"repository": {"governed_at": 3}}, self.store)
+        scratch = self.path("scratch")
+        os.mkdir(scratch)
+        self.env = gs.case_env({}, self.home, scratch, gs.recording({}, self.path("gh.json")))
+
+    def entry(self, name, *args):
+        return support.run_cli(support.GOVERN, [name, "--worktree", self.root, *args], self.env)
+
+    def test_only_identical_committed_files_supply_text(self):
+        with open(os.path.join(support.FIXTURES, "generator", "committed-reads.json")) as handle:
+            case = json.load(handle)
+        def git(*args):
+            return support.git(self.root, *args)
+        original = "```sh\necho original-example\n```\n"
+        draft = original.replace("original-example", "draft-example")
+        unchanged = "```sh\necho verified-example\n```"
+        git("config", "filter.example.clean", "sed s/draft-example/original-example/g")
+        git("config", "filter.example.smudge", "sed s/original-example/draft-example/g")
+        changed = [case[k] for k in ("working_edit", "document", "staged")]
+        files = dict.fromkeys(changed, original)
+        files.update({case["unchanged"]: unchanged, case["filtered"]: draft,
+                      ".gitattributes": case["filtered"] + " filter=example\n"})
+        support.write_tree(self.root, files)
+        link = os.path.join(self.root, case["link"])
+        os.makedirs(os.path.dirname(link))
+        os.symlink("../" + case["unchanged"], link)
+        git("add", "-A")
+        git("commit", "-qm", "inspection samples")
+        self.assertEqual(git("status", "--porcelain"), "")
+        support.write_tree(self.root, dict.fromkeys(changed, draft))
+        git("add", "--", case["staged"])
+        code, out, err = self.entry("inspect", "--home", self.home)
+        self.assertEqual((code, err), (0, ""))
+        facts = json.loads(out)
+        for path in changed + [case["link"], case["filtered"]]:
+            with self.subTest(path=path, command="inspect"):
+                self.assertIs(facts.get("byte_identity", {}).get("files", {}).get(path), False)
+            with self.subTest(path=path, command="read"):
+                code, out_read, err = self.entry("read", "--", path)
+                self.assertEqual((code, json.loads(out_read), err), (1, {"path": path}, ""))
+        self.assertNotIn("draft-example", out)
+        self.assertNotIn("original-example", out)
+        self.assertEqual(facts["byte_identity"]["head"], git("rev-parse", "HEAD").strip())
+        self.assertIs(facts["byte_identity"]["files"][case["unchanged"]], True)
+        self.assertIn({"path": case["unchanged"], "line": 2, "command": "echo verified-example"},
+                      facts["commands"]["documents"])
+        code, out, err = self.entry("read", "--", case["unchanged"])
+        self.assertEqual((code, json.loads(out)["text"], err), (0, unchanged, ""))
+
+
+    def test_reader_reports_credentials_at_their_original_lines(self):
+        from credential_plants import assert_no_values
+
+        path = "AGENTS.md"
+        text = "\n".join(["keep", gs.PLANTED["private-key"], gs.PLANTED["private-key-body"],
+                          gs.PLANTED["private-key-end"], "example " + gs.PLANTED["github-token"], "end"])
+        support.write_tree(self.root, {path: text})
+        support.git(self.root, "commit", "-qam", "credential examples")
+        code, out, err = self.entry("read", "--", path)
+        assert_no_values(self, out, err)
+        self.assertEqual((code, err), (0, ""))
+        out = json.loads(out)["text"]
+        self.assertEqual(out.splitlines()[0], "keep")
+        self.assertIn("<redacted private key at AGENTS.md:2>", out)
+        self.assertTrue(out.endswith("example <redacted GitHub token at AGENTS.md:5>\nend"))
+
+    def test_mend_redacts_multiline_credentials_before_selecting_dropped_lines(self):
+        from credential_plants import assert_no_values
+
+        path = "AGENTS.md"
+        text = support.read_text(os.path.join(self.root, path))
+        key = "\n".join(gs.PLANTED[k] for k in ("private-key", "private-key-body", "private-key-end"))
+        text = text.replace("# AGENTS.md", key).replace("<!-- governance:end -->", "")
+        support.write_tree(self.root, {path: text})
+        support.git(self.root, "commit", "-qam", "damaged markers")
+        code, out, err = self.entry("mend-markers", "--store", self.store)
+        assert_no_values(self, out, err)
+        self.assertEqual((code, err), (0, ""))
+        self.assertTrue(any("private key at AGENTS.md:" in line
+                            for line in json.loads(out)["mended"][0]["dropped"]))
+
+    def test_reader_returns_only_location_when_the_index_is_unreadable(self):
+        path = "AGENTS.md"
+        self.env["GIT_INDEX_FILE"] = self.path("invalid-index")
+        support.write_tree(self.tmp, {"invalid-index": "unreadable index"})
+        code, out, err = self.entry("read", "--", path)
+        self.assertEqual((code, json.loads(out), err), (1, {"path": path}, ""))
+
+    def test_other_outputs_keep_a_failed_source_by_location(self):
+        record = ".github/governance/record.yml"
+        workflow = ".github/workflows/ci.yml"
+        skill = ".agents/skills/example/SKILL.md"
+        support.write_tree(self.root, {skill: "---\nname: original-skill\n---\n"})
+        support.git(self.root, "add", "--", skill)
+        support.git(self.root, "commit", "-qm", "example skill")
+        support.write_tree(self.root, {record: "example-record", workflow: "jobs: example-workflow",
+                                      skill: "---\nname: draft-skill\n---\n",
+                                      "package.json": '{"scripts":{"test":"example-manifest"}}'})
+        code, out, err = self.entry("inspect", "--home", self.home)
+        self.assertEqual((code, err), (0, ""))
+        for marker in ("example-record", "example-workflow", "draft-skill", "original-skill", "example-manifest"):
+            self.assertFalse(marker in out, marker)
+        facts = json.loads(out)
+        self.assertEqual(facts["record"], {"path": record})
+        for path in (record, workflow, skill, "package.json"):
+            self.assertIs(facts["byte_identity"]["files"][path], False)
+        for command in ("preconditions", "mode", "mend-markers"):
+            with self.subTest(command=command):
+                code, out, err = self.entry(command, "--store", self.store)
+                self.assertEqual((code, json.loads(out).get("error"), err), (2, record, ""))
+
+    def test_mend_keeps_uncommitted_rules_and_omits_their_text(self):
+        path = "AGENTS.md"
+        before = support.read_text(os.path.join(self.root, path)).replace("# AGENTS.md", "# local-example")
+        before = before.replace("<!-- governance:end -->", "")
+        support.write_tree(self.root, {path: before})
+        code, out, err = self.entry("mend-markers", "--store", self.store)
+        self.assertEqual((code, json.loads(out).get("error"), err), (2, path, ""))
+        self.assertEqual(support.read_text(os.path.join(self.root, path)), before)
+
+
 class CredentialCoverage(support.TempDirCase):
     def test_every_supported_shape_has_a_runtime_plant(self):
         from govlib import secrets
@@ -372,13 +498,9 @@ class SkillFiles(unittest.TestCase):
 
     def test_a_rules_manifest_carries_the_rules_of_the_files_it_names(self):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
-        gate = ("Every Antigravity file this paragraph reads, however it is found (by name, by the scan of `rules/` or "
-                "through a `rules.json`), passes one check first: it is a tracked regular file (`git ls-files -s` mode "
-                "`100644` or `100755`), reached through no link and no path outside the checkout, whose working file is "
-                "byte-identical to its raw blob in the checkout's `HEAD` commit (`git cat-file blob HEAD:<path>` "
-                "compared with `cmp`, no filters). Parse and quote only that blob.")
-        fails = ("A file that fails the check, or can't be checked, is named by location only, without either version's "
-                 "content; it is not sorted, and it is kept until habit decides.")
+        gate = ("Apply the byte-identity check to every Antigravity file, including each file a "
+                "`rules.json` selects. Name a failing file by location only.")
+        fails = ("On failure, name only the location, skip sorting and keep the file until habit decides.")
         for required in (gate, fails,
                          "Sort the rules of every `GEMINI.md`, every `.agents/` `AGENTS.md`, `GEMINI.md` and `rules/` "
                          "file, and every `.agent/` rule that passes as a root `CLAUDE.md`'s, then class the file `removed`.",
@@ -392,13 +514,15 @@ class SkillFiles(unittest.TestCase):
                          "each file of the first two groups that passes the check conflicts with the new fixed rule: sort "
                          "its rules and propose its removal, a `rules.json` only once every entry is accounted for; a file "
                          "that fails is named by location only",
-                         "and run no commands other than the read-only check for Antigravity files below"):
+                         "At Upgrade, use the reader to sort conflicts in repository-owned content",
+                         "At Repair, use the reader when listing files",
+                         "At Initialize, read, sort or quote repository text only from `<entry> read -- <path>`"):
             self.assertIn(required, text)
         # One source decision comes before either discovery path reads rule text, so a rule the `rules/` scan finds
         # while an unread manifest also selects it can only be reported by location when its bytes differ.
         self.assertLess(text.index(gate), text.index("Sort the rules of every `GEMINI.md`"))
         self.assertLess(text.index(fails), text.index("For a `rules.json` that passes"))
-        for gone in ("list for habit any entry that names no tracked file, before proposing the manifest's removal",
+        for gone in ("`git ls-files -s`", "`git cat-file blob", "`cmp`", "list for habit any entry that names no tracked file, before proposing the manifest's removal",
                      "`rules/` and `rules.json` file", "only from the Git blob of a tracked regular file",
                      "For a `rules.json`, list each of its entries for habit", "Read the manifest itself the same way",
                      "git diff --quiet HEAD", "the pinned commit", "For a `rules.json`, read the manifest"):

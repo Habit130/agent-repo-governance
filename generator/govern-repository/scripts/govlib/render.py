@@ -21,7 +21,7 @@ import os
 import re
 import subprocess
 
-from govlib import GovernError, record, storedform
+from govlib import GovernError, record, secrets, storedform
 from govlib.store import StoreError
 
 TOKEN = re.compile(r"@@([A-Za-z0-9_]*)@@")
@@ -201,8 +201,10 @@ def mend(text, template, where):
             % (where, (anchor or "").rstrip("\n"))
         )
     tail += "".join(line for i, line in enumerate(lines[cut:], cut) if i not in marked)  # A stray marker goes too.
-    dropped = [line.rstrip("\n") for i, line in enumerate(lines[len(prefix):cut], len(prefix))
-               if i not in marked and line.strip() and line not in version_lines]
+    safe_lines = secrets.redact(text, path=where).splitlines(True)
+    dropped = [safe_lines[i].rstrip("\n") for i, line in enumerate(lines[len(prefix):cut], len(prefix))
+               if i not in marked and line.strip() and line not in version_lines
+               and i < len(safe_lines) and safe_lines[i].strip()]
     return "".join(prefix + block) + tail, "rebuild as at Initialize", dropped
 
 

@@ -221,7 +221,7 @@ def run(worktree, store_root, env=None):
     if not released:
         raise GovernError("the installed template store has no released version, so the run stops")
     installed = released[-1]
-    found = checkout.read_record(root)
+    found = checkout.read_record(checkout.CommittedFiles(root))
     mode, reason, notes = decide(found, installed, released)
 
     facts = {

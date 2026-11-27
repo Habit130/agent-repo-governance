@@ -5,6 +5,7 @@ prints through `redact`, so no value read from a repository or from GitHub, a co
 text, a title or an error included, reaches the session's output.
 """
 
+import json
 import re
 
 # Each shape, by the type habit hears.
@@ -29,8 +30,32 @@ def kinds(text):
     return [kind for kind, pattern in SHAPES if pattern.search(text)]
 
 
-def redact(value):
+# Match the earliest credential first so a multiline key owns its entire block.
+_LOCATED = re.compile("|".join("(?P<shape%d>%s)" % (i, pattern.pattern)
+                               for i, (_, pattern) in enumerate(SHAPES)))
+
+
+# The same line boundaries as str.splitlines(), including CR-only files.
+_LINE_BREAK = re.compile(r"\r\n|[\r\n\v\f\x1c-\x1e\x85\u2028\u2029]")
+
+
+def redact(value, path=None):
     """value with every credential shape in its strings, keys included, replaced by its type."""
+    if path is not None:
+        location = json.dumps(redact(path))[1:-1]
+        line, end = 1, 0
+
+        def located(match):
+            nonlocal line, end
+            line += sum(1 for _ in _LINE_BREAK.finditer(value, end, match.start()))
+            kind = SHAPES[match.lastindex - 1][0]
+            marker = "<redacted %s at %s:%d>" % (kind, location, line)
+            newlines = _LINE_BREAK.findall(match[0])
+            line += len(newlines)
+            end = match.end()
+            return marker + "".join(newlines)
+
+        return _LOCATED.sub(located, value)
     if isinstance(value, str):
         for kind, pattern in SHAPES:
             value = pattern.sub("<redacted %s>" % kind, value)

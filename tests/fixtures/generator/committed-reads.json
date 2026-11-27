@@ -1,0 +1,9 @@
+{
+  "miss": 342,
+  "working_edit": "CLAUDE.md",
+  "filtered": "docs/AGENTS.md",
+  "document": "BUILDING.md",
+  "link": "legacy/CLAUDE.md",
+  "staged": "AGENTS.override.md",
+  "unchanged": "docs/TESTING.md"
+}

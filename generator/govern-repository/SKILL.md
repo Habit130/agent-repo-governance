@@ -65,7 +65,7 @@ in English and no code, diffs or paths. It names its sender and target.
    qualifying run is failed smoke, not absent product verification. When verification is
    absent, select an executable local smoke from the repository's authoritative runbook and
    command inventory, with its prerequisites and success criterion. Preserve existing
-   command prohibitions. At Upgrade and Repair, select it by reading; do not run exploratory
+   command prohibitions. At Upgrade and Repair, select it with the reader in Judgment; do not run exploratory
    build/test commands or change confirmed values or repository-owned content. Record the
    selected verification in the ticket before it is frozen. Governance audits, pre-merge
    PR runs and Release dispatch do not substitute. If no executable smoke can be determined,
@@ -73,12 +73,17 @@ in English and no code, diffs or paths. It names its sender and target.
 
 ## 2. Judgment
 
-At Initialize, or a rebuilt record, make every entry below; each ends up in the issue, and
-in the confirmation as its items allow. At Upgrade, sort only the rules in repository-owned
-content, to find what conflicts with the new fixed rules, and run no commands other than the
-read-only check for Antigravity files below: confirmed values and repository-owned content
-stay as they are, apart from a conflict habit confirms. At Repair, make none of them;
-Antigravity's files are only listed.
+At Initialize, read, sort or quote repository text only from `<entry> read -- <path>`.
+Use this reader for every file whose text enters the issue, confirmation or a message to
+habit, including commands and runbooks. Use the returned `text`. The reader applies the
+byte-identity check and identifies credentials by type and location. Exit 1 returns just
+the path. On failure, name only the location, skip sorting and keep the file until habit decides.
+
+At Initialize or a rebuilt record, make every entry below. At Upgrade, use the reader to
+sort conflicts in repository-owned content. Run only the reader for this judgment. Keep
+confirmed values and repository-owned content apart from conflicts habit confirms.
+At Repair, use the reader when listing files. Make none of the Initialize proposals and
+leave Antigravity's files as they are.
 
 - **Rules.** Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
@@ -93,14 +98,8 @@ Antigravity's files are only listed.
     definitions, issue templates of a replaced process, an older Bugbot rule file.
 
   Antigravity's own files follow the `removed` rule too, so its sessions read `AGENTS.md`'s
-  policy. Every Antigravity file this paragraph reads, however it is found (by name, by the
-  scan of `rules/` or through a `rules.json`), passes one check first: it is a tracked
-  regular file (`git ls-files -s` mode `100644` or `100755`), reached through no link and no
-  path outside the checkout, whose working file is byte-identical to its raw blob in the
-  checkout's `HEAD` commit (`git cat-file blob HEAD:<path>` compared with `cmp`, no
-  filters). Parse and quote only that blob. A file that fails the check, or can't be
-  checked, is named by location only, without either version's content; it is not sorted,
-  and it is kept until habit decides. Sort the rules of every `GEMINI.md`, every `.agents/`
+  policy. Apply the byte-identity check to every Antigravity file, including each file a
+  `rules.json` selects. Name a failing file by location only. Sort the rules of every `GEMINI.md`, every `.agents/`
   `AGENTS.md`, `GEMINI.md` and `rules/` file, and every `.agent/` rule that passes as a root
   `CLAUDE.md`'s, then class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP
   servers (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for
@@ -138,7 +137,7 @@ Antigravity's files are only listed.
   or slot waiver. Older adopted policies still set the run's review requirements.
 - **Commands.** Run the manifests' and documents' build and test commands in a temporary
   worktree allocated as **Temporary paths** above, so the checkout stays untouched. A manifest
-  whose `extraction` is `unsupported` has its commands read from the file by you. Record each command you ran and
+  whose `extraction` is `unsupported` gets its commands from the reader. Record each command you ran and
   whether it worked, with the cause of a failure. A failing command is a fact for `build.md`
   and the issue, never a question or an option for habit: the run never changes the
   repository's code, build or CI configuration to make one pass, which is separate work.
