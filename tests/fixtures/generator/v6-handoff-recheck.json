@@ -1,0 +1,21 @@
+{
+  "miss": 296,
+  "pull": {
+    "number": 17, "state": "open", "user": {"login": "Habit098"},
+    "body": "Risk: low — edits notes"
+  },
+  "changed_pr": [
+    ["number", 18],
+    ["state", "closed"],
+    ["base.ref", "release"],
+    ["base.repo.id", 321],
+    ["head.sha", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+    ["user.login", "Habit130"],
+    ["body", "Risk: low — a different reason"],
+    ["body", null]
+  ],
+  "checks": [
+    {"name": "governance-gate", "state": "SUCCESS"},
+    {"name": "test", "state": "SUCCESS"}
+  ]
+}

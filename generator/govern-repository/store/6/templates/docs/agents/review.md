@@ -297,7 +297,8 @@ the Builder does when habit waived the Reviewer session (Waivers).
 ### Checks first
 
 On the head the summary names, perform the history and issue checks in Rerun-only passes
-and link each cause's open issue in the summary. Then check:
+and link each cause's open issue in the summary. For an affected PR, obtain the receipt
+under [The merge handoff](#the-merge-handoff) for the summary. Then check:
 
 1. Check that each required review and every additional review the summary lists is clear
    on this head, substituted at medium (Review bots), or waived by habit for this head
@@ -423,6 +424,36 @@ In Chinese (`AGENTS.md`, Talking to habit and to other agents):
 Neither copy points at code: no paths, line numbers, diffs or snippets.
 
 ### The merge handoff
+
+If the PR remained open across an Upgrade or a change to policy the gate reads, the Merge
+summary writer rechecks it. When applicability is uncertain, recheck. An unaffected PR
+follows the ordinary handoff below. For Initialize, use the bootstrap in Checks first.
+Judge an Upgrade itself under the policy already adopted on its base.
+
+For a recheck, set `pr` to the named PR number and `head` to the full reviewed SHA.
+In a fresh temporary clone of this repository's default branch, verify the checkout
+against the remote before running its helper. Stop on any failed command.
+
+```sh
+scratch=$(mktemp -d) &&
+  git clone --quiet https://github.com/@@repository@@.git "$scratch/default" &&
+  cd "$scratch/default" &&
+  test "$(git rev-parse HEAD)" = "$(git ls-remote --exit-code origin HEAD | cut -f1)" &&
+  python3 .github/governance/handoff_recheck.py judge "$pr" "$head" > "$scratch/receipt"
+```
+
+Copy the successful receipt line into the PR Merge summary's evidence. Complete Checks
+first, including the review, required checks and rerun history on that head. Immediately
+before handing habit the pinned command, run from the same clean clone:
+
+```sh
+python3 .github/governance/handoff_recheck.py confirm "$pr" "$head" < "$scratch/receipt"
+```
+
+Hand over the command only when confirmation succeeds and its receipt matches the one
+recorded in the summary. On a failure, unreadable evidence or changed input, hold the
+command. Once eligible, repeat from a fresh clone and update the evidence. The receipt
+records the last observation. The branch or PR can change after the comparison.
 
 In the terminal, after the summary, as its writer's final handoff (`handoff.md`), whose
 conclusion the summary's first line gives:
