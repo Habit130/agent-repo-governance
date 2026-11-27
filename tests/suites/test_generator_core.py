@@ -580,8 +580,22 @@ class SkillFiles(unittest.TestCase):
 
     def test_writing_leaves_legacy_skills_and_rules_never_quote_a_credential(self):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
-        self.assertIn("with a `.claude/skills/` link, except skills under `.agent/skills/`, which stay where they are.", text)
+        self.assertIn("Keep skills under `_agents/skills/`, `.agent/skills/` and `_agent/skills/` where they are.", text)
         self.assertEqual(text.count("is never quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets)"), 2)
+
+    def test_antigravity_aliases_and_personal_folder_use_the_existing_file_checks(self):
+        skill = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
+        policy = " ".join(skill.split("Antigravity's own files", 1)[1].split("Each rule's text", 1)[0].split())
+        for rule in (
+            "In every step, `_agents/` follows `.agents/` and `_agent/` follows `.agent/`.",
+            "If the root `.gemini/config.json` passes, list it with the folder its `personal_customization_dir` "
+            "names and propose removing the config. Leave that folder's contents alone.",
+            "At Upgrade to version 6 or later, the verified personal-folder config is also a conflict; "
+            "remove it only at habit's confirmation.",
+            "At Repair, list each for habit and change nothing.",
+        ):
+            with self.subTest(rule=rule):
+                self.assertIn(rule, policy)
 
     def test_a_rules_manifest_carries_the_rules_of_the_files_it_names(self):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())

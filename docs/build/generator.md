@@ -132,9 +132,12 @@ the mode is stop; and 2 on a refusal, with the reason under `error`.
     `tests/fixtures/generator/handover.json` holds its table.
   - **`accept-invitation`** accepts the agent account's pending invitation to the
     repository, the one write before habit's answer.
-  - **Antigravity's project scope.** `inspect` reads `GEMINI.md` and the files under `.agents/`
-    and the legacy `.agent/` (rules, hooks, MCP servers, plugins, custom subagents, workflows,
-    skills). The public documentation, read on 2026-11-26, says the app keeps project
+  - **Antigravity's project scope.** `inspect` reads `GEMINI.md` and the files under
+    `.agents/`, `_agents/`, `.agent/` and `_agent/` (rules, hooks, MCP servers, plugins,
+    custom subagents, workflows and skills). The root `.gemini/config.json` can name a
+    personal folder in `personal_customization_dir`. Inspection lists the config separately
+    from Gemini Code Assist's rules. See [Customization discovery](https://antigravity.google/docs/customization-discovery.md),
+    read on 2026-11-27. The public documentation, read on 2026-11-26, says the app keeps project
     permissions in its settings UI (Settings > Projects) and names no storage location for
     them, so no repository location gets the same treatment.
   - **No credential value is printed** (#41 §10). `inspect` names each credential shape it

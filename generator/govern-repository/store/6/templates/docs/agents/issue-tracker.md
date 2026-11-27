@@ -103,7 +103,8 @@ The title is `Miss: <kind>, <category>`, followed by ` in #<n>` when the record 
 merged PR.
 
 The body opens with these six field lines, in this order, each starting with its name, so a
-script can fill and read them. Free detail may follow after a blank line.
+script can fill and read them. Free detail may follow after a blank line. Put a skill's required opening
+line, such as `triage`'s disclaimer, in the free detail after the six field lines.
 
 ```text
 Merged PR: <#n | none>

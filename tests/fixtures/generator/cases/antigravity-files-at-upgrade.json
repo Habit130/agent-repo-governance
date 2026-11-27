@@ -1,8 +1,7 @@
 {
-  "description": "#325: at an Upgrade the same files are found beside the mode, so each is a conflict habit's confirmation can remove.",
+  "description": "#325: at an Upgrade the same files are found beside the mode, so each is a conflict habit's confirmation can remove. #341 also distinguishes both underscore folders and the root personal-folder config from Gemini review-bot rules.",
   "expect": {
     "mode": {
-      "exit": 0,
       "mode": "Upgrade"
     },
     "inspect": {
@@ -32,6 +31,11 @@
             "path": "src/GEMINI.md",
             "name": "GEMINI.md"
           }
+        ],
+        "review_bot_rules": [
+          ".cursor/BUGBOT.md",
+          ".gemini/nested/config.json",
+          ".gemini/styleguide.md"
         ]
       },
       "harness_files": {
@@ -50,7 +54,43 @@
           ],
           ".agent": [
             ".agent/rules/legacy.md"
+          ],
+          "_agent": [
+            "_agent/rules/legacy.md",
+            "_agent/skills/older/SKILL.md"
+          ],
+          "_agents": [
+            "_agents/rules/style.md",
+            "_agents/skills/tools/SKILL.md"
+          ],
+          ".gemini/config.json": [
+            ".gemini/config.json"
           ]
+        },
+        "skills": [
+          {
+            "path": ".agents/skills/lint/SKILL.md",
+            "name": "lint"
+          },
+          {
+            "path": "_agent/skills/older/SKILL.md",
+            "name": "legacy-tool"
+          },
+          {
+            "path": "_agents/skills/tools/SKILL.md",
+            "name": "project-tool"
+          }
+        ]
+      },
+      "byte_identity": {
+        "files": {
+          ".gemini/config.json": true,
+          ".gemini/nested/config.json": true,
+          ".gemini/styleguide.md": true,
+          "_agent/rules/legacy.md": true,
+          "_agent/skills/older/SKILL.md": true,
+          "_agents/rules/style.md": true,
+          "_agents/skills/tools/SKILL.md": true
         }
       }
     }
@@ -74,7 +114,14 @@
       ".agents/agents/reviewer.md": "# Reviewer\n",
       ".agents/workflows/ship.md": "# Ship\n",
       ".agents/skills/lint/SKILL.md": "---\nname: lint\ndescription: Lint.\n---\n",
-      ".agent/rules/legacy.md": "Legacy rule.\n"
+      ".agent/rules/legacy.md": "Legacy rule.\n",
+      "_agents/rules/style.md": "Use spaces.\n",
+      "_agent/rules/legacy.md": "Legacy.\n",
+      "_agent/skills/older/SKILL.md": "---\nname: legacy-tool\n---\n",
+      "_agents/skills/tools/SKILL.md": "---\nname: project-tool\n---\n",
+      ".gemini/config.json": "{\"personal_customization_dir\": \"people/{user}\"}\n",
+      ".gemini/styleguide.md": "Review guide.\n",
+      ".gemini/nested/config.json": "{}\n"
     }
   },
   "run": [

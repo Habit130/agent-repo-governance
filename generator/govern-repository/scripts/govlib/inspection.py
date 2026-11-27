@@ -6,8 +6,9 @@
 - Instructions and process files, from the tracked tree: `AGENTS.md`, `AGENTS.override.md`,
   `CLAUDE.md` and `GEMINI.md` in any directory, with `CLAUDE.local.md`; `docs/agents/`; contributing and
   process documents; `.github/` templates and CODEOWNERS; review-bot rule files.
-- Harness files under `.claude/`, `.opencode/`, `.dsh/`, `.agents/`, the legacy `.agent/` and `.codex/`, and
-  `opencode.json`; the repository's own skills, by name against the machine skill set.
+- Harness files under `.claude/`, `.opencode/`, `.dsh/`, `.agents/`, `_agents/`, the legacy `.agent/` and `_agent/`,
+  and `.codex/`; Antigravity's personal-folder config and OpenCode's configuration;
+  the repository's own skills, by name against the machine skill set.
 - CI: every workflow's triggers, jobs and path filters, whether each job runs or reports on
   every PR with uncertain cases flagged, and the Actions secrets each references
   (`workflows.py`).
@@ -40,9 +41,11 @@ REVIEW_BOT_FILES = (
     re.compile(r"^\.greptile/|^greptile\.json$"),
     re.compile(r"^\.sourcery\.ya?ml$"),
 )
-HARNESS_DIRS = (".claude", ".opencode", ".dsh", ".agents", ".agent", ".codex")
-HARNESS_FILES = ("opencode.json", "opencode.jsonc")
-SKILL = re.compile(r"^(\.agents|\.agent|\.claude|\.opencode|\.codex|\.dsh)/skills/([^/]+)/SKILL\.md$")
+HARNESS_DIRS = (".claude", ".opencode", ".dsh", ".agents", "_agents", ".agent", "_agent", ".codex")
+PERSONAL_CONFIG = ".gemini/config.json"
+OPENCODE_FILES = ("opencode.json", "opencode.jsonc")
+HARNESS_FILES = (*OPENCODE_FILES, PERSONAL_CONFIG)
+SKILL = re.compile(r"^([._]agents?|\.claude|\.opencode|\.codex|\.dsh)/skills/([^/]+)/SKILL\.md$")
 WORKFLOW = re.compile(r"^\.github/workflows/[^/]+\.ya?ml$")
 GENERATOR = "govern-repository"
 
@@ -138,7 +141,7 @@ def instruction_files(paths):
             found["process"].append(path)
         if _template_file(path):
             found["github_templates"].append(path)
-        if any(pattern.search(path) for pattern in REVIEW_BOT_FILES):
+        if path != PERSONAL_CONFIG and any(pattern.search(path) for pattern in REVIEW_BOT_FILES):
             found["review_bot_rules"].append(path)
     return found
 
@@ -155,7 +158,8 @@ def _skill_name(text, fallback):
 
 def harness_files(texts, paths, home):
     files = dict((d, [p for p in paths if p.startswith(d + "/")]) for d in HARNESS_DIRS)
-    files["opencode.json"] = [p for p in paths if p in HARNESS_FILES]
+    files["opencode.json"] = [p for p in paths if p in OPENCODE_FILES]
+    files[PERSONAL_CONFIG] = [p for p in paths if p == PERSONAL_CONFIG]
     machine, reason = installed_skills(home)
     machine_names = None if machine is None else sorted(set(machine) | {GENERATOR})
     skills = []
