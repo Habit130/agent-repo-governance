@@ -92,18 +92,23 @@ conflict habit confirms. At Repair, make none of them; Antigravity's files are o
     definitions, issue templates of a replaced process, an older Bugbot rule file.
 
   Antigravity's own files follow the `removed` rule too, so its sessions read `AGENTS.md`'s
-  policy. Sort the rules of every `GEMINI.md`, every `.agents/` `AGENTS.md`, `GEMINI.md`,
-  `rules/` and `rules.json` file, and every `.agent/` rule as a root `CLAUDE.md`'s, then
-  class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP servers
-  (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for habit
-  and propose removing them, as `.codex/`. For a `rules.json`, also sort the rules of each
-  tracked file it names, keeping a named file that lies outside `.agents/` and `.agent/`, and
-  list for habit any entry that names no tracked file, before proposing the manifest's removal.
-  List workspace skills under `.agents/skills/` for habit and keep them, since other harnesses may read them. The legacy `.agent/` directory
-  follows the same groups: the same files, hooks, MCP servers, plugins, subagents, workflows
-  and skills, handled the same way. At Upgrade to version 6 or
-  later, each file of the first two groups conflicts with the new fixed rule: sort its rules
-  and propose its removal. At Repair, list each for habit and change nothing.
+  policy. Sort the rules of every `GEMINI.md`, every `.agents/` `AGENTS.md`, `GEMINI.md` and
+  `rules/` file, and every `.agent/` rule as a root `CLAUDE.md`'s, then class the file
+  `removed`. List `.agents/` hooks (`hooks.json`), MCP servers (`mcp_config.json`),
+  `plugins/`, custom subagents (`agents/`) and `workflows/` for habit and propose removing
+  them, as `.codex/`. For a `rules.json`, list each of its entries for habit. Read a rule an
+  entry selects only from the Git blob of a tracked regular file (`git ls-files -s` mode
+  `100644` or `100755`), never through a link or a path outside the checkout, sort its
+  rules, and keep such a file when it lies outside `.agents/` and `.agent/`. Class the
+  manifest `removed` once every entry is accounted for. When an entry selects a directory,
+  uses a filter, inherits another manifest, or resolves to a link or to no tracked regular
+  file, name it for habit with the rules it leaves unaccounted for, and keep the manifest
+  until habit decides on that entry. List workspace skills under `.agents/skills/` for habit
+  and keep them, since other harnesses may read them. The legacy `.agent/` directory follows
+  the same groups: the same files, hooks, MCP servers, plugins, subagents, workflows and
+  skills, handled the same way. At Upgrade to version 6 or later, each file of the first two
+  groups conflicts with the new fixed rule: sort its rules and propose its removal. At
+  Repair, list each for habit and change nothing.
 
   Each rule's text is quoted with its file, except a credential in a rule, which is never
   quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets). Sort other files the model never writes, such as
