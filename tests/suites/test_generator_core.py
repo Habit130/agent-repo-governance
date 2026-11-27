@@ -389,7 +389,9 @@ class SkillFiles(unittest.TestCase):
                          "When an entry selects a directory, uses a filter, inherits another manifest, or resolves to a link "
                          "or to no tracked regular file, name it for habit with the rules it leaves unaccounted for, "
                          "and keep the manifest until habit decides on that entry",
-                         "sort its rules and propose its removal, a `rules.json` only once every entry is accounted for",
+                         "each file of the first two groups that passes the check conflicts with the new fixed rule: sort "
+                         "its rules and propose its removal, a `rules.json` only once every entry is accounted for; a file "
+                         "that fails is named by location only",
                          "and run no commands other than the read-only check for Antigravity files below"):
             self.assertIn(required, text)
         # One source decision comes before either discovery path reads rule text, so a rule the `rules/` scan finds

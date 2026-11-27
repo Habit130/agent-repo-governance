@@ -115,8 +115,9 @@ Antigravity's files are only listed.
   keep them, since other harnesses may read them. The legacy `.agent/` directory follows the
   same groups: the same files, hooks, MCP servers, plugins, subagents, workflows and skills,
   handled the same way. At Upgrade to version 6 or later, each file of the first two groups
-  conflicts with the new fixed rule: sort its rules and propose its removal, a `rules.json`
-  only once every entry is accounted for. At Repair, list each for habit and change nothing.
+  that passes the check conflicts with the new fixed rule: sort its rules and propose its
+  removal, a `rules.json` only once every entry is accounted for; a file that fails is named
+  by location only. At Repair, list each for habit and change nothing.
 
   Each rule's text is quoted with its file, except a credential in a rule, which is never
   quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets). Sort other files the model never writes, such as
