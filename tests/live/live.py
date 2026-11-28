@@ -578,6 +578,11 @@ def cmd_end_to_end(args):
               "confirmed. Then try the next enabled bot only if the Builder says the current bot is unavailable.")
         print("   - a Reviewer whose model vendor differs from every Builder session that pushed to the PR. "
               "Use exactly the start instruction the run prints.")
+        if state["version"] >= 6:
+            print("   - Open that Reviewer outside the Antigravity app: the sandbox adopts no version until this "
+                  "Initialize merges.")
+            print("   - This Initialize takes no merge-handoff recheck: the gate check applies from the next PR, so the "
+                  "summary writer hands over the pinned merge once the remaining merge requirements pass.")
     else:
         for bot in state["review_bots"]:
             print("   - %s;" % REVIEW_BOT_REQUESTS[bot])

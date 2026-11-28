@@ -1,10 +1,10 @@
 # agent-repo-governance
 
-借鉴 Anthropic 的代码审查实践与 mattpocock/skills，构建个性化仓库治理体系。Claude Code、OpenCode、deepseekharness 和 Codex harness 均支持角色 session；Antigravity app 支持角色 session，需同时满足三个条件：仓库已采用 version 6（目前是草稿）、machine check 的 Antigravity app 项通过、仓库里没有该 app 自己的指令或配置文件，Antigravity CLI 不受支持；Codex review bot 是独立的 PR review bot。
+借鉴 Anthropic 的代码审查实践与 mattpocock/skills，构建个性化仓库治理体系。Claude Code、OpenCode、deepseekharness 和 Codex harness 均支持角色 session；Antigravity app 支持角色 session，需同时满足三个条件：仓库已采用 version 6、machine check 的 Antigravity app 项通过、仓库里没有该 app 自己的指令或配置文件，Antigravity CLI 不受支持；Codex review bot 是独立的 PR review bot。
 
 ## 运行
 
-Governance model version 5 已发布，version 6 是草稿。Generator `govern-repository` 仅在 Claude Code 和 OpenCode 中运行。Suites、检查和 CI 的命令见 `docs/agents/build.md`。
+Governance model version 6 已发布，version 7 是草稿。Generator `govern-repository` 仅在 Claude Code 和 OpenCode 中运行。Suites、检查和 CI 的命令见 `docs/agents/build.md`。
 
 ### 新机器
 
@@ -43,7 +43,7 @@ Install 只写 machine skills，从不写 personal skill，也不经 personal sk
 
 ### 第一次 Initialize
 
-Install 带来已发布的 version 5 后，一个 repository 的第一次 Initialize 这样走。
+Install 带来已发布的 version 6 后，一个 repository 的第一次 Initialize 这样走。
 
 1. 在这个 repository 的 checkout 目录里启动 Claude Code 或 OpenCode，不带参数调用 generator：Claude Code 里是 `/govern-repository`，OpenCode 里是 `@govern-repository`。Codex harness、deepseekharness 和 Antigravity app 不能运行它。
 2. Generator 给出 checklist，其中列出支持的 review bot。habit 按指引邀请 agent account 成为 collaborator，agent 随后接受邀请。

@@ -76,9 +76,10 @@ class VersionSixAntigravityApp(VersionThreeRendered):
 
     def test_readme_names_the_app_and_the_unsupported_cli(self):
         text = support.read_text(REPOSITORY_README)
-        for condition in ("仓库已采用 version 6（目前是草稿）", "machine check 的 Antigravity app 项通过",
+        for condition in ("仓库已采用 version 6、", "machine check 的 Antigravity app 项通过",
                           "仓库里没有该 app 自己的指令或配置文件"):
             self.assertIn(condition, text)
+        self.assertNotIn("目前是草稿", text)
         self.assertRegex(text, r"Antigravity app 支持角色 session，需同时满足三个条件")
         self.assertIn("Antigravity CLI 不受支持", text)
         self.assertIn("Codex harness、deepseekharness 和 Antigravity app 不能运行它", text)
