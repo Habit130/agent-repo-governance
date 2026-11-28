@@ -6,6 +6,8 @@ its module. Shared rendering setup and checks live in materialized_version_suppo
 
 import unittest
 
+from protection_audit_cases import GeneratedProtectionAudit
+
 from test_materialized_version_one import (
     MaterializedVersionOne,
 )
