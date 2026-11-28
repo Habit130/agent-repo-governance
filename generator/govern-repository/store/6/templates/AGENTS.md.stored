@@ -114,9 +114,9 @@ tickets); reviews run; habit reads Merge summary and uses its pinned merge comma
 - Required-check changes need habit's owner-script rerun after merge.
 - Committed governance wins over conflicting skill text; report the conflict to habit.
 - A missing relied-on skill stops the session; tell habit.
-- Only this file and `.claude/CLAUDE.md` are instruction files. The repository holds no root
-  `CLAUDE.md`, `GEMINI.md`, `AGENTS.override.md`, `.codex/` or Antigravity `.agents/` or
-  `.agent/` instruction or rule file that would split the policy.
+- Instruction files: this file and `.claude/CLAUDE.md` only. Exclude root `CLAUDE.md`,
+  `GEMINI.md`, `AGENTS.override.md`, `.codex/`, `.gemini/config.json` and instruction or
+  rule files under `.agents/`, `_agents/`, `.agent/` or `_agent/`.
 
 ## Secrets
 

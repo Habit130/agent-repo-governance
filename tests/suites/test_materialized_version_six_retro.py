@@ -14,6 +14,12 @@ CLASS_RETRO = "docs/agents/class-retro.md"
 class VersionSixPlannerPolicy(VersionThreeRendered):
     VERSION = 6
 
+    def test_miss_record_keeps_a_skills_required_opening_in_the_free_detail(self):
+        body = flat(self.text("docs/agents/issue-tracker.md").split("## Miss records", 1)[1])
+        self.assertIn("The body opens with these six field lines", body)
+        self.assertIn("Put a skill's required opening line, such as `triage`'s disclaimer, "
+                      "in the free detail after the six field lines.", body)
+
     def test_running_retro_states_each_discipline_once(self):
         body = flat(RUNNING_RETRO.read(self.text(RUNNING_RETRO.path)))
         for label, rule in (

@@ -580,8 +580,37 @@ class SkillFiles(unittest.TestCase):
 
     def test_writing_leaves_legacy_skills_and_rules_never_quote_a_credential(self):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())
-        self.assertIn("with a `.claude/skills/` link, except skills under `.agent/skills/`, which stay where they are.", text)
+        writing = text.split("## 5. Writing", 1)[1]
+        for rule in (
+            "For Antigravity files, Repair stops at the listing and Upgrade applies only confirmed changes.",
+            "Move the repository's own skills, including those from `_agents/skills/`, to `.agents/skills/`, "
+            "with a `.claude/skills/` link.",
+            "If a move would overwrite a skill, keep both in place and bring the conflict to habit.",
+            "Keep skills under `.agent/skills/` and `_agent/skills/` where they are.",
+        ):
+            with self.subTest(rule=rule):
+                self.assertIn(rule, writing)
         self.assertEqual(text.count("is never quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets)"), 2)
+
+    def test_antigravity_aliases_and_personal_folder_use_the_existing_file_checks(self):
+        skill = support.read_text(os.path.join(self.SKILL, "SKILL.md"))
+        policy = " ".join(skill.split("Antigravity's own files", 1)[1].split("Each rule's text", 1)[0].split())
+        with self.subTest(step="before general rule classification"):
+            self.assertIn("Apply Antigravity's personal-folder exclusion before classifying any rule.",
+                          skill.split("Sort every rule found in instructions", 1)[0])
+        for rule in (
+            "In every step, `_agents/` follows `.agents/` and `_agent/` follows `.agent/`.",
+            "If the root `.gemini/config.json` passes, list it with the folder its `personal_customization_dir` "
+            "names and propose removing the config.",
+            "Throughout the run, keep files inside the named personal folder in place. Exclude them from the "
+            "general Rules classification, manifest sorting, removals and skill moves, including every `GEMINI.md` "
+            "and any file selected by a `rules.json`. Keep a manifest with such an unexamined entry until habit decides.",
+            "At Upgrade to version 6 or later, the verified personal-folder config is also a conflict; "
+            "remove it only at habit's confirmation.",
+            "At Repair, list each for habit and change nothing.",
+        ):
+            with self.subTest(rule=rule):
+                self.assertIn(rule, policy)
 
     def test_a_rules_manifest_carries_the_rules_of_the_files_it_names(self):
         text = " ".join(support.read_text(os.path.join(self.SKILL, "SKILL.md")).split())

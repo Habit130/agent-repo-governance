@@ -24,6 +24,12 @@ sensitive_paths:
     floor: medium
   - pattern: ".agent/**"
     floor: medium
+  - pattern: "_agents/**"
+    floor: medium
+  - pattern: "_agent/**"
+    floor: medium
+  - pattern: ".gemini/config.json"
+    floor: medium
   - pattern: ".codex/**"
     floor: medium
   - pattern: ".cursor/**"

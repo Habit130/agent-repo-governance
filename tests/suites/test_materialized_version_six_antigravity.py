@@ -65,7 +65,8 @@ class VersionSixAntigravityApp(VersionThreeRendered):
     def test_governance_files_name_the_apps_files(self):
         body = flat(GOVERNANCE_FILES.read(self.text(GOVERNANCE_FILES.path)))
         self.assertIn("`GEMINI.md`", body)
-        self.assertIn("Antigravity `.agents/` or `.agent/` instruction or rule file", body)
+        self.assertIn("`.gemini/config.json`", body)
+        self.assertIn("instruction or rule files under `.agents/`, `_agents/`, `.agent/` or `_agent/`", body)
 
     def test_reviewer_handoff_reads_exclusions_from_marks(self):
         body = flat(HANDOFF.read(self.text(HANDOFF.path)))

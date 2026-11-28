@@ -91,7 +91,8 @@ confirmed values and repository-owned content apart from conflicts habit confirm
 At Repair, use only the reader when listing files. Make none of the Initialize proposals and
 leave Antigravity's files as they are.
 
-- **Rules.** Sort every rule found in instructions, process documents, contributing guides
+- **Rules.** Apply Antigravity's personal-folder exclusion before classifying any rule.
+  Sort every rule found in instructions, process documents, contributing guides
   and files at version paths into one class:
   - `covered`: the model already holds it, so it is dropped and listed;
   - `carried`: repository-specific and compatible, so "This repository" points to its
@@ -104,8 +105,14 @@ leave Antigravity's files as they are.
     definitions, issue templates of a replaced process, an older Bugbot rule file.
 
   Antigravity's own files follow the `removed` rule too, so its sessions read `AGENTS.md`'s
-  policy. Apply the byte-identity check to every Antigravity file, including each file a
-  `rules.json` selects. Name a failing file by location only. Sort the rules of every `GEMINI.md`, every `.agents/`
+  policy. In every step, `_agents/` follows `.agents/` and `_agent/` follows `.agent/`.
+  Apply the byte-identity check to every Antigravity file, including each file a
+  `rules.json` selects. Name a failing file by location only. If the root `.gemini/config.json`
+  passes, list it with the folder its `personal_customization_dir` names and propose removing
+  the config. Throughout the run, keep files inside the named personal folder in place.
+  Exclude them from the general Rules classification, manifest sorting, removals and skill
+  moves, including every `GEMINI.md` and any file selected by a `rules.json`. Keep a manifest with such an
+  unexamined entry until habit decides. Sort the rules of every `GEMINI.md`, every `.agents/`
   `AGENTS.md`, `GEMINI.md` and `rules/` file, and every `.agent/` rule that passes as a root
   `CLAUDE.md`'s, then class the file `removed`. List `.agents/` hooks (`hooks.json`), MCP
   servers (`mcp_config.json`), `plugins/`, custom subagents (`agents/`) and `workflows/` for
@@ -122,7 +129,8 @@ leave Antigravity's files as they are.
   handled the same way. At Upgrade to version 6 or later, each file of the first two groups
   that passes the check conflicts with the new fixed rule: sort its rules and propose its
   removal, a `rules.json` only once every entry is accounted for; a file that fails is named
-  by location only. At Repair, list each for habit and change nothing.
+  by location only. At Upgrade to version 6 or later, the verified personal-folder config is
+  also a conflict; remove it only at habit's confirmation. At Repair, list each for habit and change nothing.
 
   Each rule's text is quoted with its file, except a credential in a rule, which is never
   quoted: its text names the credential's type and location instead (`AGENTS.md`, Secrets). Sort other files the model never writes, such as
@@ -252,9 +260,12 @@ After habit's answer, run `<entry> identity`, then open one issue as the agent a
    review expectation; the Claude Code notes in
    `.claude/CLAUDE.md`; `docs/agents/build.md`, with the commands it ran, each marked as working
    or failing with the cause, the CI and the Actions secrets. On Upgrade, change this content only where habit confirmed a conflict.
-5. Make the removals habit's answer leaves standing. Move the repository's own skills to
-   `.agents/skills/`, with a `.claude/skills/` link, except skills under `.agent/skills/`,
-   which stay where they are.
+5. Make the removals habit's answer leaves standing. For Antigravity files, Repair stops at
+   the listing and Upgrade applies only confirmed changes. Apply the personal-folder
+   exclusion from §2 to skill moves. Move the repository's own skills, including those from
+   `_agents/skills/`, to `.agents/skills/`, with a `.claude/skills/` link. If a move would
+   overwrite a skill, keep both in place and bring the conflict to habit. Keep skills
+   under `.agent/skills/` and `_agent/skills/` where they are.
 6. From here follow `docs/agents/builder.md`, Steps, from step 5: Initialize uses the rendered
    policy; Upgrade and Repair use the default branch's adopted policy. Use the issue as the
    ticket and declare the run's tier as above. Exact comparison, `<entry> compare --worktree <worktree>`,

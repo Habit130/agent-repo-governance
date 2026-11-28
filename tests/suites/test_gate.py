@@ -195,7 +195,8 @@ class RenderedVersionSixRecord(GateCase):
         return gate_v6.verdict(repo, "Habit098", "Habit130", body, default_head, head, lookup("none"))
 
     def test_each_path_fails_low_and_passes_medium(self):
-        for path in ("GEMINI.md", "docs/GEMINI.md", ".agent/rules/style.md", ".agent/workflows/w.md", "AGENTS.md"):
+        for path in ("GEMINI.md", "docs/GEMINI.md", ".agent/rules/style.md", ".agent/workflows/w.md", "AGENTS.md",
+                     "_agents/rules/style.md", "_agent/workflows/w.md", ".gemini/config.json"):
             with self.subTest(path=path):
                 low = self.judge_rendered(path, "Risk: low \u2014 x\n")
                 self.assertFalse(low["passed"], low)
