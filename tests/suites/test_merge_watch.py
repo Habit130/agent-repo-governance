@@ -33,7 +33,7 @@ from merge_watch_states import ReviewGrammarCases
 from merge_watch_history import EARLY, LATE, HistoricalEvidence, RecordedMerge, load_v4_case_for_v5  # noqa: F401
 from merge_watch_push import PushAndOpenRecords
 from merge_watch_declarations import SummaryDeclarations, VersionSixConsolidatedDeclarations  # noqa: F401
-from merge_watch_companion import CompanionReviewer  # noqa: F401
+from merge_watch_companion import CompanionReviewer, VersionSixCompanionInventory  # noqa: F401
 import support
 from govlib import render, store
 from standins import environment

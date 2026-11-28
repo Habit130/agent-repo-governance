@@ -2189,8 +2189,8 @@ class EndToEndCommands(support.TempDirCase):
         self.assertIn("--head", created[0]["args"])
         self.assertEqual(created[0]["args"][created[0]["args"].index("--head") + 1], name)
         self.assertIn("\nRisk: high — ", created[0]["body"])
-        self.assertIn("so that version 5's end-to-end run starts an Initialize", created[0]["body"])
-        self.assertIn("Version 5's cut uses one review bot slot. habit confirms the enabled list during Initialize.", out)
+        self.assertIn("so that version 6's end-to-end run starts an Initialize", created[0]["body"])
+        self.assertIn("Version 6's cut uses one review bot slot. habit confirms the enabled list during Initialize.", out)
         self.assertNotIn("whose review bots are", out)
         self.assertNotIn("Bugbot", out + created[0]["body"])
         self.assertIn("ghm pr merge 31 --repo %s --admin --squash --match-head-commit %s" % (PUBLIC, head), out)
@@ -2251,8 +2251,8 @@ class EndToEndCommands(support.TempDirCase):
         self.assertEqual(support.git(state["checkout"], "remote", "get-url", "origin").strip(), self.remote)
         self.assertIn(live.start_command(state["checkout"], state["plugin"]), out)
         self.assertIn("Type /cut:govern-repository, never the bare /govern-repository", out)
-        self.assertEqual((state["version"], state["review_bots"]), (5, ["codex", "copilot"]))
-        self.assertIn("the run is version 5's Initialize", out)
+        self.assertEqual((state["version"], state["review_bots"]), (6, ["codex", "copilot"]))
+        self.assertIn("the run is version 6's Initialize", out)
         self.assertIn("one completed review bot slot on the head", out)
         self.assertIn("request the first bot in the order you confirmed", out)
         self.assertIn("try the next enabled bot only if the Builder says the current bot is unavailable", out)
@@ -2265,6 +2265,23 @@ class EndToEndCommands(support.TempDirCase):
         self.assertIn('say “继续” (continue) in that original Builder chat', out)
         self.assertNotIn("saying merged", out)
         self.assertIn("After product smoke passes", out)
+        self.assertIn("Open that Reviewer outside the Antigravity app: the sandbox adopts no version until this "
+                      "Initialize merges.", out)
+        self.assertIn("This Initialize takes no merge-handoff recheck: the gate check applies from the next PR, so the "
+                      "summary writer hands over the pinned merge once the remaining merge requirements pass.", out)
+        self.assertLess(out.index("Open that Reviewer"), out.index("This Initialize takes no merge-handoff recheck"))
+        self.assertLess(out.index("This Initialize takes no merge-handoff recheck"), out.index("read the high-risk report"))
+
+    def test_end_to_end_prints_no_v6_handoff_lines_for_v5(self):
+        commit = self.head_repository(draft=6)
+        self.sandbox(self.seed_files())
+        self.github([("Gate", "disabled"), ("Merge", "active"), ("History", "active")], head=commit)
+        code, out = self.main(["end-to-end", "--pr", str(self.PR), "--sandbox", "public"])
+        self.assertEqual(code, 0, out)
+        self.assertIn("the run is version 5's Initialize", out)
+        self.assertIn("If the original Initialize Builder is waiting, no reply is needed", out)
+        self.assertNotIn("Antigravity", out)
+        self.assertNotIn("recheck", out)
 
     def test_end_to_end_keeps_the_merged_reply_for_v4(self):
         commit = self.head_repository(draft=5)
@@ -2304,7 +2321,7 @@ class EndToEndCommands(support.TempDirCase):
     def test_the_cut_reads_the_highest_released_version_and_its_review_bots(self):
         store = self.path("store")
         shutil.copytree(support.REAL_STORE, store)
-        self.assertEqual(live.cut_of(store), (5, ["codex", "copilot"]))
+        self.assertEqual(live.cut_of(store), (6, ["codex", "copilot"]))
         self.assertEqual(live.review_bot_names(["copilot"]), "Copilot code review")
         os.remove(os.path.join(store, "3", "change-note.md"))
         for version in os.listdir(store):

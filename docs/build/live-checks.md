@@ -88,10 +88,10 @@ and v5 follow-on in the offline `merge-watch` suite check the transition under t
 On incomplete evidence the workflow prints `INCOMPLETE`, posts independently supported
 miss records and exits 1.
 
-For the **version 6 draft**, prepare the same three public-sandbox probes with
-`--version 6`. The planted high-risk miss must name the probe's head, its declared
-tier and the missing `reviewer, merge-summary` in the squash commit's push run. This exercises the
-workflow token's read of the merge-time PR description. An `INCOMPLETE` line identifies
+For **version 6**, prepare the same three public-sandbox probes with `--version 6`. The
+planted high-risk miss must name the probe's head, its declared tier and the missing
+`reviewer, merge-summary` in the squash commit's push run. This exercises the workflow
+token's read of the merge-time PR description. An `INCOMPLETE` line identifies
 the evidence the workflow could not establish and appears in the probe result.
 
 - **Seam 2** is `merge_watch.decide(event_name, event, agent_account, read)`. The reader
@@ -354,7 +354,9 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   - A `pull_request_target` run's `head_sha` is the PR head. Its job checks out the default
     branch, whose commit the gate's log line names. The job's own check run and the
     script's posted one are both `governance-gate` from GitHub Actions (app 15368), in
-    different check suites.
+    different check suites. On 2026-11-28, on this repository's PR #348 head, both sat in
+    the gate run's own suite. Version 6's merge-handoff recheck needs one success in that
+    suite, where the job's own check run always is.
   - A body edit (`edited`) runs the gate again on the same head. The first run's failing
     check run stays on the head, but a merge rejection then names no required check.
   - Skip instructions in a commit message don't stop `pull_request_target`
