@@ -80,6 +80,7 @@
   "test_machine_wizard.Scopes": 1.7,
   "test_machine_wizard.Stops": 33.2,
   "test_machine_wizard.Walkthrough": 6.5,
+  "test_materialized_version.GeneratedProtectionAudit": 5.4,
   "test_materialized_version.MaterializedVersionOne": 14.8,
   "test_materialized_version.VersionFiveBuilderMergeWait": 0.9,
   "test_materialized_version.VersionFiveCodexPRWait": 0.5,
