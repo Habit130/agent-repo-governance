@@ -84,7 +84,7 @@ def check_result(row, head):
     run = suite["workflowRun"] or {}
     path = (run.get("file") or {}).get("path")
     designated = (app == ACTIONS_APP and run.get("event") == "pull_request_target"
-                  and isinstance(path, str) and path.partition("@")[0] == GATE_WORKFLOW
+                  and path == GATE_WORKFLOW
                   and (suite.get("commit") or {}).get("oid") == head)
     producer = (name, "run", app, (run.get("workflow") or {}).get("id"), run.get("event"), designated)
     if row["status"] != "COMPLETED" or not row["completedAt"]:

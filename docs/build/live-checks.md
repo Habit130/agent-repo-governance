@@ -354,7 +354,9 @@ takes. Its docstring gives the setup, the probe PRs and what each assertion read
   - A `pull_request_target` run's `head_sha` is the PR head. Its job checks out the default
     branch, whose commit the gate's log line names. The job's own check run and the
     script's posted one are both `governance-gate` from GitHub Actions (app 15368), in
-    different check suites.
+    different check suites. On 2026-11-28, on this repository's PR #348 head, both sat in
+    the gate run's own suite. Version 6's merge-handoff recheck needs one success in that
+    suite, where the job's own check run always is.
   - A body edit (`edited`) runs the gate again on the same head. The first run's failing
     check run stays on the head, but a merge rejection then names no required check.
   - Skip instructions in a commit message don't stop `pull_request_target`
