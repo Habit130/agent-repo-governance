@@ -352,8 +352,8 @@ COPILOT_LOGIN = "copilot-pull-request-reviewer[bot]"
 COPILOT_CHECK = "copilot-pull-request-reviewer"
 
 
-# The whole fixed files and the two instruction files in the v5 manifest. Even
-# the repository-owned part of an instruction file requires the companion.
+# The whole fixed files and the two instruction files in each manifest, by the merge's
+# base version. Even the repository-owned part of an instruction file requires the companion.
 V5_COMPANION_PATHS = {
     "AGENTS.md", ".claude/CLAUDE.md", ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/governance/branch_rules.py", ".github/governance/gate.py",
@@ -363,6 +363,12 @@ V5_COMPANION_PATHS = {
     "docs/agents/issue-tracker.md", "docs/agents/planner.md", "docs/agents/review.md",
     "docs/agents/reviewer.md", "docs/agents/triage-labels.md",
 }
+# From version 6, later versions keep this inventory until their manifest adds a fixed file.
+V6_COMPANION_PATHS = V5_COMPANION_PATHS | {".github/governance/handoff_recheck.py", "docs/agents/class-retro.md"}
+
+
+def companion_paths(version):
+    return V6_COMPANION_PATHS if version >= 6 else V5_COMPANION_PATHS
 
 
 class MergeFacts:
@@ -730,7 +736,7 @@ class MergeFacts:
         return False
 
 
-    def _companion_change(self):
+    def _companion_change(self, version):
         """Compare the squash to its verified parent. PR file lists can describe a different change."""
         base = self._squash_parent()
         change = self._object_at("/compare/%s...%s" % (base, self.squash))
@@ -760,7 +766,7 @@ class MergeFacts:
             for path in paths:
                 if not isinstance(path, str) or not path:
                     complete = False
-                elif path in V5_COMPANION_PATHS:
+                elif path in companion_paths(version):
                     return True
                 elif path == RECORD:
                     if status not in ("modified", "changed"):
@@ -941,7 +947,7 @@ def _high_security_missing(lines, summary, waiver):
     return ("security", MERGE_SUMMARY) if waiver is False else (MERGE_SUMMARY,)
 
 
-def _companion_missing(pull, bots, summary, agent):
+def _companion_missing(pull, bots, summary, agent, version):
     """Yield each proven absence before a subsequent historical read can exhaust the budget."""
     if not bots or "copilot" not in bots:
         return
@@ -963,7 +969,7 @@ def _companion_missing(pull, bots, summary, agent):
     copilot = evaluate(lambda facts: _copilot(facts, presence_only=True))
     if copilot is False:
         return
-    change = evaluate(lambda facts: facts.at_merge("merged_change"))
+    change = evaluate(lambda facts: facts.at_merge("merged_change", version))
     if change is False:
         return
     if UNKNOWN in (others, change, copilot):
@@ -1003,7 +1009,7 @@ def missing_reviews(pull, agent_account, owner, tier, bots, version):
     if "reviewer" in minimum and waivers["reviewer"] is not True:
         if any_evidence((pull.at_merge("reviewer_status", agent_account), waivers["reviewer"])) is False:
             missing.add("reviewer")
-    companion = _companion_missing(pull, bots, summary, agent_account) if version >= 5 and tier == "medium" else ()
+    companion = _companion_missing(pull, bots, summary, agent_account, version) if version >= 5 and tier == "medium" else ()
     return missing, companion
 
 

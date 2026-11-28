@@ -42,6 +42,9 @@ delivery 前 Upgrade。发布以本说明合入默认分支为准，版本 7 同
 - Merge watch 对每项合并时事实都按合并当时的取值判断，包括 PR 描述里的 Risk 和
   Reverts 声明。合并后改过的内容不改变结论；无法确定合并时取值时报告 `INCOMPLETE`，
   同时照常记录已独立证实的 miss。（#315、#308：#333）
+- Medium PR 只有 Copilot 完成 bot 审查时，Merge watch 对 companion Reviewer 的审计也
+  覆盖 v6 新增的两个固定文件 `.github/governance/handoff_recheck.py` 和
+  `docs/agents/class-retro.md`。Base 为 v5 的合并仍按 v5 的文件清单判断。（#349：#351）
 - Antigravity app 成为第五个 harness，可运行 Planner、Builder 和 Reviewer session；
   generator 不在其中运行，Antigravity CLI 不受支持。Antigravity app 的角色 session
   需要已采用 v6 的仓库，并要求 machine check 的 Antigravity app 项通过、仓库里没有
@@ -55,8 +58,10 @@ delivery 前 Upgrade。发布以本说明合入默认分支为准，版本 7 同
   仓库里，改动这些路径的 PR 至少为 medium。（#336、#347）
 - 合并交接新增复核：PR 在 Upgrade 或 gate 所读策略改变期间一直打开，或无法确定是否
   属于这种情况时，Merge summary 撰写者在默认分支的新 clone 里用当前 gate 判断该 PR，
-  把回执写进 Merge summary，交出 pinned merge 命令前再确认一次。Initialize 不做这项
-  复核；Upgrade PR 本身按其 base 已采用的策略判断。（#334：#343）
+  把回执写进 Merge summary，交出 pinned merge 命令前再确认一次。确认时只有默认分支的
+  gate workflow 在被审 head 上的成功才算 gate 通过；其他来源的同名成功不算数，同名失败
+  仍挡住交接。Initialize 不做这项复核；Upgrade PR 本身按其 base 已采用的策略判断。
+  （#334：#343；gate 来源核对 #349：#351）
 - GitHub 派发和终端交接给 habit 同一个可移植的启动块；需要手动调用 skill 时，habit
   键入所选 harness 的前缀后整块粘贴一次。High 的 Reviewer 交接列出所有推送过 commit
   的 Builder 的 session mark 所排除的 model vendor，包括接手之前的。（#335：#344）
@@ -72,7 +77,9 @@ Gate 的代码与 v5 相同：默认分支的 gate 或 record 改变后，gate �
 且 head 未变的 PR。Upgrade 到 v6 的仓库，对 Upgrade 期间一直打开的每个 PR，仍须在合并
 前取得按当前默认分支策略做出的新 gate 结论；v6 的 Merge summary 撰写者通过上面的合并
 交接复核取得它。#296 第 3 项规定的 Upgrade 前过渡复核继续有效。#314、#307 和 #229 的
-第 03 行不在 v6 中。
+第 03 行不在 v6 中。发布前的 sandbox Initialize 还发现三项从 v5 继承、v6 未改的问题：
+Merge watch 不核对 waiver 的资格，gate 的 head 与策略可能来自不同事件，gate 发布者 ID
+定义在两处。它们由 #352 跟踪，留待后续版本。
 
 **离线预期和验证范围**
 
@@ -97,6 +104,9 @@ v7 的所有路径、内容和 Git mode，仅允许 manifest 版本号递增及�
   v6 离线预期新增两条：Initialize 的 Reviewer 不在 Antigravity app 中启动，Initialize
   不做合并交接复核。v5 及更早版本的预期不变。另有 Antigravity 的 README 断言改为
   已发布措辞。
+- 本次发布的两项修复（#349：#351）：合并交接复核的测试把 gate check 改为 gate
+  workflow 的真实形态，没有这一来源的 gate 成功不再满足要求；新增测试覆盖其他来源的
+  同名 check 和 v6 的 companion 文件清单。Merge watch 对 v5 base 的预期不变。
 
 Model scenarios 因额度成本未运行，最终 head 的模型行为未经验证。公开 sandbox 的
 真实 Initialize 检查本次发布，本仓库随后单独 Upgrade 检查采用流程。Repair 和

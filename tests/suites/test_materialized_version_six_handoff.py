@@ -12,6 +12,14 @@ import support
 from materialized_version_support import VersionThreeRendered
 from standins import environment
 
+GATE_WORKFLOW = ".github/workflows/governance-gate.yml"
+
+
+def check_suite(head, event="pull_request_target", path=GATE_WORKFLOW, app=15368, workflow="W_gate", suite=1):
+    """GitHub's shape for a check run's suite, as read on PR #348's gate runs."""
+    return {"databaseId": suite, "app": {"databaseId": app}, "commit": {"oid": head},
+            "workflowRun": {"event": event, "file": {"path": path}, "workflow": {"id": workflow}}}
+
 
 class VersionSixHandoffRecheck(VersionThreeRendered):
     VERSION = 6
@@ -63,7 +71,7 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
                 if row["name"] == "governance-gate":
                     nodes.append(dict(name=row["name"], isRequired=True, status="COMPLETED",
                                       conclusion=row["state"], completedAt="2026-05-01T00:01:00Z", startedAt="2026-05-01T00:00:00Z",
-                                      checkSuite={"app": {"databaseId": 15368}, "workflowRun": None}))
+                                      checkSuite=check_suite(self.head)))
                 else:
                     nodes.append(dict(row, isRequired=True, createdAt="2026-05-01T00:00:00Z"))
             contexts = {"pageInfo": {"hasNextPage": False}, "nodes": nodes}
@@ -255,15 +263,11 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
         receipt = self.run_helper().stdout
 
         def check(name, run_id, success, app):
-            return {"name": name, "isRequired": True, "status": "COMPLETED",
-                    "conclusion": "SUCCESS" if success else "FAILURE", "startedAt": "2026-05-01T00:00:%02dZ" % run_id,
-                    "completedAt": "2026-05-01T00:01:%02dZ" % run_id,
-                    "checkSuite": {"app": {"databaseId": app}, "workflowRun": None}}
+            suite = check_suite(self.head, app=app) if name == "governance-gate" else check_suite(
+                self.head, event="pull_request", path=".github/workflows/ci.yml", app=app, workflow="W_ci")
+            return self.check_run(name, run_id, success, suite)
 
-        def page(nodes, more):
-            contexts = {"nodes": nodes, "pageInfo": {"hasNextPage": more}}
-            commit = {"oid": self.head, "statusCheckRollup": {"contexts": contexts}}
-            return {"data": {"repository": {"object": commit}}}
+        page = self.page
 
         pages = [page([check("governance-gate", 1, True, 15368), check("test", 5, False, 7)], True),
                  page([check("test", 6, True, 7)], False)]
@@ -279,3 +283,54 @@ class VersionSixHandoffRecheck(VersionThreeRendered):
         self.assertNotEqual(self.run_helper("confirm", receipt, check_pages=pages).returncode, 0)
         earlier_start.update(status="IN_PROGRESS", conclusion=None, completedAt=None)
         self.assertNotEqual(self.run_helper("confirm", receipt, check_pages=pages).returncode, 0)
+
+    def check_run(self, name, run_id, success, suite):
+        return {"name": name, "isRequired": True, "status": "COMPLETED",
+                "conclusion": "SUCCESS" if success else "FAILURE", "startedAt": "2026-05-01T00:00:%02dZ" % run_id,
+                "completedAt": "2026-05-01T00:01:%02dZ" % run_id, "checkSuite": suite}
+
+    def page(self, nodes, more=False):
+        contexts = {"nodes": nodes, "pageInfo": {"hasNextPage": more}}
+        commit = {"oid": self.head, "statusCheckRollup": {"contexts": contexts}}
+        return {"data": {"repository": {"object": commit}}}
+
+    def test_gate_success_counts_only_from_the_default_branch_gate_workflow(self):
+        """#349: a same-name success from any other producer leaves the gate requirement unmet."""
+        receipt = self.run_helper().stdout
+        test = self.check_run("test", 9, True, check_suite(
+            self.head, event="pull_request", path=".github/workflows/ci.yml", workflow="W_ci"))
+        designated = check_suite(self.head)
+        strays = {
+            "no workflow run": dict(designated, workflowRun=None),
+            "a PR-run copy of the gate file": check_suite(self.head, event="pull_request"),
+            "another workflow file": check_suite(self.head, path=".github/workflows/other.yml", workflow="W_other"),
+            "another commit's suite": check_suite(self.base),
+            "another app": check_suite(self.head, app=99),
+        }
+        for label, suite in strays.items():
+            with self.subTest(stray=label):
+                pages = [self.page([self.check_run("governance-gate", 1, True, suite), test])]
+                held = self.run_helper("confirm", receipt, check_pages=pages)
+                self.assertNotEqual(held.returncode, 0)
+                self.assertIn("missing required check: governance-gate", held.stderr)
+                pages = [self.page([self.check_run("governance-gate", 1, True, suite),
+                                    self.check_run("governance-gate", 2, True, designated), test])]
+                passed = self.run_helper("confirm", receipt, check_pages=pages)
+                self.assertEqual(passed.returncode, 0, passed.stderr)
+        stray = self.check_run("governance-gate", 3, False, check_suite(self.head, event="pull_request"))
+        pages = [self.page([stray, self.check_run("governance-gate", 2, True, designated), test])]
+        held = self.run_helper("confirm", receipt, check_pages=pages)
+        self.assertNotEqual(held.returncode, 0)
+        self.assertIn("required check unsuccessful: governance-gate", held.stderr)
+
+    def test_a_later_gate_run_in_a_new_suite_replaces_its_earlier_failure(self):
+        """A body edit runs the gate again, possibly in a new check suite."""
+        receipt = self.run_helper().stdout
+        test = self.check_run("test", 9, True, check_suite(
+            self.head, event="pull_request", path=".github/workflows/ci.yml", workflow="W_ci"))
+        failed = self.check_run("governance-gate", 1, False, check_suite(self.head, suite=1))
+        rerun = self.check_run("governance-gate", 2, True, check_suite(self.head, suite=2))
+        confirmed = self.run_helper("confirm", receipt, check_pages=[self.page([failed, rerun, test])])
+        self.assertEqual(confirmed.returncode, 0, confirmed.stderr)
+        held = self.run_helper("confirm", receipt, check_pages=[self.page([failed, test])])
+        self.assertNotEqual(held.returncode, 0)

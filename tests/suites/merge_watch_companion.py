@@ -158,6 +158,12 @@ class CompanionReviewer(RecordedMerge):
         self.api[job] = {"id": 91}
         self.replay(missing=("merge-summary",), rate_limit=job)
 
+    def test_qualified_files_on_a_v5_base_omit_files_v6_added(self):
+        for path in (".github/governance/handoff_recheck.py", "docs/agents/class-retro.md"):
+            with self.subTest(path=path):
+                self.change["files"] = [{"status": "added", "filename": path}]
+                self.replay()
+
     def test_quota_stop_preserves_already_established_misses_on_this_merge(self):
         self.declare("medium", "bot-1=clear(copilot)")
         self.summary["body"] = self.summary["body"].replace("self-verification=clear", "self-verification=waived")
@@ -167,3 +173,34 @@ class CompanionReviewer(RecordedMerge):
         self.comments.pop()
         self.replay(missing=("self-verification", "merge-summary"),
                     rate_limit=f"{self.prefix}/commits/{self.head}/statuses", incomplete="rate limited")
+
+
+class VersionSixCompanionInventory(RecordedMerge):
+    """#349: a v6 base's companion audit covers every fixed path in the v6 manifest."""
+
+    VERSION = 6
+
+    def setUp(self):
+        super().setUp()
+        self.record = self.record.replace("version: 5", "version: 6")
+        self.api[self.record_path] = self.record
+        self.change = case_file("v5/companion-change.json")["comparison"]
+        self.api[self.change_path] = self.change
+        self.declare("medium", "bot-1=clear(copilot)")
+
+    def test_qualified_files_follow_the_v6_manifest(self):
+        manifest = json.loads(Path(support.REAL_STORE, "6", "manifest.json").read_text())
+        for entry in manifest["templates"]:
+            with self.subTest(path=entry["path"]):
+                status = "removed" if entry["class"] == "record" else "added"
+                self.change["files"] = [{"status": status, "filename": entry["path"]}]
+                self.replay(missing=() if entry["class"] == "skeleton" else ("merge-summary",))
+
+    def test_v6_rendered_audit_keeps_the_v5_inventory_on_a_v5_base(self):
+        self.api[self.record_path] = self.record.replace("version: 6", "version: 5")
+        for path, missing in ((".github/governance/handoff_recheck.py", ()),
+                              ("docs/agents/class-retro.md", ()),
+                              ("docs/agents/review.md", ("merge-summary",))):
+            with self.subTest(path=path):
+                self.change["files"] = [{"status": "modified", "filename": path}]
+                self.replay(missing=missing)

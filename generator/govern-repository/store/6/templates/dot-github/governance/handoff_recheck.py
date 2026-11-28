@@ -16,6 +16,8 @@ from branch_rules import ACTIONS_APP, read
 
 REPOSITORY = "@@repository@@"
 SHA = re.compile(r"[0-9a-f]{40}")
+# pull_request_target runs only the default branch's copy of this file.
+GATE_WORKFLOW = ".github/workflows/governance-gate.yml"
 
 
 def snapshot(number, reviewed):
@@ -55,7 +57,7 @@ CHECKS_QUERY = """query($owner:String!, $repo:String!, $head:GitObjectID!, $pr:I
         nodes {
           ... on CheckRun {
             name status conclusion completedAt isRequired(pullRequestNumber:$pr)
-            checkSuite { app { databaseId } workflowRun { event workflow { id } } }
+            checkSuite { app { databaseId } commit { oid } workflowRun { event file { path } workflow { id } } }
           }
           ... on StatusContext { name:context state createdAt isRequired(pullRequestNumber:$pr) }
         }
@@ -65,8 +67,12 @@ CHECKS_QUERY = """query($owner:String!, $repo:String!, $head:GitObjectID!, $pr:I
 }"""
 
 
-def check_result(row):
-    """A check's producer, ordering within that producer, and green state."""
+def check_result(row, head):
+    """A check's producer, ordering within that producer, and green state.
+
+    Only the default branch's gate workflow on the reviewed head can supply the gate. A
+    same-name success from any other producer is ignored; any same-name failure holds.
+    """
     name = row["name"]
     if not gate.is_text(name):
         raise ValueError("required check name unreadable")
@@ -76,12 +82,15 @@ def check_result(row):
     suite = row["checkSuite"]
     app = (suite["app"] or {}).get("databaseId")
     run = suite["workflowRun"] or {}
-    producer = (name, "run", app, (run.get("workflow") or {}).get("id"), run.get("event"))
+    path = (run.get("file") or {}).get("path")
+    designated = (app == ACTIONS_APP and run.get("event") == "pull_request_target"
+                  and isinstance(path, str) and path.partition("@")[0] == GATE_WORKFLOW
+                  and (suite.get("commit") or {}).get("oid") == head)
+    producer = (name, "run", app, (run.get("workflow") or {}).get("id"), run.get("event"), designated)
     if row["status"] != "COMPLETED" or not row["completedAt"]:
         raise ValueError("required check has not finished: " + name)
     completed = datetime.fromisoformat(row["completedAt"].replace("Z", "+00:00"))
-    passed = row["conclusion"] == "SUCCESS" and (name != gate.CHECK or app == ACTIONS_APP)
-    return producer, completed, passed
+    return producer, completed, row["conclusion"] == "SUCCESS"
 
 
 def check_required(facts):
@@ -103,7 +112,7 @@ def check_required(facts):
             if type(row["isRequired"]) is not bool:
                 raise ValueError("required check attribution unreadable")
             if row["isRequired"]:
-                producer, order, passed = check_result(row)
+                producer, order, passed = check_result(row, facts["head"])
                 if producer not in latest or order > latest[producer][0]:
                     latest[producer] = order, passed
                 elif order == latest[producer][0] and not passed:
@@ -113,7 +122,8 @@ def check_required(facts):
     for producer, (_, passed) in latest.items():
         if not passed:
             raise ValueError("required check unsuccessful: " + producer[0])
-        required.discard(producer[0])
+        if producer[0] != gate.CHECK or producer[-1] is True:
+            required.discard(producer[0])
     if required:
         raise ValueError("missing required check: " + ", ".join(sorted(required)))
 

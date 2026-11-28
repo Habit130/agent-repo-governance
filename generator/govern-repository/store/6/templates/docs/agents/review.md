@@ -176,7 +176,8 @@ Everything specific to one provider sits in its subsection.
   be waived. At high the required Reviewer judges it, and its waiver keeps this condition
   (Waivers). A PR touching a sensitive path
   whose only completed bot review is Copilot's says so in its Merge summary.
-  On a v5 medium merge, Merge watch checks the merged change and completed reviews
+  From v5, on a medium merge, Merge watch checks the merged change against the fixed
+  files and instruction files of the merge base's version, and the completed reviews,
   to establish whether that companion was required. It checks the summary for
   `reviewer=clear` and the historical agent account's successful `Reviewer` status on the
   head by merge time. A missing declaration is a summary miss. A missing status is a

@@ -118,6 +118,7 @@
   "test_merge_watch.VersionFive": 0.5,
   "test_merge_watch.VersionFivePush": 0.9,
   "test_merge_watch.VersionFour": 0.5,
+  "test_merge_watch.VersionSixCompanionInventory": 13.9,
   "test_merge_watch.VersionSixConsolidatedDeclarations": 4.1,
   "test_merge_watch.VersionSixHistoricalPolicy": 2.9,
   "test_merge_watch.VersionThree": 0.5,
